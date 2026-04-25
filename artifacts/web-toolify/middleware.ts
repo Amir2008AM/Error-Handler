@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const rateLimitStore = new Map<string, number[]>()
 
 const WINDOW_MS = 60 * 1000 // 1 minute
-const MAX_REQUESTS = 10
+const MAX_REQUESTS = 120 // 2 per second average — generous for a tool site
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
@@ -36,9 +36,23 @@ function isSameOrigin(request: NextRequest): boolean {
   if (!origin) return true // No origin = same-origin (curl, server-to-server, etc.)
 
   const host = request.headers.get('host')
+  // Replit proxy rewrites Host to localhost:PORT but forwards the real host here
+  const forwardedHost = request.headers.get('x-forwarded-host')
+
   try {
-    const originHost = new URL(origin).host
-    return originHost === host
+    const originUrl = new URL(origin)
+    const originHost = originUrl.host       // includes port, e.g. "foo.replit.dev:3000"
+    const originHostname = originUrl.hostname // just hostname, e.g. "foo.replit.dev"
+    // Accept if origin matches either the direct host or the forwarded (public) host
+    if (originHost === host) return true
+    if (forwardedHost && originHost === forwardedHost) return true
+    // Accept Replit dev/app domains unconditionally (hostname only, no port)
+    if (
+      originHostname.endsWith('.replit.dev') ||
+      originHostname.endsWith('.repl.co') ||
+      originHostname.endsWith('.replit.app')
+    ) return true
+    return false
   } catch {
     return false
   }
