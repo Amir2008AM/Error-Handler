@@ -131,14 +131,34 @@ export class OCRProcessor {
 
   /**
    * Preprocess image for better OCR results.
+   * - Upscales small images to at least 1500px wide (Tesseract works best at ~300 DPI)
+   * - Converts to grayscale, normalises contrast, applies gentle unsharp mask
+   * - Outputs lossless PNG so Tesseract gets clean pixels
    */
   private async preprocessImage(imageBuffer: Buffer): Promise<Buffer> {
     try {
-      return await sharp(imageBuffer)
+      const meta = await sharp(imageBuffer).metadata()
+      const w = meta.width ?? 0
+      const h = meta.height ?? 0
+
+      let pipeline = sharp(imageBuffer)
+
+      // Upscale if the image is too small — Tesseract accuracy degrades below ~150 DPI
+      const MIN_WIDTH = 1500
+      if (w > 0 && w < MIN_WIDTH) {
+        const scale = MIN_WIDTH / w
+        pipeline = pipeline.resize(Math.round(w * scale), Math.round(h * scale), {
+          fit: 'fill',
+          kernel: sharp.kernel.lanczos3,
+        })
+      }
+
+      return await pipeline
         .grayscale()
-        .normalize()
-        .sharpen()
-        .png()
+        .normalize()                          // stretch histogram to full 0-255 range
+        .linear(1.2, -(0.2 * 128))            // slight contrast boost
+        .sharpen({ sigma: 1.0, m1: 1.5, m2: 0.5 })  // unsharp mask for crisper text edges
+        .png({ compressionLevel: 1 })         // fast lossless output for Tesseract
         .toBuffer()
     } catch {
       return imageBuffer

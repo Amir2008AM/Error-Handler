@@ -999,45 +999,86 @@ export class PDFProcessor extends BaseProcessor {
           }
         }
 
-        // 3. Re-compress embedded JPEG (DCTDecode) images with sharp at 60% quality
+        // 3. Re-compress embedded images in parallel for speed
         try {
           const context = pdfDoc.context
+
+          // Collect all candidate image streams first
+          type ImageTask = {
+            ref: Parameters<typeof context.assign>[0]
+            obj: PDFRawStream
+            dict: PDFRawStream['dict']
+            isJpeg: boolean
+            isPng: boolean
+          }
+          const tasks: ImageTask[] = []
+
           for (const [ref, obj] of context.enumerateIndirectObjects()) {
             if (!(obj instanceof PDFRawStream)) continue
-
             const dict = obj.dict
             const subtype = dict.get(PDFName.of('Subtype'))
             const filter = dict.get(PDFName.of('Filter'))
+            const subtypeStr = subtype?.toString() ?? ''
+            const filterStr = filter?.toString() ?? ''
+            if (subtypeStr !== '/Image') continue
+            const isJpeg = filterStr === '/DCTDecode'
+            // FlateDecode = deflate-compressed raw/PNG pixels
+            const isPng = filterStr === '/FlateDecode'
+            if (isJpeg || isPng) tasks.push({ ref, obj, dict, isJpeg, isPng })
+          }
 
-            const isJpeg =
-              subtype?.toString() === '/Image' &&
-              filter?.toString() === '/DCTDecode'
-
-            if (!isJpeg) continue
-
+          // Process all images in parallel
+          await Promise.all(tasks.map(async ({ ref, obj, dict, isJpeg, isPng }) => {
             try {
               const original = Buffer.from(obj.contents)
-              const recompressed = await sharp(original)
-                .jpeg({ quality: 60 })
-                .toBuffer()
+              // Skip tiny images — overhead not worth it
+              if (original.length < 4096) return
+
+              const width = (dict.get(PDFName.of('Width')) as { value?: number } | undefined)?.value
+              const height = (dict.get(PDFName.of('Height')) as { value?: number } | undefined)?.value
+
+              // Quality scales with image area: larger image = more aggressive compression
+              const pixels = (width ?? 0) * (height ?? 0)
+              const quality = pixels > 1_000_000 ? 55 : pixels > 200_000 ? 65 : 75
+
+              let recompressed: Buffer
+
+              if (isJpeg) {
+                // Re-encode JPEG at lower quality
+                recompressed = await sharp(original)
+                  .jpeg({ quality, mozjpeg: false })
+                  .toBuffer()
+              } else {
+                // FlateDecode: decode the raw pixels and re-encode as JPEG
+                // Only do this if we can determine dimensions (needed for raw decode)
+                if (!width || !height) return
+                try {
+                  recompressed = await sharp(original)
+                    .jpeg({ quality, mozjpeg: false })
+                    .toBuffer()
+                } catch {
+                  return // Can't decode — skip
+                }
+              }
 
               if (recompressed.length < original.length) {
-                // Rebuild the stream with recompressed bytes
+                const colorSpace = dict.get(PDFName.of('ColorSpace'))
+                const bitsPerComponent = dict.get(PDFName.of('BitsPerComponent'))
                 const newStream = context.stream(recompressed, {
                   Type: 'XObject',
                   Subtype: 'Image',
                   Filter: 'DCTDecode',
-                  Width: dict.get(PDFName.of('Width')),
-                  Height: dict.get(PDFName.of('Height')),
-                  ColorSpace: dict.get(PDFName.of('ColorSpace')),
-                  BitsPerComponent: dict.get(PDFName.of('BitsPerComponent')),
+                  ...(width !== undefined && { Width: width }),
+                  ...(height !== undefined && { Height: height }),
+                  ...(colorSpace !== undefined && { ColorSpace: colorSpace }),
+                  ...(bitsPerComponent !== undefined && { BitsPerComponent: bitsPerComponent }),
                 })
                 context.assign(ref, newStream)
               }
             } catch {
               // Skip images that can't be recompressed
             }
-          }
+          }))
         } catch {
           // If image recompression fails, continue with other optimizations
         }

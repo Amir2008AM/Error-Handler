@@ -6,6 +6,12 @@
 
 import sharp from 'sharp'
 import { BaseProcessor } from './base-processor'
+
+// Use all available CPU threads for sharp operations
+sharp.concurrency(0)
+// Keep last 200 MB of decoded tiles cached to speed up repeated operations
+sharp.cache({ memory: 200, files: 20, items: 200 })
+
 import type {
   ProcessingResult,
   ImageCompressOptions,
@@ -117,10 +123,11 @@ export class ImageProcessor extends BaseProcessor {
         }
 
         // Apply resize
+        const maintainAR = options.maintainAspectRatio !== false
         sharpInstance = sharpInstance.resize({
           width: targetWidth,
           height: targetHeight,
-          fit: options.maintainAspectRatio !== false ? 'inside' : 'fill',
+          fit: maintainAR ? 'inside' : 'fill',
           withoutEnlargement: false,
         })
 
@@ -129,13 +136,27 @@ export class ImageProcessor extends BaseProcessor {
           ? (metadata.format as ImageFormat) ?? 'jpeg'
           : options.format
 
+        // Compute output dimensions without re-reading the buffer
+        let outW = targetWidth ?? origWidth
+        let outH = targetHeight ?? origHeight
+        if (maintainAR && targetWidth && targetHeight) {
+          const scaleX = targetWidth / origWidth
+          const scaleY = targetHeight / origHeight
+          const scale = Math.min(scaleX, scaleY)
+          outW = Math.round(origWidth * scale)
+          outH = Math.round(origHeight * scale)
+        } else if (maintainAR && targetWidth && !targetHeight) {
+          outH = Math.round(origHeight * (targetWidth / origWidth))
+        } else if (maintainAR && !targetWidth && targetHeight) {
+          outW = Math.round(origWidth * (targetHeight / origHeight))
+        }
+
         const outputBuffer = await this.applyFormat(sharpInstance, outputFormat, quality)
-        const outputMeta = await sharp(outputBuffer).metadata()
 
         return {
           buffer: outputBuffer,
-          outputWidth: outputMeta.width ?? 0,
-          outputHeight: outputMeta.height ?? 0,
+          outputWidth: outW,
+          outputHeight: outH,
           originalWidth: origWidth,
           originalHeight: origHeight,
         }
@@ -416,19 +437,23 @@ export class ImageProcessor extends BaseProcessor {
     switch (format) {
       case 'jpeg':
       case 'jpg':
-        return sharpInstance.jpeg({ quality, mozjpeg: true }).toBuffer()
+        // mozjpeg is ~3× slower with marginal gains for most use cases; skip it
+        return sharpInstance.jpeg({ quality, mozjpeg: false, trellisQuantisation: true }).toBuffer()
       case 'png':
-        return sharpInstance.png({ quality, compressionLevel: 9 }).toBuffer()
+        // Level 9 is very slow (≈2× slower than 6) with minimal size gain; use 6
+        return sharpInstance.png({ compressionLevel: 6, palette: true }).toBuffer()
       case 'webp':
-        return sharpInstance.webp({ quality }).toBuffer()
+        // effort 4 (default) is good; 6 gives better compression at reasonable cost
+        return sharpInstance.webp({ quality, effort: 4 }).toBuffer()
       case 'avif':
-        return sharpInstance.avif({ quality }).toBuffer()
+        // effort 4 balances speed vs compression (default 4 is fine)
+        return sharpInstance.avif({ quality, effort: 4 }).toBuffer()
       case 'gif':
         return sharpInstance.gif().toBuffer()
       case 'tiff':
-        return sharpInstance.tiff({ quality }).toBuffer()
+        return sharpInstance.tiff({ quality, compression: 'lzw' }).toBuffer()
       default:
-        return sharpInstance.jpeg({ quality }).toBuffer()
+        return sharpInstance.jpeg({ quality, mozjpeg: false }).toBuffer()
     }
   }
 

@@ -389,7 +389,9 @@ export class DocumentConverter {
   }
 
   /**
-   * Wrap text to fit within a given width
+   * Wrap text to fit within a given width.
+   * Uses binary search when a word is too wide, reducing calls to widthOfTextAtSize
+   * from O(n) per word to O(log n).
    */
   private wrapText(
     text: string,
@@ -401,31 +403,42 @@ export class DocumentConverter {
     const lines: string[] = []
     let currentLine = ''
 
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word
-      const testWidth = font.widthOfTextAtSize(testLine, fontSize)
+    const fits = (s: string) => font.widthOfTextAtSize(s, fontSize) <= maxWidth
 
-      if (testWidth <= maxWidth) {
+    // Binary-search the largest prefix of `str` that fits within maxWidth
+    const fitPrefix = (str: string): string => {
+      let lo = 1
+      let hi = str.length
+      let last = 0
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1
+        if (fits(str.substring(0, mid))) {
+          last = mid
+          lo = mid + 1
+        } else {
+          hi = mid - 1
+        }
+      }
+      return str.substring(0, Math.max(last, 1))
+    }
+
+    for (const word of words) {
+      if (!word) continue
+
+      const testLine = currentLine ? `${currentLine} ${word}` : word
+
+      if (fits(testLine)) {
         currentLine = testLine
       } else {
-        if (currentLine) {
-          lines.push(currentLine)
-        }
-        // Check if single word is too long
-        if (font.widthOfTextAtSize(word, fontSize) > maxWidth) {
-          // Break the word
+        if (currentLine) lines.push(currentLine)
+
+        if (!fits(word)) {
+          // Word itself is too long — break it with binary search
           let remaining = word
           while (remaining) {
-            let partLength = remaining.length
-            while (
-              partLength > 0 &&
-              font.widthOfTextAtSize(remaining.substring(0, partLength), fontSize) > maxWidth
-            ) {
-              partLength--
-            }
-            if (partLength === 0) partLength = 1
-            lines.push(remaining.substring(0, partLength))
-            remaining = remaining.substring(partLength)
+            const part = fitPrefix(remaining)
+            lines.push(part)
+            remaining = remaining.substring(part.length)
           }
           currentLine = ''
         } else {
@@ -434,9 +447,7 @@ export class DocumentConverter {
       }
     }
 
-    if (currentLine) {
-      lines.push(currentLine)
-    }
+    if (currentLine) lines.push(currentLine)
 
     return lines.length > 0 ? lines : ['']
   }
