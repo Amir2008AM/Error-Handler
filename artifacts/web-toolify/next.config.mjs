@@ -3,7 +3,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ['pdf-parse', 'sharp', 'canvas'],
+  serverExternalPackages: ['pdf-parse', 'sharp', 'canvas', 'pdfjs-dist', 'tesseract.js'],
   allowedDevOrigins: ['*.replit.dev', '*.replit.app', '*.kirk.replit.dev', '*.repl.co'],
   experimental: {
     serverActions: {

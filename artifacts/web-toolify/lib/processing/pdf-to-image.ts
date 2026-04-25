@@ -6,10 +6,15 @@
 import { PDFDocument } from 'pdf-lib'
 import sharp from 'sharp'
 import { createCanvas } from 'canvas'
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js'
 
-// Disable the worker in Node.js environment
-pdfjs.GlobalWorkerOptions.workerSrc = ''
+let _pdfjs: typeof import('pdfjs-dist') | null = null
+async function getPdfjs() {
+  if (!_pdfjs) {
+    _pdfjs = await import('pdfjs-dist')
+    _pdfjs.GlobalWorkerOptions.workerSrc = ''
+  }
+  return _pdfjs
+}
 
 export interface PdfToImageOptions {
   format?: 'jpg' | 'png' | 'webp'
@@ -49,7 +54,8 @@ export class PdfToImageConverter {
     const scale = dpi / 72
 
     try {
-      // Load PDF with the legacy pdfjs build
+      // Load PDF with pdfjs-dist
+      const pdfjs = await getPdfjs()
       const loadingTask = pdfjs.getDocument({
         data: new Uint8Array(pdfBuffer),
         useSystemFonts: true,
@@ -92,7 +98,8 @@ export class PdfToImageConverter {
    * Convert a single PDF page to an image using node-canvas for rendering
    */
   private async convertPage(
-    pdfDoc: pdfjs.PDFDocumentProxy,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pdfDoc: any,
     pageNum: number,
     options: {
       scale: number

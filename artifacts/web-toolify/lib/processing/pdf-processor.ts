@@ -21,9 +21,16 @@ import {
 } from 'docx'
 import JSZip from 'jszip'
 import { BaseProcessor } from './base-processor'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfjs = require('pdfjs-dist/legacy/build/pdf.js')
-pdfjs.GlobalWorkerOptions.workerSrc = ''
+
+let _pdfjs: typeof import('pdfjs-dist') | null = null
+async function getPdfjs() {
+  if (!_pdfjs) {
+    _pdfjs = await import('pdfjs-dist')
+    _pdfjs.GlobalWorkerOptions.workerSrc = ''
+  }
+  return _pdfjs
+}
+
 import type {
   ProcessingResult,
   PDFMergeOptions,
@@ -405,6 +412,7 @@ export class PDFProcessor extends BaseProcessor {
 
       const { result, time } = await this.measureTime(async () => {
         // Use pdfjs-dist to extract text with position data
+        const pdfjs = await getPdfjs()
         const loadingTask = pdfjs.getDocument({
           data: new Uint8Array(options.file),
           verbosity: 0,
