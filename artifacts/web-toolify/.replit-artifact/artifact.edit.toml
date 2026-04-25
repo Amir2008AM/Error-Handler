@@ -1,0 +1,27 @@
+kind = "web"
+  previewPath = "/"
+  title = "Web Toolify"
+  version = "1.0.0"
+  id = "web-toolify-001"
+
+  [[services]]
+  localPort = 3333
+  name = "web"
+  paths = ["/"]
+
+  [services.development]
+  run = "pnpm --filter @workspace/web-toolify run dev"
+
+  [services.development.env]
+  PORT = "3333"
+
+  [services.production]
+  serve = "static"
+
+  [services.production.build]
+  args = ["pnpm", "--filter", "@workspace/web-toolify", "run", "build"]
+
+  [services.production.build.env]
+  NODE_ENV = "production"
+  PORT = "3333"
+  
