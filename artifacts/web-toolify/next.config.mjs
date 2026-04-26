@@ -4,7 +4,7 @@ const nextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: ['pdf-parse', 'sharp', 'canvas', 'pdfjs-dist', 'tesseract.js'],
-  allowedDevOrigins: ['*.replit.dev', '*.replit.app', '*.kirk.replit.dev', '*.repl.co'],
+  allowedDevOrigins: ['*.replit.dev', '*.replit.app', '*.kirk.replit.dev', '*.spock.replit.dev', '*.picard.replit.dev', '*.janeway.replit.dev', '*.riker.replit.dev', '*.worf.replit.dev', '*.sisko.replit.dev', '*.repl.co'],
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
