@@ -8,7 +8,7 @@ export const maxDuration = 120
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    const file = formData.get('file') as File
     const password = formData.get('password') as string | null
 
     const validationError = validateFile(file, 'pdf')

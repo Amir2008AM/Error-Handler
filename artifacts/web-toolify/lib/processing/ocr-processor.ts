@@ -169,8 +169,15 @@ export class OCRProcessor {
    * Format Tesseract result to our standard format.
    */
   private formatResult(result: RecognizeResult): OCRResult {
+    const data = result.data as typeof result.data & {
+      words?: Array<{
+        text: string
+        confidence: number
+        bbox: { x0: number; y0: number; x1: number; y1: number }
+      }>
+    }
     const words =
-      result.data.words?.map((word) => ({
+      data.words?.map((word) => ({
         text: word.text,
         confidence: word.confidence,
         bbox: {
@@ -202,7 +209,7 @@ export class OCRProcessor {
     const pdfDoc = await PDFDocument.load(pdfBuffer)
     const pageCount = pdfDoc.getPageCount()
 
-    const results: OCRResult = {
+    const results: OCRResult & { searchablePdf?: Buffer } = {
       text: '',
       confidence: 0,
       words: [],

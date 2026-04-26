@@ -8,7 +8,7 @@ export const maxDuration = 120
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    const file = formData.get('file') as File
     const pageSize = (formData.get('pageSize') as 'a4' | 'letter' | 'legal') || 'a4'
     const orientation = (formData.get('orientation') as 'portrait' | 'landscape') || 'portrait'
     const fontSize = parseInt(formData.get('fontSize') as string) || 12

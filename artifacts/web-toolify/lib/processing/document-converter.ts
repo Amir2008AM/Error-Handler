@@ -149,7 +149,7 @@ export class DocumentConverter {
     // Process each sheet
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName]
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { header: 1 }) as unknown[][]
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][]
 
       if (jsonData.length === 0) continue
 
@@ -379,7 +379,7 @@ export class DocumentConverter {
     family: 'helvetica' | 'times' | 'courier' = 'helvetica',
     bold: boolean = false
   ): Promise<PDFFont> {
-    const fonts: Record<string, typeof StandardFonts.Helvetica> = {
+    const fonts: Record<string, StandardFonts> = {
       'helvetica': bold ? StandardFonts.HelveticaBold : StandardFonts.Helvetica,
       'times': bold ? StandardFonts.TimesRomanBold : StandardFonts.TimesRoman,
       'courier': bold ? StandardFonts.CourierBold : StandardFonts.Courier,

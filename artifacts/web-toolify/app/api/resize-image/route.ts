@@ -9,7 +9,7 @@ export const maxDuration = 60
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const file = formData.get('image') as File | null
+    const file = formData.get('image') as File
     const widthStr = formData.get('width') as string | null
     const heightStr = formData.get('height') as string | null
     const maintainAspect = (formData.get('maintainAspect') as string) !== 'false'

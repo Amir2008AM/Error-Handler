@@ -9,7 +9,7 @@ export const maxDuration = 60
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const file = formData.get('image') as File | null
+    const file = formData.get('image') as File
     const quality = parseInt((formData.get('quality') as string) ?? '80', 10)
     const format = (formData.get('format') as string) ?? 'same'
 

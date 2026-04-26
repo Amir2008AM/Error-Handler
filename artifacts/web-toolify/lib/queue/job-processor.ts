@@ -8,6 +8,7 @@ import { getJobManager } from './job-manager'
 import { PDFProcessor } from '../processing/pdf-processor'
 import { ImageProcessor } from '../processing/image-processor'
 import { createZipFromFiles } from '../processing/file-utils'
+import type { ProcessingResult } from '../processing/types'
 
 type ProcessorFunction = (job: Job) => Promise<{
   buffer: Buffer
@@ -16,6 +17,17 @@ type ProcessorFunction = (job: Job) => Promise<{
 } | {
   buffers: Array<{ buffer: Buffer; fileName: string; mimeType: string }>
 }>
+
+function unwrap<T>(result: ProcessingResult<T>): T {
+  if (!result.success || result.data === undefined) {
+    throw new Error(result.error || 'Processing failed')
+  }
+  return result.data
+}
+
+function toArrayBuffer(buf: Buffer): ArrayBuffer {
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+}
 
 // Map job types to their processor functions
 const processors: Partial<Record<JobType, ProcessorFunction>> = {
@@ -100,18 +112,18 @@ export async function processNextJob(): Promise<JobResult | null> {
 
 async function processMergePdf(job: Job) {
   const processor = new PDFProcessor()
-  const buffers = job.files.map((f) => f.buffer)
-  
+  const files = job.files.map((f) => toArrayBuffer(f.buffer))
+
   // Update progress
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
 
-  const result = await processor.merge(buffers)
-  
+  const result = await processor.merge({ files })
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'merged.pdf',
     mimeType: 'application/pdf',
   }
@@ -120,57 +132,60 @@ async function processMergePdf(job: Job) {
 async function processSplitPdf(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
   const splitMode = job.options.splitMode as 'all' | 'ranges' | 'extract' | undefined
   const ranges = job.options.ranges as string | undefined
 
-  const results = await processor.split(job.files[0].buffer, {
-    mode: splitMode || 'all',
-    ranges: ranges,
+  const mode: 'all' | 'range' | 'custom' =
+    splitMode === 'ranges' ? 'range' : splitMode === 'extract' ? 'custom' : 'all'
+
+  const result = await processor.split({
+    file: toArrayBuffer(job.files[0].buffer),
+    mode,
+    ranges,
   })
 
   manager.updateJobProgress(job.id, 80)
 
-  if (results.length === 1) {
+  const data = unwrap(result)
+  const isZip = result.metadata?.outputFormat === 'zip'
+
+  if (isZip) {
     return {
-      buffer: results[0],
-      fileName: 'split-page-1.pdf',
-      mimeType: 'application/pdf',
+      buffer: data,
+      fileName: 'split-pages.zip',
+      mimeType: 'application/zip',
     }
   }
 
-  // Create ZIP for multiple files
-  const zipFiles = results.map((buf, i) => ({
-    name: `page-${i + 1}.pdf`,
-    buffer: buf,
-  }))
-
-  const zipBuffer = await createZipFromFiles(zipFiles)
-
   return {
-    buffer: zipBuffer,
-    fileName: 'split-pages.zip',
-    mimeType: 'application/zip',
+    buffer: data,
+    fileName: 'split.pdf',
+    mimeType: 'application/pdf',
   }
 }
 
 async function processRotatePdf(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
-  const rotation = (job.options.rotation as number) || 90
+  const rotation = ((job.options.rotation as number) || 90) as 90 | 180 | 270
   const pages = job.options.pages as number[] | undefined
 
-  const result = await processor.rotate(job.files[0].buffer, rotation, pages)
-  
+  const result = await processor.rotate({
+    file: toArrayBuffer(job.files[0].buffer),
+    rotation,
+    pages,
+  })
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'rotated.pdf',
     mimeType: 'application/pdf',
   }
@@ -179,17 +194,15 @@ async function processRotatePdf(job: Job) {
 async function processCompressPdf(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
-  const quality = (job.options.quality as 'low' | 'medium' | 'high') || 'medium'
+  const result = await processor.compress(toArrayBuffer(job.files[0].buffer))
 
-  const result = await processor.compress(job.files[0].buffer, { quality })
-  
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'compressed.pdf',
     mimeType: 'application/pdf',
   }
@@ -198,19 +211,20 @@ async function processCompressPdf(job: Job) {
 async function processWatermarkPdf(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
-  const result = await processor.addWatermark(job.files[0].buffer, {
+  const result = await processor.addWatermark({
+    file: toArrayBuffer(job.files[0].buffer),
     text: job.options.watermarkText as string,
     opacity: (job.options.watermarkOpacity as number) || 0.3,
-    position: (job.options.watermarkPosition as 'center' | 'diagonal') || 'diagonal',
+    position: (job.options.watermarkPosition as 'center' | 'diagonal' | 'top' | 'bottom') || 'diagonal',
   })
-  
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'watermarked.pdf',
     mimeType: 'application/pdf',
   }
@@ -219,19 +233,27 @@ async function processWatermarkPdf(job: Job) {
 async function processAddPageNumbers(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
-  const result = await processor.addPageNumbers(job.files[0].buffer, {
-    position: (job.options.position as 'bottom-center' | 'bottom-right' | 'bottom-left' | 'top-center' | 'top-right' | 'top-left') || 'bottom-center',
-    format: (job.options.format as string) || 'Page {n} of {total}',
-    startNumber: (job.options.startNumber as number) || 1,
+  const result = await processor.addPageNumbers({
+    file: toArrayBuffer(job.files[0].buffer),
+    position:
+      (job.options.position as
+        | 'bottom-center'
+        | 'bottom-right'
+        | 'bottom-left'
+        | 'top-center'
+        | 'top-right'
+        | 'top-left') || 'bottom-center',
+    format: (job.options.format as 'numeric' | 'roman' | 'page-of-total') || 'page-of-total',
+    startFrom: (job.options.startNumber as number) || 1,
   })
-  
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'numbered.pdf',
     mimeType: 'application/pdf',
   }
@@ -240,21 +262,21 @@ async function processAddPageNumbers(job: Job) {
 async function processOrganizePdf(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
   const pageOrder = job.options.pageOrder as number[]
-  
+
   if (!pageOrder || pageOrder.length === 0) {
     throw new Error('Page order is required for organize operation')
   }
 
-  const result = await processor.organizePdf(job.files[0].buffer, pageOrder)
-  
+  const result = await processor.reorderPages(toArrayBuffer(job.files[0].buffer), pageOrder)
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'organized.pdf',
     mimeType: 'application/pdf',
   }
@@ -263,23 +285,21 @@ async function processOrganizePdf(job: Job) {
 async function processImageToPdf(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
-  const images = job.files.map((f) => ({
-    buffer: f.buffer,
-    name: f.name,
-  }))
+  const images = job.files.map((f) => toArrayBuffer(f.buffer))
 
-  const result = await processor.imagesToPdf(images, {
-    pageSize: (job.options.pageSize as 'a4' | 'letter' | 'fit') || 'a4',
+  const result = await processor.imagesToPdf({
+    images,
+    pageSize: (job.options.pageSize as 'auto' | 'a4' | 'letter') || 'a4',
     margin: (job.options.margin as number) || 20,
   })
-  
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'images.pdf',
     mimeType: 'application/pdf',
   }
@@ -288,15 +308,15 @@ async function processImageToPdf(job: Job) {
 async function processRepairPdf(job: Job) {
   const processor = new PDFProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
-  const result = await processor.repairPdf(job.files[0].buffer)
-  
+  const result = await processor.repair(toArrayBuffer(job.files[0].buffer))
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: 'repaired.pdf',
     mimeType: 'application/pdf',
   }
@@ -305,17 +325,20 @@ async function processRepairPdf(job: Job) {
 async function processCompressImage(job: Job) {
   const processor = new ImageProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
-  const quality = (job.options.quality as number) || 80
+  const quality = (job.options.quality as unknown as number) || 80
 
   if (job.files.length === 1) {
-    const result = await processor.compress(job.files[0].buffer, { quality })
+    const result = await processor.compress({
+      file: toArrayBuffer(job.files[0].buffer),
+      quality,
+    })
     manager.updateJobProgress(job.id, 90)
-    
+
     return {
-      buffer: result,
+      buffer: unwrap(result),
       fileName: `compressed-${job.files[0].name}`,
       mimeType: job.files[0].type,
     }
@@ -324,10 +347,13 @@ async function processCompressImage(job: Job) {
   // Batch processing
   const results = await Promise.all(
     job.files.map(async (file, index) => {
-      const result = await processor.compress(file.buffer, { quality })
+      const result = await processor.compress({
+        file: toArrayBuffer(file.buffer),
+        quality,
+      })
       manager.updateJobProgress(job.id, 10 + Math.round((index / job.files.length) * 70))
       return {
-        buffer: result,
+        buffer: unwrap(result),
         fileName: `compressed-${file.name}`,
         mimeType: file.type,
       }
@@ -348,23 +374,24 @@ async function processCompressImage(job: Job) {
 async function processResizeImage(job: Job) {
   const processor = new ImageProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
   const width = job.options.width as number | undefined
   const height = job.options.height as number | undefined
   const maintainAspectRatio = job.options.maintainAspectRatio !== false
 
-  const result = await processor.resize(job.files[0].buffer, {
+  const result = await processor.resize({
+    file: toArrayBuffer(job.files[0].buffer),
     width,
     height,
     fit: maintainAspectRatio ? 'inside' : 'fill',
   })
-  
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: `resized-${job.files[0].name}`,
     mimeType: job.files[0].type,
   }
@@ -373,13 +400,16 @@ async function processResizeImage(job: Job) {
 async function processConvertImage(job: Job) {
   const processor = new ImageProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
   const outputFormat = (job.options.outputFormat as 'jpg' | 'png' | 'webp' | 'gif') || 'png'
 
-  const result = await processor.convert(job.files[0].buffer, outputFormat)
-  
+  const result = await processor.convert({
+    file: toArrayBuffer(job.files[0].buffer),
+    targetFormat: outputFormat,
+  })
+
   manager.updateJobProgress(job.id, 90)
 
   const mimeTypes: Record<string, string> = {
@@ -393,7 +423,7 @@ async function processConvertImage(job: Job) {
   const baseName = job.files[0].name.replace(/\.[^.]+$/, '')
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: `${baseName}.${outputFormat}`,
     mimeType: mimeTypes[outputFormat] || 'image/png',
   }
@@ -402,7 +432,7 @@ async function processConvertImage(job: Job) {
 async function processCropImage(job: Job) {
   const processor = new ImageProcessor()
   const manager = getJobManager()
-  
+
   manager.updateJobProgress(job.id, 10)
 
   const { left, top, width, height } = job.options as {
@@ -416,17 +446,18 @@ async function processCropImage(job: Job) {
     throw new Error('Crop width and height are required')
   }
 
-  const result = await processor.crop(job.files[0].buffer, {
+  const result = await processor.crop({
+    file: toArrayBuffer(job.files[0].buffer),
     left: left || 0,
     top: top || 0,
     width,
     height,
   })
-  
+
   manager.updateJobProgress(job.id, 90)
 
   return {
-    buffer: result,
+    buffer: unwrap(result),
     fileName: `cropped-${job.files[0].name}`,
     mimeType: job.files[0].type,
   }

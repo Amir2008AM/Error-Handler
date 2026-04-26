@@ -102,7 +102,7 @@ export class PDFSecurityProcessor {
       const pdfDoc = await PDFDocument.load(pdfBuffer, {
         password: options.password,
         ignoreEncryption: true,
-      })
+      } as Parameters<typeof PDFDocument.load>[1])
 
       // Save without encryption
       const unlockedPdf = await pdfDoc.save()

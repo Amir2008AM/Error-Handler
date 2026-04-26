@@ -8,7 +8,7 @@ export const maxDuration = 60
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const file = formData.get('pdf') as File | null
+    const file = formData.get('pdf') as File
     const rotation = parseInt((formData.get('rotation') as string) ?? '90', 10)
     const pagesStr = formData.get('pages') as string | null
 

@@ -40,7 +40,7 @@ export function RealProgressBar({
 }: RealProgressBarProps) {
   const [visible, setVisible] = useState(false)
   const [displayProgress, setDisplayProgress] = useState(0)
-  const hideTimeoutRef = useRef<NodeJS.Timeout>()
+  const hideTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Smooth progress animation
   useEffect(() => {
@@ -340,7 +340,7 @@ export function useJobProgress(pollInterval: number = 500) {
   })
   const [jobId, setJobId] = useState<string | null>(null)
   const [result, setResult] = useState<any>(null)
-  const pollingRef = useRef<NodeJS.Timeout>()
+  const pollingRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const pollStatus = useCallback(async (id: string) => {
     try {

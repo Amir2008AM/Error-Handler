@@ -9,7 +9,7 @@ export const maxDuration = 300
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    const file = formData.get('file') as File
     const format = (formData.get('format') as 'jpg' | 'png' | 'webp') || 'jpg'
     const quality = parseInt(formData.get('quality') as string) || 90
     const dpi = parseInt(formData.get('dpi') as string) || 150

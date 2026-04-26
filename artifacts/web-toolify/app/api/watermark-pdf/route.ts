@@ -8,7 +8,7 @@ export const maxDuration = 60
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const file = formData.get('pdf') as File | null
+    const file = formData.get('pdf') as File
     const text = formData.get('text') as string | null
     const opacity = parseFloat((formData.get('opacity') as string) ?? '0.3')
     const position = (formData.get('position') as string) ?? 'diagonal'

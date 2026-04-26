@@ -8,12 +8,12 @@ export const maxDuration = 120
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    const file = formData.get('file') as File
     const signerName = formData.get('signerName') as string | null
     const signatureText = formData.get('signatureText') as string | null
     const reason = formData.get('reason') as string | null
     const location = formData.get('location') as string | null
-    const signatureImage = formData.get('signatureImage') as File | null
+    const signatureImage = formData.get('signatureImage') as File
     const position = formData.get('position') as string || 'bottom-right'
     const pageNumber = parseInt(formData.get('page') as string) || 0
 

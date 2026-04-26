@@ -7,7 +7,7 @@ export const maxDuration = 300
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    const file = formData.get('file') as File
     const language = (formData.get('language') as string) || 'eng'
     const outputType = (formData.get('outputType') as 'text' | 'searchable-pdf' | 'both') || 'text'
 

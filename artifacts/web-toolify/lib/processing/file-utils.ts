@@ -232,6 +232,15 @@ export async function createZipArchive(
 }
 
 /**
+ * Create a ZIP archive from multiple files (alias accepting `buffer` field)
+ */
+export async function createZipFromFiles(
+  files: { name: string; buffer: Buffer | ArrayBuffer }[]
+): Promise<Buffer> {
+  return createZipArchive(files.map((f) => ({ name: f.name, data: f.buffer })))
+}
+
+/**
  * Extract files from a ZIP archive
  */
 export async function extractZipArchive(
