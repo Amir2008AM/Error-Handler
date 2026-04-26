@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import { Upload, Download, Loader2, FileText, Image } from 'lucide-react'
+import { Upload, Download, Loader2, FileText, Image, Info } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 
@@ -79,7 +79,21 @@ export function PdfToJpgClient() {
 
   return (
     <ToolPageLayout tool={tool}>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto space-y-4">
+        <Card className="p-4 bg-muted/40 border-muted-foreground/20">
+          <div className="flex gap-3">
+            <Info className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Heads up about quality</p>
+              <p>
+                PDF rendering uses an open-source engine and may not perfectly match
+                Adobe Acrobat. Pages with uncommon fonts, advanced typography, or
+                complex vector graphics can look slightly different in the exported
+                images. For best results, choose 150 DPI or higher.
+              </p>
+            </div>
+          </div>
+        </Card>
         {!file ? (
           <label className="block">
             <input

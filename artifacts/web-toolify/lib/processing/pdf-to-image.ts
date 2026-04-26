@@ -5,13 +5,33 @@
 
 import { PDFDocument } from 'pdf-lib'
 import sharp from 'sharp'
-import { createCanvas } from 'canvas'
+import { createCanvas, type Canvas } from 'canvas'
+import { join, dirname } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
+
+// Anchor require() at the project root — using `import.meta.url` here would
+// point at Next.js's bundled output path and break module resolution.
+const nodeRequire = createRequire(join(process.cwd(), 'package.json'))
+const pdfjsRoot = dirname(nodeRequire.resolve('pdfjs-dist/package.json'))
+const STANDARD_FONT_DATA_URL = pathToFileURL(
+  join(pdfjsRoot, 'standard_fonts') + '/'
+).href
+const CMAP_URL = pathToFileURL(join(pdfjsRoot, 'cmaps') + '/').href
+
+const PDFJS_WORKER_SRC = pathToFileURL(
+  join(pdfjsRoot, 'legacy/build/pdf.worker.mjs')
+).href
 
 let _pdfjs: typeof import('pdfjs-dist') | null = null
-async function getPdfjs() {
+async function getPdfjs(): Promise<typeof import('pdfjs-dist')> {
   if (!_pdfjs) {
-    _pdfjs = await import('pdfjs-dist')
-    _pdfjs.GlobalWorkerOptions.workerSrc = ''
+    // Use the legacy build for Node.js compatibility (pdfjs-dist v5+)
+    const mod = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    _pdfjs = mod as unknown as typeof import('pdfjs-dist')
+    // pdfjs-dist v5 requires a workerSrc even when running in Node
+    // (it spins up a fake worker that loads this file).
+    _pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC
   }
   return _pdfjs
 }
@@ -53,28 +73,33 @@ export class PdfToImageConverter {
     // Calculate scale from DPI (72 DPI is the base)
     const scale = dpi / 72
 
+    // Load PDF with pdfjs-dist legacy build
+    const pdfjs = await getPdfjs()
+    const loadingTask = pdfjs.getDocument({
+      data: new Uint8Array(pdfBuffer),
+      standardFontDataUrl: STANDARD_FONT_DATA_URL,
+      cMapUrl: CMAP_URL,
+      cMapPacked: true,
+      isEvalSupported: false,
+      useSystemFonts: false,
+      disableFontFace: true,
+    })
+
+    const pdfDoc = await loadingTask.promise
+    const numPages = pdfDoc.numPages
+
+    // Determine which pages to convert
+    let pageNumbers: number[]
+    if (pages === 'all') {
+      pageNumbers = Array.from({ length: numPages }, (_, i) => i + 1)
+    } else {
+      pageNumbers = pages.filter((p) => p >= 1 && p <= numPages)
+    }
+
+    // Convert each page
+    const results: ConvertedPage[] = []
+
     try {
-      // Load PDF with pdfjs-dist
-      const pdfjs = await getPdfjs()
-      const loadingTask = pdfjs.getDocument({
-        data: new Uint8Array(pdfBuffer),
-        useSystemFonts: true,
-      })
-
-      const pdfDoc = await loadingTask.promise
-      const numPages = pdfDoc.numPages
-
-      // Determine which pages to convert
-      let pageNumbers: number[]
-      if (pages === 'all') {
-        pageNumbers = Array.from({ length: numPages }, (_, i) => i + 1)
-      } else {
-        pageNumbers = pages.filter((p) => p >= 1 && p <= numPages)
-      }
-
-      // Convert each page
-      const results: ConvertedPage[] = []
-
       for (const pageNum of pageNumbers) {
         const pageResult = await this.convertPage(pdfDoc, pageNum, {
           scale,
@@ -84,14 +109,16 @@ export class PdfToImageConverter {
         })
         results.push(pageResult)
       }
-
-      return results
-    } catch (error) {
-      console.error('PDF to image conversion failed:', error)
-
-      // Fallback: use pdf-lib dimensions + blank sharp image
-      return this.fallbackConvert(pdfBuffer, options)
+    } finally {
+      try {
+        await pdfDoc.cleanup()
+        await pdfDoc.destroy()
+      } catch {
+        // best-effort cleanup
+      }
     }
+
+    return results
   }
 
   /**
@@ -115,23 +142,26 @@ export class PdfToImageConverter {
     const height = Math.floor(viewport.height)
 
     // Create a node-canvas instance for pdfjs to render into
-    const canvas = createCanvas(width, height)
-    const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
+    const canvas: Canvas = createCanvas(width, height)
+    const ctx = canvas.getContext('2d')
 
     // Fill background
-    ;(ctx as unknown as { fillStyle: string }).fillStyle = options.background
-    ;(ctx as unknown as { fillRect: (x: number, y: number, w: number, h: number) => void }).fillRect(0, 0, width, height)
+    ctx.fillStyle = options.background
+    ctx.fillRect(0, 0, width, height)
 
+    // pdfjs v5 expects a canvas (HTMLCanvasElement-like) plus context.
+    // node-canvas exposes a compatible enough surface; cast through unknown.
     await page.render({
-      canvasContext: ctx,
+      canvas: canvas as unknown as HTMLCanvasElement,
+      canvasContext: ctx as unknown as CanvasRenderingContext2D,
       viewport,
     }).promise
 
-    // Get raw pixel data from canvas and pass to sharp
+    // Get raw pixel data from canvas (BGRA on node-canvas) and convert via sharp
     const rawBuffer = canvas.toBuffer('raw')
-    let sharpImage = sharp(rawBuffer, {
+    const sharpImage = sharp(rawBuffer, {
       raw: { width, height, channels: 4 },
-    })
+    }).removeAlpha()
 
     let buffer: Buffer
     let mimeType: string
@@ -162,86 +192,6 @@ export class PdfToImageConverter {
       mimeType,
       fileName: `page-${pageNum}.${extension}`,
     }
-  }
-
-  /**
-   * Fallback conversion method when canvas rendering isn't available.
-   * Returns blank images with correct page dimensions.
-   */
-  private async fallbackConvert(
-    pdfBuffer: Buffer,
-    options: PdfToImageOptions
-  ): Promise<ConvertedPage[]> {
-    const format = options.format || 'jpg'
-    const background = options.background || '#ffffff'
-
-    // Use pdf-lib to get page dimensions
-    const pdfDoc = await PDFDocument.load(pdfBuffer)
-    const pages = pdfDoc.getPages()
-
-    const results: ConvertedPage[] = []
-
-    // Determine which pages to process
-    let pageIndices: number[]
-    if (options.pages === 'all' || !options.pages) {
-      pageIndices = Array.from({ length: pages.length }, (_, i) => i)
-    } else {
-      pageIndices = options.pages
-        .map((p) => p - 1)
-        .filter((i) => i >= 0 && i < pages.length)
-    }
-
-    for (const index of pageIndices) {
-      const page = pages[index]
-      const { width, height } = page.getSize()
-
-      const scale = (options.dpi || 150) / 72
-      const scaledWidth = Math.floor(width * scale)
-      const scaledHeight = Math.floor(height * scale)
-
-      const image = sharp({
-        create: {
-          width: scaledWidth,
-          height: scaledHeight,
-          channels: 4,
-          background,
-        },
-      })
-
-      let buffer: Buffer
-      let mimeType: string
-
-      switch (format) {
-        case 'png':
-          buffer = await image.png().toBuffer()
-          mimeType = 'image/png'
-          break
-        case 'webp':
-          buffer = await image
-            .webp({ quality: options.quality || 90 })
-            .toBuffer()
-          mimeType = 'image/webp'
-          break
-        case 'jpg':
-        default:
-          buffer = await image
-            .jpeg({ quality: options.quality || 90 })
-            .toBuffer()
-          mimeType = 'image/jpeg'
-          break
-      }
-
-      results.push({
-        pageNumber: index + 1,
-        width: scaledWidth,
-        height: scaledHeight,
-        buffer,
-        mimeType,
-        fileName: `page-${index + 1}.${format === 'jpg' ? 'jpg' : format}`,
-      })
-    }
-
-    return results
   }
 
   /**
