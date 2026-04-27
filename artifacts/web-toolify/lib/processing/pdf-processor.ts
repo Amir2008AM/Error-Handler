@@ -968,13 +968,47 @@ export class PDFProcessor extends BaseProcessor {
   }
 
   /**
-   * Compress PDF — strips metadata, recompresses embedded JPEGs at 60% quality,
-   * removes thumbnails, and saves with object streams.
+   * Compress PDF with three quality levels:
+   *  - low:    JPEG @ 85%, keeps metadata, only replaces images if smaller
+   *  - medium: JPEG @ 60%, strips metadata + thumbnails, only replaces if smaller
+   *  - high:   JPEG @ 30%, strips metadata + thumbnails, removes annotations,
+   *            flattens form fields, always replaces images (incl. FlateDecode)
+   * Always saves with useObjectStreams: true.
    */
-  async compress(file: ArrayBuffer): Promise<ProcessingResult<Buffer>> {
+  async compress(
+    file: ArrayBuffer,
+    level: 'low' | 'medium' | 'high' = 'medium'
+  ): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(file)
       const inputSize = file.byteLength
+
+      const settings = {
+        low: {
+          quality: 85,
+          stripMetadata: false,
+          removeThumbnails: false,
+          removeAnnotations: false,
+          flattenForms: false,
+          alwaysReplaceImages: false,
+        },
+        medium: {
+          quality: 60,
+          stripMetadata: true,
+          removeThumbnails: true,
+          removeAnnotations: false,
+          flattenForms: false,
+          alwaysReplaceImages: false,
+        },
+        high: {
+          quality: 30,
+          stripMetadata: true,
+          removeThumbnails: true,
+          removeAnnotations: true,
+          flattenForms: true,
+          alwaysReplaceImages: true,
+        },
+      }[level]
 
       const { result, time } = await this.measureTime(async () => {
         const pdfDoc = await PDFDocument.load(file, {
@@ -982,28 +1016,54 @@ export class PDFProcessor extends BaseProcessor {
           updateMetadata: false,
         })
 
-        // 1. Strip all metadata
-        pdfDoc.setTitle('')
-        pdfDoc.setAuthor('')
-        pdfDoc.setSubject('')
-        pdfDoc.setKeywords([])
-        pdfDoc.setProducer('')
-        pdfDoc.setCreator('')
+        // 1. Strip all metadata (medium + high)
+        if (settings.stripMetadata) {
+          pdfDoc.setTitle('')
+          pdfDoc.setAuthor('')
+          pdfDoc.setSubject('')
+          pdfDoc.setKeywords([])
+          pdfDoc.setProducer('')
+          pdfDoc.setCreator('')
+        }
 
-        // 2. Remove embedded thumbnail (/Thumb) from each page dict
-        for (let i = 0; i < pdfDoc.getPageCount(); i++) {
-          const page = pdfDoc.getPage(i)
-          const pageNode = page.node
-          if (pageNode.has(PDFName.of('Thumb'))) {
-            pageNode.delete(PDFName.of('Thumb'))
+        // 2. Remove embedded /Thumb on each page (medium + high)
+        if (settings.removeThumbnails) {
+          for (let i = 0; i < pdfDoc.getPageCount(); i++) {
+            const page = pdfDoc.getPage(i)
+            const pageNode = page.node
+            if (pageNode.has(PDFName.of('Thumb'))) {
+              pageNode.delete(PDFName.of('Thumb'))
+            }
           }
         }
 
-        // 3. Re-compress embedded images in parallel for speed
+        // 3. Remove all page annotations (high only)
+        if (settings.removeAnnotations) {
+          for (let i = 0; i < pdfDoc.getPageCount(); i++) {
+            const page = pdfDoc.getPage(i)
+            const pageNode = page.node
+            if (pageNode.has(PDFName.of('Annots'))) {
+              pageNode.delete(PDFName.of('Annots'))
+            }
+          }
+        }
+
+        // 4. Flatten interactive form fields (high only)
+        if (settings.flattenForms) {
+          try {
+            const form = pdfDoc.getForm()
+            if (form.getFields().length > 0) {
+              form.flatten()
+            }
+          } catch {
+            // No form / unable to flatten — continue
+          }
+        }
+
+        // 5. Re-compress embedded images in parallel
         try {
           const context = pdfDoc.context
 
-          // Collect all candidate image streams first
           type ImageTask = {
             ref: Parameters<typeof context.assign>[0]
             obj: PDFRawStream
@@ -1027,7 +1087,6 @@ export class PDFProcessor extends BaseProcessor {
             if (isJpeg || isPng) tasks.push({ ref, obj, dict, isJpeg, isPng })
           }
 
-          // Process all images in parallel
           await Promise.all(tasks.map(async ({ ref, obj, dict, isJpeg, isPng }) => {
             try {
               const original = Buffer.from(obj.contents)
@@ -1037,31 +1096,31 @@ export class PDFProcessor extends BaseProcessor {
               const width = (dict.get(PDFName.of('Width')) as { value?: number } | undefined)?.value
               const height = (dict.get(PDFName.of('Height')) as { value?: number } | undefined)?.value
 
-              // Quality scales with image area: larger image = more aggressive compression
-              const pixels = (width ?? 0) * (height ?? 0)
-              const quality = pixels > 1_000_000 ? 55 : pixels > 200_000 ? 65 : 75
-
               let recompressed: Buffer
 
               if (isJpeg) {
-                // Re-encode JPEG at lower quality
+                // Re-encode existing JPEG at lower quality
                 recompressed = await sharp(original)
-                  .jpeg({ quality, mozjpeg: false })
+                  .jpeg({ quality: settings.quality, mozjpeg: false })
                   .toBuffer()
               } else {
-                // FlateDecode: decode the raw pixels and re-encode as JPEG
-                // Only do this if we can determine dimensions (needed for raw decode)
+                // FlateDecode (PNG / raw pixels): decode and re-encode as JPEG
                 if (!width || !height) return
                 try {
                   recompressed = await sharp(original)
-                    .jpeg({ quality, mozjpeg: false })
+                    .jpeg({ quality: settings.quality, mozjpeg: false })
                     .toBuffer()
                 } catch {
                   return // Can't decode — skip
                 }
               }
 
-              if (recompressed.length < original.length) {
+              // High = always replace (maximum size reduction).
+              // Low / Medium = only replace if the new stream is actually smaller.
+              const shouldReplace =
+                settings.alwaysReplaceImages || recompressed.length < original.length
+
+              if (shouldReplace) {
                 const colorSpace = dict.get(PDFName.of('ColorSpace'))
                 const bitsPerComponent = dict.get(PDFName.of('BitsPerComponent'))
                 const newStream = context.stream(recompressed, {
@@ -1083,7 +1142,7 @@ export class PDFProcessor extends BaseProcessor {
           // If image recompression fails, continue with other optimizations
         }
 
-        // 4. Save with object streams for maximum compression
+        // 6. Save with object streams for maximum compression
         const pdfBytes = await pdfDoc.save({ useObjectStreams: true })
 
         return Buffer.from(pdfBytes)
@@ -1098,6 +1157,7 @@ export class PDFProcessor extends BaseProcessor {
         outputSize: result.length,
         compressionRatio,
         processingTime: time,
+        level,
       })
     } catch (err) {
       return this.error(`Failed to compress PDF: ${err instanceof Error ? err.message : 'Unknown error'}`)
