@@ -10,6 +10,7 @@ import { Slider } from '@/components/ui/slider'
 import { Upload, Download, Loader2, FileText, Image, Info } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 const tool = getToolBySlug('pdf-to-jpg')!
 
@@ -41,9 +42,9 @@ export function PdfToJpgClient() {
       formData.append('dpi', dpi.toString())
       formData.append('pages', 'all')
 
-      const response = await fetch('/api/pdf-to-jpg', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/pdf-to-jpg',
+        formData,
       })
 
       if (!response.ok) {

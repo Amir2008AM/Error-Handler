@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, FileText } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -35,10 +36,16 @@ export function PdfToWordClient() {
       const formData = new FormData()
       formData.append('pdf', file)
 
-      progress.updateProgress(20, 'Loading document...')
+      progress.updateProgress(0, 'Uploading PDF...')
 
-      const res = await fetch('/api/pdf-to-word', { method: 'POST', body: formData })
-      
+      const res = await xhrUpload({
+        url: '/api/pdf-to-word',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+        },
+      })
+
       progress.updateProgress(50, 'Converting to Word...')
       
       if (!res.ok) {

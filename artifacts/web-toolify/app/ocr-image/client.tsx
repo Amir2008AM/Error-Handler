@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, Download, Loader2, Copy, Check, ScanText } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 const tool = getToolBySlug('ocr-image')!
 
@@ -64,11 +65,15 @@ export function OcrImageClient() {
       formData.append('language', language)
       formData.append('outputType', 'json')
 
-      progress.updateProgress(20, 'Analyzing image...')
+      progress.updateProgress(0, 'Uploading image...')
 
-      const response = await fetch('/api/ocr/image', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/ocr/image',
+        formData,
+        responseType: 'json',
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+        },
       })
 
       progress.updateProgress(50, 'Recognizing text...')

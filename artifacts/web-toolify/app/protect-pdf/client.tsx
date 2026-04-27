@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, Download, Loader2, FileText, Lock, Eye, EyeOff } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 export function ProtectPdfClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -47,11 +48,14 @@ export function ProtectPdfClient() {
       formData.append('file', file)
       formData.append('password', password)
 
-      progress.updateProgress(20, 'Loading document...')
+      progress.updateProgress(0, 'Uploading PDF...')
 
-      const response = await fetch('/api/protect-pdf', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/protect-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+        },
       })
 
       progress.updateProgress(50, 'Encrypting PDF...')

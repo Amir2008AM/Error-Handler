@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, Crop } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -78,9 +79,15 @@ export function CropImageClient() {
       formData.append('width', cropArea.width.toString())
       formData.append('height', cropArea.height.toString())
 
-      progress.updateProgress(20, 'Loading image...')
+      progress.updateProgress(0, 'Uploading image...')
 
-      const res = await fetch('/api/crop-image', { method: 'POST', body: formData })
+      const res = await xhrUpload({
+        url: '/api/crop-image',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+        },
+      })
 
       progress.updateProgress(50, 'Cropping image...')
 

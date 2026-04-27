@@ -5,6 +5,7 @@ import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, Link, Unlink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 interface ResizeResult {
   downloadUrl: string
@@ -88,10 +89,16 @@ export function ResizeImageClient() {
       formData.append('format', 'same')
       formData.append('quality', '90')
 
-      progress.updateProgress(20, 'Loading image...')
+      progress.updateProgress(0, 'Uploading image...')
 
-      const res = await fetch('/api/resize-image', { method: 'POST', body: formData })
-      
+      const res = await xhrUpload({
+        url: '/api/resize-image',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+        },
+      })
+
       progress.updateProgress(50, 'Resizing image...')
       
       if (!res.ok) {

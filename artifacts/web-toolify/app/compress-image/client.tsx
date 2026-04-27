@@ -5,6 +5,7 @@ import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 interface CompressedResult {
   originalSize: number
@@ -51,9 +52,15 @@ export function CompressImageClient() {
       formData.append('quality', quality.toString())
       formData.append('format', format)
 
-      progress.updateProgress(20, 'Loading image...')
+      progress.updateProgress(0, 'Uploading image...')
 
-      const res = await fetch('/api/compress-image', { method: 'POST', body: formData })
+      const res = await xhrUpload({
+        url: '/api/compress-image',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+        },
+      })
 
       progress.updateProgress(50, 'Compressing...')
 

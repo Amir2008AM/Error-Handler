@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Download, Loader2, FileText, Unlock, Eye, EyeOff } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 const tool = getToolBySlug('unlock-pdf')!
 
@@ -35,11 +36,14 @@ export function UnlockPdfClient() {
       formData.append('file', file)
       if (password) formData.append('password', password)
 
-      progress.updateProgress(20, 'Removing password...')
+      progress.updateProgress(0, 'Uploading PDF...')
 
-      const response = await fetch('/api/unlock-pdf', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/unlock-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+        },
       })
 
       progress.updateProgress(60, 'Processing...')

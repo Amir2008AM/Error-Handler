@@ -102,7 +102,14 @@ export class PDFProcessor extends BaseProcessor {
         for (const fileBuffer of orderedFiles) {
           this.validateBuffer(fileBuffer)
           totalInputSize += fileBuffer.byteLength
-          const pdf = await PDFDocument.load(fileBuffer)
+        }
+
+        // Load all source PDFs in parallel for big speedup on multi-file merges.
+        // copyPages must stay sequential because it mutates mergedPdf shared state.
+        const loadedPdfs = await Promise.all(
+          orderedFiles.map((buf) => PDFDocument.load(buf))
+        )
+        for (const pdf of loadedPdfs) {
           const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
           copiedPages.forEach((page) => mergedPdf.addPage(page))
         }

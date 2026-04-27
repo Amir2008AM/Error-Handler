@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Upload, Download, Loader2, FileText, TrendingDown } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 type CompressionLevel = 'low' | 'medium' | 'high'
 
@@ -55,22 +56,19 @@ export function CompressPdfClient() {
       formData.append('file', file)
       formData.append('level', level)
 
-      // Stage 1: Uploading (0-20%)
-      progress.updateProgress(10, 'Uploading file...')
+      // Stage 1: Uploading (0-30%) — driven by real upload bytes
+      progress.updateProgress(0, 'Uploading file...')
 
-      const response = await fetch('/api/compress-pdf', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/compress-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading file...')
+        },
       })
 
-      // Stage 2: Processing (20-80%)
-      progress.updateProgress(30, 'Loading document...')
-
-      await new Promise(r => setTimeout(r, 200))
+      // Stage 2: Processing (30-80%)
       progress.updateProgress(50, 'Compressing PDF...')
-
-      await new Promise(r => setTimeout(r, 200))
-      progress.updateProgress(70, 'Optimizing...')
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Compression failed' }))

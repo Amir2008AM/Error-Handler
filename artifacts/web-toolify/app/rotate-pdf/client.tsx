@@ -5,6 +5,7 @@ import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, RotateCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -39,9 +40,15 @@ export function RotatePdfClient() {
       formData.append('pdf', file)
       formData.append('rotation', rotation.toString())
 
-      progress.updateProgress(20, 'Loading document...')
+      progress.updateProgress(0, 'Uploading PDF...')
 
-      const res = await fetch('/api/rotate-pdf', { method: 'POST', body: formData })
+      const res = await xhrUpload({
+        url: '/api/rotate-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+        },
+      })
 
       progress.updateProgress(50, 'Rotating pages...')
 

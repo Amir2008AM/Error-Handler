@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -50,10 +51,16 @@ export function SplitPdfClient() {
       formData.append('mode', mode)
       formData.append('range', rangeStr)
 
-      progress.updateProgress(20, 'Loading document...')
+      progress.updateProgress(0, 'Uploading PDF...')
 
-      const res = await fetch('/api/split-pdf', { method: 'POST', body: formData })
-      
+      const res = await xhrUpload({
+        url: '/api/split-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+        },
+      })
+
       progress.updateProgress(50, 'Splitting pages...')
       
       if (!res.ok) {
