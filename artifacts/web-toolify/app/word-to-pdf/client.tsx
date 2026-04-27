@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, Download, Loader2, FileText, Settings } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 const tool = getToolBySlug('word-to-pdf')!
 
@@ -42,34 +43,33 @@ export function WordToPdfClient() {
       formData.append('pageSize', pageSize)
       formData.append('orientation', orientation)
 
-      progress.updateProgress(20, 'Loading document...')
-
-      const response = await fetch('/api/word-to-pdf', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/word-to-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.stageUpload(pct, 'Uploading document...')
+        },
       })
 
-      progress.updateProgress(50, 'Converting to PDF...')
+      progress.stageValidation('Validating document...')
 
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Conversion failed')
       }
 
-      progress.updateProgress(80, 'Generating PDF...')
+      progress.stageProcessing(undefined, 'Converting to PDF...')
 
       const blob = await response.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = file.name.replace(/\.(docx?|doc)$/i, '.pdf')
       a.click()
       URL.revokeObjectURL(url)
-      
-      progress.complete('Conversion complete!')
+
+      progress.stageDone('Conversion complete!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to convert document'
       progress.fail(message)

@@ -51,34 +51,30 @@ export function ConvertImageClient() {
       formData.append('quality', '90')
       formData.append('format', targetFormat)
 
-      progress.updateProgress(0, 'Uploading image...')
-
       const res = await xhrUpload({
         url: '/api/convert-image',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+          progress.stageUpload(pct, 'Uploading image...')
         },
       })
 
-      progress.updateProgress(50, 'Converting format...')
-      
+      progress.stageValidation('Validating image...')
+
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Conversion failed')
       }
 
-      progress.updateProgress(80, 'Encoding output...')
+      progress.stageProcessing(undefined, 'Converting format...')
 
       const blob = await res.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const ext = targetFormat === 'jpeg' ? 'jpg' : targetFormat
       const filename = `${file.name.replace(/\.[^/.]+$/, '')}.${ext}`
       setResult({ downloadUrl: URL.createObjectURL(blob), filename, format: targetFormat.toUpperCase() })
-      
-      progress.complete('Conversion complete!')
+
+      progress.stageDone('Conversion complete!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

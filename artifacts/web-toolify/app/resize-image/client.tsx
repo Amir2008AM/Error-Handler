@@ -89,24 +89,22 @@ export function ResizeImageClient() {
       formData.append('format', 'same')
       formData.append('quality', '90')
 
-      progress.updateProgress(0, 'Uploading image...')
-
       const res = await xhrUpload({
         url: '/api/resize-image',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+          progress.stageUpload(pct, 'Uploading image...')
         },
       })
 
-      progress.updateProgress(50, 'Resizing image...')
+      progress.stageValidation('Validating image...')
       
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Resize failed')
       }
 
-      progress.updateProgress(80, 'Encoding output...')
+      progress.stageProcessing(undefined, 'Resizing image...')
 
       const blob = await res.blob()
       const outW = parseInt(res.headers.get('X-Output-Width') ?? w.toString(), 10)
@@ -114,13 +112,11 @@ export function ResizeImageClient() {
       const origSize = parseInt(res.headers.get('X-Original-Size') ?? '0', 10)
       const outSize = parseInt(res.headers.get('X-Output-Size') ?? '0', 10)
 
-      progress.updateProgress(95, 'Preparing download...')
-
       const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/avif' ? 'avif' : 'jpg'
       const filename = `${file.name.replace(/\.[^/.]+$/, '')}-${outW}x${outH}.${ext}`
       setResult({ downloadUrl: URL.createObjectURL(blob), filename, width: outW, height: outH, originalSize: origSize, outputSize: outSize })
-      
-      progress.complete('Resize complete!')
+
+      progress.stageDone('Resize complete!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

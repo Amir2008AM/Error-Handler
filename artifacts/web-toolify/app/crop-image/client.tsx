@@ -79,35 +79,31 @@ export function CropImageClient() {
       formData.append('width', cropArea.width.toString())
       formData.append('height', cropArea.height.toString())
 
-      progress.updateProgress(0, 'Uploading image...')
-
       const res = await xhrUpload({
         url: '/api/crop-image',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+          progress.stageUpload(pct, 'Uploading image...')
         },
       })
 
-      progress.updateProgress(50, 'Cropping image...')
+      progress.stageValidation('Validating image...')
 
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Crop failed')
       }
 
-      progress.updateProgress(80, 'Encoding output...')
+      progress.stageProcessing(undefined, 'Cropping image...')
 
       const blob = await res.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const downloadUrl = URL.createObjectURL(blob)
       const ext = file.name.split('.').pop() ?? 'jpg'
       const filename = `${file.name.replace(/\.[^/.]+$/, '')}-cropped.${ext}`
 
       setResult({ downloadUrl, filename })
-      progress.complete('Crop complete!')
+      progress.stageDone('Crop complete!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

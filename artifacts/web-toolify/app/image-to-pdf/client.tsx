@@ -125,16 +125,22 @@ export function ImageToPdfClient() {
 
     setError(null)
     setDownloadUrl(null)
-    progress.startProcessing('Creating PDF...')
+    progress.startProcessing('Reading images...')
 
     try {
+      // Stage: Upload (-> 10%) — local file read for client-side processing
+      progress.stageUpload(100, 'Reading images...')
+
+      // Stage: Validation (-> 20%)
+      progress.stageValidation('Validating images...')
       const pdfDoc = await PDFDocument.create()
       const totalImages = selectedImages.length
 
+      // Stage: Processing (-> 70%) — sub-progress driven by image index
       for (let i = 0; i < totalImages; i++) {
         const { file } = selectedImages[i]
-        const progressPercent = 10 + Math.round((i / totalImages) * 70)
-        progress.updateProgress(progressPercent, `Processing image ${i + 1} of ${totalImages}...`)
+        const stagePct = (i / totalImages) * 100
+        progress.stageProcessing(stagePct, `Processing image ${i + 1} of ${totalImages}...`)
 
         const arrayBuffer = await loadImageAsArrayBuffer(file)
         const uint8Array = new Uint8Array(arrayBuffer)
@@ -191,16 +197,15 @@ export function ImageToPdfClient() {
         })
       }
 
-      progress.updateProgress(90, 'Saving PDF...')
+      progress.stageProcessing(100, 'Saving PDF...')
 
       const pdfBytes = await pdfDoc.save()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const blob = new Blob([pdfBytes], { type: 'application/pdf' })
       setDownloadUrl(URL.createObjectURL(blob))
-      
-      progress.complete('PDF generated!')
+
+      // Stage: Done (-> 100%)
+      progress.stageDone('PDF generated!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong during conversion'
       setError(message)

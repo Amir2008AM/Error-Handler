@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Upload, Download, Loader2, FileText } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 const positions = [
   { value: 'top-left', label: 'Top Left' },
@@ -53,31 +54,30 @@ export function PageNumbersClient() {
       formData.append('startFrom', String(startFrom))
       formData.append('fontSize', String(fontSize))
 
-      progress.updateProgress(20, 'Loading document...')
-
-      const response = await fetch('/api/page-numbers', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/page-numbers',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.stageUpload(pct, 'Uploading PDF...')
+        },
       })
 
-      progress.updateProgress(50, 'Adding page numbers...')
+      progress.stageValidation('Validating PDF...')
 
       if (!response.ok) throw new Error('Processing failed')
 
-      progress.updateProgress(80, 'Saving document...')
+      progress.stageProcessing(undefined, 'Adding page numbers...')
 
       const blob = await response.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = 'numbered.pdf'
       a.click()
       URL.revokeObjectURL(url)
-      
-      progress.complete('Page numbers added!')
+
+      progress.stageDone('Page numbers added!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add page numbers'
       progress.fail(message)

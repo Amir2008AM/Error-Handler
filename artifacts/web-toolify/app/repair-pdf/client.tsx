@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Download, Loader2, FileText, Wrench } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 
 export function RepairPdfClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -27,21 +28,22 @@ export function RepairPdfClient() {
       const formData = new FormData()
       formData.append('file', file)
 
-      progress.updateProgress(20, 'Repairing document...')
-
-      const response = await fetch('/api/repair-pdf', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/repair-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.stageUpload(pct, 'Uploading PDF...')
+        },
       })
 
-      progress.updateProgress(60, 'Rebuilding structure...')
+      progress.stageValidation('Validating PDF...')
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Repair failed' }))
         throw new Error(error.error || 'Repair failed')
       }
 
-      progress.updateProgress(85, 'Saving...')
+      progress.stageProcessing(undefined, 'Repairing document...')
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
@@ -51,7 +53,7 @@ export function RepairPdfClient() {
       a.click()
       URL.revokeObjectURL(url)
 
-      progress.complete('PDF repaired successfully!')
+      progress.stageDone('PDF repaired successfully!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to repair PDF. The file may be too damaged.'
       progress.fail(message)

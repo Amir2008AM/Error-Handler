@@ -40,34 +40,30 @@ export function RotatePdfClient() {
       formData.append('pdf', file)
       formData.append('rotation', rotation.toString())
 
-      progress.updateProgress(0, 'Uploading PDF...')
-
       const res = await xhrUpload({
         url: '/api/rotate-pdf',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+          progress.stageUpload(pct, 'Uploading PDF...')
         },
       })
 
-      progress.updateProgress(50, 'Rotating pages...')
+      progress.stageValidation('Validating PDF...')
 
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Rotation failed')
       }
 
-      progress.updateProgress(80, 'Saving document...')
+      progress.stageProcessing(undefined, 'Rotating pages...')
 
       const blob = await res.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const downloadUrl = URL.createObjectURL(blob)
       const filename = `${file.name.replace(/\.pdf$/i, '')}-rotated.pdf`
 
       setResult({ downloadUrl, filename })
-      progress.complete('Rotation complete!')
+      progress.stageDone('Rotation complete!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

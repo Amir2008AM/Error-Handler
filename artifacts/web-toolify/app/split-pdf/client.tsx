@@ -51,37 +51,33 @@ export function SplitPdfClient() {
       formData.append('mode', mode)
       formData.append('range', rangeStr)
 
-      progress.updateProgress(0, 'Uploading PDF...')
-
       const res = await xhrUpload({
         url: '/api/split-pdf',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+          progress.stageUpload(pct, 'Uploading PDF...')
         },
       })
 
-      progress.updateProgress(50, 'Splitting pages...')
+      progress.stageValidation('Validating PDF...')
       
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Split failed')
       }
 
-      progress.updateProgress(80, 'Creating output files...')
+      progress.stageProcessing(undefined, 'Splitting pages...')
 
       const contentType = res.headers.get('Content-Type') ?? ''
       const blob = await res.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const url = URL.createObjectURL(blob)
       setDownloadUrl(url)
       setDownloadFilename(
         contentType.includes('zip') ? 'toolify-split.zip' : 'toolify-split.pdf'
       )
-      
-      progress.complete('Split complete!')
+
+      progress.stageDone('Split complete!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

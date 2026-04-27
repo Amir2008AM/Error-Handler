@@ -36,24 +36,22 @@ export function UnlockPdfClient() {
       formData.append('file', file)
       if (password) formData.append('password', password)
 
-      progress.updateProgress(0, 'Uploading PDF...')
-
       const response = await xhrUpload({
         url: '/api/unlock-pdf',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+          progress.stageUpload(pct, 'Uploading PDF...')
         },
       })
 
-      progress.updateProgress(60, 'Processing...')
+      progress.stageValidation('Validating PDF...')
 
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Failed to unlock PDF')
       }
 
-      progress.updateProgress(85, 'Saving...')
+      progress.stageProcessing(undefined, 'Unlocking PDF...')
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
@@ -63,7 +61,7 @@ export function UnlockPdfClient() {
       a.click()
       URL.revokeObjectURL(url)
 
-      progress.complete('PDF unlocked successfully!')
+      progress.stageDone('PDF unlocked successfully!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to unlock PDF'
       progress.fail(message)

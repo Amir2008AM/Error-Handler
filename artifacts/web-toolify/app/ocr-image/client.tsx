@@ -65,31 +65,29 @@ export function OcrImageClient() {
       formData.append('language', language)
       formData.append('outputType', 'json')
 
-      progress.updateProgress(0, 'Uploading image...')
-
       const response = await xhrUpload({
         url: '/api/ocr/image',
         formData,
         responseType: 'json',
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+          progress.stageUpload(pct, 'Uploading image...')
         },
       })
 
-      progress.updateProgress(50, 'Recognizing text...')
+      progress.stageValidation('Validating image...')
 
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'OCR failed')
       }
 
-      progress.updateProgress(80, 'Processing results...')
+      progress.stageProcessing(undefined, 'Recognizing text...')
 
       const data = await response.json()
       setExtractedText(data.text)
       setConfidence(data.confidence)
-      
-      progress.complete('Text extracted!')
+
+      progress.stageDone('Text extracted!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to extract text'
       progress.fail(message)

@@ -36,33 +36,29 @@ export function PdfToWordClient() {
       const formData = new FormData()
       formData.append('pdf', file)
 
-      progress.updateProgress(0, 'Uploading PDF...')
-
       const res = await xhrUpload({
         url: '/api/pdf-to-word',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+          progress.stageUpload(pct, 'Uploading PDF...')
         },
       })
 
-      progress.updateProgress(50, 'Converting to Word...')
-      
+      progress.stageValidation('Validating PDF...')
+
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Conversion failed')
       }
 
-      progress.updateProgress(80, 'Generating document...')
+      progress.stageProcessing(undefined, 'Converting to Word...')
 
       const blob = await res.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       setDownloadUrl(URL.createObjectURL(blob))
       setFilename(`${file.name.replace(/\.pdf$/i, '')}.docx`)
-      
-      progress.complete('Conversion complete!')
+
+      progress.stageDone('Conversion complete!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

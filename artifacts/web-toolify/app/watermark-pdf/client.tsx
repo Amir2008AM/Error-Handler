@@ -48,34 +48,30 @@ export function WatermarkPdfClient() {
       formData.append('position', position)
       formData.append('fontSize', fontSize.toString())
 
-      progress.updateProgress(0, 'Uploading PDF...')
-
       const res = await xhrUpload({
         url: '/api/watermark-pdf',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+          progress.stageUpload(pct, 'Uploading PDF...')
         },
       })
 
-      progress.updateProgress(50, 'Adding watermark...')
+      progress.stageValidation('Validating PDF...')
 
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Failed to add watermark')
       }
 
-      progress.updateProgress(80, 'Saving document...')
+      progress.stageProcessing(undefined, 'Adding watermark...')
 
       const blob = await res.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const downloadUrl = URL.createObjectURL(blob)
       const filename = `${file.name.replace(/\.pdf$/i, '')}-watermarked.pdf`
 
       setResult({ downloadUrl, filename })
-      progress.complete('Watermark added!')
+      progress.stageDone('Watermark added!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

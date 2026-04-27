@@ -99,35 +99,36 @@ export function MergePdfClient() {
     
     setError(null)
     setDownloadUrl(null)
-    progress.startProcessing('Preparing files...')
+    progress.startProcessing('Reading files...')
 
     try {
-      // Create a new PDF document
-      progress.updateProgress(10, 'Creating document...')
+      // Stage: Upload (-> 10%) — local file read for client-side processing
+      progress.stageUpload(100, 'Reading files...')
+
+      // Stage: Validation (-> 20%)
+      progress.stageValidation('Validating PDFs...')
       const mergedPdf = await PDFDocument.create()
 
-      // Process each PDF file with progress updates
+      // Stage: Processing (-> 70%) — sub-progress driven by file index
       const totalFiles = pdfs.length
       for (let i = 0; i < totalFiles; i++) {
         const { file } = pdfs[i]
-        const fileProgress = 10 + Math.round((i / totalFiles) * 70)
-        progress.updateProgress(fileProgress, `Processing file ${i + 1} of ${totalFiles}...`)
-        
+        const stagePct = (i / totalFiles) * 100
+        progress.stageProcessing(stagePct, `Merging file ${i + 1} of ${totalFiles}...`)
+
         const arrayBuffer = await file.arrayBuffer()
         const pdf = await PDFDocument.load(arrayBuffer)
         const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
         copiedPages.forEach((page) => mergedPdf.addPage(page))
       }
-
-      // Finalize
-      progress.updateProgress(85, 'Finalizing document...')
+      progress.stageProcessing(100, 'Finalizing document...')
       const mergedPdfBytes = await mergedPdf.save()
-      
-      progress.updateProgress(95, 'Preparing download...')
+
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
       setDownloadUrl(URL.createObjectURL(blob))
-      
-      progress.complete('PDFs merged successfully!')
+
+      // Stage: Done (-> 100%)
+      progress.stageDone('PDFs merged successfully!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong during merge'
       setError(message)

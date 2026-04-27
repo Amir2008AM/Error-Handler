@@ -52,30 +52,27 @@ export function CompressImageClient() {
       formData.append('quality', quality.toString())
       formData.append('format', format)
 
-      progress.updateProgress(0, 'Uploading image...')
 
       const res = await xhrUpload({
         url: '/api/compress-image',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading image...')
+          progress.stageUpload(pct, 'Uploading image...')
         },
       })
 
-      progress.updateProgress(50, 'Compressing...')
+      progress.stageValidation('Validating image...')
 
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Compression failed')
       }
 
-      progress.updateProgress(80, 'Encoding output...')
+      progress.stageProcessing(undefined, 'Compressing image...')
 
       const originalSize = parseInt(res.headers.get('X-Original-Size') ?? '0', 10)
       const compressedSize = parseInt(res.headers.get('X-Compressed-Size') ?? '0', 10)
       const blob = await res.blob()
-
-      progress.updateProgress(95, 'Preparing download...')
 
       const downloadUrl = URL.createObjectURL(blob)
       const savings = originalSize > 0 ? Math.round((1 - compressedSize / originalSize) * 100) : 0
@@ -83,7 +80,7 @@ export function CompressImageClient() {
       const filename = `${file.name.replace(/\.[^/.]+$/, '')}-compressed.${outputExt}`
 
       setResult({ originalSize, compressedSize, downloadUrl, filename, savings })
-      progress.complete('Compression complete!')
+      progress.stageDone('Compression complete!')
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)

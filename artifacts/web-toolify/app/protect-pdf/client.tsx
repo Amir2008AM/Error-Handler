@@ -48,34 +48,30 @@ export function ProtectPdfClient() {
       formData.append('file', file)
       formData.append('password', password)
 
-      progress.updateProgress(0, 'Uploading PDF...')
-
       const response = await xhrUpload({
         url: '/api/protect-pdf',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading PDF...')
+          progress.stageUpload(pct, 'Uploading PDF...')
         },
       })
 
-      progress.updateProgress(50, 'Encrypting PDF...')
+      progress.stageValidation('Validating PDF...')
 
       if (!response.ok) throw new Error('Protection failed')
 
-      progress.updateProgress(80, 'Saving protected file...')
+      progress.stageProcessing(undefined, 'Encrypting PDF...')
 
       const blob = await response.blob()
-      
-      progress.updateProgress(95, 'Preparing download...')
-      
+
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = `protected-${file.name}`
       a.click()
       URL.revokeObjectURL(url)
-      
-      progress.complete('PDF protected!')
+
+      progress.stageDone('PDF protected!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to protect PDF'
       setError(message)

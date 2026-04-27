@@ -185,6 +185,19 @@ export function RealProgressBar({
   )
 }
 
+// Standardized stage milestones used across all tools.
+// Stage     -> overall progress
+//   Upload  ->   0% .. 10%   (driven by real upload bytes)
+//   Validation ->     20%    (server has accepted + validated)
+//   Processing -> 20% .. 70% (work in progress on the server)
+//   Done    ->          100% (success)
+export const PROGRESS_STAGES = {
+  UPLOAD_END: 10,
+  VALIDATION_END: 20,
+  PROCESSING_END: 70,
+  DONE: 100,
+} as const
+
 // Hook for using real progress with fetch-based processing
 export function useRealProgress() {
   const [state, setState] = useState<ProgressState>({
@@ -231,6 +244,51 @@ export function useRealProgress() {
       status: 'idle',
       progress: 0,
       message: '',
+    })
+  }, [])
+
+  // ---- Standardized stage helpers (Upload 10 -> Validation 20 -> Processing 70 -> Done 100) ----
+
+  // Map upload bytes (0..100) to overall 0..UPLOAD_END (10%).
+  const stageUpload = useCallback((uploadPct: number, message: string = 'Uploading...') => {
+    const clamped = Math.min(100, Math.max(0, uploadPct))
+    const overall = (clamped / 100) * PROGRESS_STAGES.UPLOAD_END
+    setState(prev => ({
+      status: 'processing',
+      progress: Math.max(prev.progress, overall),
+      message,
+    }))
+  }, [])
+
+  // Server has received the request and validated the input.
+  const stageValidation = useCallback((message: string = 'Validating...') => {
+    setState(prev => ({
+      status: 'processing',
+      progress: Math.max(prev.progress, PROGRESS_STAGES.VALIDATION_END),
+      message,
+    }))
+  }, [])
+
+  // Work happening on the server. Optional 0..100 sub-progress maps into 20..70.
+  const stageProcessing = useCallback((stagePct?: number, message: string = 'Processing...') => {
+    const span = PROGRESS_STAGES.PROCESSING_END - PROGRESS_STAGES.VALIDATION_END
+    const overall =
+      stagePct === undefined
+        ? PROGRESS_STAGES.PROCESSING_END
+        : PROGRESS_STAGES.VALIDATION_END + (Math.min(100, Math.max(0, stagePct)) / 100) * span
+    setState(prev => ({
+      status: 'processing',
+      progress: Math.max(prev.progress, overall),
+      message,
+    }))
+  }, [])
+
+  // Successful completion -> 100%.
+  const stageDone = useCallback((message: string = 'Done') => {
+    setState({
+      status: 'completed',
+      progress: PROGRESS_STAGES.DONE,
+      message,
     })
   }, [])
 
@@ -328,6 +386,11 @@ export function useRealProgress() {
     fail,
     reset,
     processWithProgress,
+    // Standardized stages: Upload -> 10, Validation -> 20, Processing -> 70, Done -> 100
+    stageUpload,
+    stageValidation,
+    stageProcessing,
+    stageDone,
   }
 }
 

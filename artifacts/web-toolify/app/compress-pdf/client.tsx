@@ -56,27 +56,25 @@ export function CompressPdfClient() {
       formData.append('file', file)
       formData.append('level', level)
 
-      // Stage 1: Uploading (0-30%) — driven by real upload bytes
-      progress.updateProgress(0, 'Uploading file...')
-
+      // Stage: Upload (0% -> 10%)
       const response = await xhrUpload({
         url: '/api/compress-pdf',
         formData,
         onUploadProgress: (pct) => {
-          progress.updateProgress(Math.round(pct * 0.3), 'Uploading file...')
+          progress.stageUpload(pct, 'Uploading file...')
         },
       })
 
-      // Stage 2: Processing (30-80%)
-      progress.updateProgress(50, 'Compressing PDF...')
+      // Stage: Validation (-> 20%)
+      progress.stageValidation('Validating file...')
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Compression failed' }))
         throw new Error(errorData.error || 'Compression failed')
       }
 
-      // Stage 3: Finalizing (80-100%)
-      progress.updateProgress(90, 'Preparing download...')
+      // Stage: Processing (-> 70%)
+      progress.stageProcessing(undefined, 'Compressing PDF...')
 
       const originalSize = parseInt(response.headers.get('X-Original-Size') || '0')
       const compressedSize = parseInt(response.headers.get('X-Compressed-Size') || '0')
@@ -92,7 +90,8 @@ export function CompressPdfClient() {
       a.click()
       URL.revokeObjectURL(url)
 
-      progress.complete('Compression complete!')
+      // Stage: Done (-> 100%)
+      progress.stageDone('Compression complete!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to compress PDF'
       progress.fail(message)
