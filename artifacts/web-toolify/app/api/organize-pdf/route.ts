@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File
     const operationsJson = formData.get('operations') as string | null
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     if (!operationsJson) {

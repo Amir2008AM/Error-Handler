@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get('pdf') as File
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     const arrayBuffer = await file.arrayBuffer()

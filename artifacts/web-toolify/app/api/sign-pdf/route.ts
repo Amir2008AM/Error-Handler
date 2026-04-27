@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const position = formData.get('position') as string || 'bottom-right'
     const pageNumber = parseInt(formData.get('page') as string) || 0
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     const name = signerName || signatureText

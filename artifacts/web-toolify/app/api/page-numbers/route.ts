@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const fontSize = parseInt(formData.get('fontSize') as string) || 12
     const margin = parseInt(formData.get('margin') as string) || 30
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     const buffer = await file.arrayBuffer()

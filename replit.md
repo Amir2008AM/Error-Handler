@@ -33,9 +33,12 @@ Next.js 16 + React 19 web app providing free PDF/image/text utilities. Workflow:
 ### Migration / setup notes
 
 - Native modules: `canvas` requires the `libuuid` system dependency.
-- `lib/storage/temp-storage.ts` uses filesystem storage at `/tmp/toolify/{uuid}/` (data + meta.json) with synchronous fs APIs and `crypto.randomUUID()`. Default TTL is 20 minutes; cleanup interval is 60 seconds.
-- `lib/queue/job-processor.ts` was rewritten to use the modern processor option-object API and includes `unwrap()` / `toArrayBuffer()` helpers.
-- `next.config.mjs` lists `pdf-parse`, `sharp`, `canvas`, `pdfjs-dist`, and `tesseract.js` in `serverExternalPackages`.
+- `lib/storage/temp-storage.ts` uses filesystem storage at `/tmp/toolify/{uuid}/` (data + meta.json) with **fully async** `fs/promises` APIs and `crypto.randomUUID()`. Default TTL is 20 minutes; cleanup interval is 60 seconds. Exposes `storeStream()` / `getStream()` for backpressured I/O and a cached `totalSize` so writes don't walk the directory each time.
+- `lib/queue/job-processor.ts` was rewritten to use the modern processor option-object API and includes `unwrap()` / `toArrayBuffer()` helpers. Every operation is wrapped in `withTimeout` from `lib/processing/timeout.ts`, and batch image-compression uses `mapWithConcurrency` from `lib/processing/concurrency.ts` (cap = libuv pool size).
+- `lib/processing/image-processor.ts` runs every op as a single sharp pipeline with `failOn:'error'`, `limitInputPixels` (decompression-bomb defense), and `toBuffer({resolveWithObject:true})` — no double `metadata()` reads, no extra encode passes.
+- `lib/validation.ts` performs **magic-byte sniffing** on the first 12 bytes of every upload (PDF/PNG/JPEG/GIF/BMP/TIFF/WebP). All `validateFile()` callers in `app/api/*` were converted to `await`.
+- `app/api/files/[id]/route.ts` returns a `NextResponse` whose body is a Web `ReadableStream` adapted from `fs.createReadStream` — large downloads never hit the JS heap.
+- `next.config.mjs` lists `pdf-parse`, `sharp`, `canvas`, `pdfjs-dist`, and `tesseract.js` in `serverExternalPackages`. `experimental.proxyClientMaxBodySize: '100mb'` raises Next.js 16's default 10MB request cap for file-processing routes.
 
 ### PDF to JPG (`/pdf-to-jpg`)
 

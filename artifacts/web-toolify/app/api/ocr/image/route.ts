@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const language = (formData.get('language') as string) || 'eng+ara'
     const outputType = (formData.get('outputType') as 'text' | 'json') || 'text'
 
-    const validationError = validateFile(file, 'image')
+    const validationError = await validateFile(file, 'image')
     if (validationError) return validationError
 
     const buffer = Buffer.from(await file.arrayBuffer())

@@ -1,6 +1,9 @@
 /**
  * Job Manager
- * In-memory job queue management for Vercel serverless
+ *
+ * In-memory job registry. Result storage is delegated to the async
+ * `TempStorage` so we never block the event loop with sync `fs` writes
+ * and so multi-hundred-MB outputs don't pin themselves to the JS heap.
  */
 
 import { nanoid } from 'nanoid'
@@ -10,7 +13,6 @@ import {
   JobType,
   JobOptions,
   JobFile,
-  JobResult,
   JobStatusResponse,
   QueueConfig,
   DEFAULT_QUEUE_CONFIG,
@@ -29,27 +31,30 @@ class JobManager {
   }
 
   /**
-   * Create a new job
+   * Create a new job. Inputs stay in memory only as long as the
+   * processor needs them; after `setJobResult*` they are released.
    */
   createJob(
     type: JobType,
     files: Array<{ name: string; buffer: Buffer; type: string }>,
     options: JobOptions = {}
   ): Job {
-    // Validate file sizes
     let totalSize = 0
     for (const file of files) {
       if (file.buffer.length > this.config.maxFileSizeBytes) {
         throw new Error(
-          `File "${file.name}" exceeds maximum size of ${Math.round(this.config.maxFileSizeBytes / 1024 / 1024)}MB`
+          `File "${file.name}" exceeds maximum size of ${Math.round(
+            this.config.maxFileSizeBytes / 1024 / 1024
+          )}MB`
         )
       }
       totalSize += file.buffer.length
     }
-
     if (totalSize > this.config.maxTotalFileSizeBytes) {
       throw new Error(
-        `Total file size exceeds maximum of ${Math.round(this.config.maxTotalFileSizeBytes / 1024 / 1024)}MB`
+        `Total file size exceeds maximum of ${Math.round(
+          this.config.maxTotalFileSizeBytes / 1024 / 1024
+        )}MB`
       )
     }
 
@@ -74,41 +79,23 @@ class JobManager {
       createdAt: now,
       expiresAt: now + this.config.jobTtlMs,
     }
-
     this.jobs.set(id, job)
-
     return job
   }
 
-  /**
-   * Get a job by ID
-   */
   getJob(id: string): Job | null {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return null
-    }
-
-    // Check if expired
+    if (!job) return null
     if (Date.now() > job.expiresAt) {
-      this.deleteJob(id)
+      void this.deleteJob(id)
       return null
     }
-
     return job
   }
 
-  /**
-   * Get job status (public-safe response)
-   */
   getJobStatus(id: string): JobStatusResponse | null {
     const job = this.getJob(id)
-    
-    if (!job) {
-      return null
-    }
-
+    if (!job) return null
     return {
       id: job.id,
       status: job.status,
@@ -121,68 +108,44 @@ class JobManager {
     }
   }
 
-  /**
-   * Update job status
-   */
   updateJobStatus(id: string, status: JobStatus, progress?: number): boolean {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return false
-    }
-
+    if (!job) return false
     job.status = status
-    
     if (progress !== undefined) {
       job.progress = Math.min(100, Math.max(0, progress))
     }
-
     if (status === 'processing' && !job.startedAt) {
       job.startedAt = Date.now()
     }
-
     if (status === 'completed' || status === 'failed') {
       job.completedAt = Date.now()
-      // Clear file buffers to free memory
       this.clearJobFiles(job)
     }
-
     return true
   }
 
-  /**
-   * Update job progress
-   */
   updateJobProgress(id: string, progress: number): boolean {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return false
-    }
-
+    if (!job) return false
     job.progress = Math.min(100, Math.max(0, progress))
     return true
   }
 
   /**
-   * Set job result
+   * Persist a single result via the async storage, then release input
+   * buffers from the heap immediately.
    */
-  setJobResult(
+  async setJobResult(
     id: string,
     resultBuffer: Buffer,
     fileName: string,
     mimeType: string
-  ): boolean {
+  ): Promise<boolean> {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return false
-    }
+    if (!job) return false
 
-    // Store result in temp storage
-    const storage = getTempStorage()
-    const fileId = storage.store(resultBuffer, fileName, mimeType)
-
+    const fileId = await getTempStorage().store(resultBuffer, fileName, mimeType)
     job.result = {
       fileId,
       fileName,
@@ -190,43 +153,38 @@ class JobManager {
       mimeType,
       downloadUrl: `/api/files/${fileId}`,
     }
-
     job.status = 'completed'
     job.progress = 100
     job.completedAt = Date.now()
-
-    // Clear input files to free memory
     this.clearJobFiles(job)
-
     return true
   }
 
   /**
-   * Set job result with multiple files
+   * Persist a batch of results in parallel. The first result is also
+   * exposed at the top-level `result` for clients that don't iterate.
    */
-  setJobResultBatch(
+  async setJobResultBatch(
     id: string,
     results: Array<{ buffer: Buffer; fileName: string; mimeType: string }>
-  ): boolean {
+  ): Promise<boolean> {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return false
-    }
+    if (!job) return false
 
     const storage = getTempStorage()
-    const files = results.map((r) => {
-      const fileId = storage.store(r.buffer, r.fileName, r.mimeType)
-      return {
-        fileId,
-        fileName: r.fileName,
-        fileSize: r.buffer.length,
-        mimeType: r.mimeType,
-        downloadUrl: `/api/files/${fileId}`,
-      }
-    })
+    const files = await Promise.all(
+      results.map(async (r) => {
+        const fileId = await storage.store(r.buffer, r.fileName, r.mimeType)
+        return {
+          fileId,
+          fileName: r.fileName,
+          fileSize: r.buffer.length,
+          mimeType: r.mimeType,
+          downloadUrl: `/api/files/${fileId}`,
+        }
+      })
+    )
 
-    // If multiple files, also create a ZIP
     job.result = {
       fileId: files[0].fileId,
       fileName: files[0].fileName,
@@ -235,180 +193,120 @@ class JobManager {
       downloadUrl: files[0].downloadUrl,
       files,
     }
-
     job.status = 'completed'
     job.progress = 100
     job.completedAt = Date.now()
-
     this.clearJobFiles(job)
-
     return true
   }
 
-  /**
-   * Set job error
-   */
   setJobError(id: string, error: string): boolean {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return false
-    }
-
+    if (!job) return false
     job.status = 'failed'
     job.error = error
     job.completedAt = Date.now()
-
     this.clearJobFiles(job)
-
     return true
   }
 
-  /**
-   * Cancel a job
-   */
   cancelJob(id: string): boolean {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return false
-    }
-
-    if (job.status === 'completed' || job.status === 'failed') {
-      return false // Cannot cancel finished jobs
-    }
-
+    if (!job) return false
+    if (job.status === 'completed' || job.status === 'failed') return false
     job.status = 'cancelled'
     job.completedAt = Date.now()
     this.clearJobFiles(job)
-
     return true
   }
 
-  /**
-   * Delete a job
-   */
-  deleteJob(id: string): boolean {
+  async deleteJob(id: string): Promise<boolean> {
     const job = this.jobs.get(id)
-    
-    if (!job) {
-      return false
-    }
-
+    if (!job) return false
     this.clearJobFiles(job)
-    this.jobs.delete(id)
-
-    return true
-  }
-
-  /**
-   * Get next pending job for processing
-   */
-  getNextPendingJob(): Job | null {
-    if (this.processingCount >= this.config.maxConcurrentJobs) {
-      return null
-    }
-
-    for (const job of this.jobs.values()) {
-      if (job.status === 'pending') {
-        return job
+    if (job.result?.fileId) {
+      await getTempStorage().delete(job.result.fileId).catch(() => undefined)
+      if (job.result.files) {
+        await Promise.all(
+          job.result.files.map((f) =>
+            getTempStorage().delete(f.fileId).catch(() => undefined)
+          )
+        )
       }
     }
+    this.jobs.delete(id)
+    return true
+  }
 
+  getNextPendingJob(): Job | null {
+    if (this.processingCount >= this.config.maxConcurrentJobs) return null
+    for (const job of this.jobs.values()) {
+      if (job.status === 'pending') return job
+    }
     return null
   }
 
-  /**
-   * Increment processing count
-   */
   startProcessing(): void {
     this.processingCount++
   }
 
-  /**
-   * Decrement processing count
-   */
   finishProcessing(): void {
     this.processingCount = Math.max(0, this.processingCount - 1)
   }
 
-  /**
-   * Get queue statistics
-   */
-  getStats(): {
-    total: number
-    pending: number
-    processing: number
-    completed: number
-    failed: number
-    cancelled: number
-  } {
-    const stats = {
-      total: 0,
-      pending: 0,
-      processing: 0,
-      completed: 0,
-      failed: 0,
-      cancelled: 0,
-    }
-
+  getStats() {
+    const stats = { total: 0, pending: 0, processing: 0, completed: 0, failed: 0, cancelled: 0 }
     for (const job of this.jobs.values()) {
       stats.total++
       stats[job.status]++
     }
-
     return stats
   }
 
   /**
-   * Clear job file buffers to free memory
+   * Drop references to input buffers so V8 can reclaim them after the
+   * job moves to a terminal state. We don't `null` the buffer (would
+   * require `@ts-expect-error`) — instead we point at a zero-length
+   * Buffer so the original memory becomes unreachable.
    */
   private clearJobFiles(job: Job): void {
+    const empty = Buffer.alloc(0)
     for (const file of job.files) {
-      // @ts-expect-error - Intentionally clearing buffer
-      file.buffer = null
+      file.buffer = empty
     }
   }
 
-  /**
-   * Cleanup expired jobs
-   */
-  cleanup(): number {
+  async cleanup(): Promise<number> {
     const now = Date.now()
-    let removedCount = 0
-
+    let removed = 0
     for (const [id, job] of this.jobs) {
       if (now > job.expiresAt) {
         this.clearJobFiles(job)
+        if (job.result?.fileId) {
+          await getTempStorage().delete(job.result.fileId).catch(() => undefined)
+          if (job.result.files) {
+            await Promise.all(
+              job.result.files.map((f) =>
+                getTempStorage().delete(f.fileId).catch(() => undefined)
+              )
+            )
+          }
+        }
         this.jobs.delete(id)
-        removedCount++
+        removed++
       }
     }
-
-    return removedCount
+    return removed
   }
 
-  /**
-   * Start automatic cleanup
-   */
   private startCleanup(): void {
-    if (this.cleanupInterval) {
-      return
-    }
-
-    // Cleanup every minute
+    if (this.cleanupInterval) return
     this.cleanupInterval = setInterval(() => {
-      this.cleanup()
+      void this.cleanup().catch(() => undefined)
     }, 60 * 1000)
-
-    if (this.cleanupInterval.unref) {
-      this.cleanupInterval.unref()
-    }
+    if (this.cleanupInterval.unref) this.cleanupInterval.unref()
   }
 
-  /**
-   * Stop automatic cleanup
-   */
   stopCleanup(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval)
@@ -416,25 +314,17 @@ class JobManager {
     }
   }
 
-  /**
-   * Clear all jobs
-   */
   clear(): void {
-    for (const job of this.jobs.values()) {
-      this.clearJobFiles(job)
-    }
+    for (const job of this.jobs.values()) this.clearJobFiles(job)
     this.jobs.clear()
     this.processingCount = 0
   }
 }
 
-// Singleton instance
 let managerInstance: JobManager | null = null
 
 export function getJobManager(config?: Partial<QueueConfig>): JobManager {
-  if (!managerInstance) {
-    managerInstance = new JobManager(config)
-  }
+  if (!managerInstance) managerInstance = new JobManager(config)
   return managerInstance
 }
 

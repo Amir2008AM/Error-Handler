@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const mode = (formData.get('mode') as string) ?? 'all'
     const rangeStr = (formData.get('range') as string) ?? ''
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     const arrayBuffer = await file.arrayBuffer()

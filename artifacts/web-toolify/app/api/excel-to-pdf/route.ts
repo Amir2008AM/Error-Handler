@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const orientation = (formData.get('orientation') as 'portrait' | 'landscape') || 'landscape'
     const fontSize = parseInt(formData.get('fontSize') as string) || 10
 
-    const sizeError = validateFile(file, 'any')
+    const sizeError = await validateFile(file, 'any')
     if (sizeError) return sizeError
 
     const validExtensions = ['.xlsx', '.xls', '.csv']

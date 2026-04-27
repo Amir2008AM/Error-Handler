@@ -6,6 +6,9 @@ const nextConfig = {
   serverExternalPackages: ['pdf-parse', 'sharp', 'canvas', 'pdfjs-dist', 'tesseract.js'],
   allowedDevOrigins: ['*.replit.dev', '*.replit.app', '*.kirk.replit.dev', '*.spock.replit.dev', '*.picard.replit.dev', '*.janeway.replit.dev', '*.riker.replit.dev', '*.worf.replit.dev', '*.sisko.replit.dev', '*.repl.co'],
   experimental: {
+    // Allow large file uploads through the proxy layer (default is 10MB).
+    // Per-route validation (lib/validation.ts) still enforces tool-specific caps.
+    proxyClientMaxBodySize: '100mb',
     serverActions: {
       bodySizeLimit: '50mb',
     },

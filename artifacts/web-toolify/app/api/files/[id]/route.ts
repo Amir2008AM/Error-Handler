@@ -1,43 +1,55 @@
 /**
  * File Download API Route
- * Download processed files from temporary storage
+ *
+ * Streams processed files from temporary storage. The file payload is
+ * piped from disk → Node Readable → Web ReadableStream → response body
+ * so even multi-hundred-MB downloads never hit the JS heap.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getTempStorage } from '@/lib/storage'
+import { nodeToWebStream } from '@/lib/processing/stream-utils'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+function safeContentDisposition(name: string): string {
+  // RFC 5987 — give clients an ASCII fallback and a UTF-8 filename*.
+  const ascii = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`
+}
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
     const storage = getTempStorage()
-    const file = storage.get(id)
+    const result = await storage.getStream(id)
 
-    if (!file) {
+    if (!result) {
       return NextResponse.json(
         { error: 'File not found or expired' },
         { status: 404 }
       )
     }
 
-    // Return file with proper headers
-    const response = new NextResponse(file.buffer)
-    
-    response.headers.set('Content-Type', file.mimeType)
-    response.headers.set('Content-Length', file.size.toString())
-    response.headers.set(
-      'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(file.fileName)}"`
-    )
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
-    response.headers.set('Pragma', 'no-cache')
-    response.headers.set('Expires', '0')
+    const { meta, stream } = result
+    const body = nodeToWebStream(stream)
 
-    return response
+    return new NextResponse(body, {
+      status: 200,
+      headers: {
+        'Content-Type': meta.mimeType,
+        'Content-Length': meta.size.toString(),
+        'Content-Disposition': safeContentDisposition(meta.fileName),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    })
   } catch (error) {
-    console.error('Error downloading file:', error)
+    console.error('[files/get]', error)
     return NextResponse.json(
       { error: 'Failed to download file' },
       { status: 500 }
@@ -46,13 +58,13 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
     const storage = getTempStorage()
-    const deleted = storage.delete(id)
+    const deleted = await storage.delete(id)
 
     if (!deleted) {
       return NextResponse.json(
@@ -61,12 +73,9 @@ export async function DELETE(
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'File deleted',
-    })
+    return NextResponse.json({ success: true, message: 'File deleted' })
   } catch (error) {
-    console.error('Error deleting file:', error)
+    console.error('[files/delete]', error)
     return NextResponse.json(
       { error: 'Failed to delete file' },
       { status: 500 }

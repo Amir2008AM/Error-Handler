@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     if (file) {
       // Validate file size
-      const sizeError = validateFile(file, 'any')
+      const sizeError = await validateFile(file, 'any')
       if (sizeError) return sizeError
 
       const fileName = file.name.toLowerCase()

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const dpi = parseInt(formData.get('dpi') as string) || 150
     const pagesStr = formData.get('pages') as string | null
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     const buffer = Buffer.from(await file.arrayBuffer())

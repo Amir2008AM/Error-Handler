@@ -1,16 +1,33 @@
 /**
  * Image Processing Module
- * Self-contained image processing using sharp library
- * No external API dependencies
+ *
+ * All operations run as a single sharp pipeline:
+ *   sharp(input) → transforms → encoder → toBuffer({ resolveWithObject })
+ *
+ * Why this matters:
+ *   - Old code did `sharp(buf)` then `.metadata()` (full decode), then
+ *     ran the transform, then in some places re-wrapped the *output* in
+ *     a brand-new sharp instance just to read its dimensions. That's 3
+ *     decodes for a single op.
+ *   - The new code uses `resolveWithObject` to get final width/height
+ *     **and** input metadata for free during the encode pass.
+ *   - `failOn: 'error'` rejects malformed input early instead of
+ *     silently returning a half-rendered image.
+ *   - `limitInputPixels` blocks decompression-bomb DoS uploads.
+ *   - `withTimeout` prevents a single bad image from pinning a worker.
  */
 
 import sharp from 'sharp'
 import { BaseProcessor } from './base-processor'
+import { TIMEOUTS, withTimeout } from './timeout'
 
-// Use all available CPU threads for sharp operations
+// Use all available CPU threads; cap cache to keep RSS predictable.
 sharp.concurrency(0)
-// Keep last 200 MB of decoded tiles cached to speed up repeated operations
 sharp.cache({ memory: 200, files: 20, items: 200 })
+
+// Hard ceiling on input pixel count (≈ 24k × 24k) to prevent
+// decompression-bomb attacks. Per-call override allowed via input opts.
+const DEFAULT_PIXEL_LIMIT = 24_000 * 24_000
 
 import type {
   ProcessingResult,
@@ -24,351 +41,377 @@ import type {
   ImageFormat,
 } from './types'
 
+type EncoderOpts = {
+  format: ImageFormat
+  quality: number
+}
+
 export class ImageProcessor extends BaseProcessor {
   constructor() {
-    super('ImageProcessor', '1.0.0')
+    super('ImageProcessor', '2.0.0')
   }
 
   /**
-   * Get image metadata
+   * Open a sharp pipeline configured with the same safety defaults
+   * everywhere. Centralizing this keeps every public op consistent.
    */
+  private open(input: ArrayBuffer | Buffer): sharp.Sharp {
+    const buf = Buffer.isBuffer(input) ? input : Buffer.from(input)
+    return sharp(buf, {
+      failOn: 'error',
+      limitInputPixels: DEFAULT_PIXEL_LIMIT,
+      sequentialRead: true,
+    })
+  }
+
+  private applyEncoder(s: sharp.Sharp, { format, quality }: EncoderOpts): sharp.Sharp {
+    switch (format) {
+      case 'jpeg':
+      case 'jpg':
+        return s.jpeg({ quality, mozjpeg: false, trellisQuantisation: true })
+      case 'png':
+        return s.png({ compressionLevel: 6, palette: true })
+      case 'webp':
+        return s.webp({ quality, effort: 4 })
+      case 'avif':
+        return s.avif({ quality, effort: 4 })
+      case 'gif':
+        return s.gif()
+      case 'tiff':
+        return s.tiff({ quality, compression: 'lzw' })
+      default:
+        return s.jpeg({ quality, mozjpeg: false })
+    }
+  }
+
+  /** Run a pipeline and harvest both buffer + final dimensions in one decode. */
+  private async finalize(s: sharp.Sharp, enc: EncoderOpts): Promise<{
+    data: Buffer
+    width: number
+    height: number
+    format: string
+  }> {
+    const { data, info } = await this.applyEncoder(s, enc).toBuffer({
+      resolveWithObject: true,
+    })
+    return { data, width: info.width, height: info.height, format: info.format }
+  }
+
+  // ---------------------------------------------------------------
+  // Public ops
+  // ---------------------------------------------------------------
+
   async getMetadata(file: ArrayBuffer): Promise<ProcessingResult<ImageMetadata>> {
     try {
       this.validateBuffer(file)
-      const buffer = this.toBuffer(file)
-      const metadata = await sharp(buffer).metadata()
-
+      const meta = await withTimeout(
+        this.open(file).metadata(),
+        TIMEOUTS.imageOp,
+        'image.getMetadata'
+      )
       return this.success<ImageMetadata>({
-        width: metadata.width ?? 0,
-        height: metadata.height ?? 0,
-        format: metadata.format ?? 'unknown',
-        size: buffer.length,
-        hasAlpha: metadata.hasAlpha,
-        colorSpace: metadata.space,
-        density: metadata.density,
+        width: meta.width ?? 0,
+        height: meta.height ?? 0,
+        format: meta.format ?? 'unknown',
+        size: file.byteLength,
+        hasAlpha: meta.hasAlpha,
+        colorSpace: meta.space,
+        density: meta.density,
       })
     } catch (err) {
-      return this.error(`Failed to get image metadata: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return this.error(`Failed to get image metadata: ${this.msg(err)}`)
     }
   }
 
-  /**
-   * Compress image with quality settings
-   */
   async compress(options: ImageCompressOptions): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(options.file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(options.file)
-        const sharpInstance = sharp(buffer)
-        const metadata = await sharpInstance.metadata()
-
-        const quality = options.quality ?? 80
-        const outputFormat = options.format === 'same' || !options.format
-          ? (metadata.format as ImageFormat) ?? 'jpeg'
-          : options.format
-
-        const outputBuffer = await this.applyFormat(sharpInstance, outputFormat, quality)
-
-        return {
-          buffer: outputBuffer,
-          inputFormat: metadata.format ?? 'unknown',
-          outputFormat,
-        }
-      })
-
-      return this.success(result.buffer, {
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(this.runCompress(options), TIMEOUTS.imageOp, 'image.compress')
+      )
+      return this.success(result.data, {
         inputSize: options.file.byteLength,
-        outputSize: result.buffer.length,
+        outputSize: result.data.length,
         inputFormat: result.inputFormat,
         outputFormat: result.outputFormat,
-        processingTime: time,
-      })
-    } catch (err) {
-      return this.error(`Failed to compress image: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    }
-  }
-
-  /**
-   * Resize image to specific dimensions
-   */
-  async resize(options: ImageResizeOptions): Promise<ProcessingResult<Buffer>> {
-    try {
-      this.validateBuffer(options.file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(options.file)
-        let sharpInstance = sharp(buffer)
-        const metadata = await sharpInstance.metadata()
-
-        const origWidth = metadata.width ?? 800
-        const origHeight = metadata.height ?? 600
-
-        // Calculate target dimensions
-        let targetWidth: number | undefined
-        let targetHeight: number | undefined
-
-        if (options.unit === 'percent') {
-          const percent = options.width ?? 100
-          targetWidth = Math.round(origWidth * (percent / 100))
-          targetHeight = Math.round(origHeight * (percent / 100))
-        } else {
-          targetWidth = options.width
-          targetHeight = options.height
-        }
-
-        if (!targetWidth && !targetHeight) {
-          throw new Error('At least one dimension (width or height) is required')
-        }
-
-        // Apply resize
-        const maintainAR = options.maintainAspectRatio !== false
-        sharpInstance = sharpInstance.resize({
-          width: targetWidth,
-          height: targetHeight,
-          fit: maintainAR ? 'inside' : 'fill',
-          withoutEnlargement: false,
-        })
-
-        const quality = options.quality ?? 90
-        const outputFormat = options.format === 'same' || !options.format
-          ? (metadata.format as ImageFormat) ?? 'jpeg'
-          : options.format
-
-        // Compute output dimensions without re-reading the buffer
-        let outW = targetWidth ?? origWidth
-        let outH = targetHeight ?? origHeight
-        if (maintainAR && targetWidth && targetHeight) {
-          const scaleX = targetWidth / origWidth
-          const scaleY = targetHeight / origHeight
-          const scale = Math.min(scaleX, scaleY)
-          outW = Math.round(origWidth * scale)
-          outH = Math.round(origHeight * scale)
-        } else if (maintainAR && targetWidth && !targetHeight) {
-          outH = Math.round(origHeight * (targetWidth / origWidth))
-        } else if (maintainAR && !targetWidth && targetHeight) {
-          outW = Math.round(origWidth * (targetHeight / origHeight))
-        }
-
-        const outputBuffer = await this.applyFormat(sharpInstance, outputFormat, quality)
-
-        return {
-          buffer: outputBuffer,
-          outputWidth: outW,
-          outputHeight: outH,
-          originalWidth: origWidth,
-          originalHeight: origHeight,
-        }
-      })
-
-      return this.success(result.buffer, {
-        inputSize: options.file.byteLength,
-        outputSize: result.buffer.length,
-        width: result.outputWidth,
-        height: result.outputHeight,
-        originalWidth: result.originalWidth,
-        originalHeight: result.originalHeight,
-        processingTime: time,
-      })
-    } catch (err) {
-      return this.error(`Failed to resize image: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    }
-  }
-
-  /**
-   * Convert image to different format
-   */
-  async convert(options: ImageConvertOptions): Promise<ProcessingResult<Buffer>> {
-    try {
-      this.validateBuffer(options.file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(options.file)
-        const sharpInstance = sharp(buffer)
-        const metadata = await sharpInstance.metadata()
-
-        const quality = options.quality ?? 90
-        const outputBuffer = await this.applyFormat(sharpInstance, options.targetFormat, quality)
-
-        return {
-          buffer: outputBuffer,
-          inputFormat: metadata.format ?? 'unknown',
-        }
-      })
-
-      return this.success(result.buffer, {
-        inputSize: options.file.byteLength,
-        outputSize: result.buffer.length,
-        inputFormat: result.inputFormat,
-        outputFormat: options.targetFormat,
-        processingTime: time,
-      })
-    } catch (err) {
-      return this.error(`Failed to convert image: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    }
-  }
-
-  /**
-   * Crop image to specific region
-   */
-  async crop(options: ImageCropOptions): Promise<ProcessingResult<Buffer>> {
-    try {
-      this.validateBuffer(options.file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(options.file)
-        let sharpInstance = sharp(buffer)
-        const metadata = await sharpInstance.metadata()
-
-        // Validate crop region
-        const imgWidth = metadata.width ?? 0
-        const imgHeight = metadata.height ?? 0
-
-        if (
-          options.left < 0 ||
-          options.top < 0 ||
-          options.left + options.width > imgWidth ||
-          options.top + options.height > imgHeight
-        ) {
-          throw new Error('Crop region exceeds image boundaries')
-        }
-
-        sharpInstance = sharpInstance.extract({
-          left: Math.round(options.left),
-          top: Math.round(options.top),
-          width: Math.round(options.width),
-          height: Math.round(options.height),
-        })
-
-        const quality = options.quality ?? 90
-        const outputFormat = options.format === 'same' || !options.format
-          ? (metadata.format as ImageFormat) ?? 'jpeg'
-          : options.format
-
-        return await this.applyFormat(sharpInstance, outputFormat, quality)
-      })
-
-      return this.success(result, {
-        inputSize: options.file.byteLength,
-        outputSize: result.length,
-        width: options.width,
-        height: options.height,
-        processingTime: time,
-      })
-    } catch (err) {
-      return this.error(`Failed to crop image: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    }
-  }
-
-  /**
-   * Rotate image by specified angle
-   */
-  async rotate(options: ImageRotateOptions): Promise<ProcessingResult<Buffer>> {
-    try {
-      this.validateBuffer(options.file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(options.file)
-        let sharpInstance = sharp(buffer)
-        const metadata = await sharpInstance.metadata()
-
-        const background = options.background ?? { r: 255, g: 255, b: 255, alpha: 1 }
-        sharpInstance = sharpInstance.rotate(options.angle, { background })
-
-        const quality = options.quality ?? 90
-        const outputFormat = options.format === 'same' || !options.format
-          ? (metadata.format as ImageFormat) ?? 'jpeg'
-          : options.format
-
-        const outputBuffer = await this.applyFormat(sharpInstance, outputFormat, quality)
-        const outputMeta = await sharp(outputBuffer).metadata()
-
-        return {
-          buffer: outputBuffer,
-          width: outputMeta.width ?? 0,
-          height: outputMeta.height ?? 0,
-        }
-      })
-
-      return this.success(result.buffer, {
-        inputSize: options.file.byteLength,
-        outputSize: result.buffer.length,
         width: result.width,
         height: result.height,
         processingTime: time,
       })
     } catch (err) {
-      return this.error(`Failed to rotate image: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return this.error(`Failed to compress image: ${this.msg(err)}`)
     }
   }
 
-  /**
-   * Flip image horizontally or vertically
-   */
+  private async runCompress(options: ImageCompressOptions) {
+    // Single decode pass that yields both metadata and pixels.
+    const pipeline = this.open(options.file)
+    const inputMeta = await pipeline.metadata()
+    const inputFormat = (inputMeta.format as ImageFormat) ?? 'jpeg'
+    const outputFormat: ImageFormat =
+      options.format === 'same' || !options.format ? inputFormat : options.format
+    const final = await this.finalize(pipeline, {
+      format: outputFormat,
+      quality: options.quality ?? 80,
+    })
+    return {
+      data: final.data,
+      width: final.width,
+      height: final.height,
+      inputFormat,
+      outputFormat,
+    }
+  }
+
+  async resize(options: ImageResizeOptions): Promise<ProcessingResult<Buffer>> {
+    try {
+      this.validateBuffer(options.file)
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(this.runResize(options), TIMEOUTS.imageOp, 'image.resize')
+      )
+      return this.success(result.data, {
+        inputSize: options.file.byteLength,
+        outputSize: result.data.length,
+        width: result.width,
+        height: result.height,
+        originalWidth: result.originalWidth,
+        originalHeight: result.originalHeight,
+        processingTime: time,
+      })
+    } catch (err) {
+      return this.error(`Failed to resize image: ${this.msg(err)}`)
+    }
+  }
+
+  private async runResize(options: ImageResizeOptions) {
+    let pipeline = this.open(options.file)
+    const meta = await pipeline.metadata()
+    const origWidth = meta.width ?? 0
+    const origHeight = meta.height ?? 0
+
+    let targetWidth: number | undefined
+    let targetHeight: number | undefined
+    if (options.unit === 'percent') {
+      const percent = options.width ?? 100
+      targetWidth = Math.round(origWidth * (percent / 100))
+      targetHeight = Math.round(origHeight * (percent / 100))
+    } else {
+      targetWidth = options.width
+      targetHeight = options.height
+    }
+    if (!targetWidth && !targetHeight) {
+      throw new Error('At least one dimension (width or height) is required')
+    }
+
+    const maintainAR = options.maintainAspectRatio !== false
+    pipeline = pipeline.resize({
+      width: targetWidth,
+      height: targetHeight,
+      fit: maintainAR ? 'inside' : 'fill',
+      withoutEnlargement: false,
+    })
+
+    const outputFormat: ImageFormat =
+      options.format === 'same' || !options.format
+        ? ((meta.format as ImageFormat) ?? 'jpeg')
+        : options.format
+
+    const final = await this.finalize(pipeline, {
+      format: outputFormat,
+      quality: options.quality ?? 90,
+    })
+    return {
+      data: final.data,
+      width: final.width,
+      height: final.height,
+      originalWidth: origWidth,
+      originalHeight: origHeight,
+    }
+  }
+
+  async convert(options: ImageConvertOptions): Promise<ProcessingResult<Buffer>> {
+    try {
+      this.validateBuffer(options.file)
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(this.runConvert(options), TIMEOUTS.imageOp, 'image.convert')
+      )
+      return this.success(result.data, {
+        inputSize: options.file.byteLength,
+        outputSize: result.data.length,
+        inputFormat: result.inputFormat,
+        outputFormat: options.targetFormat,
+        width: result.width,
+        height: result.height,
+        processingTime: time,
+      })
+    } catch (err) {
+      return this.error(`Failed to convert image: ${this.msg(err)}`)
+    }
+  }
+
+  private async runConvert(options: ImageConvertOptions) {
+    const pipeline = this.open(options.file)
+    const meta = await pipeline.metadata()
+    const final = await this.finalize(pipeline, {
+      format: options.targetFormat,
+      quality: options.quality ?? 90,
+    })
+    return {
+      data: final.data,
+      width: final.width,
+      height: final.height,
+      inputFormat: (meta.format as string) ?? 'unknown',
+    }
+  }
+
+  async crop(options: ImageCropOptions): Promise<ProcessingResult<Buffer>> {
+    try {
+      this.validateBuffer(options.file)
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(this.runCrop(options), TIMEOUTS.imageOp, 'image.crop')
+      )
+      return this.success(result.data, {
+        inputSize: options.file.byteLength,
+        outputSize: result.data.length,
+        width: result.width,
+        height: result.height,
+        processingTime: time,
+      })
+    } catch (err) {
+      return this.error(`Failed to crop image: ${this.msg(err)}`)
+    }
+  }
+
+  private async runCrop(options: ImageCropOptions) {
+    let pipeline = this.open(options.file)
+    const meta = await pipeline.metadata()
+    const imgWidth = meta.width ?? 0
+    const imgHeight = meta.height ?? 0
+    if (
+      options.left < 0 ||
+      options.top < 0 ||
+      options.left + options.width > imgWidth ||
+      options.top + options.height > imgHeight
+    ) {
+      throw new Error('Crop region exceeds image boundaries')
+    }
+    pipeline = pipeline.extract({
+      left: Math.round(options.left),
+      top: Math.round(options.top),
+      width: Math.round(options.width),
+      height: Math.round(options.height),
+    })
+    const outputFormat: ImageFormat =
+      options.format === 'same' || !options.format
+        ? ((meta.format as ImageFormat) ?? 'jpeg')
+        : options.format
+    const final = await this.finalize(pipeline, {
+      format: outputFormat,
+      quality: options.quality ?? 90,
+    })
+    return { data: final.data, width: final.width, height: final.height }
+  }
+
+  async rotate(options: ImageRotateOptions): Promise<ProcessingResult<Buffer>> {
+    try {
+      this.validateBuffer(options.file)
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(this.runRotate(options), TIMEOUTS.imageOp, 'image.rotate')
+      )
+      return this.success(result.data, {
+        inputSize: options.file.byteLength,
+        outputSize: result.data.length,
+        width: result.width,
+        height: result.height,
+        processingTime: time,
+      })
+    } catch (err) {
+      return this.error(`Failed to rotate image: ${this.msg(err)}`)
+    }
+  }
+
+  private async runRotate(options: ImageRotateOptions) {
+    let pipeline = this.open(options.file)
+    const meta = await pipeline.metadata()
+    const background = options.background ?? { r: 255, g: 255, b: 255, alpha: 1 }
+    pipeline = pipeline.rotate(options.angle, { background })
+    const outputFormat: ImageFormat =
+      options.format === 'same' || !options.format
+        ? ((meta.format as ImageFormat) ?? 'jpeg')
+        : options.format
+    const final = await this.finalize(pipeline, {
+      format: outputFormat,
+      quality: options.quality ?? 90,
+    })
+    return { data: final.data, width: final.width, height: final.height }
+  }
+
   async flip(options: ImageFlipOptions): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(options.file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(options.file)
-        let sharpInstance = sharp(buffer)
-        const metadata = await sharpInstance.metadata()
-
-        if (options.direction === 'horizontal' || options.direction === 'both') {
-          sharpInstance = sharpInstance.flop()
-        }
-        if (options.direction === 'vertical' || options.direction === 'both') {
-          sharpInstance = sharpInstance.flip()
-        }
-
-        const quality = options.quality ?? 90
-        const outputFormat = options.format === 'same' || !options.format
-          ? (metadata.format as ImageFormat) ?? 'jpeg'
-          : options.format
-
-        return await this.applyFormat(sharpInstance, outputFormat, quality)
-      })
-
-      return this.success(result, {
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(this.runFlip(options), TIMEOUTS.imageOp, 'image.flip')
+      )
+      return this.success(result.data, {
         inputSize: options.file.byteLength,
-        outputSize: result.length,
+        outputSize: result.data.length,
+        width: result.width,
+        height: result.height,
         processingTime: time,
       })
     } catch (err) {
-      return this.error(`Failed to flip image: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return this.error(`Failed to flip image: ${this.msg(err)}`)
     }
   }
 
-  /**
-   * Apply grayscale filter
-   */
+  private async runFlip(options: ImageFlipOptions) {
+    let pipeline = this.open(options.file)
+    const meta = await pipeline.metadata()
+    if (options.direction === 'horizontal' || options.direction === 'both') {
+      pipeline = pipeline.flop()
+    }
+    if (options.direction === 'vertical' || options.direction === 'both') {
+      pipeline = pipeline.flip()
+    }
+    const outputFormat: ImageFormat =
+      options.format === 'same' || !options.format
+        ? ((meta.format as ImageFormat) ?? 'jpeg')
+        : options.format
+    const final = await this.finalize(pipeline, {
+      format: outputFormat,
+      quality: options.quality ?? 90,
+    })
+    return { data: final.data, width: final.width, height: final.height }
+  }
+
   async grayscale(file: ArrayBuffer, format?: ImageFormat): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(file)
-        let sharpInstance = sharp(buffer).grayscale()
-        const metadata = await sharpInstance.metadata()
-
-        const outputFormat = format ?? (metadata.format as ImageFormat) ?? 'jpeg'
-        return await this.applyFormat(sharpInstance, outputFormat, 90)
-      })
-
-      return this.success(result, {
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(
+          (async () => {
+            const pipeline = this.open(file).grayscale()
+            const meta = await pipeline.clone().metadata()
+            const outputFormat: ImageFormat =
+              format ?? ((meta.format as ImageFormat) ?? 'jpeg')
+            return this.finalize(pipeline, { format: outputFormat, quality: 90 })
+          })(),
+          TIMEOUTS.imageOp,
+          'image.grayscale'
+        )
+      )
+      return this.success(result.data, {
         inputSize: file.byteLength,
-        outputSize: result.length,
+        outputSize: result.data.length,
+        width: result.width,
+        height: result.height,
         processingTime: time,
       })
     } catch (err) {
-      return this.error(`Failed to apply grayscale: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return this.error(`Failed to apply grayscale: ${this.msg(err)}`)
     }
   }
 
-  /**
-   * Blur image
-   */
   async blur(
     file: ArrayBuffer,
     sigma: number = 3,
@@ -376,29 +419,31 @@ export class ImageProcessor extends BaseProcessor {
   ): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(file)
-        let sharpInstance = sharp(buffer).blur(sigma)
-        const metadata = await sharpInstance.metadata()
-
-        const outputFormat = format ?? (metadata.format as ImageFormat) ?? 'jpeg'
-        return await this.applyFormat(sharpInstance, outputFormat, 90)
-      })
-
-      return this.success(result, {
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(
+          (async () => {
+            const pipeline = this.open(file).blur(sigma)
+            const meta = await pipeline.clone().metadata()
+            const outputFormat: ImageFormat =
+              format ?? ((meta.format as ImageFormat) ?? 'jpeg')
+            return this.finalize(pipeline, { format: outputFormat, quality: 90 })
+          })(),
+          TIMEOUTS.imageOp,
+          'image.blur'
+        )
+      )
+      return this.success(result.data, {
         inputSize: file.byteLength,
-        outputSize: result.length,
+        outputSize: result.data.length,
+        width: result.width,
+        height: result.height,
         processingTime: time,
       })
     } catch (err) {
-      return this.error(`Failed to blur image: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return this.error(`Failed to blur image: ${this.msg(err)}`)
     }
   }
 
-  /**
-   * Sharpen image
-   */
   async sharpen(
     file: ArrayBuffer,
     sigma: number = 1,
@@ -406,60 +451,31 @@ export class ImageProcessor extends BaseProcessor {
   ): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(file)
-
-      const { result, time } = await this.measureTime(async () => {
-        const buffer = this.toBuffer(file)
-        let sharpInstance = sharp(buffer).sharpen(sigma)
-        const metadata = await sharpInstance.metadata()
-
-        const outputFormat = format ?? (metadata.format as ImageFormat) ?? 'jpeg'
-        return await this.applyFormat(sharpInstance, outputFormat, 90)
-      })
-
-      return this.success(result, {
+      const { result, time } = await this.measureTime(() =>
+        withTimeout(
+          (async () => {
+            const pipeline = this.open(file).sharpen(sigma)
+            const meta = await pipeline.clone().metadata()
+            const outputFormat: ImageFormat =
+              format ?? ((meta.format as ImageFormat) ?? 'jpeg')
+            return this.finalize(pipeline, { format: outputFormat, quality: 90 })
+          })(),
+          TIMEOUTS.imageOp,
+          'image.sharpen'
+        )
+      )
+      return this.success(result.data, {
         inputSize: file.byteLength,
-        outputSize: result.length,
+        outputSize: result.data.length,
+        width: result.width,
+        height: result.height,
         processingTime: time,
       })
     } catch (err) {
-      return this.error(`Failed to sharpen image: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return this.error(`Failed to sharpen image: ${this.msg(err)}`)
     }
   }
 
-  /**
-   * Apply format and quality to sharp instance
-   */
-  private async applyFormat(
-    sharpInstance: sharp.Sharp,
-    format: ImageFormat,
-    quality: number
-  ): Promise<Buffer> {
-    switch (format) {
-      case 'jpeg':
-      case 'jpg':
-        // mozjpeg is ~3× slower with marginal gains for most use cases; skip it
-        return sharpInstance.jpeg({ quality, mozjpeg: false, trellisQuantisation: true }).toBuffer()
-      case 'png':
-        // Level 9 is very slow (≈2× slower than 6) with minimal size gain; use 6
-        return sharpInstance.png({ compressionLevel: 6, palette: true }).toBuffer()
-      case 'webp':
-        // effort 4 (default) is good; 6 gives better compression at reasonable cost
-        return sharpInstance.webp({ quality, effort: 4 }).toBuffer()
-      case 'avif':
-        // effort 4 balances speed vs compression (default 4 is fine)
-        return sharpInstance.avif({ quality, effort: 4 }).toBuffer()
-      case 'gif':
-        return sharpInstance.gif().toBuffer()
-      case 'tiff':
-        return sharpInstance.tiff({ quality, compression: 'lzw' }).toBuffer()
-      default:
-        return sharpInstance.jpeg({ quality, mozjpeg: false }).toBuffer()
-    }
-  }
-
-  /**
-   * Get content type for format
-   */
   getContentType(format: ImageFormat): string {
     const types: Record<ImageFormat, string> = {
       jpeg: 'image/jpeg',
@@ -473,14 +489,14 @@ export class ImageProcessor extends BaseProcessor {
     return types[format] || 'image/jpeg'
   }
 
-  /**
-   * Get file extension for format
-   */
   getExtension(format: ImageFormat): string {
     if (format === 'jpeg') return 'jpg'
     return format
   }
+
+  private msg(err: unknown): string {
+    return err instanceof Error ? err.message : 'Unknown error'
+  }
 }
 
-// Export singleton instance
 export const imageProcessor = new ImageProcessor()

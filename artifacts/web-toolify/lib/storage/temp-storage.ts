@@ -1,21 +1,38 @@
 /**
  * Temporary File Storage System
- * Filesystem-backed storage with automatic cleanup.
- * Files are persisted under /tmp/toolify/{uuid}/ and auto-deleted after their TTL.
+ *
+ * Filesystem-backed storage with automatic cleanup and **fully async** I/O.
+ *
+ * Improvements over the previous implementation:
+ *  - All disk I/O uses `fs/promises` (no sync calls blocking the event loop)
+ *  - Streaming `storeStream()` writes uploads/results directly to disk
+ *    without ever holding the full payload in JS heap
+ *  - Streaming `getStream()` returns a Node Readable for backpressured
+ *    downloads (used by `/api/files/[id]`)
+ *  - Atomic writes (temp filename → rename) so a crashed write never
+ *    leaves a half-written file readable
+ *  - Cached `totalSize` so `store()` doesn't walk the entire storage
+ *    directory on every upload
+ *  - Buffer-based `store()`/`get()` are now async too (every caller is in
+ *    an async context already)
  */
 
 import { randomUUID } from 'node:crypto'
+import { createReadStream, createWriteStream } from 'node:fs'
 import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-  readdirSync,
-  rmSync,
-  statSync,
-} from 'node:fs'
+  mkdir,
+  readFile,
+  writeFile,
+  readdir,
+  rm,
+  stat,
+  rename,
+  access,
+} from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 
 export interface StoredFile {
   id: string
@@ -28,12 +45,27 @@ export interface StoredFile {
   accessCount: number
 }
 
+export interface StoredFileMeta {
+  id: string
+  fileName: string
+  mimeType: string
+  size: number
+  createdAt: number
+  expiresAt: number
+  accessCount: number
+}
+
+export interface StoredFileStream {
+  meta: StoredFileMeta
+  stream: Readable
+}
+
 export interface StorageConfig {
-  defaultTtlMs: number // Time to live in milliseconds
-  maxStorageBytes: number // Max total storage
-  maxFileBytes: number // Max single file size
-  cleanupIntervalMs: number // How often to run cleanup
-  storageDir: string // Root directory for stored files
+  defaultTtlMs: number
+  maxStorageBytes: number
+  maxFileBytes: number
+  cleanupIntervalMs: number
+  storageDir: string
 }
 
 const DEFAULT_CONFIG: StorageConfig = {
@@ -61,90 +93,131 @@ class TempStorage {
   private config: StorageConfig
   private cleanupInterval: NodeJS.Timeout | null = null
 
+  /** Cached running total of bytes on disk; -1 means "needs recompute". */
+  private cachedTotalSize: number = -1
+  private dirReady: Promise<void> | null = null
+
   constructor(config: Partial<StorageConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
-    this.ensureStorageDir()
+    this.dirReady = this.ensureStorageDir()
     this.startCleanup()
   }
 
+  // -----------------------------------------------------------------
+  // Public: write
+  // -----------------------------------------------------------------
+
   /**
-   * Store a file and return its ID
+   * Store a buffer and return the new file id.
+   * Backwards-compatible signature; all callers are async.
    */
-  store(
+  async store(
     buffer: Buffer,
     fileName: string,
     mimeType: string,
     ttlMs?: number
-  ): string {
-    // Validate file size
+  ): Promise<string> {
     if (buffer.length > this.config.maxFileBytes) {
       throw new Error(
         `File size ${buffer.length} exceeds maximum ${this.config.maxFileBytes}`
       )
     }
+    await this.ensureCapacity(buffer.length)
 
-    // Check total storage
-    if (this.getTotalSize() + buffer.length > this.config.maxStorageBytes) {
-      // Try to free up space by removing expired files first
-      this.cleanup()
+    const { id, dir, dataPath } = await this.allocate()
+    const tmpPath = `${dataPath}.tmp`
+    await writeFile(tmpPath, buffer)
+    await rename(tmpPath, dataPath)
 
-      // If still not enough space, remove oldest files
-      if (this.getTotalSize() + buffer.length > this.config.maxStorageBytes) {
-        this.freeSpace(buffer.length)
-      }
-    }
-
-    const id = randomUUID()
-    const now = Date.now()
-    const ttl = ttlMs ?? this.config.defaultTtlMs
-
-    const meta: StoredMetadata = {
-      id,
-      fileName,
-      mimeType,
-      size: buffer.length,
-      createdAt: now,
-      expiresAt: now + ttl,
-      accessCount: 0,
-    }
-
-    const dir = this.getFileDir(id)
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, DATA_FILENAME), buffer)
-    writeFileSync(join(dir, META_FILENAME), JSON.stringify(meta))
-
+    await this.writeMetaForNew(id, dir, fileName, mimeType, buffer.length, ttlMs)
+    this.bumpTotalSize(buffer.length)
     return id
   }
 
   /**
-   * Retrieve a file by ID
+   * Stream-store: pipe a Readable directly to disk without buffering.
+   * `expectedSize` is the only way we can validate against
+   * `maxFileBytes` *before* writing — pass it whenever known
+   * (Content-Length, formData file.size, etc).
    */
-  get(id: string): StoredFile | null {
-    const meta = this.readMeta(id)
-    if (!meta) {
-      return null
+  async storeStream(
+    source: Readable | ReadableStream<Uint8Array>,
+    fileName: string,
+    mimeType: string,
+    options: { expectedSize?: number; ttlMs?: number } = {}
+  ): Promise<string> {
+    const { expectedSize, ttlMs } = options
+
+    if (expectedSize !== undefined && expectedSize > this.config.maxFileBytes) {
+      throw new Error(
+        `File size ${expectedSize} exceeds maximum ${this.config.maxFileBytes}`
+      )
+    }
+    await this.ensureCapacity(expectedSize ?? 0)
+
+    const { id, dir, dataPath } = await this.allocate()
+    const tmpPath = `${dataPath}.tmp`
+    const readable: Readable =
+      source instanceof Readable ? source : Readable.fromWeb(source as never)
+
+    let bytesWritten = 0
+    const sink = createWriteStream(tmpPath)
+    const limiter = new (await import('node:stream')).Transform({
+      transform: (chunk: Buffer, _enc, cb) => {
+        bytesWritten += chunk.length
+        if (bytesWritten > this.config.maxFileBytes) {
+          cb(
+            new Error(
+              `Stream exceeded maximum file size of ${this.config.maxFileBytes} bytes`
+            )
+          )
+          return
+        }
+        cb(null, chunk)
+      },
+    })
+
+    try {
+      await pipeline(readable, limiter, sink)
+    } catch (err) {
+      // best-effort cleanup of the partial temp file
+      await rm(tmpPath, { force: true }).catch(() => undefined)
+      await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+      throw err
     }
 
-    // Check if expired
+    await rename(tmpPath, dataPath)
+    await this.writeMetaForNew(id, dir, fileName, mimeType, bytesWritten, ttlMs)
+    this.bumpTotalSize(bytesWritten)
+    return id
+  }
+
+  // -----------------------------------------------------------------
+  // Public: read
+  // -----------------------------------------------------------------
+
+  /** Read full file into memory. Use only when downstream needs a Buffer. */
+  async get(id: string): Promise<StoredFile | null> {
+    const meta = await this.readMeta(id)
+    if (!meta) return null
     if (Date.now() > meta.expiresAt) {
-      this.delete(id)
+      await this.delete(id)
       return null
     }
 
     let buffer: Buffer
     try {
-      buffer = readFileSync(join(this.getFileDir(id), DATA_FILENAME))
+      buffer = await readFile(join(this.getFileDir(id), DATA_FILENAME))
     } catch {
       return null
     }
 
-    // Increment access count and persist
     meta.accessCount++
-    try {
-      writeFileSync(join(this.getFileDir(id), META_FILENAME), JSON.stringify(meta))
-    } catch {
-      // Best-effort; not fatal if we can't update the access counter
-    }
+    // best-effort access count update
+    void writeFile(
+      join(this.getFileDir(id), META_FILENAME),
+      JSON.stringify(meta)
+    ).catch(() => undefined)
 
     return {
       id: meta.id,
@@ -158,56 +231,80 @@ class TempStorage {
     }
   }
 
-  /**
-   * Delete a file by ID
-   */
-  delete(id: string): boolean {
-    const dir = this.getFileDir(id)
-    if (!existsSync(dir)) {
-      return false
+  /** Stream a stored file. Caller is responsible for consuming/closing. */
+  async getStream(id: string): Promise<StoredFileStream | null> {
+    const meta = await this.readMeta(id)
+    if (!meta) return null
+    if (Date.now() > meta.expiresAt) {
+      await this.delete(id)
+      return null
     }
+
+    const dataPath = join(this.getFileDir(id), DATA_FILENAME)
     try {
-      rmSync(dir, { recursive: true, force: true })
+      await access(dataPath)
+    } catch {
+      return null
+    }
+
+    meta.accessCount++
+    void writeFile(
+      join(this.getFileDir(id), META_FILENAME),
+      JSON.stringify(meta)
+    ).catch(() => undefined)
+
+    const stream = createReadStream(dataPath, { highWaterMark: 64 * 1024 })
+    return { meta, stream }
+  }
+
+  async getMeta(id: string): Promise<StoredFileMeta | null> {
+    return this.readMeta(id)
+  }
+
+  // -----------------------------------------------------------------
+  // Public: lifecycle
+  // -----------------------------------------------------------------
+
+  async delete(id: string): Promise<boolean> {
+    const dir = this.getFileDir(id)
+    const meta = await this.readMeta(id).catch(() => null)
+    try {
+      await rm(dir, { recursive: true, force: true })
+      if (meta) this.bumpTotalSize(-meta.size)
       return true
     } catch {
       return false
     }
   }
 
-  /**
-   * Extend the TTL of a file
-   */
-  extendTtl(id: string, additionalMs: number): boolean {
-    const meta = this.readMeta(id)
-    if (!meta) {
-      return false
-    }
+  async extendTtl(id: string, additionalMs: number): Promise<boolean> {
+    const meta = await this.readMeta(id)
+    if (!meta) return false
     meta.expiresAt += additionalMs
     try {
-      writeFileSync(join(this.getFileDir(id), META_FILENAME), JSON.stringify(meta))
+      await writeFile(
+        join(this.getFileDir(id), META_FILENAME),
+        JSON.stringify(meta)
+      )
       return true
     } catch {
       return false
     }
   }
 
-  /**
-   * Get storage statistics
-   */
-  getStats(): {
+  async getStats(): Promise<{
     fileCount: number
     totalSize: number
     maxSize: number
     usagePercent: number
-  } {
+  }> {
     let fileCount = 0
     let totalSize = 0
-
-    for (const meta of this.iterMeta()) {
+    for await (const meta of this.iterMeta()) {
       fileCount++
       totalSize += meta.size
     }
-
+    this.cachedTotalSize = totalSize
     return {
       fileCount,
       totalSize,
@@ -216,65 +313,28 @@ class TempStorage {
     }
   }
 
-  /**
-   * Run cleanup of expired files
-   */
-  cleanup(): number {
+  /** Remove all files whose `expiresAt` has passed. */
+  async cleanup(): Promise<number> {
     const now = Date.now()
-    let removedCount = 0
-
-    for (const meta of this.iterMeta()) {
+    let removed = 0
+    for await (const meta of this.iterMeta()) {
       if (now > meta.expiresAt) {
-        if (this.delete(meta.id)) {
-          removedCount++
-        }
+        if (await this.delete(meta.id)) removed++
       }
     }
-
-    return removedCount
+    return removed
   }
 
-  /**
-   * Free up space by removing oldest files
-   */
-  private freeSpace(neededBytes: number): void {
-    const metas = Array.from(this.iterMeta()).sort(
-      (a, b) => a.createdAt - b.createdAt
-    )
-
-    let freedBytes = 0
-
-    for (const meta of metas) {
-      if (freedBytes >= neededBytes) {
-        break
-      }
-      if (this.delete(meta.id)) {
-        freedBytes += meta.size
-      }
+  async clear(): Promise<void> {
+    try {
+      await rm(this.config.storageDir, { recursive: true, force: true })
+    } catch {
+      /* ignore */
     }
+    this.cachedTotalSize = 0
+    this.dirReady = this.ensureStorageDir()
   }
 
-  /**
-   * Start automatic cleanup interval
-   */
-  private startCleanup(): void {
-    if (this.cleanupInterval) {
-      return
-    }
-
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup()
-    }, this.config.cleanupIntervalMs)
-
-    // Don't prevent process exit
-    if (this.cleanupInterval.unref) {
-      this.cleanupInterval.unref()
-    }
-  }
-
-  /**
-   * Stop automatic cleanup
-   */
   stopCleanup(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval)
@@ -282,28 +342,78 @@ class TempStorage {
     }
   }
 
-  /**
-   * Clear all files
-   */
-  clear(): void {
-    if (!existsSync(this.config.storageDir)) {
-      return
-    }
-    try {
-      rmSync(this.config.storageDir, { recursive: true, force: true })
-    } catch {
-      // ignore
-    }
-    this.ensureStorageDir()
+  // -----------------------------------------------------------------
+  // Internal helpers
+  // -----------------------------------------------------------------
+
+  private async ensureCapacity(incoming: number): Promise<void> {
+    let total = await this.getTotalSize()
+    if (total + incoming <= this.config.maxStorageBytes) return
+
+    // First reclaim expired entries.
+    await this.cleanup()
+    total = await this.getTotalSize()
+    if (total + incoming <= this.config.maxStorageBytes) return
+
+    // Then evict oldest until we have room.
+    await this.freeSpace(total + incoming - this.config.maxStorageBytes)
   }
 
-  // ---------- internal helpers ----------
+  private async freeSpace(neededBytes: number): Promise<void> {
+    const metas: StoredMetadata[] = []
+    for await (const meta of this.iterMeta()) metas.push(meta)
+    metas.sort((a, b) => a.createdAt - b.createdAt)
 
-  private ensureStorageDir(): void {
+    let freed = 0
+    for (const meta of metas) {
+      if (freed >= neededBytes) break
+      if (await this.delete(meta.id)) freed += meta.size
+    }
+  }
+
+  private async allocate(): Promise<{ id: string; dir: string; dataPath: string }> {
+    if (this.dirReady) await this.dirReady
+    const id = randomUUID()
+    const dir = this.getFileDir(id)
+    await mkdir(dir, { recursive: true })
+    return { id, dir, dataPath: join(dir, DATA_FILENAME) }
+  }
+
+  private async writeMetaForNew(
+    id: string,
+    dir: string,
+    fileName: string,
+    mimeType: string,
+    size: number,
+    ttlMs?: number
+  ): Promise<void> {
+    const now = Date.now()
+    const ttl = ttlMs ?? this.config.defaultTtlMs
+    const meta: StoredMetadata = {
+      id,
+      fileName,
+      mimeType,
+      size,
+      createdAt: now,
+      expiresAt: now + ttl,
+      accessCount: 0,
+    }
+    await writeFile(join(dir, META_FILENAME), JSON.stringify(meta))
+  }
+
+  private startCleanup(): void {
+    if (this.cleanupInterval) return
+    this.cleanupInterval = setInterval(() => {
+      void this.cleanup().catch(() => undefined)
+    }, this.config.cleanupIntervalMs)
+    if (this.cleanupInterval.unref) this.cleanupInterval.unref()
+  }
+
+  private async ensureStorageDir(): Promise<void> {
     try {
-      mkdirSync(this.config.storageDir, { recursive: true })
+      await mkdir(this.config.storageDir, { recursive: true })
     } catch {
-      // ignore
+      /* ignore */
     }
   }
 
@@ -311,24 +421,22 @@ class TempStorage {
     return join(this.config.storageDir, id)
   }
 
-  private readMeta(id: string): StoredMetadata | null {
+  private async readMeta(id: string): Promise<StoredMetadata | null> {
     const metaPath = join(this.getFileDir(id), META_FILENAME)
     try {
-      const raw = readFileSync(metaPath, 'utf8')
+      const raw = await readFile(metaPath, 'utf8')
       return JSON.parse(raw) as StoredMetadata
     } catch {
       return null
     }
   }
 
-  private *iterMeta(): IterableIterator<StoredMetadata> {
-    if (!existsSync(this.config.storageDir)) {
-      return
-    }
+  private async *iterMeta(): AsyncIterableIterator<StoredMetadata> {
+    if (this.dirReady) await this.dirReady
 
     let entries: string[]
     try {
-      entries = readdirSync(this.config.storageDir)
+      entries = await readdir(this.config.storageDir)
     } catch {
       return
     }
@@ -336,29 +444,30 @@ class TempStorage {
     for (const entry of entries) {
       const dir = join(this.config.storageDir, entry)
       try {
-        const stat = statSync(dir)
-        if (!stat.isDirectory()) continue
+        const st = await stat(dir)
+        if (!st.isDirectory()) continue
       } catch {
         continue
       }
-
-      const meta = this.readMeta(entry)
-      if (meta) {
-        yield meta
-      }
+      const meta = await this.readMeta(entry)
+      if (meta) yield meta
     }
   }
 
-  private getTotalSize(): number {
+  private async getTotalSize(): Promise<number> {
+    if (this.cachedTotalSize >= 0) return this.cachedTotalSize
     let total = 0
-    for (const meta of this.iterMeta()) {
-      total += meta.size
-    }
+    for await (const meta of this.iterMeta()) total += meta.size
+    this.cachedTotalSize = total
     return total
+  }
+
+  private bumpTotalSize(delta: number): void {
+    if (this.cachedTotalSize < 0) return
+    this.cachedTotalSize = Math.max(0, this.cachedTotalSize + delta)
   }
 }
 
-// Singleton instance
 let storageInstance: TempStorage | null = null
 
 export function getTempStorage(config?: Partial<StorageConfig>): TempStorage {
@@ -371,7 +480,7 @@ export function getTempStorage(config?: Partial<StorageConfig>): TempStorage {
 export function resetTempStorage(): void {
   if (storageInstance) {
     storageInstance.stopCleanup()
-    storageInstance.clear()
+    void storageInstance.clear()
     storageInstance = null
   }
 }

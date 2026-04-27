@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const targetFormat = (formData.get('format') as string) ?? 'jpeg'
     const quality = parseInt((formData.get('quality') as string) ?? '90', 10)
 
-    const validationError = validateFile(file, 'image')
+    const validationError = await validateFile(file, 'image')
     if (validationError) return validationError
 
     const arrayBuffer = await file.arrayBuffer()

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const allowModifying = formData.get('allowModifying') !== 'false'
     const allowAnnotating = formData.get('allowAnnotating') !== 'false'
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     if (!password || password.length < 4) {

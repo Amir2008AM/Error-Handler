@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const position = (formData.get('position') as string) ?? 'diagonal'
     const fontSize = parseInt((formData.get('fontSize') as string) ?? '50', 10)
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     if (!text || !text.trim()) {

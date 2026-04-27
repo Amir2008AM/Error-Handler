@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const rotation = parseInt((formData.get('rotation') as string) ?? '90', 10)
     const pagesStr = formData.get('pages') as string | null
 
-    const validationError = validateFile(file, 'pdf')
+    const validationError = await validateFile(file, 'pdf')
     if (validationError) return validationError
 
     if (![90, 180, 270].includes(rotation)) {

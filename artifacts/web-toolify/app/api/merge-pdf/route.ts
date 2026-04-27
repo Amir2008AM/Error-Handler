@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     // Validate each file
     for (const { file } of fileEntries) {
-      const err = validateFile(file, 'pdf')
+      const err = await validateFile(file, 'pdf')
       if (err) return err
     }
 

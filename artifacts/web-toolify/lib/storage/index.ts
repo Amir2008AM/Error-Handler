@@ -7,5 +7,7 @@ export {
   getTempStorage,
   resetTempStorage,
   type StoredFile,
+  type StoredFileMeta,
+  type StoredFileStream,
   type StorageConfig,
 } from './temp-storage'
