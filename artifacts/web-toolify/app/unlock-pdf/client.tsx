@@ -52,7 +52,7 @@ export function UnlockPdfClient() {
         throw new Error(error.error || 'Failed to unlock PDF')
       }
 
-      progress.stageProcessing(undefined, 'Unlocking PDF...')
+      progress.stageProcessing(undefined, ['Unlocking PDF...', 'Almost done...'])
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)

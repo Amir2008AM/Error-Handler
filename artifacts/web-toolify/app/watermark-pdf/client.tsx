@@ -64,7 +64,7 @@ export function WatermarkPdfClient() {
         throw new Error(err.error ?? 'Failed to add watermark')
       }
 
-      progress.stageProcessing(undefined, 'Adding watermark...')
+      progress.stageProcessing(undefined, ['Adding watermark...', 'Almost done...'])
 
       const blob = await res.blob()
 

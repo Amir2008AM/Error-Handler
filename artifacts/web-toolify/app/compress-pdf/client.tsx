@@ -75,7 +75,7 @@ export function CompressPdfClient() {
       }
 
       // Stage: Processing (-> 70%)
-      progress.stageProcessing(undefined, 'Compressing PDF...')
+      progress.stageProcessing(undefined, ['Analyzing PDF...', 'Compressing images...', 'Almost done...'])
 
       const originalSize = parseInt(response.headers.get('X-Original-Size') || '0')
       const compressedSize = parseInt(response.headers.get('X-Compressed-Size') || '0')

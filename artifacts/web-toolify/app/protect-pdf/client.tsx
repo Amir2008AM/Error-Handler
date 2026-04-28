@@ -61,7 +61,7 @@ export function ProtectPdfClient() {
 
       if (!response.ok) throw new Error('Protection failed')
 
-      progress.stageProcessing(undefined, 'Encrypting PDF...')
+      progress.stageProcessing(undefined, ['Encrypting PDF...', 'Almost done...'])
 
       const blob = await response.blob()
 

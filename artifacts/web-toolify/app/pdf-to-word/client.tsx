@@ -52,7 +52,7 @@ export function PdfToWordClient() {
         throw new Error(err.error ?? 'Conversion failed')
       }
 
-      progress.stageProcessing(undefined, 'Converting to Word...')
+      progress.stageProcessing(undefined, ['Extracting content...', 'Building document...', 'Almost done...'])
 
       const blob = await res.blob()
 

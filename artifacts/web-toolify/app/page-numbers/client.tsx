@@ -67,7 +67,7 @@ export function PageNumbersClient() {
 
       if (!response.ok) throw new Error('Processing failed')
 
-      progress.stageProcessing(undefined, 'Adding page numbers...')
+      progress.stageProcessing(undefined, ['Adding page numbers...', 'Almost done...'])
 
       const blob = await response.blob()
 

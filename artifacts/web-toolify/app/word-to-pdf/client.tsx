@@ -59,7 +59,7 @@ export function WordToPdfClient() {
         throw new Error(error.error || 'Conversion failed')
       }
 
-      progress.stageProcessing(undefined, 'Converting to PDF...')
+      progress.stageProcessing(undefined, ['Converting to PDF...', 'Almost done...'])
 
       const blob = await response.blob()
 

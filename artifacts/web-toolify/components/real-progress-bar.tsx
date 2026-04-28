@@ -206,6 +206,27 @@ export function useRealProgress() {
     message: '',
   })
 
+  // Tracks the fake-progress interval used during the long server-side processing
+  // stage when the backend doesn't emit incremental updates.
+  const fakeProgressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearFakeProgress = useCallback(() => {
+    if (fakeProgressIntervalRef.current) {
+      clearInterval(fakeProgressIntervalRef.current)
+      fakeProgressIntervalRef.current = null
+    }
+  }, [])
+
+  // Always clean up the interval on unmount.
+  useEffect(() => {
+    return () => {
+      if (fakeProgressIntervalRef.current) {
+        clearInterval(fakeProgressIntervalRef.current)
+        fakeProgressIntervalRef.current = null
+      }
+    }
+  }, [])
+
   const startProcessing = useCallback((message: string = 'Processing...') => {
     setState({
       status: 'processing',
@@ -223,6 +244,10 @@ export function useRealProgress() {
   }, [])
 
   const complete = useCallback((message: string = 'Completed') => {
+    if (fakeProgressIntervalRef.current) {
+      clearInterval(fakeProgressIntervalRef.current)
+      fakeProgressIntervalRef.current = null
+    }
     setState({
       status: 'completed',
       progress: 100,
@@ -231,6 +256,10 @@ export function useRealProgress() {
   }, [])
 
   const fail = useCallback((error: string) => {
+    if (fakeProgressIntervalRef.current) {
+      clearInterval(fakeProgressIntervalRef.current)
+      fakeProgressIntervalRef.current = null
+    }
     setState({
       status: 'error',
       progress: 0,
@@ -240,6 +269,10 @@ export function useRealProgress() {
   }, [])
 
   const reset = useCallback(() => {
+    if (fakeProgressIntervalRef.current) {
+      clearInterval(fakeProgressIntervalRef.current)
+      fakeProgressIntervalRef.current = null
+    }
     setState({
       status: 'idle',
       progress: 0,
@@ -269,22 +302,97 @@ export function useRealProgress() {
     }))
   }, [])
 
-  // Work happening on the server. Optional 0..100 sub-progress maps into 20..70.
-  const stageProcessing = useCallback((stagePct?: number, message: string = 'Processing...') => {
-    const span = PROGRESS_STAGES.PROCESSING_END - PROGRESS_STAGES.VALIDATION_END
-    const overall =
-      stagePct === undefined
-        ? PROGRESS_STAGES.PROCESSING_END
-        : PROGRESS_STAGES.VALIDATION_END + (Math.min(100, Math.max(0, stagePct)) / 100) * span
-    setState(prev => ({
-      status: 'processing',
-      progress: Math.max(prev.progress, overall),
-      message,
-    }))
-  }, [])
+  // Work happening on the server. Two modes:
+  //  - Real progress: pass a numeric `stagePct` (0..100) and a single message string.
+  //    The bar maps it into the 20..70 band and the message updates verbatim.
+  //  - Fake/animated progress: omit `stagePct` (or pass undefined). The bar starts a
+  //    smooth interval that creeps from the current value toward ~68% so the user
+  //    sees continuous motion during long server-side work that doesn't stream
+  //    progress events. If `message` is an array of strings, the message rotates
+  //    through them as progress advances within the 20..70 band.
+  const stageProcessing = useCallback(
+    (stagePct?: number, message: string | string[] = 'Processing...') => {
+      const span = PROGRESS_STAGES.PROCESSING_END - PROGRESS_STAGES.VALIDATION_END
+
+      // Real progress mode: cancel any running fake animation and use the value verbatim.
+      if (stagePct !== undefined) {
+        if (fakeProgressIntervalRef.current) {
+          clearInterval(fakeProgressIntervalRef.current)
+          fakeProgressIntervalRef.current = null
+        }
+        const overall =
+          PROGRESS_STAGES.VALIDATION_END +
+          (Math.min(100, Math.max(0, stagePct)) / 100) * span
+        const msg = Array.isArray(message) ? message[message.length - 1] : message
+        setState(prev => ({
+          status: 'processing',
+          progress: Math.max(prev.progress, overall),
+          message: msg,
+        }))
+        return
+      }
+
+      // Fake/animated mode: clear any prior interval and start a fresh creep.
+      if (fakeProgressIntervalRef.current) {
+        clearInterval(fakeProgressIntervalRef.current)
+        fakeProgressIntervalRef.current = null
+      }
+
+      const messages = Array.isArray(message) ? message : [message]
+      const TARGET = 68 // stay just below PROCESSING_END so stageDone has room to land
+
+      // Snap to the start of the processing band immediately and show the first message.
+      setState(prev => ({
+        status: 'processing',
+        progress: Math.max(prev.progress, PROGRESS_STAGES.VALIDATION_END),
+        message: messages[0],
+      }))
+
+      fakeProgressIntervalRef.current = setInterval(() => {
+        setState(prev => {
+          // Bail out if we're no longer processing (complete/fail/reset clears us, but be safe).
+          if (prev.status !== 'processing') {
+            if (fakeProgressIntervalRef.current) {
+              clearInterval(fakeProgressIntervalRef.current)
+              fakeProgressIntervalRef.current = null
+            }
+            return prev
+          }
+
+          // Exponential approach toward TARGET: fast at first, slowing as we get close.
+          const next = prev.progress + (TARGET - prev.progress) * 0.04
+          const clamped = Math.min(next, TARGET)
+
+          // Pick the message based on which slice of the 20..TARGET band we're in.
+          let activeMessage = prev.message
+          if (messages.length > 1) {
+            const t =
+              (clamped - PROGRESS_STAGES.VALIDATION_END) /
+              Math.max(1, TARGET - PROGRESS_STAGES.VALIDATION_END)
+            const idx = Math.min(
+              messages.length - 1,
+              Math.max(0, Math.floor(t * messages.length))
+            )
+            activeMessage = messages[idx]
+          }
+
+          return {
+            ...prev,
+            progress: clamped,
+            message: activeMessage,
+          }
+        })
+      }, 600)
+    },
+    []
+  )
 
   // Successful completion -> 100%.
   const stageDone = useCallback((message: string = 'Done') => {
+    if (fakeProgressIntervalRef.current) {
+      clearInterval(fakeProgressIntervalRef.current)
+      fakeProgressIntervalRef.current = null
+    }
     setState({
       status: 'completed',
       progress: PROGRESS_STAGES.DONE,

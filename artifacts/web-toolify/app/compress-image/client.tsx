@@ -69,7 +69,7 @@ export function CompressImageClient() {
         throw new Error(err.error ?? 'Compression failed')
       }
 
-      progress.stageProcessing(undefined, 'Compressing image...')
+      progress.stageProcessing(undefined, ['Analyzing image...', 'Compressing...', 'Almost done...'])
 
       const originalSize = parseInt(res.headers.get('X-Original-Size') ?? '0', 10)
       const compressedSize = parseInt(res.headers.get('X-Compressed-Size') ?? '0', 10)

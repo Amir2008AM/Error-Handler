@@ -95,7 +95,7 @@ export function CropImageClient() {
         throw new Error(err.error ?? 'Crop failed')
       }
 
-      progress.stageProcessing(undefined, 'Cropping image...')
+      progress.stageProcessing(undefined, ['Cropping image...', 'Almost done...'])
 
       const blob = await res.blob()
 

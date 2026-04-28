@@ -56,7 +56,7 @@ export function RotatePdfClient() {
         throw new Error(err.error ?? 'Rotation failed')
       }
 
-      progress.stageProcessing(undefined, 'Rotating pages...')
+      progress.stageProcessing(undefined, ['Rotating pages...', 'Almost done...'])
 
       const blob = await res.blob()
 

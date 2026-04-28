@@ -82,7 +82,7 @@ export function OcrImageClient() {
         throw new Error(error.error || 'OCR failed')
       }
 
-      progress.stageProcessing(undefined, 'Recognizing text...')
+      progress.stageProcessing(undefined, ['Scanning document...', 'Extracting text...', 'Almost done...'])
 
       const data = await response.json()
       setExtractedText(data.text)

@@ -44,7 +44,7 @@ export function RepairPdfClient() {
         throw new Error(error.error || 'Repair failed')
       }
 
-      progress.stageProcessing(undefined, 'Repairing document...')
+      progress.stageProcessing(undefined, ['Repairing document...', 'Almost done...'])
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)

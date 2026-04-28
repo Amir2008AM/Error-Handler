@@ -105,7 +105,7 @@ export function ResizeImageClient() {
         throw new Error(err.error ?? 'Resize failed')
       }
 
-      progress.stageProcessing(undefined, 'Resizing image...')
+      progress.stageProcessing(undefined, ['Resizing image...', 'Almost done...'])
 
       const blob = await res.blob()
       const outW = parseInt(res.headers.get('X-Output-Width') ?? w.toString(), 10)

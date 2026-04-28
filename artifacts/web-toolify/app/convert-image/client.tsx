@@ -67,7 +67,7 @@ export function ConvertImageClient() {
         throw new Error(err.error ?? 'Conversion failed')
       }
 
-      progress.stageProcessing(undefined, 'Converting format...')
+      progress.stageProcessing(undefined, ['Converting format...', 'Almost done...'])
 
       const blob = await res.blob()
 

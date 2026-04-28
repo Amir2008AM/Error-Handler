@@ -67,7 +67,7 @@ export function SplitPdfClient() {
         throw new Error(err.error ?? 'Split failed')
       }
 
-      progress.stageProcessing(undefined, 'Splitting pages...')
+      progress.stageProcessing(undefined, ['Splitting pages...', 'Creating files...', 'Almost done...'])
 
       const contentType = res.headers.get('Content-Type') ?? ''
       const blob = await res.blob()
