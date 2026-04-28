@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator } from 'lucide-react'
+import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { ToolCard } from './tool-card'
 import { tools, categories, categoryMeta, searchTools, type ToolCategory } from '@/lib/tools'
@@ -43,7 +43,7 @@ export function HomeContent() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">T</span>
+                <Zap className="w-4 h-4 text-primary-foreground" fill="currentColor" />
               </div>
               <span className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
                 Toolify
@@ -197,7 +197,7 @@ export function HomeContent() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
-                <span className="text-white font-bold text-sm">T</span>
+                <Zap className="w-3.5 h-3.5 text-primary-foreground" fill="currentColor" />
               </div>
               <span className="text-sm font-semibold text-foreground">Toolify</span>
             </div>
