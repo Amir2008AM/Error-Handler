@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import { PDFDocument } from 'pdf-lib'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { BackButton } from '@/components/back-button'
 
 interface PdfEntry {
   id: string
@@ -141,6 +142,7 @@ export function MergePdfClient() {
 
   return (
     <div className="space-y-6">
+      <BackButton />
       <UploadDropzone
         accept="application/pdf"
         multiple

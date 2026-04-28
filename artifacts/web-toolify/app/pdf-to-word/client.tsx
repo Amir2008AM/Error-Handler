@@ -5,6 +5,7 @@ import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, FileText } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -79,6 +80,7 @@ export function PdfToWordClient() {
 
   return (
     <div className="space-y-6">
+      <BackButton />
       {!file ? (
         <UploadDropzone
           accept="application/pdf"

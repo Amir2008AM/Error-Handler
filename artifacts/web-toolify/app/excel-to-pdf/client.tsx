@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, Download, Loader2, Table, Settings } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
+import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('excel-to-pdf')!
 
@@ -77,6 +78,7 @@ export function ExcelToPdfClient() {
   return (
     <ToolPageLayout tool={tool}>
       <div className="max-w-2xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

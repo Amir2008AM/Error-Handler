@@ -11,6 +11,7 @@ import { Upload, Download, Loader2, Copy, Check, ScanText } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('ocr-image')!
 
@@ -121,6 +122,7 @@ export function OcrImageClient() {
   return (
     <ToolPageLayout tool={tool}>
       <div className="max-w-3xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

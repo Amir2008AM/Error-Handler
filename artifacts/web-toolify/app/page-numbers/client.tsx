@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Upload, Download, Loader2, FileText } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 const positions = [
   { value: 'top-left', label: 'Top Left' },
@@ -93,6 +94,7 @@ export function PageNumbersClient() {
       description="Add professional page numbers to your PDF documents. Choose position, format, and starting number."
     >
       <div className="max-w-2xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

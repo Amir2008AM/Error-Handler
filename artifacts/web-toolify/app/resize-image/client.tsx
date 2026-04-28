@@ -6,6 +6,7 @@ import { Download, Loader2, CheckCircle2, RotateCcw, X, Link, Unlink } from 'luc
 import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 interface ResizeResult {
   downloadUrl: string
@@ -149,6 +150,7 @@ export function ResizeImageClient() {
 
   return (
     <div className="space-y-6">
+      <BackButton />
       {!file ? (
         <UploadDropzone
           accept="image/jpeg,image/jpg,image/png,image/webp,image/avif"

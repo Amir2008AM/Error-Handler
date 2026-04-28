@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Download, Loader2, FileText, Wrench } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 export function RepairPdfClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -69,6 +70,7 @@ export function RepairPdfClient() {
       description="Fix corrupted or damaged PDF files. Our tool attempts to recover and repair PDF documents that won't open properly."
     >
       <div className="max-w-2xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

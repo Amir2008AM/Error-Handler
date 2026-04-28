@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Calendar } from 'lucide-react'
+import { BackButton } from '@/components/back-button'
 
 interface AgeResult {
   years: number
@@ -57,6 +58,7 @@ export function AgeCalculatorClient() {
 
   return (
     <div className="space-y-5 max-w-lg">
+      <BackButton />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-semibold text-foreground block mb-1.5">Date of Birth</label>

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { RotateCcw } from 'lucide-react'
+import { BackButton } from '@/components/back-button'
 
 interface Stats {
   words: number
@@ -37,6 +38,7 @@ export function WordCounterClient() {
 
   return (
     <div className="space-y-5">
+      <BackButton />
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {statCards.map((card) => (

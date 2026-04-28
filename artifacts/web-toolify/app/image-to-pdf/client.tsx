@@ -6,6 +6,7 @@ import { X, Download, Loader2, GripVertical, CheckCircle2, RotateCcw } from 'luc
 import { cn } from '@/lib/utils'
 import { PDFDocument } from 'pdf-lib'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { BackButton } from '@/components/back-button'
 
 interface ImageEntry {
   id: string
@@ -218,6 +219,7 @@ export function ImageToPdfClient() {
 
   return (
     <div className="space-y-6">
+      <BackButton />
       <UploadDropzone
         accept="image/jpeg,image/jpg,image/png,image/webp"
         multiple

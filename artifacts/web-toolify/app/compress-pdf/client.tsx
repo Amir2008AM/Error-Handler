@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Upload, Download, Loader2, FileText, TrendingDown } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 type CompressionLevel = 'low' | 'medium' | 'high'
 
@@ -118,6 +119,7 @@ export function CompressPdfClient() {
       description="Reduce the file size of your PDF documents while maintaining quality. Perfect for email attachments and web uploads."
     >
       <div className="max-w-2xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

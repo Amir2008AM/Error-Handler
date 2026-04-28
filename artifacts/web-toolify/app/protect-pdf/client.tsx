@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Upload, Download, Loader2, FileText, Lock, Eye, EyeOff } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 export function ProtectPdfClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -88,6 +89,7 @@ export function ProtectPdfClient() {
       description="Add password protection to your PDF documents. Keep your sensitive files secure with encryption."
     >
       <div className="max-w-2xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Upload, Download, Loader2, Trash2, Copy, GripVertical, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLoadingBar } from '@/components/global-loading-bar'
+import { BackButton } from '@/components/back-button'
 
 interface PageItem {
   index: number
@@ -128,6 +129,7 @@ export function OrganizePdfClient() {
       description="Rearrange, delete, or duplicate pages in your PDF document. Drag and drop to reorder pages exactly how you want them."
     >
       <div className="max-w-4xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

@@ -6,6 +6,7 @@ import { Download, Loader2, CheckCircle2, RotateCcw, X, RotateCw } from 'lucide-
 import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -83,6 +84,7 @@ export function RotatePdfClient() {
 
   return (
     <div className="space-y-6">
+      <BackButton />
       {!file ? (
         <UploadDropzone
           accept="application/pdf"

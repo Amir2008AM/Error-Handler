@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { BackButton } from '@/components/back-button'
 
 type CalcMode = 'whatPercent' | 'percentOf' | 'increase' | 'decrease'
 
@@ -83,6 +84,7 @@ export function PercentageCalculatorClient() {
 
   return (
     <div className="space-y-5 max-w-lg">
+      <BackButton />
       {/* Mode Tabs */}
       <div>
         <label className="text-sm font-semibold text-foreground block mb-3">Calculation Type</label>

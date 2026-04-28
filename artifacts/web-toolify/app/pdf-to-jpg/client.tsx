@@ -11,6 +11,7 @@ import { Upload, Download, Loader2, FileText, Image, Info } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('pdf-to-jpg')!
 
@@ -81,6 +82,7 @@ export function PdfToJpgClient() {
   return (
     <ToolPageLayout tool={tool}>
       <div className="max-w-2xl mx-auto space-y-4">
+        <BackButton />
         <Card className="p-4 bg-muted/40 border-muted-foreground/20">
           <div className="flex gap-3">
             <Info className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />

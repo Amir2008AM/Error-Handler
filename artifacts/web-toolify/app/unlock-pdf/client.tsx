@@ -10,6 +10,7 @@ import { Download, Loader2, FileText, Unlock, Eye, EyeOff } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
+import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('unlock-pdf')!
 
@@ -79,6 +80,7 @@ export function UnlockPdfClient() {
   return (
     <ToolPageLayout tool={tool}>
       <div className="max-w-2xl mx-auto">
+        <BackButton />
         {!file ? (
           <label className="block">
             <input

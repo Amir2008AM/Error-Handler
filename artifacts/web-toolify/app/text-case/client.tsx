@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BackButton } from '@/components/back-button'
 
 const conversions = [
   {
@@ -77,6 +78,7 @@ export function TextCaseClient() {
 
   return (
     <div className="space-y-5">
+      <BackButton />
       {/* Case Buttons */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {conversions.map(({ label, description, fn }) => (

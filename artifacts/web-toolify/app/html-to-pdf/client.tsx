@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, Download, Loader2, Code, FileCode, Settings } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
+import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('html-to-pdf')!
 
@@ -90,6 +91,7 @@ export function HtmlToPdfClient() {
   return (
     <ToolPageLayout tool={tool}>
       <div className="max-w-2xl mx-auto space-y-6">
+        <BackButton />
         <Tabs value={mode} onValueChange={(v) => setMode(v as 'file' | 'paste')}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="paste">Paste HTML</TabsTrigger>
