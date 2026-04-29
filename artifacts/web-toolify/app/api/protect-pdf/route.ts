@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File
     const password = formData.get('password') as string | null
     const ownerPassword = formData.get('ownerPassword') as string | null
-    
+
     // Permission flags
     const allowPrinting = formData.get('allowPrinting') !== 'false'
     const allowCopying = formData.get('allowCopying') !== 'false'
@@ -22,13 +22,16 @@ export async function POST(request: NextRequest) {
     if (validationError) return validationError
 
     if (!password || password.length < 4) {
-      return NextResponse.json({ error: 'Password must be at least 4 characters' }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: 'Password must be at least 4 characters' },
+        { status: 400 }
+      )
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    
+
     const securityProcessor = new PDFSecurityProcessor()
-    
+
     const protectedPdf = await securityProcessor.protect(buffer, {
       userPassword: password,
       ownerPassword: ownerPassword || password + '_owner',
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return new NextResponse(protectedPdf, {
+    return new NextResponse(protectedPdf as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="protected-${file.name}"`,
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
     console.error('Protect PDF error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to protect PDF'
     return NextResponse.json(
-      { error: errorMessage },
+      { success: false, error: errorMessage },
       { status: 500 }
     )
   }

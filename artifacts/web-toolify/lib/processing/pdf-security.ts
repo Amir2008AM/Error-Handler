@@ -1,10 +1,51 @@
 /**
  * PDF Security Processor
- * Handles PDF encryption, password protection, and digital signatures
- * Uses pdf-lib for basic operations and muhammara for encryption
+ * Handles PDF encryption, password protection, and digital signatures.
+ *
+ * Encryption/decryption is performed by the qpdf binary (system dependency).
+ * Visible signatures are still drawn with pdf-lib.
  */
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { spawn } from 'node:child_process'
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+export class WrongPasswordError extends Error {
+  constructor(message = 'Incorrect password') {
+    super(message)
+    this.name = 'WrongPasswordError'
+  }
+}
+
+interface QpdfResult {
+  code: number
+  stderr: string
+}
+
+function runQpdf(args: string[]): Promise<QpdfResult> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('qpdf', args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    let stderr = ''
+    proc.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+    })
+    proc.on('error', reject)
+    proc.on('close', (code) => {
+      resolve({ code: code ?? -1, stderr })
+    })
+  })
+}
+
+async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
+  const dir = await mkdtemp(join(tmpdir(), 'qpdf-'))
+  try {
+    return await fn(dir)
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {})
+  }
+}
 
 export interface PDFPermissions {
   printing?: 'none' | 'lowResolution' | 'highResolution'
@@ -43,77 +84,140 @@ export interface SignatureOptions {
 
 export class PDFSecurityProcessor {
   /**
-   * Protect a PDF with password encryption
-   * Note: pdf-lib doesn't support encryption natively, so we use a workaround
-   * that adds metadata indicating the document should be protected.
-   * For full encryption, use muhammara or qpdf in production.
+   * Protect a PDF with real AES-256 password encryption via qpdf.
+   * Both userPassword (open) and ownerPassword (full access) are required.
    */
   async protect(
     pdfBuffer: Buffer,
     options: ProtectOptions
   ): Promise<Buffer> {
-    // Load the PDF
-    const pdfDoc = await PDFDocument.load(pdfBuffer, {
-      ignoreEncryption: true,
+    if (!options.userPassword || options.userPassword.length < 1) {
+      throw new Error('User password is required')
+    }
+    if (!options.ownerPassword || options.ownerPassword.length < 1) {
+      throw new Error('Owner password is required')
+    }
+
+    // Validate that the input really is a PDF that qpdf can read.
+    // Throws early on truncated/corrupt files instead of producing a
+    // confusing encryption error later.
+    if (pdfBuffer.length < 5 || pdfBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      throw new Error('File is not a valid PDF')
+    }
+
+    return withTempDir(async (dir) => {
+      const inPath = join(dir, 'in.pdf')
+      const outPath = join(dir, 'out.pdf')
+      const argsPath = join(dir, 'args.txt')
+
+      await writeFile(inPath, pdfBuffer)
+
+      const perms = options.permissions ?? {}
+      const printArg =
+        perms.printing === 'none'
+          ? '--print=none'
+          : perms.printing === 'lowResolution'
+          ? '--print=low'
+          : '--print=full'
+
+      // qpdf permission model: --modify controls a hierarchy of edit rights.
+      // 'all' allows everything; 'annotate' allows annotations + form fill;
+      // 'form' allows form fill only; 'assembly' allows page assembly only;
+      // 'none' disallows all modification.
+      let modifyArg = '--modify=all'
+      if (perms.modifying === false) {
+        if (perms.annotating === true) modifyArg = '--modify=annotate'
+        else if (perms.fillingForms === true) modifyArg = '--modify=form'
+        else if (perms.documentAssembly === true) modifyArg = '--modify=assembly'
+        else modifyArg = '--modify=none'
+      }
+
+      const extractArg = perms.copying === false ? '--extract=n' : '--extract=y'
+
+      // qpdf reads each line of an @argfile as one separate argument. This keeps
+      // the user/owner passwords out of the process command line (where they
+      // would otherwise be visible to `ps`) while still letting us pass the
+      // positional encrypt args.
+      const argFileLines = [
+        '--encrypt',
+        options.userPassword!,
+        options.ownerPassword,
+        '256', // AES-256
+        printArg,
+        modifyArg,
+        extractArg,
+        '--',
+        inPath,
+        outPath,
+      ]
+      await writeFile(argsPath, argFileLines.join('\n'), { mode: 0o600 })
+
+      const { code, stderr } = await runQpdf([`@${argsPath}`])
+      // qpdf exit codes: 0 = success, 3 = warnings (still produced output), 2 = error
+      if (code !== 0 && code !== 3) {
+        throw new Error(`PDF encryption failed: ${stderr.trim() || `qpdf exited with code ${code}`}`)
+      }
+
+      return await readFile(outPath)
     })
-
-    // For true PDF encryption, we'd need muhammara or similar
-    // This implementation adds a basic level of protection through
-    // metadata and structure modification
-    
-    // Set metadata to indicate protection intent
-    pdfDoc.setTitle(pdfDoc.getTitle() || 'Protected Document')
-    pdfDoc.setSubject('Password Protected PDF')
-    pdfDoc.setKeywords(['protected', 'encrypted'])
-    pdfDoc.setProducer('Toolify PDF Security')
-    pdfDoc.setCreator('Toolify')
-
-    // Add security metadata as custom property
-    const creationDate = new Date()
-    pdfDoc.setCreationDate(creationDate)
-    pdfDoc.setModificationDate(creationDate)
-
-    // Save with object streams for better compression
-    const protectedPdf = await pdfDoc.save({
-      useObjectStreams: true,
-    })
-
-    // In a production environment, you would use a library that supports
-    // PDF encryption like:
-    // - muhammara (Node.js)
-    // - qpdf (command line tool)
-    // - PDFtk (command line tool)
-    
-    // Since pdf-lib doesn't support encryption, we return the processed PDF
-    // and note that server-side encryption should be handled by external tools
-    
-    return Buffer.from(protectedPdf)
   }
 
   /**
-   * Remove password protection from a PDF
+   * Remove password protection from a PDF using qpdf.
+   * Throws WrongPasswordError if the supplied password is incorrect.
    */
   async unlock(
     pdfBuffer: Buffer,
     options: UnlockOptions
   ): Promise<Buffer> {
-    try {
-      // Try to load with the provided password
-      const pdfDoc = await PDFDocument.load(pdfBuffer, {
-        password: options.password,
-        ignoreEncryption: true,
-      } as Parameters<typeof PDFDocument.load>[1])
-
-      // Save without encryption
-      const unlockedPdf = await pdfDoc.save()
-      
-      return Buffer.from(unlockedPdf)
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('password')) {
-        throw new Error('Incorrect password. Please try again with the correct password.')
-      }
-      throw error
+    if (pdfBuffer.length < 5 || pdfBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      throw new Error('File is not a valid PDF')
     }
+
+    return withTempDir(async (dir) => {
+      const inPath = join(dir, 'in.pdf')
+      const outPath = join(dir, 'out.pdf')
+      const pwFile = join(dir, 'p.pw')
+
+      // Password file: no trailing newline. qpdf 11.x reads the entire file
+      // content as the password and does NOT strip whitespace, so we must not
+      // append one ourselves.
+      await Promise.all([
+        writeFile(inPath, pdfBuffer),
+        writeFile(pwFile, options.password ?? '', { mode: 0o600 }),
+      ])
+
+      const args = [
+        `--password-file=${pwFile}`,
+        '--decrypt',
+        inPath,
+        outPath,
+      ]
+
+      const { code, stderr } = await runQpdf(args)
+
+      if (code === 0 || code === 3) {
+        return await readFile(outPath)
+      }
+
+      // qpdf reports password problems on stderr with phrases like
+      // "invalid password" or "encrypted file requires a password".
+      const lower = stderr.toLowerCase()
+      if (
+        lower.includes('invalid password') ||
+        lower.includes('incorrect password') ||
+        lower.includes('requires a password') ||
+        lower.includes('password required')
+      ) {
+        throw new WrongPasswordError(
+          options.password
+            ? 'Incorrect password. Please try again.'
+            : 'This PDF is password-protected. Please enter the password.'
+        )
+      }
+
+      throw new Error(`PDF decryption failed: ${stderr.trim() || `qpdf exited with code ${code}`}`)
+    })
   }
 
   /**
@@ -288,7 +392,8 @@ export class PDFSecurityProcessor {
   }
 
   /**
-   * Get PDF security info
+   * Get PDF security info. Uses `qpdf --is-encrypted` for an authoritative
+   * answer, then loads with pdf-lib (ignoreEncryption) to read metadata.
    */
   async getSecurityInfo(pdfBuffer: Buffer): Promise<{
     isEncrypted: boolean
@@ -296,34 +401,34 @@ export class PDFSecurityProcessor {
     permissions: string[]
     metadata: Record<string, string | undefined>
   }> {
-    let isEncrypted = false
-    let pdfDoc: PDFDocument
-    
+    const isEncrypted = await withTempDir(async (dir) => {
+      const inPath = join(dir, 'in.pdf')
+      await writeFile(inPath, pdfBuffer)
+      const { code } = await runQpdf(['--is-encrypted', inPath])
+      // qpdf --is-encrypted: 0 = encrypted, 2 = not encrypted
+      return code === 0
+    })
+
+    let pdfDoc: PDFDocument | null = null
     try {
-      pdfDoc = await PDFDocument.load(pdfBuffer)
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('encrypted')) {
-        isEncrypted = true
-        pdfDoc = await PDFDocument.load(pdfBuffer, {
-          ignoreEncryption: true,
-        })
-      } else {
-        throw error
-      }
+      pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+    } catch {
+      // Encrypted with strong cipher pdf-lib can't even parse — that's fine,
+      // we still know it's encrypted from qpdf above.
     }
 
     const hasSignature = await this.hasSignature(pdfBuffer)
-    
+
     return {
       isEncrypted,
       hasSignature,
-      permissions: [], // Would need additional parsing for actual permissions
+      permissions: [],
       metadata: {
-        title: pdfDoc.getTitle(),
-        author: pdfDoc.getAuthor(),
-        subject: pdfDoc.getSubject(),
-        producer: pdfDoc.getProducer(),
-        creator: pdfDoc.getCreator(),
+        title: pdfDoc?.getTitle(),
+        author: pdfDoc?.getAuthor(),
+        subject: pdfDoc?.getSubject(),
+        producer: pdfDoc?.getProducer(),
+        creator: pdfDoc?.getCreator(),
       },
     }
   }

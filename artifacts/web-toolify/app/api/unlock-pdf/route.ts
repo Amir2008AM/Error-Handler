@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PDFSecurityProcessor } from '@/lib/processing/pdf-security'
+import { PDFSecurityProcessor, WrongPasswordError } from '@/lib/processing/pdf-security'
 import { validateFile } from '@/lib/validation'
 
 export const runtime = 'nodejs'
@@ -15,18 +15,19 @@ export async function POST(request: NextRequest) {
     if (validationError) return validationError
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    
+
     const securityProcessor = new PDFSecurityProcessor()
-    
-    // First check if the PDF is actually encrypted
+
+    // Check encryption status authoritatively (qpdf), so the X-Was-Encrypted
+    // header is meaningful and the user can be told the PDF wasn't encrypted
+    // to begin with.
     const securityInfo = await securityProcessor.getSecurityInfo(buffer)
-    
-    // Try to unlock with or without password
+
     const unlockedPdf = await securityProcessor.unlock(buffer, {
       password: password || '',
     })
 
-    return new NextResponse(unlockedPdf, {
+    return new NextResponse(unlockedPdf as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="unlocked-${file.name}"`,
@@ -35,18 +36,17 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Unlock PDF error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to unlock PDF'
-    
-    // Provide helpful error message for password issues
-    if (errorMessage.toLowerCase().includes('password')) {
+
+    if (error instanceof WrongPasswordError) {
       return NextResponse.json(
-        { error: 'Incorrect password. Please try again with the correct password.' },
+        { success: false, error: error.message },
         { status: 400 }
       )
     }
-    
+
+    const errorMessage = error instanceof Error ? error.message : 'Failed to unlock PDF'
     return NextResponse.json(
-      { error: errorMessage },
+      { success: false, error: errorMessage },
       { status: 500 }
     )
   }
