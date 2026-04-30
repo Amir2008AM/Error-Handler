@@ -64,15 +64,19 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
       <body className="font-sans antialiased">
-        <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+        <Script
+  src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
+  strategy="afterInteractive"
+/>
 
-  gtag('config', 'G-SVNB9EP5YP');
-</script>
+<Script id="ga" strategy="afterInteractive">
+  {`
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-SVNB9EP5YP');
+  `}
+</Script>
         <LoadingBarProvider>
           {children}
         </LoadingBarProvider>
