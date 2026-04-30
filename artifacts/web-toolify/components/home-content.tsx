@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { ToolCard } from './tool-card'
+import { AdBanner } from './ad-banner'
 import { tools, categories, categoryMeta, searchTools, type ToolCategory } from '@/lib/tools'
 import { cn } from '@/lib/utils'
 
@@ -184,11 +185,9 @@ export function HomeContent() {
         )}
       </section>
 
-      {/* Ad Placeholder */}
+      {/* AdSense */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
-        <div className="bg-muted/50 border border-dashed border-border rounded-xl h-24 flex items-center justify-center text-sm text-muted-foreground">
-          Advertisement Space
-        </div>
+        <AdBanner slot="6978025975" format="horizontal" />
       </section>
 
       {/* Footer */}

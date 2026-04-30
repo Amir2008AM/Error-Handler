@@ -9,6 +9,7 @@ import {
   FileArchive, Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AdBanner } from './ad-banner'
 import { ToolCard } from './tool-card'
 import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
@@ -102,17 +103,11 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
 
       {/* Tool Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {/* AdSense placeholder - top */}
-        <div className="mb-6 bg-muted/40 border border-dashed border-border rounded-lg h-24 flex items-center justify-center text-xs text-muted-foreground">
-          Advertisement
-        </div>
+        <AdBanner slot="6978025975" format="horizontal" className="mb-6" />
 
         {children}
 
-        {/* AdSense placeholder - bottom */}
-        <div className="mt-8 bg-muted/40 border border-dashed border-border rounded-lg h-24 flex items-center justify-center text-xs text-muted-foreground">
-          Advertisement
-        </div>
+        <AdBanner slot="6978025975" format="horizontal" className="mt-8" />
 
         {/* Related Tools */}
         {relatedTools.length > 0 && (

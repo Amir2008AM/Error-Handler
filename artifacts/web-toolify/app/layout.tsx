@@ -63,20 +63,27 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
+      <head>
+        {/* Google AdSense — plain <script> required; next/script adds data-nscript which AdSense rejects */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="font-sans antialiased">
         <Script
-  src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
-  strategy="afterInteractive"
-/>
-
-<Script id="ga" strategy="afterInteractive">
-  {`
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-SVNB9EP5YP');
-  `}
-</Script>
+          src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
+          strategy="afterInteractive"
+        />
+        <Script id="ga" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-SVNB9EP5YP');
+          `}
+        </Script>
         <LoadingBarProvider>
           {children}
         </LoadingBarProvider>
