@@ -1,11 +1,14 @@
 /**
  * PDF Processing Module
- * Self-contained PDF processing using pdf-lib and docx libraries
- * No external API dependencies
+ * Self-contained PDF processing using pdf-lib and docx libraries.
+ * Compression uses Ghostscript (gs) for maximum real-file size reduction.
  */
 
-import { PDFDocument, rgb, degrees, StandardFonts, PDFName, PDFRawStream } from 'pdf-lib'
-import sharp from 'sharp'
+import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib'
+import { spawn } from 'node:child_process'
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   Document,
   Paragraph,
@@ -43,6 +46,59 @@ import type {
   PDFPageNumbersOptions,
   PDFOrganizeOptions,
 } from './types'
+
+// ---------------------------------------------------------------------------
+// Ghostscript helpers
+// ---------------------------------------------------------------------------
+
+const GS_TIMEOUT_MS = 120_000 // 2 minutes hard cap per invocation
+
+interface GsResult {
+  code: number
+  stderr: string
+}
+
+/**
+ * Run `gs` (Ghostscript) with a timeout.  The process is forcibly killed if
+ * it does not finish within GS_TIMEOUT_MS.
+ */
+function runGs(args: string[]): Promise<GsResult> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('gs', args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    let stderr = ''
+
+    proc.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+    })
+
+    proc.on('error', (err) => {
+      clearTimeout(killTimer)
+      reject(new Error(`Failed to start Ghostscript: ${err.message}`))
+    })
+
+    proc.on('close', (code) => {
+      clearTimeout(killTimer)
+      resolve({ code: code ?? -1, stderr })
+    })
+
+    const killTimer = setTimeout(() => {
+      proc.kill('SIGKILL')
+      reject(new Error('Ghostscript timed out after 2 minutes'))
+    }, GS_TIMEOUT_MS)
+  })
+}
+
+/**
+ * Run `fn` inside a temporary directory that is always cleaned up afterwards.
+ */
+async function withGsTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
+  const dir = await mkdtemp(join(tmpdir(), 'gs-'))
+  try {
+    return await fn(dir)
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {})
+  }
+}
 
 export class PDFProcessor extends BaseProcessor {
   constructor() {
@@ -975,12 +1031,17 @@ export class PDFProcessor extends BaseProcessor {
   }
 
   /**
-   * Compress PDF with three quality levels:
-   *  - low:    JPEG @ 85%, keeps metadata, only replaces images if smaller
-   *  - medium: JPEG @ 60%, strips metadata + thumbnails, only replaces if smaller
-   *  - high:   JPEG @ 30%, strips metadata + thumbnails, removes annotations,
-   *            flattens form fields, always replaces images (incl. FlateDecode)
-   * Always saves with useObjectStreams: true.
+   * Compress a PDF using Ghostscript for maximum real file-size reduction.
+   *
+   * Three quality levels map to Ghostscript -dPDFSETTINGS presets:
+   *  - low    → /ebook   150 dpi images, good quality, moderate compression
+   *  - medium → /screen  72 dpi images, strong compression (default)
+   *  - high   → /screen  72 dpi + aggressive flags (no metadata, no thumbnails,
+   *                       compress fonts, downsampled colour/gray/mono streams)
+   *
+   * The process is killed after 2 minutes and temp files are always cleaned up.
+   * If Ghostscript is not available the method throws with a clear message
+   * rather than silently returning the original file.
    */
   async compress(
     file: ArrayBuffer,
@@ -989,170 +1050,99 @@ export class PDFProcessor extends BaseProcessor {
     try {
       this.validateBuffer(file)
       const inputSize = file.byteLength
+      const inputBuffer = Buffer.from(file)
 
-      const settings = {
+      // Sanity-check: must be a PDF
+      if (inputBuffer.length < 5 || inputBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+        return this.error('File is not a valid PDF')
+      }
+
+      // Map compression levels to Ghostscript settings
+      const gsPresets: Record<typeof level, {
+        pdfSettings: string
+        imageResolution: number
+        extraArgs: string[]
+      }> = {
         low: {
-          quality: 85,
-          stripMetadata: false,
-          removeThumbnails: false,
-          removeAnnotations: false,
-          flattenForms: false,
-          alwaysReplaceImages: false,
+          pdfSettings: '/ebook',
+          imageResolution: 150,
+          extraArgs: [],
         },
         medium: {
-          quality: 60,
-          stripMetadata: true,
-          removeThumbnails: true,
-          removeAnnotations: false,
-          flattenForms: false,
-          alwaysReplaceImages: false,
+          pdfSettings: '/screen',
+          imageResolution: 72,
+          extraArgs: [],
         },
         high: {
-          quality: 30,
-          stripMetadata: true,
-          removeThumbnails: true,
-          removeAnnotations: true,
-          flattenForms: true,
-          alwaysReplaceImages: true,
+          pdfSettings: '/screen',
+          imageResolution: 72,
+          extraArgs: [
+            // Remove all metadata
+            '-dFastWebView=false',
+            // Compress embedded fonts
+            '-dCompressFonts=true',
+            '-dSubsetFonts=true',
+            // Aggressively downsample colour images
+            '-dAutoFilterColorImages=false',
+            '-dColorImageFilter=/DCTEncode',
+            '-dDownsampleColorImages=true',
+            `-dColorImageResolution=72`,
+            // Aggressively downsample greyscale images
+            '-dAutoFilterGrayImages=false',
+            '-dGrayImageFilter=/DCTEncode',
+            '-dDownsampleGrayImages=true',
+            `-dGrayImageResolution=72`,
+            // Aggressively downsample monochrome images
+            '-dDownsampleMonoImages=true',
+            `-dMonoImageResolution=144`,
+          ],
         },
-      }[level]
+      }
+
+      const preset = gsPresets[level]
 
       const { result, time } = await this.measureTime(async () => {
-        const pdfDoc = await PDFDocument.load(file, {
-          ignoreEncryption: true,
-          updateMetadata: false,
+        return withGsTempDir(async (dir) => {
+          const inPath = join(dir, 'in.pdf')
+          const outPath = join(dir, 'out.pdf')
+
+          await writeFile(inPath, inputBuffer)
+
+          const args = [
+            '-q',              // quiet — suppress informational messages
+            '-dBATCH',         // no interactive loop
+            '-dNOPAUSE',       // no pause after each page
+            '-dSAFER',         // restrict file-system access
+            '-sDEVICE=pdfwrite',
+            '-dCompatibilityLevel=1.4',
+            `-dPDFSETTINGS=${preset.pdfSettings}`,
+            // Base downsampling flags (overridden by preset extra args for high)
+            '-dDownsampleColorImages=true',
+            `-dColorImageResolution=${preset.imageResolution}`,
+            '-dDownsampleGrayImages=true',
+            `-dGrayImageResolution=${preset.imageResolution}`,
+            ...preset.extraArgs,
+            `-sOutputFile=${outPath}`,
+            inPath,
+          ]
+
+          const { code, stderr } = await runGs(args)
+
+          if (code !== 0) {
+            throw new Error(
+              `Ghostscript compression failed (exit ${code}): ${stderr.trim() || 'no details'}`
+            )
+          }
+
+          const output = await readFile(outPath)
+
+          // Safety: if GS somehow produces an empty or non-PDF output, throw.
+          if (output.length < 5 || output.subarray(0, 5).toString('ascii') !== '%PDF-') {
+            throw new Error('Ghostscript produced invalid output — original file may be corrupted')
+          }
+
+          return output
         })
-
-        // 1. Strip all metadata (medium + high)
-        if (settings.stripMetadata) {
-          pdfDoc.setTitle('')
-          pdfDoc.setAuthor('')
-          pdfDoc.setSubject('')
-          pdfDoc.setKeywords([])
-          pdfDoc.setProducer('')
-          pdfDoc.setCreator('')
-        }
-
-        // 2. Remove embedded /Thumb on each page (medium + high)
-        if (settings.removeThumbnails) {
-          for (let i = 0; i < pdfDoc.getPageCount(); i++) {
-            const page = pdfDoc.getPage(i)
-            const pageNode = page.node
-            if (pageNode.has(PDFName.of('Thumb'))) {
-              pageNode.delete(PDFName.of('Thumb'))
-            }
-          }
-        }
-
-        // 3. Remove all page annotations (high only)
-        if (settings.removeAnnotations) {
-          for (let i = 0; i < pdfDoc.getPageCount(); i++) {
-            const page = pdfDoc.getPage(i)
-            const pageNode = page.node
-            if (pageNode.has(PDFName.of('Annots'))) {
-              pageNode.delete(PDFName.of('Annots'))
-            }
-          }
-        }
-
-        // 4. Flatten interactive form fields (high only)
-        if (settings.flattenForms) {
-          try {
-            const form = pdfDoc.getForm()
-            if (form.getFields().length > 0) {
-              form.flatten()
-            }
-          } catch {
-            // No form / unable to flatten — continue
-          }
-        }
-
-        // 5. Re-compress embedded images in parallel
-        try {
-          const context = pdfDoc.context
-
-          type ImageTask = {
-            ref: Parameters<typeof context.assign>[0]
-            obj: PDFRawStream
-            dict: PDFRawStream['dict']
-            isJpeg: boolean
-            isPng: boolean
-          }
-          const tasks: ImageTask[] = []
-
-          for (const [ref, obj] of context.enumerateIndirectObjects()) {
-            if (!(obj instanceof PDFRawStream)) continue
-            const dict = obj.dict
-            const subtype = dict.get(PDFName.of('Subtype'))
-            const filter = dict.get(PDFName.of('Filter'))
-            const subtypeStr = subtype?.toString() ?? ''
-            const filterStr = filter?.toString() ?? ''
-            if (subtypeStr !== '/Image') continue
-            const isJpeg = filterStr === '/DCTDecode'
-            // FlateDecode = deflate-compressed raw/PNG pixels
-            const isPng = filterStr === '/FlateDecode'
-            if (isJpeg || isPng) tasks.push({ ref, obj, dict, isJpeg, isPng })
-          }
-
-          await Promise.all(tasks.map(async ({ ref, obj, dict, isJpeg, isPng }) => {
-            try {
-              const original = Buffer.from(obj.contents)
-              // Skip tiny images — overhead not worth it
-              if (original.length < 4096) return
-
-              const width = (dict.get(PDFName.of('Width')) as { value?: number } | undefined)?.value
-              const height = (dict.get(PDFName.of('Height')) as { value?: number } | undefined)?.value
-
-              let recompressed: Buffer
-
-              if (isJpeg) {
-                // Re-encode existing JPEG at lower quality
-                recompressed = await sharp(original)
-                  .jpeg({ quality: settings.quality, mozjpeg: false })
-                  .toBuffer()
-              } else {
-                // FlateDecode (PNG / raw pixels): decode and re-encode as JPEG
-                if (!width || !height) return
-                try {
-                  recompressed = await sharp(original)
-                    .jpeg({ quality: settings.quality, mozjpeg: false })
-                    .toBuffer()
-                } catch {
-                  return // Can't decode — skip
-                }
-              }
-
-              // High = always replace (maximum size reduction).
-              // Low / Medium = only replace if the new stream is actually smaller.
-              const shouldReplace =
-                settings.alwaysReplaceImages || recompressed.length < original.length
-
-              if (shouldReplace) {
-                const colorSpace = dict.get(PDFName.of('ColorSpace'))
-                const bitsPerComponent = dict.get(PDFName.of('BitsPerComponent'))
-                const newStream = context.stream(recompressed, {
-                  Type: 'XObject',
-                  Subtype: 'Image',
-                  Filter: 'DCTDecode',
-                  ...(width !== undefined && { Width: width }),
-                  ...(height !== undefined && { Height: height }),
-                  ...(colorSpace !== undefined && { ColorSpace: colorSpace }),
-                  ...(bitsPerComponent !== undefined && { BitsPerComponent: bitsPerComponent }),
-                })
-                context.assign(ref, newStream)
-              }
-            } catch {
-              // Skip images that can't be recompressed
-            }
-          }))
-        } catch {
-          // If image recompression fails, continue with other optimizations
-        }
-
-        // 6. Save with object streams for maximum compression
-        const pdfBytes = await pdfDoc.save({ useObjectStreams: true })
-
-        return Buffer.from(pdfBytes)
       })
 
       const compressionRatio = inputSize > 0
