@@ -247,7 +247,9 @@ async function processImageToPdf(job: Job) {
     processor.imagesToPdf({
       images,
       pageSize: (job.options.pageSize as 'auto' | 'a4' | 'letter') || 'a4',
-      margin: (job.options.margin as number) || 20,
+      margin:     (job.options.margin      as number) ?? 20,
+      quality:    (job.options.imageQuality as number) ?? 78,
+      maxWidthPx: (job.options.maxWidthPx  as number) ?? 1_600,
     }),
     TIMEOUTS.pdfHeavy,
     'pdf.imagesToPdf'

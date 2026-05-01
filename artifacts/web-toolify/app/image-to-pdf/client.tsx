@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { X, Download, Loader2, GripVertical, CheckCircle2, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PDFDocument } from 'pdf-lib'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { BackButton } from '@/components/back-button'
 
@@ -17,16 +16,56 @@ interface ImageEntry {
 
 let idCounter = 0
 
-async function loadImageAsArrayBuffer(file: File): Promise<ArrayBuffer> {
-  return await file.arrayBuffer()
+// How often to poll the job status endpoint (ms)
+const POLL_INTERVAL_MS = 600
+// Maximum time to wait for the server to finish (ms)
+const POLL_TIMEOUT_MS  = 5 * 60 * 1000
+
+/** Poll /api/jobs/{id} until status is completed or failed. */
+async function pollJobUntilDone(
+  jobId: string,
+  onProgress: (pct: number) => void,
+): Promise<string> {
+  const deadline = Date.now() + POLL_TIMEOUT_MS
+  const pollUrl  = `/api/jobs/${jobId}`
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+
+    const res = await fetch(pollUrl)
+    if (!res.ok) throw new Error(`Status check failed (${res.status})`)
+
+    const data = await res.json() as {
+      status:   string
+      progress: number
+      result?:  { downloadUrl: string }
+      error?:   string
+    }
+
+    if (data.status === 'completed' && data.result?.downloadUrl) {
+      onProgress(100)
+      return data.result.downloadUrl
+    }
+
+    if (data.status === 'failed') {
+      throw new Error(data.error || 'PDF generation failed on the server')
+    }
+
+    // Forward server-reported progress (10 → 90 range) to the progress bar
+    if (typeof data.progress === 'number') {
+      onProgress(Math.min(data.progress, 95))
+    }
+  }
+
+  throw new Error('PDF generation timed out — please try with fewer images or try again.')
 }
 
 export function ImageToPdfClient() {
-  const [images, setImages] = useState<ImageEntry[]>([])
+  const [images,      setImages]      = useState<ImageEntry[]>([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [dragOver, setDragOver] = useState<string | null>(null)
-  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [error,       setError]       = useState<string | null>(null)
+  const [dragOver,    setDragOver]    = useState<string | null>(null)
+  const [draggedId,   setDraggedId]   = useState<string | null>(null)
   const progress = useRealProgress()
 
   const handleFilesSelected = useCallback((files: File[]) => {
@@ -34,77 +73,57 @@ export function ImageToPdfClient() {
     setError(null)
     progress.reset()
     const newEntries: ImageEntry[] = files.map((file) => ({
-      id: `img-${++idCounter}`,
+      id:      `img-${++idCounter}`,
       file,
       preview: URL.createObjectURL(file),
-      order: null,
+      order:   null,
     }))
     setImages((prev) => [...prev, ...newEntries])
   }, [progress])
 
   const removeImage = (id: string) => {
-    setImages((prev) => {
-      const filtered = prev.filter((img) => img.id !== id)
-      return reorderImages(filtered)
-    })
+    setImages((prev) => reorderImages(prev.filter((img) => img.id !== id)))
     setDownloadUrl(null)
   }
 
   const reorderImages = (imgs: ImageEntry[]): ImageEntry[] => {
-    const orderedImgs = imgs
-      .filter((i) => i.order !== null)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     let counter = 1
-    return imgs.map((img) => {
-      if (img.order !== null) {
-        return { ...img, order: counter++ }
-      }
-      return img
-    })
+    return imgs.map((img) =>
+      img.order !== null ? { ...img, order: counter++ } : img,
+    )
   }
 
   const toggleOrder = (id: string) => {
     setImages((prev) => {
       const img = prev.find((i) => i.id === id)
       if (!img) return prev
-
       if (img.order !== null) {
         return reorderImages(prev.map((i) => (i.id === id ? { ...i, order: null } : i)))
-      } else {
-        const maxOrder = Math.max(0, ...prev.filter((i) => i.order !== null).map((i) => i.order ?? 0))
-        return prev.map((i) => (i.id === id ? { ...i, order: maxOrder + 1 } : i))
       }
+      const maxOrder = Math.max(0, ...prev.filter((i) => i.order !== null).map((i) => i.order ?? 0))
+      return prev.map((i) => (i.id === id ? { ...i, order: maxOrder + 1 } : i))
     })
     setDownloadUrl(null)
   }
 
   const handleDragStart = (id: string) => setDraggedId(id)
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault()
-    setDragOver(id)
-  }
+  const handleDragOver  = (e: React.DragEvent, id: string) => { e.preventDefault(); setDragOver(id) }
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
     if (!draggedId || draggedId === targetId) return
-
     setImages((prev) => {
-      const arr = [...prev]
+      const arr     = [...prev]
       const fromIdx = arr.findIndex((i) => i.id === draggedId)
-      const toIdx = arr.findIndex((i) => i.id === targetId)
+      const toIdx   = arr.findIndex((i) => i.id === targetId)
       const [moved] = arr.splice(fromIdx, 1)
       arr.splice(toIdx, 0, moved)
       return arr
     })
-
     setDraggedId(null)
     setDragOver(null)
   }
 
-  const selectAll = () => {
-    setImages((prev) =>
-      prev.map((img, idx) => ({ ...img, order: idx + 1 }))
-    )
-  }
+  const selectAll = () => setImages((prev) => prev.map((img, idx) => ({ ...img, order: idx + 1 })))
 
   const clearAll = () => {
     images.forEach((img) => URL.revokeObjectURL(img.preview))
@@ -114,6 +133,19 @@ export function ImageToPdfClient() {
     progress.reset()
   }
 
+  /**
+   * Upload selected images to the server and let Sharp preprocess them
+   * before embedding into a PDF.
+   *
+   * Why server-side instead of client-side pdf-lib?
+   *   Browser pdf-lib embeds images raw — a 6 MB PNG stays 6 MB in the PDF.
+   *   The server runs Sharp which:
+   *     1. Resizes images to ≤ 1600 px (no reason to embed 4K pixels on A4)
+   *     2. Re-encodes as JPEG at quality 78 (PNG → JPEG is often 20–50× smaller)
+   *     3. Auto-corrects EXIF rotation (phone photos)
+   *     4. Strips all metadata
+   *   Result: 50 images that would produce a ~100 MB PDF now produce ~3 MB.
+   */
   const handleConvert = async () => {
     const selectedImages = images
       .filter((i) => i.order !== null)
@@ -126,96 +158,74 @@ export function ImageToPdfClient() {
 
     setError(null)
     setDownloadUrl(null)
-    progress.startProcessing('Reading images...')
+    progress.startProcessing('Uploading images…')
 
     try {
-      // Stage: Upload (-> 10%) — local file read for client-side processing
-      progress.stageUpload(100, 'Reading images...')
+      // ── Stage 1: upload ──────────────────────────────────────────────────
+      progress.stageUpload(30, `Uploading ${selectedImages.length} image${selectedImages.length !== 1 ? 's' : ''}…`)
 
-      // Stage: Validation (-> 20%)
-      progress.stageValidation('Validating images...')
-      const pdfDoc = await PDFDocument.create()
-      const totalImages = selectedImages.length
+      const formData = new FormData()
+      formData.append('type', 'image-to-pdf')
+      formData.append('options', JSON.stringify({
+        pageSize:     'a4',
+        margin:       20,
+        imageQuality: 78,   // JPEG quality 1-100 (separate from PDF quality 'low'|'medium'|'high')
+        maxWidthPx:   1600, // max image dimension before resize
+      }))
 
-      // Stage: Processing (-> 70%) — sub-progress driven by image index
-      for (let i = 0; i < totalImages; i++) {
-        const { file } = selectedImages[i]
-        const stagePct = (i / totalImages) * 100
-        progress.stageProcessing(stagePct, `Processing image ${i + 1} of ${totalImages}...`)
+      // File order must match the user-assigned page order
+      selectedImages.forEach((img, idx) => {
+        formData.append(`file${idx}`, img.file, img.file.name)
+      })
 
-        const arrayBuffer = await loadImageAsArrayBuffer(file)
-        const uint8Array = new Uint8Array(arrayBuffer)
-        
-        let image
-        if (file.type === 'image/png') {
-          image = await pdfDoc.embedPng(uint8Array)
-        } else {
-          if (file.type === 'image/webp') {
-            const blob = new Blob([arrayBuffer], { type: 'image/webp' })
-            const bitmap = await createImageBitmap(blob)
-            const canvas = document.createElement('canvas')
-            canvas.width = bitmap.width
-            canvas.height = bitmap.height
-            const ctx = canvas.getContext('2d')!
-            ctx.drawImage(bitmap, 0, 0)
-            const jpegBlob = await new Promise<Blob>((resolve) => 
-              canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.95)
-            )
-            const jpegBuffer = await jpegBlob.arrayBuffer()
-            image = await pdfDoc.embedJpg(new Uint8Array(jpegBuffer))
-          } else {
-            image = await pdfDoc.embedJpg(uint8Array)
-          }
-        }
+      progress.stageUpload(80, 'Sending to server…')
 
-        const imgWidth = image.width
-        const imgHeight = image.height
-        
-        const A4_WIDTH = 595.28
-        const A4_HEIGHT = 841.89
-        
-        const isLandscape = imgWidth > imgHeight
-        const pageWidth = isLandscape ? A4_HEIGHT : A4_WIDTH
-        const pageHeight = isLandscape ? A4_WIDTH : A4_HEIGHT
-        
-        const margin = 40
-        const availableWidth = pageWidth - (margin * 2)
-        const availableHeight = pageHeight - (margin * 2)
-        
-        const scale = Math.min(availableWidth / imgWidth, availableHeight / imgHeight)
-        const scaledWidth = imgWidth * scale
-        const scaledHeight = imgHeight * scale
-        
-        const x = (pageWidth - scaledWidth) / 2
-        const y = (pageHeight - scaledHeight) / 2
-        
-        const page = pdfDoc.addPage([pageWidth, pageHeight])
-        page.drawImage(image, {
-          x,
-          y,
-          width: scaledWidth,
-          height: scaledHeight,
+      const createResp = await fetch('/api/jobs/create', {
+        method: 'POST',
+        body:   formData,
+      })
+
+      if (!createResp.ok) {
+        const errData = await createResp.json().catch(() => ({})) as { error?: string }
+        throw new Error(errData.error || `Upload failed (${createResp.status})`)
+      }
+
+      const createData = await createResp.json() as {
+        id:      string
+        status:  string
+        result?: { downloadUrl: string }
+        error?:  string
+      }
+
+      // ── Stage 2: wait for processing ────────────────────────────────────
+      progress.stageValidation('Optimizing images…')
+
+      let downloadPath: string
+
+      if (createData.status === 'completed' && createData.result?.downloadUrl) {
+        // Processed synchronously (processNow=true path, if ever used)
+        downloadPath = createData.result.downloadUrl
+      } else if (createData.status === 'failed') {
+        throw new Error(createData.error || 'PDF generation failed')
+      } else {
+        // Processing happens asynchronously — poll until done
+        downloadPath = await pollJobUntilDone(createData.id, (pct) => {
+          progress.stageProcessing(pct, `Generating PDF… ${pct < 90 ? `${pct}%` : 'finishing…'}`)
         })
       }
 
-      progress.stageProcessing(100, 'Saving PDF...')
-
-      const pdfBytes = await pdfDoc.save()
-
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-      setDownloadUrl(URL.createObjectURL(blob))
-
-      // Stage: Done (-> 100%)
-      progress.stageDone('PDF generated!')
-    } catch (err: any) {
-      const message = err.message ?? 'Something went wrong during conversion'
+      // ── Stage 3: done ────────────────────────────────────────────────────
+      setDownloadUrl(downloadPath)
+      progress.stageDone('PDF generated successfully!')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong during conversion'
       setError(message)
       progress.fail(message)
     }
   }
 
   const selectedCount = images.filter((i) => i.order !== null).length
-  const isProcessing = progress.status === 'processing'
+  const isProcessing  = progress.status === 'processing'
 
   return (
     <div className="space-y-6">
@@ -238,9 +248,7 @@ export function ImageToPdfClient() {
               <p className="text-sm font-medium text-foreground">
                 {images.length} image{images.length !== 1 ? 's' : ''} added
               </p>
-              <span className="text-xs text-muted-foreground">
-                — click to assign page order
-              </span>
+              <span className="text-xs text-muted-foreground">— click to assign page order</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -262,7 +270,9 @@ export function ImageToPdfClient() {
           </div>
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-primary">
-            <strong>How it works:</strong> Click any image to assign it a page number (1, 2, 3...). Click again to remove it from the selection. Drag to reorder. Only selected images will be included in the PDF.
+            <strong>How it works:</strong> Click any image to assign it a page number (1, 2, 3…).
+            Click again to remove it from the selection. Drag to reorder. Only selected images
+            will be included in the PDF.
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -279,9 +289,9 @@ export function ImageToPdfClient() {
                   img.order !== null
                     ? 'border-primary shadow-md ring-2 ring-primary/20'
                     : 'border-border hover:border-primary/40',
-                  dragOver === img.id && 'border-primary scale-105',
+                  dragOver  === img.id && 'border-primary scale-105',
                   draggedId === img.id && 'opacity-50',
-                  isProcessing && 'pointer-events-none opacity-60'
+                  isProcessing && 'pointer-events-none opacity-60',
                 )}
                 onClick={() => !isProcessing && toggleOrder(img.id)}
               >
@@ -318,7 +328,9 @@ export function ImageToPdfClient() {
 
                 {img.order === null && (
                   <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-white text-xs font-semibold bg-black/60 px-2 py-1 rounded-lg">Click to add</span>
+                    <span className="text-white text-xs font-semibold bg-black/60 px-2 py-1 rounded-lg">
+                      Click to add
+                    </span>
                   </div>
                 )}
               </div>
@@ -353,7 +365,7 @@ export function ImageToPdfClient() {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Generating PDF...
+                  Generating PDF…
                 </>
               ) : (
                 <>
@@ -373,7 +385,6 @@ export function ImageToPdfClient() {
             </button>
           </div>
 
-          {/* Real Progress Bar */}
           <RealProgressBar
             status={progress.status}
             progress={progress.progress}
@@ -395,7 +406,9 @@ export function ImageToPdfClient() {
             </div>
             <div>
               <p className="font-semibold text-green-900">PDF generated successfully!</p>
-              <p className="text-sm text-green-700">{selectedCount} page{selectedCount !== 1 ? 's' : ''}</p>
+              <p className="text-sm text-green-700">
+                {selectedCount} page{selectedCount !== 1 ? 's' : ''} · images optimized with Sharp
+              </p>
             </div>
           </div>
           <a

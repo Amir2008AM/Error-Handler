@@ -5,6 +5,7 @@
  */
 
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib'
+import sharp from 'sharp'
 import { spawn } from 'node:child_process'
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -377,7 +378,69 @@ export class PDFProcessor extends BaseProcessor {
   }
 
   /**
-   * Convert images to PDF
+   * Preprocess a raw image buffer before embedding in a PDF.
+   *
+   * Why this matters:
+   *   Embedding images as-is inflates PDF size by 10–50×:
+   *   - PNGs are lossless and enormous (often 5–15 MB each).
+   *   - High-res JPEGs from cameras are 3000–6000 px wide.
+   *   - Any alpha channel forces pdf-lib to embed as PNG (no alpha in JPEG).
+   *   - EXIF orientation is ignored by pdf-lib, causing rotated images.
+   *
+   * This pipeline:
+   *   1. Auto-rotates from EXIF orientation (phone photos are often sideways).
+   *   2. Downscales to ≤ maxPx on either axis — never upscales small images.
+   *   3. Flattens any alpha channel to white (JPEG is opaque-only).
+   *   4. Re-encodes as JPEG at jpegQuality — eliminates PNG inflation.
+   *   5. Strips EXIF/metadata from the output (extra bytes, privacy risk).
+   *
+   * Result: a 4000 × 3000 px PNG (~8 MB) becomes a 1600 × 1200 JPEG (~120 KB)
+   * before it ever touches pdf-lib — ~67× smaller per image.
+   */
+  private async preprocessImageForPdf(
+    raw: Buffer,
+    maxPx: number,
+    jpegQuality: number,
+  ): Promise<{ buffer: Buffer; width: number; height: number }> {
+    const { data, info } = await sharp(raw, {
+      failOn: 'error',
+      limitInputPixels: 24_000 * 24_000,
+      sequentialRead: true,
+    })
+      // Honor EXIF rotation (critical for phone photos shot in portrait/landscape)
+      .rotate()
+      // Downscale to fit within maxPx × maxPx box; never upscale
+      .resize({
+        width: maxPx,
+        height: maxPx,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      // Composite any transparent pixels onto a white background.
+      // pdf-lib's embedJpg() cannot handle alpha — omitting this causes errors.
+      .flatten({ background: { r: 255, g: 255, b: 255 } })
+      // Encode as JPEG. trellisQuantisation reduces artifacts at low qualities.
+      // Metadata (EXIF) is stripped by default on encode.
+      .jpeg({ quality: jpegQuality, mozjpeg: false, trellisQuantisation: true })
+      .toBuffer({ resolveWithObject: true })
+
+    return { buffer: data, width: info.width, height: info.height }
+  }
+
+  /**
+   * Convert images to PDF.
+   *
+   * Every image is preprocessed with Sharp before embedding:
+   *   - Resized to ≤ 1600 px (configurable via maxWidthPx)
+   *   - Re-encoded as JPEG at quality 78 (configurable via quality)
+   *   - Alpha flattened, EXIF stripped, orientation corrected
+   *
+   * For A4/Letter page sizes the page is auto-oriented (landscape when the
+   * image is wider than tall) and the image is centered with equal margins.
+   * For 'auto' the page is sized exactly to the preprocessed image dimensions.
+   *
+   * Images are preprocessed concurrently (max 4 in parallel) to saturate
+   * Sharp's libuv thread pool without OOM-ing on large batches.
    */
   async imagesToPdf(options: ImageToPDFOptions): Promise<ProcessingResult<Buffer>> {
     try {
@@ -386,71 +449,64 @@ export class PDFProcessor extends BaseProcessor {
       }
 
       const { result, time } = await this.measureTime(async () => {
+        const margin      = options.margin    ?? 20
+        const jpegQuality = options.quality   ?? 78
+        const maxPx       = options.maxWidthPx ?? 1_600
+
+        // ── Step 1: preprocess all images concurrently ──────────────────────
+        // Bounded concurrency prevents OOM on large batches (50–200 images).
+        // Each image is fully decoded, resized, re-encoded, then released
+        // before the next wave starts — peak memory stays predictable.
+        const preprocessed = await mapWithConcurrency(
+          options.images,
+          4,
+          async (imgBuf) => {
+            this.validateBuffer(imgBuf, 'image')
+            return this.preprocessImageForPdf(this.toBuffer(imgBuf), maxPx, jpegQuality)
+          },
+        )
+
+        // ── Step 2: assemble PDF ─────────────────────────────────────────────
         const pdfDoc = await PDFDocument.create()
-        const margin = options.margin ?? 0
-        const quality = options.quality ?? 0.9
 
-        for (const imageBuffer of options.images) {
-          this.validateBuffer(imageBuffer, 'image')
-          const buffer = this.toBuffer(imageBuffer)
-          
-          // Detect image type from magic bytes
-          let image
-          if (buffer[0] === 0xff && buffer[1] === 0xd8) {
-            // JPEG
-            image = await pdfDoc.embedJpg(buffer)
-          } else if (buffer[0] === 0x89 && buffer[1] === 0x50) {
-            // PNG
-            image = await pdfDoc.embedPng(buffer)
-          } else {
-            // Try PNG first, then JPEG
-            try {
-              image = await pdfDoc.embedPng(buffer)
-            } catch {
-              image = await pdfDoc.embedJpg(buffer)
-            }
-          }
+        for (const { buffer, width: imgW, height: imgH } of preprocessed) {
+          // All preprocessed images are JPEG — always use embedJpg.
+          const image = await pdfDoc.embedJpg(buffer)
 
-          const imgDims = image.scale(1)
-          
-          // Calculate page size
+          // Page dimensions (points: 1 pt = 1/72 inch).
+          // Auto-orient: use landscape variant when image is wider than tall.
           let pageWidth: number
           let pageHeight: number
 
-          if (options.pageSize === 'a4') {
-            pageWidth = 595.28
-            pageHeight = 841.89
-          } else if (options.pageSize === 'letter') {
-            pageWidth = 612
-            pageHeight = 792
+          if (options.pageSize === 'letter') {
+            const landscape = imgW > imgH
+            pageWidth  = landscape ? 792    : 612
+            pageHeight = landscape ? 612    : 792
+          } else if (options.pageSize === 'auto') {
+            // Page fits the image exactly (no wasted whitespace)
+            pageWidth  = imgW + margin * 2
+            pageHeight = imgH + margin * 2
           } else {
-            // Auto: use image dimensions
-            pageWidth = imgDims.width + margin * 2
-            pageHeight = imgDims.height + margin * 2
+            // Default: A4
+            const landscape = imgW > imgH
+            pageWidth  = landscape ? 841.89 : 595.28
+            pageHeight = landscape ? 595.28 : 841.89
           }
 
+          // Scale image to fill the available area while preserving aspect ratio.
+          // scale ≤ 1 means we never try to draw the image larger than its pixels.
+          const availW  = pageWidth  - margin * 2
+          const availH  = pageHeight - margin * 2
+          const scale   = Math.min(availW / imgW, availH / imgH, 1)
+          const drawW   = imgW * scale
+          const drawH   = imgH * scale
+
+          // Center the image on the page
+          const x = margin + (availW - drawW) / 2
+          const y = margin + (availH - drawH) / 2
+
           const page = pdfDoc.addPage([pageWidth, pageHeight])
-
-          // Scale image to fit page with margins
-          const availableWidth = pageWidth - margin * 2
-          const availableHeight = pageHeight - margin * 2
-          const scale = Math.min(
-            availableWidth / imgDims.width,
-            availableHeight / imgDims.height,
-            1
-          )
-
-          const scaledWidth = imgDims.width * scale
-          const scaledHeight = imgDims.height * scale
-          const x = margin + (availableWidth - scaledWidth) / 2
-          const y = margin + (availableHeight - scaledHeight) / 2
-
-          page.drawImage(image, {
-            x,
-            y,
-            width: scaledWidth,
-            height: scaledHeight,
-          })
+          page.drawImage(image, { x, y, width: drawW, height: drawH })
         }
 
         return Buffer.from(await pdfDoc.save())
@@ -462,7 +518,9 @@ export class PDFProcessor extends BaseProcessor {
         processingTime: time,
       })
     } catch (err) {
-      return this.error(`Failed to convert images to PDF: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      return this.error(
+        `Failed to convert images to PDF: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      )
     }
   }
 

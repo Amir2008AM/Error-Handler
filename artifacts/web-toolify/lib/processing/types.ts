@@ -67,7 +67,10 @@ export interface ImageToPDFOptions {
   images: ArrayBuffer[]
   pageSize?: 'auto' | 'a4' | 'letter'
   margin?: number
+  /** JPEG quality for embedded images, 1-100. Default: 78 */
   quality?: number
+  /** Maximum pixel dimension (width or height) before downscaling. Default: 1600 */
+  maxWidthPx?: number
 }
 
 export interface PDFMetadata {
