@@ -9,21 +9,30 @@ import { Input } from '@/components/ui/input'
 import { Download, Loader2, FileText, Unlock, Eye, EyeOff } from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('unlock-pdf')!
 
+interface UnlockResult {
+  fileId: string
+  filename: string
+  wasEncrypted: boolean
+}
+
 export function UnlockPdfClient() {
   const [file, setFile] = useState<File | null>(null)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [result, setResult] = useState<UnlockResult | null>(null)
   const progress = useRealProgress()
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile && selectedFile.type === 'application/pdf') {
       setFile(selectedFile)
+      setResult(null)
       progress.reset()
     }
   }, [progress])
@@ -54,13 +63,8 @@ export function UnlockPdfClient() {
 
       progress.stageProcessing(undefined, ['Unlocking PDF...', 'Almost done...'])
 
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `unlocked-${file.name}`
-      a.click()
-      URL.revokeObjectURL(url)
+      const data = await response.json() as UnlockResult
+      setResult(data)
 
       progress.stageDone('PDF unlocked successfully!')
     } catch (error) {
@@ -112,11 +116,15 @@ export function UnlockPdfClient() {
                   <p className="font-medium">{file.name}</p>
                   <p className="text-sm text-muted-foreground">{formatSize(file.size)}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => { setFile(null); setPassword(''); progress.reset() }} disabled={isProcessing}>
+                <Button variant="outline" size="sm" onClick={() => { setFile(null); setPassword(''); setResult(null); progress.reset() }} disabled={isProcessing}>
                   Change
                 </Button>
               </div>
             </Card>
+
+            {result && progress.status === 'completed' && (
+              <ProcessedFileCard fileId={result.fileId} filename={result.filename} />
+            )}
 
             <Card className="p-6 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">

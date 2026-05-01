@@ -8,8 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, Download, Loader2, FileText, Lock, Eye, EyeOff } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+
+interface ProtectResult {
+  fileId: string
+  filename: string
+}
 
 export function ProtectPdfClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -17,6 +23,7 @@ export function ProtectPdfClient() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [result, setResult] = useState<ProtectResult | null>(null)
   const progress = useRealProgress()
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,6 +31,7 @@ export function ProtectPdfClient() {
     if (selectedFile) {
       setFile(selectedFile)
       setError('')
+      setResult(null)
       progress.reset()
     }
   }, [progress])
@@ -59,18 +67,15 @@ export function ProtectPdfClient() {
 
       progress.stageValidation('Validating PDF...')
 
-      if (!response.ok) throw new Error('Protection failed')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Protection failed' }))
+        throw new Error(errorData.error || 'Protection failed')
+      }
 
       progress.stageProcessing(undefined, ['Encrypting PDF...', 'Almost done...'])
 
-      const blob = await response.blob()
-
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `protected-${file.name}`
-      a.click()
-      URL.revokeObjectURL(url)
+      const data = await response.json() as ProtectResult
+      setResult(data)
 
       progress.stageDone('PDF protected!')
     } catch (error) {
@@ -123,16 +128,20 @@ export function ProtectPdfClient() {
                     {(file.size / 1024).toFixed(1)} KB
                   </p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => { setFile(null); progress.reset() }}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setFile(null); setResult(null); progress.reset() }}
                   disabled={isProcessing}
                 >
                   Change
                 </Button>
               </div>
             </Card>
+
+            {result && progress.status === 'completed' && (
+              <ProcessedFileCard fileId={result.fileId} filename={result.filename} />
+            )}
 
             <Card className="p-6 space-y-4">
               <div>
@@ -197,7 +206,7 @@ export function ProtectPdfClient() {
                   </>
                 )}
               </Button>
-              
+
               <RealProgressBar
                 status={progress.status}
                 progress={progress.progress}

@@ -64,6 +64,32 @@ System binaries used for real PDF processing — no JavaScript fallbacks:
 - `CMD ["pnpm", "start"]` from `artifacts/web-toolify/`
 - Validates `gs --version && qpdf --version` at build time
 
+### Streaming Upload System
+
+`lib/stream-upload.ts` — replaces `request.formData()` buffering:
+- `streamUpload(request)` pipes the multipart body through `busboy` directly to disk (`os.tmpdir()`), never reading the full payload into RAM.
+- Returns `{ fields, files, cleanup }`. Each `file` has `.path` (absolute temp path), `.size`, `.filename`, `.fieldname`.
+- `validateStreamedFile(file, type)` reads only the first 12 bytes from disk (magic bytes) for type validation.
+- All three PDF routes (`compress-pdf`, `protect-pdf`, `unlock-pdf`) pass the on-disk path directly to Ghostscript/qpdf — no memory copy during or after upload.
+
+### Processed-File Download System
+
+After processing, all PDF tools store results in `TempStorage` (20-min TTL) and return JSON `{ success, fileId, filename, ...metadata }` — the file is **not** streamed in the response body (avoids double bandwidth).
+
+**Flow:**
+1. API route processes file → stores result via `getTempStorage().store()` → returns `{ fileId }` JSON.
+2. Client reads `fileId`, stores in state, renders `<ProcessedFileCard>`.
+3. `ProcessedFileCard` (`components/processed-file-card.tsx`) auto-downloads from `/api/files/<fileId>` on mount, then shows a persistent **Download** button.
+4. If auto-download is blocked (popup blocker, mobile browser), a "Didn't start?" hint appears after 4 s.
+5. The manual Download button fetches the file from `/api/files/<fileId>` — re-download without any reprocessing — and shows "Retry" on fetch failure.
+6. `GET /api/files/[id]` streams the file from disk via `getStream()` (never buffers into JS heap).
+
+**Progress bar stages** (`components/real-progress-bar.tsx` `PROGRESS_STAGES`):
+- `UPLOAD_END: 50` — upload occupies 0–50% of the bar (XHR `upload.progress` events)
+- `VALIDATION_END: 55` — brief server validation
+- `PROCESSING_END: 90` — server-side work (Ghostscript/qpdf)
+- `DONE: 100`
+
 ### PDF to JPG (`/pdf-to-jpg`)
 
 `lib/processing/pdf-to-image.ts`:

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Upload, Download, Loader2, FileText, TrendingDown } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 
@@ -28,14 +29,19 @@ const LEVEL_LABEL: Record<CompressionLevel, string> = {
   high: 'Maximum',
 }
 
+interface CompressResult {
+  fileId: string
+  filename: string
+  originalSize: number
+  compressedSize: number
+  compressionRatio: number
+  level: CompressionLevel
+}
+
 export function CompressPdfClient() {
   const [file, setFile] = useState<File | null>(null)
   const [level, setLevel] = useState<CompressionLevel>('medium')
-  const [result, setResult] = useState<{
-    original: number
-    compressed: number
-    level: CompressionLevel
-  } | null>(null)
+  const [result, setResult] = useState<CompressResult | null>(null)
   const progress = useRealProgress()
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +63,6 @@ export function CompressPdfClient() {
       formData.append('file', file)
       formData.append('level', level)
 
-      // Stage: Upload (0% -> 10%)
       const response = await xhrUpload({
         url: '/api/compress-pdf',
         formData,
@@ -66,7 +71,6 @@ export function CompressPdfClient() {
         },
       })
 
-      // Stage: Validation (-> 20%)
       progress.stageValidation('Validating file...')
 
       if (!response.ok) {
@@ -74,24 +78,11 @@ export function CompressPdfClient() {
         throw new Error(errorData.error || 'Compression failed')
       }
 
-      // Stage: Processing (-> 70%)
       progress.stageProcessing(undefined, ['Analyzing PDF...', 'Compressing images...', 'Almost done...'])
 
-      const originalSize = parseInt(response.headers.get('X-Original-Size') || '0')
-      const compressedSize = parseInt(response.headers.get('X-Compressed-Size') || '0')
-      const usedLevel = (response.headers.get('X-Compression-Level') as CompressionLevel) || level
+      const data = await response.json() as CompressResult
+      setResult(data)
 
-      setResult({ original: originalSize, compressed: compressedSize, level: usedLevel })
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `compressed-${file.name}`
-      a.click()
-      URL.revokeObjectURL(url)
-
-      // Stage: Done (-> 100%)
       progress.stageDone('Compression complete!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to compress PDF'
@@ -103,11 +94,6 @@ export function CompressPdfClient() {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-  }
-
-  const getReduction = () => {
-    if (!result) return 0
-    return Math.round((1 - result.compressed / result.original) * 100)
   }
 
   const isProcessing = progress.status === 'processing'
@@ -169,23 +155,16 @@ export function CompressPdfClient() {
             </Card>
 
             {result && progress.status === 'completed' && (
-              <Card className="p-6 bg-green-50 border-green-200">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                    <TrendingDown className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-medium text-green-800">
-                      Reduced by {getReduction()}%
-                    </p>
-                    <div className="text-sm text-green-700 space-y-0.5">
-                      <p>Original size: {formatSize(result.original)}</p>
-                      <p>New size: {formatSize(result.compressed)}</p>
-                      <p>Compression level: {LEVEL_LABEL[result.level]}</p>
-                    </div>
+              <ProcessedFileCard fileId={result.fileId} filename={result.filename}>
+                <div className="flex items-start gap-3 mt-2">
+                  <TrendingDown className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                  <div className="text-sm text-green-700 space-y-0.5">
+                    <p className="font-medium">Reduced by {Math.round(result.compressionRatio)}%</p>
+                    <p>Original: {formatSize(result.originalSize)} → {formatSize(result.compressedSize)}</p>
+                    <p>Level: {LEVEL_LABEL[result.level]}</p>
                   </div>
                 </div>
-              </Card>
+              </ProcessedFileCard>
             )}
 
             <div>
@@ -239,7 +218,6 @@ export function CompressPdfClient() {
                 )}
               </Button>
 
-              {/* Real Progress Bar */}
               <RealProgressBar
                 status={progress.status}
                 progress={progress.progress}

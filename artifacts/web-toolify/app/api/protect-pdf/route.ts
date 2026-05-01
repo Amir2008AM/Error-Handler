@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PDFSecurityProcessor } from '@/lib/processing/pdf-security'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
+import { getTempStorage } from '@/lib/storage'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -52,12 +53,14 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return new NextResponse(protectedPdf as unknown as BodyInit, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="protected-${file.filename}"`,
-        'X-Password-Protected': 'true',
-      },
+    const outputFilename = `protected-${file.filename}`
+    const storage = getTempStorage()
+    const fileId = await storage.store(protectedPdf, outputFilename, 'application/pdf')
+
+    return NextResponse.json({
+      success: true,
+      fileId,
+      filename: outputFilename,
     })
   } catch (error) {
     console.error('Protect PDF error:', error)

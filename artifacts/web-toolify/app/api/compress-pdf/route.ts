@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
+import { getTempStorage } from '@/lib/storage'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -43,16 +44,20 @@ export async function POST(request: NextRequest) {
     }
 
     const compressionRatio = (result.metadata?.compressionRatio as number) || 0
+    const outputFilename = `compressed-${file.filename}`
 
-    return new NextResponse(result.data, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="compressed.pdf"`,
-        'X-Original-Size': String(file.size),
-        'X-Compressed-Size': String(result.data.length),
-        'X-Compression-Ratio': compressionRatio.toFixed(2),
-        'X-Compression-Level': level,
-      },
+    // Persist so the client can download (and re-download) without reprocessing.
+    const storage = getTempStorage()
+    const fileId = await storage.store(result.data, outputFilename, 'application/pdf')
+
+    return NextResponse.json({
+      success: true,
+      fileId,
+      filename: outputFilename,
+      originalSize: file.size,
+      compressedSize: result.data.length,
+      compressionRatio,
+      level,
     })
   } catch (error) {
     console.error('Compress PDF error:', error)

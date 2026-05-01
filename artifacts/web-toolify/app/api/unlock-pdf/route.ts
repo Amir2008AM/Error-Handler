@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PDFSecurityProcessor, WrongPasswordError } from '@/lib/processing/pdf-security'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
+import { getTempStorage } from '@/lib/storage'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -33,12 +34,15 @@ export async function POST(request: NextRequest) {
       password: password || '',
     })
 
-    return new NextResponse(unlockedPdf as unknown as BodyInit, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="unlocked-${file.filename}"`,
-        'X-Was-Encrypted': securityInfo.isEncrypted.toString(),
-      },
+    const outputFilename = `unlocked-${file.filename}`
+    const storage = getTempStorage()
+    const fileId = await storage.store(unlockedPdf, outputFilename, 'application/pdf')
+
+    return NextResponse.json({
+      success: true,
+      fileId,
+      filename: outputFilename,
+      wasEncrypted: securityInfo.isEncrypted,
     })
   } catch (error) {
     console.error('Unlock PDF error:', error)
