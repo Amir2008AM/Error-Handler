@@ -20,6 +20,7 @@ export function HtmlToPdfClient() {
   const [file, setFile] = useState<File | null>(null)
   const [htmlContent, setHtmlContent] = useState('')
   const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4')
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const { startLoading, stopLoading } = useLoadingBar()
@@ -30,8 +31,9 @@ export function HtmlToPdfClient() {
       const ext = selectedFile.name.toLowerCase()
       if (ext.endsWith('.html') || ext.endsWith('.htm')) {
         setFile(selectedFile)
+        setError(null)
       } else {
-        alert('Please upload an HTML file (.html or .htm)')
+        setError('Please upload an HTML file (.html or .htm)')
       }
     }
   }
@@ -72,8 +74,7 @@ export function HtmlToPdfClient() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Error:', error)
-      alert(error instanceof Error ? error.message : 'Failed to convert HTML')
+      setError(error instanceof Error ? error.message : 'Failed to convert HTML')
     } finally {
       setProcessing(false)
       stopLoading()
@@ -198,6 +199,12 @@ export function HtmlToPdfClient() {
             </div>
           </div>
         </Card>
+
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
 
         <div className="flex justify-center">
           <Button

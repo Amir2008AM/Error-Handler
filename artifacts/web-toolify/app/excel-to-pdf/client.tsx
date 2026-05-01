@@ -16,6 +16,7 @@ const tool = getToolBySlug('excel-to-pdf')!
 export function ExcelToPdfClient() {
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4')
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('landscape')
   const { startLoading, stopLoading } = useLoadingBar()
@@ -26,8 +27,9 @@ export function ExcelToPdfClient() {
       const ext = selectedFile.name.toLowerCase()
       if (ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.csv')) {
         setFile(selectedFile)
+        setError(null)
       } else {
-        alert('Please upload an Excel file (.xlsx, .xls, or .csv)')
+        setError('Please upload an Excel file (.xlsx, .xls, or .csv)')
       }
     }
   }, [])
@@ -61,8 +63,7 @@ export function ExcelToPdfClient() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Error:', error)
-      alert(error instanceof Error ? error.message : 'Failed to convert spreadsheet')
+      setError(error instanceof Error ? error.message : 'Failed to convert spreadsheet')
     } finally {
       setProcessing(false)
       stopLoading()
@@ -153,6 +154,12 @@ export function ExcelToPdfClient() {
                 </div>
               </div>
             </Card>
+
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
+                {error}
+              </div>
+            )}
 
             <div className="flex justify-center">
               <Button

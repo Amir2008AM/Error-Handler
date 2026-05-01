@@ -18,6 +18,7 @@ const tool = getToolBySlug('pdf-to-jpg')!
 export function PdfToJpgClient() {
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [format, setFormat] = useState<'jpg' | 'png' | 'webp'>('jpg')
   const [quality, setQuality] = useState(90)
   const [dpi, setDpi] = useState(150)
@@ -65,8 +66,7 @@ export function PdfToJpgClient() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Error:', error)
-      alert(error instanceof Error ? error.message : 'Failed to convert PDF to images')
+      setError(error instanceof Error ? error.message : 'Failed to convert PDF to images')
     } finally {
       setProcessing(false)
       stopLoading()
@@ -188,6 +188,12 @@ export function PdfToJpgClient() {
                 </div>
               )}
             </Card>
+
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
+                {error}
+              </div>
+            )}
 
             <div className="flex justify-center">
               <Button

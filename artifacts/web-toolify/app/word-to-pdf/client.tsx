@@ -28,7 +28,7 @@ export function WordToPdfClient() {
         setFile(selectedFile)
         progress.reset()
       } else {
-        alert('Please upload a Word document (.docx or .doc)')
+        progress.fail('Please upload a Word document (.docx or .doc)')
       }
     }
   }, [progress])
