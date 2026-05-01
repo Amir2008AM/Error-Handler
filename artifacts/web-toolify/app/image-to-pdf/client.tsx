@@ -203,8 +203,31 @@ export function ImageToPdfClient() {
     progress.startProcessing('Uploading images…')
 
     try {
-      // ── Stage 1: upload ──────────────────────────────────────────────────
-      progress.stageUpload(30, `Uploading ${selectedImages.length} image${selectedImages.length !== 1 ? 's' : ''}…`)
+      // ── Stage 1: client-side compress ────────────────────────────────────
+      // Resize + JPEG-encode each image in the browser so the total upload
+      // stays well under 80 MB even for 29+ large phone photos.
+      // A 5 MB PNG → ~500 KB JPEG at 1600 px wide; 29 images ≈ 15 MB total.
+      const total = selectedImages.length
+      const blobs: Blob[] = []
+      for (let i = 0; i < total; i++) {
+        progress.stageUpload(
+          Math.round((i / total) * 40),
+          `Compressing image ${i + 1} of ${total}…`,
+        )
+        blobs.push(await compressForUpload(selectedImages[i].file))
+      }
+
+      // Safety check: if compressed total still exceeds limit, bail early
+      const totalBytes = blobs.reduce((s, b) => s + b.size, 0)
+      if (totalBytes > MAX_UPLOAD_BYTES) {
+        throw new Error(
+          `Compressed upload is ${Math.round(totalBytes / 1024 / 1024)} MB — ` +
+          `please select fewer images or use smaller files.`,
+        )
+      }
+
+      // ── Stage 2: upload ──────────────────────────────────────────────────
+      progress.stageUpload(50, `Uploading ${total} image${total !== 1 ? 's' : ''}…`)
 
       const formData = new FormData()
       formData.append('type', 'image-to-pdf')
@@ -216,8 +239,9 @@ export function ImageToPdfClient() {
       }))
 
       // File order must match the user-assigned page order
-      selectedImages.forEach((img, idx) => {
-        formData.append(`file${idx}`, img.file, img.file.name)
+      blobs.forEach((blob, idx) => {
+        const name = selectedImages[idx].file.name.replace(/\.[^.]+$/, '.jpg')
+        formData.append(`file${idx}`, blob, name)
       })
 
       progress.stageUpload(80, 'Sending to server…')
