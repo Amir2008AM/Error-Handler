@@ -1,25 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const pagesJson = formData.get('pages') as string | null
+    const file = files.find((f) => f.fieldname === 'file')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
 
-    const validationError = await validateFile(file, 'pdf')
-    if (validationError) return validationError
+    const validationError = await validateStreamedFile(file, 'pdf')
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
+    const pagesJson = fields['pages'] ?? ''
     if (!pagesJson) {
       return NextResponse.json({ error: 'No pages specified' }, { status: 400 })
     }
 
     const pagesToDelete = JSON.parse(pagesJson) as number[]
-    const buffer = await file.arrayBuffer()
+    const buffer = await readFileAsArrayBuffer(file.path)
 
     const result = await pdfProcessor.deletePages(buffer, pagesToDelete)
 
@@ -30,14 +34,14 @@ export async function POST(request: NextRequest) {
     return new NextResponse(result.data, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="edited.pdf"`,
+        'Content-Disposition': 'attachment; filename="edited.pdf"',
+        'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
     console.error('Delete pages error:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete pages' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to delete pages' }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

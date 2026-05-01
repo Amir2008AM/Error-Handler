@@ -1,52 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DocumentConverter } from '@/lib/processing/document-converter'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, readFile } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const pageSize = (formData.get('pageSize') as 'a4' | 'letter' | 'legal') || 'a4'
-    const orientation = (formData.get('orientation') as 'portrait' | 'landscape') || 'landscape'
-    const fontSize = parseInt(formData.get('fontSize') as string) || 10
+    const file = files.find((f) => f.fieldname === 'file')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
 
-    const sizeError = await validateFile(file, 'any')
-    if (sizeError) return sizeError
-
-    const validExtensions = ['.xlsx', '.xls', '.csv']
-    const fileName = (file as File).name.toLowerCase()
-    if (!validExtensions.some(ext => fileName.endsWith(ext))) {
-      return NextResponse.json({ error: 'File must be an Excel file (.xlsx, .xls, or .csv)' }, { status: 400 })
+    const fileName = file.filename.toLowerCase()
+    if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls') && !fileName.endsWith('.csv')) {
+      return NextResponse.json(
+        { error: 'File must be an Excel file (.xlsx, .xls, or .csv)' },
+        { status: 400 }
+      )
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    
-    const converter = new DocumentConverter()
-    
-    const result = await converter.excelToPdf(buffer, {
-      pageSize,
-      orientation,
-      fontSize,
-    })
+    const pageSize = (fields['pageSize'] as 'a4' | 'letter' | 'legal') ?? 'a4'
+    const orientation = (fields['orientation'] as 'portrait' | 'landscape') ?? 'landscape'
+    const fontSize = parseInt(fields['fontSize'] ?? '10') || 10
 
-    const baseName = file.name.replace(/\.(xlsx?|xls|csv)$/i, '')
+    const buffer = await readFile(file.path)
+
+    const converter = new DocumentConverter()
+
+    const result = await converter.excelToPdf(buffer, { pageSize, orientation, fontSize })
+
+    const baseName = file.filename.replace(/\.(xlsx?|xls|csv)$/i, '')
 
     return new NextResponse(result.buffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
         'X-Page-Count': result.pageCount.toString(),
+        'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
     console.error('Excel to PDF error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to convert Excel to PDF'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

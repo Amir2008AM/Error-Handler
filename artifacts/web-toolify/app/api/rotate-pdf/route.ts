@@ -1,37 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
-  try {
-    const formData = await req.formData()
-    const file = formData.get('pdf') as File
-    const rotation = parseInt((formData.get('rotation') as string) ?? '90', 10)
-    const pagesStr = formData.get('pages') as string | null
+  const { fields, files, cleanup } = await streamUpload(req).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
 
-    const validationError = await validateFile(file, 'pdf')
-    if (validationError) return validationError
+  try {
+    const file = files.find((f) => f.fieldname === 'pdf')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
+
+    const validationError = await validateStreamedFile(file, 'pdf')
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
+
+    const rotation = parseInt(fields['rotation'] ?? '90', 10)
+    const pagesStr = fields['pages'] ?? ''
 
     if (![90, 180, 270].includes(rotation)) {
       return NextResponse.json({ error: 'Invalid rotation angle. Must be 90, 180, or 270' }, { status: 400 })
     }
 
-    // Parse pages if provided (e.g., "1,2,3" or empty for all)
     let pages: number[] | undefined
-    if (pagesStr && pagesStr.trim()) {
+    if (pagesStr.trim()) {
       pages = pagesStr
         .split(',')
         .map((p) => parseInt(p.trim(), 10))
         .filter((p) => !isNaN(p) && p > 0)
     }
 
-    const arrayBuffer = await file.arrayBuffer()
+    const buffer = await readFileAsArrayBuffer(file.path)
 
     const result = await pdf.rotate({
-      file: arrayBuffer,
+      file: buffer,
       rotation: rotation as 90 | 180 | 270,
       pages,
     })
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const originalName = file.name.replace(/\.pdf$/i, '')
+    const originalName = file.filename.replace(/\.pdf$/i, '')
 
     return new NextResponse(result.data, {
       status: 200,
@@ -57,5 +61,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[rotate-pdf]', err)
     return NextResponse.json({ error: 'Failed to rotate PDF' }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

@@ -24,15 +24,27 @@ interface QpdfResult {
   stderr: string
 }
 
+const QPDF_TIMEOUT_MS = 120_000 // 2-minute hard cap per invocation
+
 function runQpdf(args: string[]): Promise<QpdfResult> {
   return new Promise((resolve, reject) => {
     const proc = spawn('qpdf', args, { stdio: ['ignore', 'ignore', 'pipe'] })
     let stderr = ''
+
+    const killTimer = setTimeout(() => {
+      proc.kill('SIGKILL')
+      reject(new Error('qpdf timed out after 2 minutes'))
+    }, QPDF_TIMEOUT_MS)
+
     proc.stderr.on('data', (chunk: Buffer) => {
       stderr += chunk.toString('utf8')
     })
-    proc.on('error', reject)
+    proc.on('error', (err) => {
+      clearTimeout(killTimer)
+      reject(err)
+    })
     proc.on('close', (code) => {
+      clearTimeout(killTimer)
       resolve({ code: code ?? -1, stderr })
     })
   })

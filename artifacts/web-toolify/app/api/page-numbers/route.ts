@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const position = (formData.get('position') as string) || 'bottom-center'
-    const format = (formData.get('format') as string) || 'numeric'
-    const startFrom = parseInt(formData.get('startFrom') as string) || 1
-    const fontSize = parseInt(formData.get('fontSize') as string) || 12
-    const margin = parseInt(formData.get('margin') as string) || 30
+    const file = files.find((f) => f.fieldname === 'file')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
 
-    const validationError = await validateFile(file, 'pdf')
-    if (validationError) return validationError
+    const validationError = await validateStreamedFile(file, 'pdf')
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const buffer = await file.arrayBuffer()
+    const position = fields['position'] ?? 'bottom-center'
+    const format = fields['format'] ?? 'numeric'
+    const startFrom = parseInt(fields['startFrom'] ?? '1', 10) || 1
+    const fontSize = parseInt(fields['fontSize'] ?? '12', 10) || 12
+    const margin = parseInt(fields['margin'] ?? '30', 10) || 30
+
+    const buffer = await readFileAsArrayBuffer(file.path)
 
     const result = await pdfProcessor.addPageNumbers({
       file: buffer,
@@ -36,14 +41,14 @@ export async function POST(request: NextRequest) {
     return new NextResponse(result.data, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="numbered.pdf"`,
+        'Content-Disposition': 'attachment; filename="numbered.pdf"',
+        'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
     console.error('Page numbers error:', error)
-    return NextResponse.json(
-      { error: 'Failed to add page numbers' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to add page numbers' }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

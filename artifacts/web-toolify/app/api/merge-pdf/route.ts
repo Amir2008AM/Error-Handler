@@ -1,42 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
-import { validateFile, MAX_FILE_SIZE } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { mapWithConcurrency } from '@/lib/processing/concurrency'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  const { files, cleanup } = await streamUpload(req).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await req.formData()
+    // Collect files with fieldnames like pdf_0, pdf_1, ...
+    const pdfEntries = files
+      .filter((f) => f.fieldname.startsWith('pdf_'))
+      .map((f) => {
+        const index = parseInt(f.fieldname.replace('pdf_', ''), 10)
+        return { index: isNaN(index) ? 0 : index, file: f }
+      })
+      .sort((a, b) => a.index - b.index)
 
-    const fileEntries: { index: number; file: File }[] = []
-
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith('pdf_') && value instanceof File) {
-        const index = parseInt(key.replace('pdf_', ''), 10)
-        fileEntries.push({ index, file: value })
-      }
-    }
-
-    if (fileEntries.length < 2) {
+    if (pdfEntries.length < 2) {
       return NextResponse.json({ error: 'At least 2 PDF files are required' }, { status: 400 })
     }
 
-    // Validate each file
-    for (const { file } of fileEntries) {
-      const err = await validateFile(file, 'pdf')
-      if (err) return err
+    for (const { file } of pdfEntries) {
+      const err = await validateStreamedFile(file, 'pdf')
+      if (err) return NextResponse.json({ error: err }, { status: 400 })
     }
 
-    // Sort by user-defined order
-    fileEntries.sort((a, b) => a.index - b.index)
-
-    // Convert files to array buffers
-    const files = await Promise.all(
-      fileEntries.map(async ({ file }) => await file.arrayBuffer())
+    // Load buffers from disk with bounded concurrency — avoids loading all
+    // large PDFs into RAM simultaneously (e.g. 10 × 20 MB = 200 MB spike).
+    const fileBuffers = await mapWithConcurrency(pdfEntries, 3, ({ file }) =>
+      readFileAsArrayBuffer(file.path)
     )
 
-    const result = await pdf.merge({ files })
+    const result = await pdf.merge({ files: fileBuffers as ArrayBuffer[] })
 
     if (!result.success || !result.data) {
       return NextResponse.json(
@@ -58,5 +58,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[merge-pdf]', err)
     return NextResponse.json({ error: 'Failed to merge PDFs' }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

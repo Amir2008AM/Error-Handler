@@ -1,25 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { image } from '@/lib/processing'
 import type { ImageFormat } from '@/lib/processing'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(req).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await req.formData()
-    const file = formData.get('image') as File
-    const targetFormat = (formData.get('format') as string) ?? 'jpeg'
-    const quality = parseInt((formData.get('quality') as string) ?? '90', 10)
+    const file = files.find((f) => f.fieldname === 'image')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
 
-    const validationError = await validateFile(file, 'image')
-    if (validationError) return validationError
+    const validationError = await validateStreamedFile(file, 'image')
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const arrayBuffer = await file.arrayBuffer()
-    
+    const targetFormat = fields['format'] ?? 'jpeg'
+    const quality = parseInt(fields['quality'] ?? '90', 10)
+
+    const buffer = await readFileAsArrayBuffer(file.path)
+
     const result = await image.convert({
-      file: arrayBuffer,
+      file: buffer,
       targetFormat: targetFormat as ImageFormat,
       quality,
     })
@@ -33,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const contentType = image.getContentType(targetFormat as ImageFormat)
     const extension = image.getExtension(targetFormat as ImageFormat)
-    const originalName = file.name.replace(/\.[^/.]+$/, '')
+    const originalName = file.filename.replace(/\.[^/.]+$/, '')
 
     return new NextResponse(result.data, {
       status: 200,
@@ -51,5 +56,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[convert-image]', err)
     return NextResponse.json({ error: 'Failed to convert image' }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

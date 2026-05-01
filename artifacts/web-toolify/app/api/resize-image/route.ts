@@ -1,34 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { image } from '@/lib/processing'
 import type { ImageFormat } from '@/lib/processing'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(req).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await req.formData()
-    const file = formData.get('image') as File
-    const widthStr = formData.get('width') as string | null
-    const heightStr = formData.get('height') as string | null
-    const maintainAspect = (formData.get('maintainAspect') as string) !== 'false'
-    const unit = (formData.get('unit') as string) ?? 'px'
-    const format = (formData.get('format') as string) ?? 'same'
-    const quality = parseInt((formData.get('quality') as string) ?? '90', 10)
+    const file = files.find((f) => f.fieldname === 'image')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
 
-    const validationError = await validateFile(file, 'image')
-    if (validationError) return validationError
+    const validationError = await validateStreamedFile(file, 'image')
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    // Parse dimensions
+    const widthStr = fields['width'] ?? null
+    const heightStr = fields['height'] ?? null
+    const maintainAspect = fields['maintainAspect'] !== 'false'
+    const unit = fields['unit'] ?? 'px'
+    const format = fields['format'] ?? 'same'
+    const quality = parseInt(fields['quality'] ?? '90', 10)
+
     let width: number | undefined
     let height: number | undefined
 
     if (unit === 'percent') {
       const pct = parseFloat(widthStr ?? '100')
-      if (!isNaN(pct) && pct > 0) {
-        width = pct // For percent, we pass the percentage value
-      }
+      if (!isNaN(pct) && pct > 0) width = pct
     } else {
       if (widthStr && widthStr.trim() !== '') {
         const w = parseInt(widthStr, 10)
@@ -44,10 +46,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please provide at least one dimension' }, { status: 400 })
     }
 
-    const arrayBuffer = await file.arrayBuffer()
-    
+    const buffer = await readFileAsArrayBuffer(file.path)
+
     const result = await image.resize({
-      file: arrayBuffer,
+      file: buffer,
       width,
       height,
       unit: unit as 'px' | 'percent',
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
     const outputFormat = format === 'same' ? 'jpeg' : (format as ImageFormat)
     const contentType = image.getContentType(outputFormat)
     const extension = image.getExtension(outputFormat)
-    const originalName = file.name.replace(/\.[^/.]+$/, '')
+    const originalName = file.filename.replace(/\.[^/.]+$/, '')
 
     return new NextResponse(result.data, {
       status: 200,
@@ -86,5 +88,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[resize-image]', err)
     return NextResponse.json({ error: 'Failed to resize image' }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

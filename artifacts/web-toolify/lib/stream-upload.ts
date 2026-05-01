@@ -233,3 +233,12 @@ export async function validateStreamedFile(
 
 // Re-export readFile for convenience in routes that need it.
 export { readFile }
+
+/**
+ * Read a file from disk and return its contents as a true ArrayBuffer.
+ * Use this instead of readFile() when the consuming API declares ArrayBuffer.
+ */
+export async function readFileAsArrayBuffer(filePath: string): Promise<ArrayBuffer> {
+  const buf = await readFile(filePath)
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+}

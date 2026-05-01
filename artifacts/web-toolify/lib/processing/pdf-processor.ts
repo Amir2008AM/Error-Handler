@@ -24,6 +24,7 @@ import {
 } from 'docx'
 import JSZip from 'jszip'
 import { BaseProcessor } from './base-processor'
+import { mapWithConcurrency } from './concurrency'
 
 let _pdfjs: typeof import('pdfjs-dist') | null = null
 async function getPdfjs() {
@@ -160,10 +161,11 @@ export class PDFProcessor extends BaseProcessor {
           totalInputSize += fileBuffer.byteLength
         }
 
-        // Load all source PDFs in parallel for big speedup on multi-file merges.
+        // Load PDFs with bounded concurrency: max 3 simultaneous parses to
+        // prevent memory spikes on large multi-file merges (e.g. 10 × 20MB).
         // copyPages must stay sequential because it mutates mergedPdf shared state.
-        const loadedPdfs = await Promise.all(
-          orderedFiles.map((buf) => PDFDocument.load(buf))
+        const loadedPdfs = await mapWithConcurrency(orderedFiles, 3, (buf) =>
+          PDFDocument.load(buf)
         )
         for (const pdf of loadedPdfs) {
           const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())

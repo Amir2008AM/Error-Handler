@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PdfToImageConverter } from '@/lib/processing/pdf-to-image'
 import { createZipFromFiles } from '@/lib/processing/file-utils'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const format = (formData.get('format') as 'jpg' | 'png' | 'webp') || 'jpg'
-    const quality = parseInt(formData.get('quality') as string) || 90
-    const dpi = parseInt(formData.get('dpi') as string) || 150
-    const pagesStr = formData.get('pages') as string | null
+    const file = files.find((f) => f.fieldname === 'file')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
 
-    const validationError = await validateFile(file, 'pdf')
-    if (validationError) return validationError
+    const validationError = await validateStreamedFile(file, 'pdf')
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    const format = ((fields['format'] as 'jpg' | 'png' | 'webp') || 'jpg')
+    const quality = parseInt(fields['quality'] ?? '90') || 90
+    const dpi = parseInt(fields['dpi'] ?? '150') || 150
+    const pagesStr = fields['pages'] ?? null
+
+    const buffer = await readFile(file.path)
     
     // Parse pages parameter
     let pages: number[] | 'all' = 'all'
@@ -77,12 +82,13 @@ export async function POST(request: NextRequest) {
       }))
     )
 
-    const baseName = file.name.replace(/\.pdf$/i, '')
+    const baseName = file.filename.replace(/\.pdf$/i, '')
 
     return new NextResponse(zipBuffer, {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${baseName}-images.zip"`,
+        'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
@@ -92,5 +98,7 @@ export async function POST(request: NextRequest) {
       { error: errorMessage },
       { status: 500 }
     )
+  } finally {
+    await cleanup()
   }
 }

@@ -1,25 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(req).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await req.formData()
-    const file = formData.get('pdf') as File
-    const mode = (formData.get('mode') as string) ?? 'all'
-    const rangeStr = (formData.get('range') as string) ?? ''
+    const file = files.find((f) => f.fieldname === 'pdf')
+    if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 })
 
-    const validationError = await validateFile(file, 'pdf')
-    if (validationError) return validationError
+    const validationError = await validateStreamedFile(file, 'pdf')
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const arrayBuffer = await file.arrayBuffer()
+    const mode = (fields['mode'] ?? 'all') as 'all' | 'range'
+    const rangeStr = fields['range'] ?? ''
+
+    const buffer = await readFileAsArrayBuffer(file.path)
 
     const result = await pdf.split({
-      file: arrayBuffer,
-      mode: mode as 'all' | 'range',
+      file: buffer,
+      mode,
       ranges: rangeStr,
     })
 
@@ -44,5 +49,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[split-pdf]', err)
     return NextResponse.json({ error: 'Failed to split PDF' }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }
