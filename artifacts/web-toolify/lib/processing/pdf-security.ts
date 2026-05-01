@@ -85,10 +85,12 @@ export interface SignatureOptions {
 export class PDFSecurityProcessor {
   /**
    * Protect a PDF with real AES-256 password encryption via qpdf.
-   * Both userPassword (open) and ownerPassword (full access) are required.
+   *
+   * @param pdfInput - Either a Buffer (in-memory) OR an absolute file path
+   *                   (when the file was streamed to disk — avoids a memory copy).
    */
   async protect(
-    pdfBuffer: Buffer,
+    pdfInput: Buffer | string,
     options: ProtectOptions
   ): Promise<Buffer> {
     if (!options.userPassword || options.userPassword.length < 1) {
@@ -98,19 +100,29 @@ export class PDFSecurityProcessor {
       throw new Error('Owner password is required')
     }
 
-    // Validate that the input really is a PDF that qpdf can read.
-    // Throws early on truncated/corrupt files instead of producing a
-    // confusing encryption error later.
-    if (pdfBuffer.length < 5 || pdfBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+    const isPath = typeof pdfInput === 'string'
+
+    // Validate magic bytes — read them either from the buffer or from disk.
+    const header = isPath
+      ? await readFile(pdfInput as string).then(b => b.subarray(0, 5))
+      : (pdfInput as Buffer).subarray(0, 5)
+
+    if (header.length < 5 || header.toString('ascii') !== '%PDF-') {
       throw new Error('File is not a valid PDF')
     }
 
     return withTempDir(async (dir) => {
-      const inPath = join(dir, 'in.pdf')
       const outPath = join(dir, 'out.pdf')
       const argsPath = join(dir, 'args.txt')
 
-      await writeFile(inPath, pdfBuffer)
+      // Use the existing file on disk, or write the buffer to a temp file.
+      let inPath: string
+      if (isPath) {
+        inPath = pdfInput as string
+      } else {
+        inPath = join(dir, 'in.pdf')
+        await writeFile(inPath, pdfInput as Buffer)
+      }
 
       const perms = options.permissions ?? {}
       const printArg =
@@ -165,27 +177,42 @@ export class PDFSecurityProcessor {
   /**
    * Remove password protection from a PDF using qpdf.
    * Throws WrongPasswordError if the supplied password is incorrect.
+   *
+   * @param pdfInput - Either a Buffer (in-memory) OR an absolute file path.
    */
   async unlock(
-    pdfBuffer: Buffer,
+    pdfInput: Buffer | string,
     options: UnlockOptions
   ): Promise<Buffer> {
-    if (pdfBuffer.length < 5 || pdfBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+    const isPath = typeof pdfInput === 'string'
+
+    const header = isPath
+      ? await readFile(pdfInput as string).then(b => b.subarray(0, 5))
+      : (pdfInput as Buffer).subarray(0, 5)
+
+    if (header.length < 5 || header.toString('ascii') !== '%PDF-') {
       throw new Error('File is not a valid PDF')
     }
 
     return withTempDir(async (dir) => {
-      const inPath = join(dir, 'in.pdf')
       const outPath = join(dir, 'out.pdf')
       const pwFile = join(dir, 'p.pw')
 
-      // Password file: no trailing newline. qpdf 11.x reads the entire file
-      // content as the password and does NOT strip whitespace, so we must not
-      // append one ourselves.
-      await Promise.all([
-        writeFile(inPath, pdfBuffer),
-        writeFile(pwFile, options.password ?? '', { mode: 0o600 }),
-      ])
+      // Use the existing disk file, or write the buffer.
+      let inPath: string
+      if (isPath) {
+        inPath = pdfInput as string
+        await writeFile(pwFile, options.password ?? '', { mode: 0o600 })
+      } else {
+        inPath = join(dir, 'in.pdf')
+        // Password file: no trailing newline. qpdf 11.x reads the entire file
+        // content as the password and does NOT strip whitespace, so we must not
+        // append one ourselves.
+        await Promise.all([
+          writeFile(inPath, pdfInput as Buffer),
+          writeFile(pwFile, options.password ?? '', { mode: 0o600 }),
+        ])
+      }
 
       const args = [
         `--password-file=${pwFile}`,
@@ -394,20 +421,36 @@ export class PDFSecurityProcessor {
   /**
    * Get PDF security info. Uses `qpdf --is-encrypted` for an authoritative
    * answer, then loads with pdf-lib (ignoreEncryption) to read metadata.
+   *
+   * @param pdfInput - Buffer or absolute file path.
    */
-  async getSecurityInfo(pdfBuffer: Buffer): Promise<{
+  async getSecurityInfo(pdfInput: Buffer | string): Promise<{
     isEncrypted: boolean
     hasSignature: boolean
     permissions: string[]
     metadata: Record<string, string | undefined>
   }> {
-    const isEncrypted = await withTempDir(async (dir) => {
-      const inPath = join(dir, 'in.pdf')
-      await writeFile(inPath, pdfBuffer)
-      const { code } = await runQpdf(['--is-encrypted', inPath])
-      // qpdf --is-encrypted: 0 = encrypted, 2 = not encrypted
-      return code === 0
-    })
+    const isPath = typeof pdfInput === 'string'
+
+    const isEncrypted = await (async () => {
+      if (isPath) {
+        // File is already on disk — pass directly to qpdf.
+        const { code } = await runQpdf(['--is-encrypted', pdfInput as string])
+        return code === 0
+      }
+      return withTempDir(async (dir) => {
+        const inPath = join(dir, 'in.pdf')
+        await writeFile(inPath, pdfInput as Buffer)
+        const { code } = await runQpdf(['--is-encrypted', inPath])
+        // qpdf --is-encrypted: 0 = encrypted, 2 = not encrypted
+        return code === 0
+      })
+    })()
+
+    // pdf-lib needs a Buffer for metadata parsing.
+    const pdfBuffer = isPath
+      ? await readFile(pdfInput as string)
+      : (pdfInput as Buffer)
 
     let pdfDoc: PDFDocument | null = null
     try {

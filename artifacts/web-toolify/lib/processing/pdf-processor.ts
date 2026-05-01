@@ -1044,17 +1044,31 @@ export class PDFProcessor extends BaseProcessor {
    * rather than silently returning the original file.
    */
   async compress(
-    file: ArrayBuffer,
+    file: ArrayBuffer | string,
     level: 'low' | 'medium' | 'high' = 'medium'
   ): Promise<ProcessingResult<Buffer>> {
     try {
-      this.validateBuffer(file)
-      const inputSize = file.byteLength
-      const inputBuffer = Buffer.from(file)
+      // `file` can be:
+      //   - an ArrayBuffer / Buffer (legacy in-memory path)
+      //   - a string (absolute path to a file already on disk — streamed uploads)
+      const isPath = typeof file === 'string'
 
-      // Sanity-check: must be a PDF
-      if (inputBuffer.length < 5 || inputBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
-        return this.error('File is not a valid PDF')
+      let inputSize: number
+      let sourceBuffer: Buffer | null = null
+      let sourcePath: string | null = null
+
+      if (isPath) {
+        sourcePath = file
+        const stat = await import('node:fs/promises').then(m => m.stat(sourcePath!))
+        inputSize = stat.size
+      } else {
+        this.validateBuffer(file)
+        inputSize = file.byteLength
+        sourceBuffer = Buffer.from(file)
+        // Sanity-check: must be a PDF
+        if (sourceBuffer.length < 5 || sourceBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+          return this.error('File is not a valid PDF')
+        }
       }
 
       // Map compression levels to Ghostscript settings
@@ -1103,10 +1117,17 @@ export class PDFProcessor extends BaseProcessor {
 
       const { result, time } = await this.measureTime(async () => {
         return withGsTempDir(async (dir) => {
-          const inPath = join(dir, 'in.pdf')
           const outPath = join(dir, 'out.pdf')
 
-          await writeFile(inPath, inputBuffer)
+          // When caller already has the file on disk (streamed upload), use that
+          // path directly — no extra disk write needed.
+          let inPath: string
+          if (sourcePath) {
+            inPath = sourcePath
+          } else {
+            inPath = join(dir, 'in.pdf')
+            await writeFile(inPath, sourceBuffer!)
+          }
 
           const args = [
             '-q',              // quiet — suppress informational messages

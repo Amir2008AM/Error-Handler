@@ -1,25 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PDFSecurityProcessor } from '@/lib/processing/pdf-security'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
+  const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
+
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const password = formData.get('password') as string | null
-    const ownerPassword = formData.get('ownerPassword') as string | null
+    const file = files.find((f) => f.fieldname === 'file')
+    if (!file) {
+      return NextResponse.json({ success: false, error: 'No file provided.' }, { status: 400 })
+    }
 
-    // Permission flags
-    const allowPrinting = formData.get('allowPrinting') !== 'false'
-    const allowCopying = formData.get('allowCopying') !== 'false'
-    const allowModifying = formData.get('allowModifying') !== 'false'
-    const allowAnnotating = formData.get('allowAnnotating') !== 'false'
+    const validationError = await validateStreamedFile(file, 'pdf')
+    if (validationError) {
+      return NextResponse.json({ success: false, error: validationError }, { status: 400 })
+    }
 
-    const validationError = await validateFile(file, 'pdf')
-    if (validationError) return validationError
+    const password = fields['password'] ?? null
+    const ownerPassword = fields['ownerPassword'] ?? null
+    const allowPrinting = fields['allowPrinting'] !== 'false'
+    const allowCopying = fields['allowCopying'] !== 'false'
+    const allowModifying = fields['allowModifying'] !== 'false'
+    const allowAnnotating = fields['allowAnnotating'] !== 'false'
 
     if (!password || password.length < 4) {
       return NextResponse.json(
@@ -28,11 +35,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-
     const securityProcessor = new PDFSecurityProcessor()
 
-    const protectedPdf = await securityProcessor.protect(buffer, {
+    // Pass the on-disk path directly — qpdf reads without an extra memory copy.
+    const protectedPdf = await securityProcessor.protect(file.path, {
       userPassword: password,
       ownerPassword: ownerPassword || password + '_owner',
       permissions: {
@@ -49,16 +55,15 @@ export async function POST(request: NextRequest) {
     return new NextResponse(protectedPdf as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="protected-${file.name}"`,
+        'Content-Disposition': `attachment; filename="protected-${file.filename}"`,
         'X-Password-Protected': 'true',
       },
     })
   } catch (error) {
     console.error('Protect PDF error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to protect PDF'
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

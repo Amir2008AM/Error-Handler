@@ -187,14 +187,17 @@ export function RealProgressBar({
 
 // Standardized stage milestones used across all tools.
 // Stage     -> overall progress
-//   Upload  ->   0% .. 10%   (driven by real upload bytes)
-//   Validation ->     20%    (server has accepted + validated)
-//   Processing -> 20% .. 70% (work in progress on the server)
-//   Done    ->          100% (success)
+//   Upload     ->   0% .. 50%  (driven by real XHR upload bytes)
+//   Validation ->        55%   (server has accepted + validated)
+//   Processing ->  55% .. 90%  (work in progress on the server)
+//   Done       ->       100%   (success)
+//
+// Upload is given 50% of the bar so large-file uploads feel proportional
+// instead of looking "stuck" while most of the real work is network transfer.
 export const PROGRESS_STAGES = {
-  UPLOAD_END: 10,
-  VALIDATION_END: 20,
-  PROCESSING_END: 70,
+  UPLOAD_END: 50,
+  VALIDATION_END: 55,
+  PROCESSING_END: 90,
   DONE: 100,
 } as const
 
@@ -339,7 +342,7 @@ export function useRealProgress() {
       }
 
       const messages = Array.isArray(message) ? message : [message]
-      const TARGET = 68 // stay just below PROCESSING_END so stageDone has room to land
+      const TARGET = 88 // stay just below PROCESSING_END (90) so stageDone has room to land
 
       // Snap to the start of the processing band immediately and show the first message.
       setState(prev => ({
