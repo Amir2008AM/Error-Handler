@@ -74,16 +74,6 @@ export function HomeContent() {
                 )
               })}
             </nav>
-
-            {/* Auth buttons */}
-            <div className="flex items-center gap-2">
-              <button className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">
-                Login
-              </button>
-              <button className="text-sm font-medium bg-primary text-primary-foreground px-4 py-1.5 rounded-lg hover:bg-primary/90 transition-colors">
-                Sign Up
-              </button>
-            </div>
           </div>
         </div>
       </header>
