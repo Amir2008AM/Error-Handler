@@ -187,7 +187,7 @@ export class PdfToImageConverter {
       const results: ConvertedPage[] = []
 
       for (let i = 0; i < pageFiles.length; i++) {
-        let buf = await readFile(join(dir, pageFiles[i]))
+        let buf: Buffer = Buffer.from(await readFile(join(dir, pageFiles[i])))
 
         // Derive page number: GS always starts at FirstPage when -dFirstPage is set,
         // so the i-th file corresponds to requestedPages[i] when a subset was chosen.
