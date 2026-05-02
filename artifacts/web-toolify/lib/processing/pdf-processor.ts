@@ -1137,38 +1137,25 @@ export class PDFProcessor extends BaseProcessor {
         imageResolution: number
         extraArgs: string[]
       }> = {
+        // low  = maximum compression, screen-resolution images (/screen 72 dpi)
         low: {
+          pdfSettings: '/screen',
+          imageResolution: 72,
+          extraArgs: [],
+        },
+        // medium = balanced — ebook-quality images, good text fidelity (/ebook 150 dpi)
+        medium: {
           pdfSettings: '/ebook',
           imageResolution: 150,
           extraArgs: [],
         },
-        medium: {
-          pdfSettings: '/screen',
-          imageResolution: 72,
-          extraArgs: [],
-        },
+        // high = best quality — print-ready resolution, fonts fully embedded (/printer 300 dpi)
         high: {
-          pdfSettings: '/screen',
-          imageResolution: 72,
+          pdfSettings: '/printer',
+          imageResolution: 300,
           extraArgs: [
-            // Remove all metadata
-            '-dFastWebView=false',
-            // Compress embedded fonts
             '-dCompressFonts=true',
             '-dSubsetFonts=true',
-            // Aggressively downsample colour images
-            '-dAutoFilterColorImages=false',
-            '-dColorImageFilter=/DCTEncode',
-            '-dDownsampleColorImages=true',
-            `-dColorImageResolution=72`,
-            // Aggressively downsample greyscale images
-            '-dAutoFilterGrayImages=false',
-            '-dGrayImageFilter=/DCTEncode',
-            '-dDownsampleGrayImages=true',
-            `-dGrayImageResolution=72`,
-            // Aggressively downsample monochrome images
-            '-dDownsampleMonoImages=true',
-            `-dMonoImageResolution=144`,
           ],
         },
       }

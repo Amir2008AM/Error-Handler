@@ -1,5 +1,7 @@
 {pkgs}: {
   deps = [
+    pkgs.wkhtmltopdf
+    pkgs.libreoffice-fresh
     pkgs.pixman
     pkgs.librsvg
     pkgs.giflib
