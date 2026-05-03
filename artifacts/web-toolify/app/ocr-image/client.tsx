@@ -43,6 +43,7 @@ function LanguageSelector({
   placeholder: string
   searchPlaceholder: string
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const ref = useRef<HTMLDivElement>(null)
@@ -115,7 +116,7 @@ function LanguageSelector({
 
           {detectedLangObj && !search && (
             <div className="px-3 py-2 border-b border-border bg-primary/5">
-              <p className="text-xs text-muted-foreground mb-1">Detected in your image:</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('ocr.detectedInImage')}</p>
               <button
                 onClick={() => {
                   onChange(detectedLangObj.code)
@@ -132,7 +133,7 @@ function LanguageSelector({
           <ul className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 && (
               <li className="px-3 py-3 text-sm text-muted-foreground text-center">
-                No languages found
+                {t('ocr.noLanguagesFound')}
               </li>
             )}
             {filtered.map((lang) => (
@@ -175,7 +176,6 @@ export function OcrImageClient() {
   const [preview, setPreview] = useState<string | null>(null)
   const [language, setLanguage] = useState('')
   const [extractedText, setExtractedText] = useState('')
-  const [confidence, setConfidence] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
   const [showLangError, setShowLangError] = useState(false)
   const [detection, setDetection] = useState<DetectionResult | null>(null)
@@ -211,7 +211,6 @@ export function OcrImageClient() {
       if (selectedFile && selectedFile.type.startsWith('image/')) {
         setFile(selectedFile)
         setExtractedText('')
-        setConfidence(null)
         setDetection(null)
         setShowLangError(false)
         langSetByDetection.current = false
@@ -235,6 +234,8 @@ export function OcrImageClient() {
       return
     }
     setShowLangError(false)
+    // Clear previous results before each new run
+    setExtractedText('')
     progress.startProcessing(t('ocr.uploading'))
 
     try {
@@ -261,13 +262,12 @@ export function OcrImageClient() {
 
       progress.stageProcessing(undefined, [
         t('ocr.scanning'),
-        t('ocr.extracting') ?? 'Extracting text…',
-        'Cleaning output…',
+        t('ocr.extracting'),
+        t('ocr.cleaningOutput'),
       ])
 
       const data = await response.json()
       setExtractedText(data.text)
-      setConfidence(data.confidence)
 
       progress.stageDone(t('ocr.extracted'))
     } catch (error) {
@@ -315,13 +315,13 @@ export function OcrImageClient() {
                   <Upload className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">{t('common.upload')} Image</p>
+                  <p className="font-semibold text-lg">{t('ocr.uploadImage')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Supports JPG, PNG, GIF, WebP, BMP and TIFF · Max 50 MB
+                    {t('ocr.supportedFormats')}
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  100+ languages · Arabic, Chinese, Japanese, Korean, Hindi and more
+                  {t('ocr.supportedLanguages')}
                 </p>
               </div>
             </Card>
@@ -349,7 +349,6 @@ export function OcrImageClient() {
                       setFile(null)
                       setPreview(null)
                       setExtractedText('')
-                      setConfidence(null)
                       setDetection(null)
                       setShowLangError(false)
                       langSetByDetection.current = false
@@ -363,15 +362,15 @@ export function OcrImageClient() {
 
               {/* Language + extract controls */}
               <Card className="p-4 space-y-4">
-                {/* Detection badge — name only, no percentage */}
+                {/* Detection badge */}
                 {(detecting || detection) && (
                   <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg px-3 py-2">
                     {detecting ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-muted-foreground" />
-                        <span className="text-muted-foreground">Detecting script…</span>
+                        <span className="text-muted-foreground">{t('ocr.detectingScript')}</span>
                       </>
-                    ) : detection ? (
+                    ) : detection && detection.detectedLangName ? (
                       <>
                         <span className="font-medium text-foreground">
                           {detection.detectedLangName}
@@ -410,7 +409,7 @@ export function OcrImageClient() {
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Select the language in your image for accurate results
+                      {t('ocr.selectLanguageHint')}
                     </p>
                   )}
                 </div>
@@ -455,27 +454,10 @@ export function OcrImageClient() {
                   message={progress.message}
                   error={progress.error}
                   className="w-full"
-                  showPercentage={true}
+                  showPercentage={false}
                   showMessage={true}
                   autoHide={false}
                 />
-
-                {confidence !== null && progress.status === 'completed' && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Recognition accuracy</span>
-                    <span
-                      className={`font-medium ${
-                        confidence >= 70
-                          ? 'text-green-600'
-                          : confidence >= 40
-                          ? 'text-amber-600'
-                          : 'text-red-500'
-                      }`}
-                    >
-                      {confidence.toFixed(1)}%
-                    </span>
-                  </div>
-                )}
               </Card>
             </div>
 
@@ -511,8 +493,8 @@ export function OcrImageClient() {
                   dir={selectedLang?.rtl ? 'rtl' : 'ltr'}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {extractedText.length} characters ·{' '}
-                  {extractedText.trim().split(/\s+/).filter(Boolean).length} words
+                  {extractedText.length} {t('ocr.charactersCount')} ·{' '}
+                  {extractedText.trim().split(/\s+/).filter(Boolean).length} {t('ocr.wordsCount')}
                 </p>
               </Card>
             )}
