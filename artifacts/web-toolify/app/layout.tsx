@@ -1,7 +1,6 @@
 import Script from 'next/script'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import { LoadingBarProvider } from '@/components/global-loading-bar'
 import { I18nProvider } from '@/lib/i18n/context'
 import './globals.css'
@@ -9,7 +8,7 @@ import './globals.css'
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
-  display: 'swap',   // prevents render-blocking — text shows immediately in fallback font
+  display: 'swap',
   preload: true,
 })
 
@@ -18,7 +17,7 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: '--font-plus-jakarta',
   display: 'swap',
   preload: true,
-  weight: ['400', '500', '600', '700'],  // only load weights actually used
+  weight: ['400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {
@@ -72,22 +71,22 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
       <head>
-        {process.env.NODE_ENV === 'production' && (
-          <script
-            async
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
-            crossOrigin="anonymous"
-          />
-        )}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased">
         {process.env.NODE_ENV === 'production' && (
           <>
             <Script
-              src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
+              src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
               strategy="afterInteractive"
+              crossOrigin="anonymous"
             />
-            <Script id="ga" strategy="afterInteractive">
+            <Script
+              src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
+              strategy="lazyOnload"
+            />
+            <Script id="ga" strategy="lazyOnload">
               {`
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
@@ -102,7 +101,6 @@ export default function RootLayout({
             {children}
           </LoadingBarProvider>
         </I18nProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
