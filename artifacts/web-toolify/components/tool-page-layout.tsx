@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import {
   FileText, Image, Minimize2, FilePlus2, Scissors,
@@ -13,6 +15,8 @@ import { AdBanner } from './ad-banner'
 import { ToolCard } from './tool-card'
 import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
+import { useI18n } from '@/lib/i18n/context'
+import type { TranslationKey } from '@/lib/i18n/translations'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText, Image, Minimize2, FilePlus2, Scissors,
@@ -23,6 +27,16 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileArchive, Shield,
 }
 
+const CATEGORY_KEY_MAP: Record<string, TranslationKey> = {
+  'PDF Tools': 'home.pdfTools',
+  'Security Tools': 'home.securityTools',
+  'Converters': 'home.converters',
+  'OCR Tools': 'home.ocrTools',
+  'Image Tools': 'home.imageTools',
+  'Text Tools': 'home.textTools',
+  'Calculators': 'home.calculators',
+}
+
 type ToolPageLayoutProps = (
   | { tool: Tool; toolId?: never; title?: never; description?: never }
   | { toolId: string; title?: string; description?: string; tool?: never }
@@ -30,6 +44,7 @@ type ToolPageLayoutProps = (
 
 export function ToolPageLayout(props: ToolPageLayoutProps) {
   const { children } = props
+  const { t } = useI18n()
 
   const resolvedTool: Tool | undefined =
     'tool' in props && props.tool
@@ -53,16 +68,29 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
     .filter((t) => t.id !== tool.id && t.category === tool.category)
     .slice(0, 4)
 
+  const categoryKey = CATEGORY_KEY_MAP[tool.category]
+
+  const trustBadges = [
+    { icon: Lock, key: 'common.filesDeleted' as TranslationKey },
+    { icon: Zap, key: 'common.instantProcessing' as TranslationKey },
+    { icon: Clock, key: 'common.noRegistration' as TranslationKey },
+  ]
+
   return (
     <main className="min-h-screen bg-background">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
           <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
+            <Link href="/" className="hover:text-foreground transition-colors">
+              {t('common.home')}
+            </Link>
             <ChevronRight className="w-3 h-3" />
-            <Link href={`/?category=${encodeURIComponent(tool.category)}`} className="hover:text-foreground transition-colors">
-              {tool.category}
+            <Link
+              href={`/?category=${encodeURIComponent(tool.category)}`}
+              className="hover:text-foreground transition-colors"
+            >
+              {categoryKey ? t(categoryKey) : tool.category}
             </Link>
             <ChevronRight className="w-3 h-3" />
             <span className="text-foreground font-medium">{displayName}</span>
@@ -87,14 +115,10 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
 
           {/* Trust badges */}
           <div className="flex flex-wrap gap-4 mt-5">
-            {[
-              { icon: Lock, label: 'Files auto-deleted after processing' },
-              { icon: Zap, label: 'Instant processing' },
-              { icon: Clock, label: 'No registration required' },
-            ].map(({ icon: BadgeIcon, label }) => (
-              <div key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/70 px-3 py-1.5 rounded-full">
+            {trustBadges.map(({ icon: BadgeIcon, key }) => (
+              <div key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/70 px-3 py-1.5 rounded-full">
                 <BadgeIcon className="w-3 h-3" />
-                {label}
+                {t(key)}
               </div>
             ))}
           </div>
@@ -112,7 +136,7 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
         {/* Related Tools */}
         {relatedTools.length > 0 && (
           <section className="mt-10">
-            <h2 className="text-lg font-bold text-foreground mb-4">Related {tool.category}</h2>
+            <h2 className="text-lg font-bold text-foreground mb-4">{t('tool.relatedTools')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {relatedTools.map((t) => (
                 <ToolCard key={t.id} tool={t} compact />

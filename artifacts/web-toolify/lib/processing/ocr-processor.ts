@@ -38,6 +38,8 @@ const CDN_URLS = [
   'https://cdn.jsdelivr.net/npm/tessdata@1.0.0/4.0.0_best',
 ]
 
+type LangFamily = 'rtl' | 'cjk' | 'indic' | 'latin'
+
 export class OCRProcessor {
   private worker: Worker | null = null
   private currentLanguage: string = ''
@@ -72,7 +74,35 @@ export class OCRProcessor {
   }
 
   /**
-   * Preprocess image for maximum OCR accuracy:
+   * Determine language family for PSM / preprocessing tuning.
+   */
+  private getLangFamily(language: string): LangFamily {
+    const rtl = ['ara', 'heb', 'fas', 'urd', 'syc', 'nqo', 'thaana']
+    const cjk = ['chi_sim', 'chi_tra', 'jpn', 'kor']
+    const indic = ['hin', 'ben', 'tam', 'tel', 'kan', 'mal', 'guj', 'pan', 'ori', 'sin', 'nep', 'mar', 'san']
+    if (rtl.some((l) => language.includes(l))) return 'rtl'
+    if (cjk.some((l) => language.includes(l))) return 'cjk'
+    if (indic.some((l) => language.includes(l))) return 'indic'
+    return 'latin'
+  }
+
+  /**
+   * Set Tesseract PSM and parameters optimised for each language family.
+   * PSM 3 = Auto (default). PSM 6 = Assume single uniform block of text.
+   * PSM 6 works best for RTL, CJK, and Indic scripts; reduces mis-segmentation.
+   */
+  private async configureWorkerForLanguage(worker: Worker, language: string): Promise<void> {
+    const family = this.getLangFamily(language)
+    const psm = family === 'latin' ? '3' : '6'
+    try {
+      await worker.setParameters({ tessedit_pageseg_mode: psm })
+    } catch {
+      // setParameters may not be available in all versions — safe to ignore
+    }
+  }
+
+  /**
+   * Primary preprocessing:
    * - Upscale small images to ≥1800px wide for adequate resolution
    * - Grayscale → normalise histogram → contrast boost → unsharp-mask
    * - Output lossless PNG so OCR gets clean pixels
@@ -106,31 +136,93 @@ export class OCRProcessor {
     }
   }
 
+  /**
+   * Alternative preprocessing strategy for difficult images:
+   * - Detects dark-background images and inverts them automatically
+   * - Uses stronger contrast + binary threshold for maximum clarity
+   * - Falls back gracefully if sharp fails
+   */
+  private async preprocessImageAlt(imageBuffer: Buffer): Promise<Buffer> {
+    try {
+      const stats = await sharp(imageBuffer).grayscale().stats()
+      const avgBrightness = stats.channels[0].mean ?? 128
+
+      let pipeline = sharp(imageBuffer, { failOn: 'error', limitInputPixels: 24_000 * 24_000 })
+        .grayscale()
+        .normalize()
+
+      // Invert dark-background images (white text on black → black on white)
+      if (avgBrightness < 100) {
+        pipeline = pipeline.negate()
+      }
+
+      return await pipeline
+        .linear(1.6, -(0.6 * 128))
+        .threshold(128)
+        .sharpen({ sigma: 2.0, m1: 3.0, m2: 0.5 })
+        .png({ compressionLevel: 1 })
+        .toBuffer()
+    } catch {
+      return imageBuffer
+    }
+  }
+
+  private recognizeWithTimeout(worker: Worker, image: Buffer): Promise<RecognizeResult> {
+    return Promise.race([
+      worker.recognize(image),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('OCR timed out after 60 seconds. Try a smaller or simpler image.')),
+          OCR_TIMEOUT_MS
+        )
+      ),
+    ])
+  }
+
   async recognizeImage(imageBuffer: Buffer, options: OCROptions = {}): Promise<OCRResult> {
     const language = options.language ?? options.languages?.join('+') ?? 'eng'
 
     const worker = await this.getWorker(language)
+
+    // Configure optimal Tesseract parameters for the language family
+    await this.configureWorkerForLanguage(worker, language)
+
+    // Strategy 1: Standard preprocessing
     const processedImage = await this.preprocessImage(imageBuffer)
 
-    const recognizeWithTimeout = (): Promise<RecognizeResult> =>
-      Promise.race([
-        worker.recognize(processedImage),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error('OCR timed out after 60 seconds. Try a smaller or simpler image.')),
-            OCR_TIMEOUT_MS
-          )
-        ),
-      ])
-
+    let result: RecognizeResult
     try {
-      const result = await recognizeWithTimeout()
-      const formatted = this.formatResult(result)
-      formatted.text = cleanOcrText(formatted.text, language)
-      return formatted
+      result = await this.recognizeWithTimeout(worker, processedImage)
     } catch (error) {
       throw new Error(`OCR failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
+
+    const formatted = this.formatResult(result)
+
+    // Strategy 2: If confidence is low or output is too short, retry with alternative preprocessing
+    if (formatted.confidence < 35 || formatted.text.trim().length < 10) {
+      try {
+        const processedAlt = await this.preprocessImageAlt(imageBuffer)
+        const resultAlt = await this.recognizeWithTimeout(worker, processedAlt)
+        const formattedAlt = this.formatResult(resultAlt)
+
+        // Use alternative result if meaningfully better
+        const altIsBetter =
+          formattedAlt.confidence > formatted.confidence + 5 ||
+          (formattedAlt.text.trim().length > formatted.text.trim().length * 1.3 &&
+            formattedAlt.confidence > 15)
+
+        if (altIsBetter) {
+          formattedAlt.text = cleanOcrText(formattedAlt.text, language)
+          return formattedAlt
+        }
+      } catch {
+        // Strategy 2 failed — stick with strategy 1 result
+      }
+    }
+
+    formatted.text = cleanOcrText(formatted.text, language)
+    return formatted
   }
 
   private formatResult(result: RecognizeResult): OCRResult {
