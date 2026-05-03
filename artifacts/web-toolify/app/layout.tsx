@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { LoadingBarProvider } from '@/components/global-loading-bar'
+import { I18nProvider } from '@/lib/i18n/context'
 import './globals.css'
 
 const inter = Inter({
@@ -32,6 +33,8 @@ export const metadata: Metadata = {
     'split pdf',
     'pdf to word',
     'free online tools',
+    'ocr',
+    'image to text',
   ],
   metadataBase: new URL('https://toolify.app'),
   openGraph: {
@@ -64,7 +67,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
       <head>
-        {/* Google AdSense — plain <script> required; next/script adds data-nscript which AdSense rejects */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
@@ -84,9 +86,11 @@ export default function RootLayout({
             gtag('config', 'G-SVNB9EP5YP');
           `}
         </Script>
-        <LoadingBarProvider>
-          {children}
-        </LoadingBarProvider>
+        <I18nProvider>
+          <LoadingBarProvider>
+            {children}
+          </LoadingBarProvider>
+        </I18nProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

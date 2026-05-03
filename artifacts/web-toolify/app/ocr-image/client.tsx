@@ -1,65 +1,227 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Upload, Download, Loader2, Copy, Check, ScanText } from 'lucide-react'
+import {
+  Upload, Download, Loader2, Copy, Check, ScanText, Search,
+  Languages, AlertCircle, ChevronDown, Cpu,
+} from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { OCR_LANGUAGES, type OcrLanguage } from '@/lib/i18n/ocr-languages'
 
 const tool = getToolBySlug('ocr-image')!
 
-const LANGUAGES = [
-  { code: 'eng', name: 'English' },
-  { code: 'ara', name: 'Arabic' },
-  { code: 'fra', name: 'French' },
-  { code: 'deu', name: 'German' },
-  { code: 'spa', name: 'Spanish' },
-  { code: 'ita', name: 'Italian' },
-  { code: 'por', name: 'Portuguese' },
-  { code: 'rus', name: 'Russian' },
-  { code: 'chi_sim', name: 'Chinese (Simplified)' },
-  { code: 'jpn', name: 'Japanese' },
-  { code: 'kor', name: 'Korean' },
-  { code: 'hin', name: 'Hindi' },
-  { code: 'tur', name: 'Turkish' },
-]
+interface DetectionResult {
+  script: string
+  scriptConfidence: number
+  detectedLang: string
+  detectedLangName: string
+}
+
+function LanguageSelector({
+  value,
+  onChange,
+  disabled,
+  detectedLang,
+  showError,
+}: {
+  value: string
+  onChange: (code: string) => void
+  disabled?: boolean
+  detectedLang?: DetectionResult | null
+  showError?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selected = OCR_LANGUAGES.find((l) => l.code === value)
+
+  const filtered = OCR_LANGUAGES.filter(
+    (l) =>
+      l.name.toLowerCase().includes(search.toLowerCase()) ||
+      l.code.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const detectedLangObj = detectedLang
+    ? OCR_LANGUAGES.find((l) => l.code === detectedLang.detectedLang)
+    : null
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm border rounded-lg bg-white transition-all ${
+          showError && !value
+            ? 'border-red-400 ring-1 ring-red-300'
+            : open
+            ? 'border-primary ring-2 ring-primary/20'
+            : 'border-border hover:border-primary/40'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <span className="flex items-center gap-2">
+          <Languages className="w-4 h-4 text-muted-foreground shrink-0" />
+          {selected ? (
+            <span className="text-foreground">{selected.name}</span>
+          ) : (
+            <span className="text-muted-foreground">Select language…</span>
+          )}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="p-2 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search 100+ languages…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-lg bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              />
+            </div>
+          </div>
+
+          {detectedLangObj && !search && (
+            <div className="px-3 py-2 border-b border-border bg-primary/5">
+              <p className="text-xs text-muted-foreground mb-1">Detected in your image:</p>
+              <button
+                onClick={() => {
+                  onChange(detectedLangObj.code)
+                  setOpen(false)
+                  setSearch('')
+                }}
+                className="w-full text-left text-sm font-medium text-primary hover:text-primary/80 flex items-center justify-between"
+              >
+                <span>{detectedLangObj.name}</span>
+                <span className="text-xs text-muted-foreground">{detectedLang!.scriptConfidence}% confidence</span>
+              </button>
+            </div>
+          )}
+
+          <ul className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-3 text-sm text-muted-foreground text-center">No languages found</li>
+            )}
+            {filtered.map((lang) => (
+              <li key={lang.code}>
+                <button
+                  onClick={() => {
+                    onChange(lang.code)
+                    setOpen(false)
+                    setSearch('')
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                    lang.code === value ? 'text-primary font-medium bg-primary/5' : 'text-foreground'
+                  }`}
+                >
+                  <span>{lang.name}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    lang.rtl ? 'bg-amber-50 text-amber-600' : 'text-muted-foreground'
+                  }`}>
+                    {lang.rtl ? 'RTL' : lang.code}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function OcrImageClient() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [language, setLanguage] = useState('eng')
+  const [language, setLanguage] = useState('')
   const [extractedText, setExtractedText] = useState('')
   const [confidence, setConfidence] = useState<number | null>(null)
+  const [engine, setEngine] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [showLangError, setShowLangError] = useState(false)
+  const [detection, setDetection] = useState<DetectionResult | null>(null)
+  const [detecting, setDetecting] = useState(false)
   const progress = useRealProgress()
+  const langSetByDetection = useRef(false)
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile && selectedFile.type.startsWith('image/')) {
-      setFile(selectedFile)
-      setExtractedText('')
-      setConfidence(null)
-      progress.reset()
-      
-      // Create preview
-      const reader = new FileReader()
-      reader.onload = (e) => setPreview(e.target?.result as string)
-      reader.readAsDataURL(selectedFile)
+  const runDetection = useCallback(async (f: File) => {
+    setDetecting(true)
+    langSetByDetection.current = false
+    try {
+      const fd = new FormData()
+      fd.append('file', f)
+      const res = await fetch('/api/ocr/detect', { method: 'POST', body: fd })
+      if (res.ok) {
+        const data: DetectionResult = await res.json()
+        setDetection(data)
+        if (data.detectedLang && !langSetByDetection.current) {
+          setLanguage(data.detectedLang)
+          langSetByDetection.current = true
+        }
+      }
+    } catch {
+    } finally {
+      setDetecting(false)
     }
-  }, [progress])
+  }, [])
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = e.target.files?.[0]
+      if (selectedFile && selectedFile.type.startsWith('image/')) {
+        setFile(selectedFile)
+        setExtractedText('')
+        setConfidence(null)
+        setEngine(null)
+        setDetection(null)
+        setShowLangError(false)
+        progress.reset()
+
+        const reader = new FileReader()
+        reader.onload = (ev) => setPreview(ev.target?.result as string)
+        reader.readAsDataURL(selectedFile)
+
+        runDetection(selectedFile)
+      }
+    },
+    [progress, runDetection]
+  )
 
   const handleExtract = async () => {
     if (!file) return
 
-    progress.startProcessing('Uploading image...')
-    
+    if (!language) {
+      setShowLangError(true)
+      return
+    }
+    setShowLangError(false)
+    progress.startProcessing('Uploading image…')
+
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -71,22 +233,23 @@ export function OcrImageClient() {
         formData,
         responseType: 'json',
         onUploadProgress: (pct) => {
-          progress.stageUpload(pct, 'Uploading image...')
+          progress.stageUpload(pct, 'Uploading image…')
         },
       })
 
-      progress.stageValidation('Validating image...')
+      progress.stageValidation('Validating image…')
 
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'OCR failed')
       }
 
-      progress.stageProcessing(undefined, ['Scanning document...', 'Extracting text...', 'Almost done...'])
+      progress.stageProcessing(undefined, ['Scanning document…', 'Extracting text…', 'Cleaning output…'])
 
       const data = await response.json()
       setExtractedText(data.text)
       setConfidence(data.confidence)
+      setEngine(data.engine)
 
       progress.stageDone('Text extracted!')
     } catch (error) {
@@ -118,19 +281,16 @@ export function OcrImageClient() {
   }
 
   const isProcessing = progress.status === 'processing'
+  const selectedLang = OCR_LANGUAGES.find((l) => l.code === language)
 
   return (
     <ToolPageLayout tool={tool}>
       <div className="max-w-3xl mx-auto">
         <BackButton />
+
         {!file ? (
           <label className="block">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
+            <input type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
             <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -139,39 +299,43 @@ export function OcrImageClient() {
                 <div>
                   <p className="font-semibold text-lg">Upload Image</p>
                   <p className="text-sm text-muted-foreground">
-                    Supports JPG, PNG, GIF, WebP, BMP, and TIFF
+                    Supports JPG, PNG, GIF, WebP, BMP and TIFF · Max 50 MB
                   </p>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  100+ languages · Arabic, Chinese, Japanese, Korean, Hindi and more
+                </p>
               </div>
             </Card>
           </label>
         ) : (
-          <div className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card className="p-4">
-                <div className="aspect-video relative bg-muted rounded-lg overflow-hidden mb-4">
+          <div className="space-y-5">
+            <div className="grid gap-5 md:grid-cols-2">
+              {/* Left: image preview */}
+              <Card className="p-4 space-y-3">
+                <div className="aspect-video relative bg-muted rounded-lg overflow-hidden">
                   {preview && (
-                    <img
-                      src={preview}
-                      alt="Preview"
-                      className="w-full h-full object-contain"
-                    />
+                    <img src={preview} alt="Preview" className="w-full h-full object-contain" />
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium truncate">{file.name}</p>
-                    <p className="text-sm text-muted-foreground">{formatSize(file.size)}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={isProcessing}
                     onClick={() => {
                       setFile(null)
                       setPreview(null)
                       setExtractedText('')
                       setConfidence(null)
+                      setEngine(null)
+                      setDetection(null)
+                      setShowLangError(false)
+                      langSetByDetection.current = false
                       progress.reset()
                     }}
                   >
@@ -180,87 +344,133 @@ export function OcrImageClient() {
                 </div>
               </Card>
 
+              {/* Right: language selector + controls */}
               <Card className="p-4 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="language">Text Language</Label>
-                  <Select value={language} onValueChange={setLanguage} disabled={isProcessing}>
-                    <SelectTrigger id="language">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LANGUAGES.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code}>
-                          {lang.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Select the primary language of the text in your image for better accuracy
-                  </p>
-                </div>
+                {/* Detection badge */}
+                {(detecting || detection) && (
+                  <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg px-3 py-2">
+                    {detecting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-muted-foreground" />
+                        <span className="text-muted-foreground">Detecting script…</span>
+                      </>
+                    ) : detection ? (
+                      <>
+                        <span className="font-medium text-foreground">{detection.detectedLangName}</span>
+                        <span className="text-muted-foreground">detected</span>
+                        <span className="ml-auto text-muted-foreground">{detection.scriptConfidence}%</span>
+                      </>
+                    ) : null}
+                  </div>
+                )}
 
-                <div className="space-y-3">
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={handleExtract}
+                {/* Language selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium flex items-center gap-1">
+                    <Languages className="w-3.5 h-3.5" />
+                    Text Language
+                    <span className="text-red-500 ml-0.5">*</span>
+                  </Label>
+                  <LanguageSelector
+                    value={language}
+                    onChange={(code) => {
+                      setLanguage(code)
+                      setShowLangError(false)
+                    }}
                     disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Extracting Text...
-                      </>
-                    ) : (
-                      <>
-                        <ScanText className="w-4 h-4 mr-2" />
-                        Extract Text
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Real Progress Bar */}
-                  <RealProgressBar
-                    status={progress.status}
-                    progress={progress.progress}
-                    message={progress.message}
-                    error={progress.error}
-                    className="w-full"
-                    showPercentage={true}
-                    showMessage={true}
-                    autoHide={false}
+                    detectedLang={detection}
+                    showError={showLangError}
                   />
+                  {showLangError && !language ? (
+                    <p className="flex items-center gap-1.5 text-xs text-red-500 mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      Please select a language to continue
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Select the language in your image for accurate results
+                    </p>
+                  )}
                 </div>
+
+                {/* Selected lang pill */}
+                {selectedLang && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-mono">
+                      {selectedLang.code}
+                    </span>
+                    <span>{selectedLang.name}</span>
+                    {selectedLang.rtl && (
+                      <span className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">RTL</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Extract button */}
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handleExtract}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Extracting Text…
+                    </>
+                  ) : (
+                    <>
+                      <ScanText className="w-4 h-4 mr-2" />
+                      Extract Text
+                    </>
+                  )}
+                </Button>
+
+                <RealProgressBar
+                  status={progress.status}
+                  progress={progress.progress}
+                  message={progress.message}
+                  error={progress.error}
+                  className="w-full"
+                  showPercentage={true}
+                  showMessage={true}
+                  autoHide={false}
+                />
 
                 {confidence !== null && progress.status === 'completed' && (
-                  <div className="text-sm text-muted-foreground text-center">
-                    Recognition confidence: {confidence.toFixed(1)}%
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Recognition confidence</span>
+                      <span className={`font-medium ${confidence >= 70 ? 'text-green-600' : confidence >= 40 ? 'text-amber-600' : 'text-red-500'}`}>
+                        {confidence.toFixed(1)}%
+                      </span>
+                    </div>
+                    {engine && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Cpu className="w-3 h-3 shrink-0" />
+                        <span>{engine}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
             </div>
 
+            {/* Extracted text output */}
             {extractedText && (
-              <Card className="p-6 space-y-4">
+              <Card className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Extracted Text</h3>
+                  <h3 className="font-semibold text-sm">Extracted Text</h3>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={handleCopy}>
                       {copied ? (
-                        <>
-                          <Check className="w-4 h-4 mr-1" />
-                          Copied
-                        </>
+                        <><Check className="w-3.5 h-3.5 mr-1" />Copied</>
                       ) : (
-                        <>
-                          <Copy className="w-4 h-4 mr-1" />
-                          Copy
-                        </>
+                        <><Copy className="w-3.5 h-3.5 mr-1" />Copy</>
                       )}
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleDownload}>
-                      <Download className="w-4 h-4 mr-1" />
+                      <Download className="w-3.5 h-3.5 mr-1" />
                       Download
                     </Button>
                   </div>
@@ -269,7 +479,11 @@ export function OcrImageClient() {
                   value={extractedText}
                   onChange={(e) => setExtractedText(e.target.value)}
                   className="min-h-[200px] font-mono text-sm"
+                  dir={selectedLang?.rtl ? 'rtl' : 'ltr'}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {extractedText.length} characters · {extractedText.trim().split(/\s+/).filter(Boolean).length} words
+                </p>
               </Card>
             )}
           </div>

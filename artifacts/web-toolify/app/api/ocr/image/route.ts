@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OCRProcessor } from '@/lib/processing/ocr-processor'
 import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
+import { OCR_LANGUAGES } from '@/lib/i18n/ocr-languages'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -17,15 +18,19 @@ export async function POST(request: NextRequest) {
     const validationError = await validateStreamedFile(file, 'image')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const language = fields['language'] ?? 'eng+ara'
-    const outputType = (fields['outputType'] as 'text' | 'json') ?? 'text'
+    const language = fields['language']
+    if (!language || language.trim() === '') {
+      return NextResponse.json(
+        { error: 'Language is required. Please select a language before running OCR.' },
+        { status: 400 }
+      )
+    }
 
+    const outputType = (fields['outputType'] as 'text' | 'json') ?? 'json'
     const buffer = await readFile(file.path)
 
     const ocrProcessor = new OCRProcessor()
-
     const result = await ocrProcessor.recognizeImage(buffer, { language })
-
     await ocrProcessor.terminate()
 
     if (outputType === 'json') {
@@ -33,6 +38,8 @@ export async function POST(request: NextRequest) {
         text: result.text,
         confidence: result.confidence,
         words: result.words,
+        engine: result.engine,
+        language,
       })
     }
 
@@ -44,20 +51,19 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/plain; charset=utf-8',
         'Content-Disposition': `attachment; filename="${baseName}-ocr.txt"`,
         'X-OCR-Confidence': result.confidence.toFixed(2),
+        'X-OCR-Engine': result.engine ?? 'Tesseract.js',
         'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
     console.error('OCR image error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to perform OCR'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    const msg = error instanceof Error ? error.message : 'Failed to perform OCR'
+    return NextResponse.json({ error: msg }, { status: 500 })
   } finally {
     await cleanup()
   }
 }
 
 export async function GET() {
-  const ocrProcessor = new OCRProcessor()
-  const languages = ocrProcessor.getAvailableLanguages()
-  return NextResponse.json({ languages })
+  return NextResponse.json({ languages: OCR_LANGUAGES })
 }

@@ -17,20 +17,23 @@ export async function POST(request: NextRequest) {
     const validationError = await validateStreamedFile(file, 'pdf')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const language = fields['language'] ?? 'eng'
-    const outputType = (fields['outputType'] as 'text' | 'searchable-pdf' | 'both') ?? 'text'
+    const language = fields['language']
+    if (!language || language.trim() === '') {
+      return NextResponse.json(
+        { error: 'Language is required. Please select a language before running OCR.' },
+        { status: 400 }
+      )
+    }
 
+    const outputType = (fields['outputType'] as 'text' | 'searchable-pdf' | 'both') ?? 'text'
     const buffer = await readFile(file.path)
 
     const ocrProcessor = new OCRProcessor()
-
     const result = await ocrProcessor.recognizePdf(buffer, { language, outputType })
-
     await ocrProcessor.terminate()
 
     if (outputType === 'searchable-pdf' && result.searchablePdf) {
       const baseName = file.filename.replace(/\.pdf$/i, '')
-
       return new NextResponse(result.searchablePdf, {
         headers: {
           'Content-Type': 'application/pdf',
@@ -62,8 +65,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('OCR PDF error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to perform OCR on PDF'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    const msg = error instanceof Error ? error.message : 'Failed to perform OCR on PDF'
+    return NextResponse.json({ error: msg }, { status: 500 })
   } finally {
     await cleanup()
   }
