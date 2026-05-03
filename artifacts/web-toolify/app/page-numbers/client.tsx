@@ -10,29 +10,32 @@ import { Upload, Download, Loader2, FileText } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
-
-const positions = [
-  { value: 'top-left', label: 'Top Left' },
-  { value: 'top-center', label: 'Top Center' },
-  { value: 'top-right', label: 'Top Right' },
-  { value: 'bottom-left', label: 'Bottom Left' },
-  { value: 'bottom-center', label: 'Bottom Center' },
-  { value: 'bottom-right', label: 'Bottom Right' },
-]
-
-const formats = [
-  { value: 'numeric', label: '1, 2, 3...' },
-  { value: 'roman', label: 'I, II, III...' },
-  { value: 'page-of-total', label: 'Page 1 of 10' },
-]
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 export function PageNumbersClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [position, setPosition] = useState('bottom-center')
   const [format, setFormat] = useState('numeric')
   const [startFrom, setStartFrom] = useState(1)
   const [fontSize, setFontSize] = useState(12)
   const progress = useRealProgress()
+
+  const positions = [
+    { value: 'top-left', label: 'Top Left' },
+    { value: 'top-center', label: 'Top Center' },
+    { value: 'top-right', label: 'Top Right' },
+    { value: 'bottom-left', label: 'Bottom Left' },
+    { value: 'bottom-center', label: 'Bottom Center' },
+    { value: 'bottom-right', label: 'Bottom Right' },
+  ]
+
+  const formats = [
+    { value: 'numeric', label: '1, 2, 3...' },
+    { value: 'roman', label: 'I, II, III...' },
+    { value: 'page-of-total', label: 'Page 1 of 10' },
+  ]
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -109,8 +112,8 @@ export function PageNumbersClient() {
                   <Upload className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">Upload PDF</p>
-                  <p className="text-sm text-muted-foreground">Click or drag and drop your PDF file here</p>
+                  <p className="font-semibold text-lg">{t(lang, 'common.uploadPdf')}</p>
+                  <p className="text-sm text-muted-foreground">{t(lang, 'common.clickOrDragPdf')}</p>
                 </div>
               </div>
             </Card>
@@ -129,14 +132,14 @@ export function PageNumbersClient() {
                   onClick={() => { setFile(null); progress.reset() }}
                   disabled={isProcessing}
                 >
-                  Change
+                  {t(lang, 'common.change')}
                 </Button>
               </div>
             </Card>
 
             <Card className="p-6 space-y-6">
               <div>
-                <Label className="text-sm font-medium mb-3 block">Position</Label>
+                <Label className="text-sm font-medium mb-3 block">{t(lang, 'pageNum.position')}</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {positions.map((pos) => (
                     <button
@@ -156,7 +159,7 @@ export function PageNumbersClient() {
               </div>
 
               <div>
-                <Label className="text-sm font-medium mb-3 block">Format</Label>
+                <Label className="text-sm font-medium mb-3 block">{t(lang, 'pageNum.format')}</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {formats.map((fmt) => (
                     <button
@@ -178,7 +181,7 @@ export function PageNumbersClient() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="startFrom" className="text-sm font-medium mb-2 block">
-                    Start From
+                    {t(lang, 'pageNum.startFrom')}
                   </Label>
                   <Input
                     id="startFrom"
@@ -191,7 +194,7 @@ export function PageNumbersClient() {
                 </div>
                 <div>
                   <Label htmlFor="fontSize" className="text-sm font-medium mb-2 block">
-                    Font Size (pt)
+                    {t(lang, 'pageNum.fontSize')}
                   </Label>
                   <Input
                     id="fontSize"
@@ -216,12 +219,12 @@ export function PageNumbersClient() {
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
+                    {t(lang, 'pageNum.processing')}
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Add Page Numbers
+                    {t(lang, 'pageNum.action')}
                   </>
                 )}
               </Button>

@@ -6,6 +6,8 @@ import { Download, Loader2, CheckCircle2, RotateCcw, X, Crop } from 'lucide-reac
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -21,6 +23,7 @@ interface CropArea {
 }
 
 export function CropImageClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
@@ -42,11 +45,9 @@ export function CropImageClient() {
     setError(null)
     progress.reset()
     
-    // Load image to get dimensions
     const img = new Image()
     img.onload = () => {
       setImageSize({ width: img.width, height: img.height })
-      // Set initial crop to center 50%
       const cropW = Math.round(img.width * 0.5)
       const cropH = Math.round(img.height * 0.5)
       setCropArea({
@@ -123,7 +124,6 @@ export function CropImageClient() {
     progress.reset()
   }
 
-  // Calculate scale factor for preview
   const getScale = () => {
     if (!imageSize || containerSize.width === 0) return 1
     const scaleX = containerSize.width / imageSize.width
@@ -142,12 +142,11 @@ export function CropImageClient() {
           accept="image/jpeg,image/jpg,image/png,image/webp"
           multiple={false}
           onFilesSelected={handleFileSelected}
-          label="Drop an image here or click to browse"
+          label={t(lang, 'crop.dropImage')}
           sublabel="Supports JPG, PNG, WebP"
         />
       ) : (
         <div className="space-y-6">
-          {/* Image Preview with Crop Area */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="font-medium text-foreground">{file.name}</p>
@@ -157,7 +156,7 @@ export function CropImageClient() {
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
-                Remove
+                {t(lang, 'crop.remove')}
               </button>
             </div>
 
@@ -179,7 +178,6 @@ export function CropImageClient() {
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                   
-                  {/* Crop overlay */}
                   <div 
                     className="absolute inset-0 bg-black/50 pointer-events-none"
                     style={{
@@ -194,7 +192,6 @@ export function CropImageClient() {
                     }}
                   />
                   
-                  {/* Crop border */}
                   <div 
                     className="absolute border-2 border-white border-dashed"
                     style={{
@@ -209,11 +206,10 @@ export function CropImageClient() {
             </div>
           </div>
 
-          {/* Crop Controls */}
           {imageSize && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">X Position</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{t(lang, 'crop.xPosition')}</label>
                 <input
                   type="number"
                   value={cropArea.x}
@@ -225,7 +221,7 @@ export function CropImageClient() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Y Position</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{t(lang, 'crop.yPosition')}</label>
                 <input
                   type="number"
                   value={cropArea.y}
@@ -237,7 +233,7 @@ export function CropImageClient() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Width</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{t(lang, 'crop.width')}</label>
                 <input
                   type="number"
                   value={cropArea.width}
@@ -249,7 +245,7 @@ export function CropImageClient() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Height</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">{t(lang, 'crop.height')}</label>
                 <input
                   type="number"
                   value={cropArea.height}
@@ -263,11 +259,10 @@ export function CropImageClient() {
             </div>
           )}
 
-          {/* Info */}
           {imageSize && (
             <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground flex items-center justify-between">
-              <span>Original: {imageSize.width} x {imageSize.height}px</span>
-              <span>Crop: {cropArea.width} x {cropArea.height}px</span>
+              <span>{t(lang, 'crop.original')}: {imageSize.width} x {imageSize.height}px</span>
+              <span>{t(lang, 'crop.cropArea')}: {cropArea.width} x {cropArea.height}px</span>
             </div>
           )}
 
@@ -278,13 +273,12 @@ export function CropImageClient() {
               className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isProcessing ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Cropping...</>
+                <><Loader2 className="w-5 h-5 animate-spin" /> {t(lang, 'crop.processing')}</>
               ) : (
-                <><Crop className="w-5 h-5" /> Crop Image</>
+                <><Crop className="w-5 h-5" /> {t(lang, 'crop.action')}</>
               )}
             </button>
 
-            {/* Real Progress Bar */}
             <RealProgressBar
               status={progress.status}
               progress={progress.progress}
@@ -297,21 +291,19 @@ export function CropImageClient() {
             />
           </div>
 
-          {/* Error */}
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
               {error}
             </div>
           )}
 
-          {/* Result */}
           {result && progress.status === 'completed' && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
                 <div>
-                  <p className="font-semibold text-green-900">Image cropped successfully!</p>
-                  <p className="text-sm text-green-700">Output: {cropArea.width} x {cropArea.height}px</p>
+                  <p className="font-semibold text-green-900">{t(lang, 'crop.successTitle')}</p>
+                  <p className="text-sm text-green-700">{t(lang, 'crop.cropArea')}: {cropArea.width} x {cropArea.height}px</p>
                 </div>
               </div>
 
@@ -322,14 +314,14 @@ export function CropImageClient() {
                   className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  Download Cropped Image
+                  {t(lang, 'crop.download')}
                 </a>
                 <button
                   onClick={reset}
                   className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  New Image
+                  {t(lang, 'crop.newImage')}
                 </button>
               </div>
             </div>

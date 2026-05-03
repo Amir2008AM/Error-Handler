@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 interface ResizeResult {
   downloadUrl: string
@@ -18,6 +20,7 @@ interface ResizeResult {
 }
 
 export function ResizeImageClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [origWidth, setOrigWidth] = useState(0)
@@ -72,7 +75,7 @@ export function ResizeImageClient() {
     const w = parseInt(width, 10)
     const h = parseInt(height, 10)
     if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
-      setError('Please enter valid width and height values.')
+      setError(t(lang, 'resize.errorInvalidDimensions'))
       return
     }
 
@@ -156,13 +159,12 @@ export function ResizeImageClient() {
           accept="image/jpeg,image/jpg,image/png,image/webp,image/avif"
           multiple={false}
           onFilesSelected={handleFileSelected}
-          label="Drop an image here or click to browse"
+          label={t(lang, 'resize.dropImage')}
           sublabel="Supports JPG, PNG, WebP, AVIF"
         />
       ) : (
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Preview */}
             <div className="relative rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={preview ?? ''} alt="Preview" className="max-w-full max-h-full object-contain" />
@@ -178,10 +180,9 @@ export function ResizeImageClient() {
               </div>
             </div>
 
-            {/* Controls */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-foreground">Dimensions</label>
+                <label className="text-sm font-semibold text-foreground">{t(lang, 'resize.dimensions')}</label>
                 <button
                   onClick={() => setKeepRatio(!keepRatio)}
                   disabled={isProcessing}
@@ -191,13 +192,13 @@ export function ResizeImageClient() {
                   )}
                 >
                   {keepRatio ? <Link className="w-3 h-3" /> : <Unlink className="w-3 h-3" />}
-                  {keepRatio ? 'Ratio locked' : 'Free resize'}
+                  {keepRatio ? t(lang, 'resize.ratioLocked') : t(lang, 'resize.freeResize')}
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Width (px)</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t(lang, 'resize.widthPx')}</label>
                   <input 
                     type="number" 
                     value={width} 
@@ -208,7 +209,7 @@ export function ResizeImageClient() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Height (px)</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t(lang, 'resize.heightPx')}</label>
                   <input 
                     type="number" 
                     value={height} 
@@ -227,13 +228,12 @@ export function ResizeImageClient() {
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-all"
                 >
                   {isProcessing ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> Resizing...</>
+                    <><Loader2 className="w-5 h-5 animate-spin" /> {t(lang, 'resize.processing')}</>
                   ) : (
-                    'Resize Image'
+                    t(lang, 'resize.action')
                   )}
                 </button>
 
-                {/* Real Progress Bar */}
                 <RealProgressBar
                   status={progress.status}
                   progress={progress.progress}
@@ -257,7 +257,7 @@ export function ResizeImageClient() {
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
                 <div>
-                  <p className="font-semibold text-green-900">Resized to {result.width} × {result.height}px</p>
+                  <p className="font-semibold text-green-900">{t(lang, 'resize.successPrefix')} {result.width} × {result.height}px</p>
                   <p className="text-sm text-green-700">
                     {result.originalSize > 0 && result.outputSize > 0
                       ? `${formatBytes(result.originalSize)} → ${formatBytes(result.outputSize)}`
@@ -271,7 +271,7 @@ export function ResizeImageClient() {
                   download={result.filename} 
                   className="flex items-center gap-2 bg-green-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  <Download className="w-4 h-4" /> Download
+                  <Download className="w-4 h-4" /> {t(lang, 'common.download')}
                 </a>
                 <button 
                   onClick={reset} 

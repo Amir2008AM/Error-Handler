@@ -3,6 +3,9 @@
  * Lightweight script/language detection using Tesseract OSD mode.
  * Returns detected script and a best-guess language — for UI display only.
  * The user MUST confirm or override the language before OCR runs.
+ *
+ * When detection confidence is low (< 0.5) or the script is Latin (ambiguous),
+ * we return an empty detectedLang so the client does not auto-select a language.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createWorker } from 'tesseract.js'
@@ -13,7 +16,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const SCRIPT_TO_LANG: Record<string, { code: string; name: string }> = {
-  Latin:      { code: 'eng', name: 'English' },
   Arabic:     { code: 'ara', name: 'Arabic' },
   Cyrillic:   { code: 'rus', name: 'Russian' },
   Han:        { code: 'chi_sim', name: 'Chinese (Simplified)' },
@@ -37,6 +39,8 @@ const SCRIPT_TO_LANG: Record<string, { code: string; name: string }> = {
   Khmer:      { code: 'khm', name: 'Khmer' },
   Ethiopic:   { code: 'amh', name: 'Amharic' },
 }
+
+const CONFIDENCE_THRESHOLD = 0.5
 
 export async function POST(request: NextRequest) {
   const { files, cleanup } = await streamUpload(request).catch((err) => {
@@ -75,23 +79,34 @@ export async function POST(request: NextRequest) {
       await worker.terminate()
 
       const data = result.data as { script?: string; script_confidence?: number; orientation_confidence?: number }
-      const script = data.script ?? 'Latin'
+      const script = data.script ?? ''
       const scriptConf = Math.round((data.script_confidence ?? 0) * 100) / 100
-      const lang = SCRIPT_TO_LANG[script] ?? SCRIPT_TO_LANG['Latin']
+
+      const lang = SCRIPT_TO_LANG[script]
+      const highConfidence = scriptConf >= CONFIDENCE_THRESHOLD
+
+      if (lang && highConfidence) {
+        return NextResponse.json({
+          script,
+          scriptConfidence: Math.min(Math.round(scriptConf), 99),
+          detectedLang: lang.code,
+          detectedLangName: lang.name,
+        })
+      }
 
       return NextResponse.json({
-        script,
+        script: script || 'Unknown',
         scriptConfidence: Math.min(Math.round(scriptConf), 99),
-        detectedLang: lang.code,
-        detectedLangName: lang.name,
+        detectedLang: '',
+        detectedLangName: '',
       })
     } catch {
       await worker.terminate()
       return NextResponse.json({
         script: 'Unknown',
         scriptConfidence: 0,
-        detectedLang: 'eng',
-        detectedLangName: 'English',
+        detectedLang: '',
+        detectedLangName: '',
       })
     }
   } finally {

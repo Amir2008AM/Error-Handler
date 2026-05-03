@@ -12,6 +12,8 @@ import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar
 import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('unlock-pdf')!
 
@@ -22,6 +24,7 @@ interface UnlockResult {
 }
 
 export function UnlockPdfClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -99,8 +102,8 @@ export function UnlockPdfClient() {
                   <Unlock className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">Upload Protected PDF</p>
-                  <p className="text-sm text-muted-foreground">Click or drag and drop your password-protected PDF</p>
+                  <p className="font-semibold text-lg">{t(lang, 'unlock.uploadTitle')}</p>
+                  <p className="text-sm text-muted-foreground">{t(lang, 'unlock.clickOrDrag')}</p>
                 </div>
               </div>
             </Card>
@@ -117,7 +120,7 @@ export function UnlockPdfClient() {
                   <p className="text-sm text-muted-foreground">{formatSize(file.size)}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => { setFile(null); setPassword(''); setResult(null); progress.reset() }} disabled={isProcessing}>
-                  Change
+                  {t(lang, 'common.change')}
                 </Button>
               </div>
             </Card>
@@ -129,17 +132,17 @@ export function UnlockPdfClient() {
             <Card className="p-6 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <Unlock className="w-5 h-5" />
-                Enter Password
+                {t(lang, 'unlock.enterPassword')}
               </h3>
               <div className="space-y-2">
-                <Label htmlFor="password">PDF Password</Label>
+                <Label htmlFor="password">{t(lang, 'unlock.pdfPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter the document password"
+                    placeholder={t(lang, 'unlock.enterPasswordPlaceholder')}
                     disabled={isProcessing}
                   />
                   <Button
@@ -153,7 +156,7 @@ export function UnlockPdfClient() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Leave empty if only an owner password is set.
+                  {t(lang, 'unlock.leaveEmpty')}
                 </p>
               </div>
             </Card>
@@ -166,9 +169,9 @@ export function UnlockPdfClient() {
                 className="min-w-[200px]"
               >
                 {isProcessing ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Unlocking...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t(lang, 'unlock.processing')}</>
                 ) : (
-                  <><Download className="w-4 h-4 mr-2" />Unlock & Download</>
+                  <><Download className="w-4 h-4 mr-2" />{t(lang, 'unlock.action')}</>
                 )}
               </Button>
 

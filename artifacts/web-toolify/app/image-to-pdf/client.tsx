@@ -6,6 +6,8 @@ import { X, Download, Loader2, GripVertical, CheckCircle2, RotateCcw } from 'luc
 import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 interface ImageEntry {
   id: string
@@ -16,25 +18,11 @@ interface ImageEntry {
 
 let idCounter = 0
 
-// How often to poll the job status endpoint (ms)
 const POLL_INTERVAL_MS = 600
-// Maximum time to wait for the server to finish (ms)
 const POLL_TIMEOUT_MS  = 5 * 60 * 1000
-// Max dimension before resizing client-side (px) — keeps upload small
 const CLIENT_MAX_PX = 1600
-// Max total compressed upload size we allow (bytes)
-const MAX_UPLOAD_BYTES = 80 * 1024 * 1024 // 80 MB
+const MAX_UPLOAD_BYTES = 80 * 1024 * 1024
 
-/**
- * Compress an image file in the browser using the Canvas API.
- *
- * Why: Phone photos can be 4–10 MB each. 29 of them = 120–290 MB, which blows
- * through server body-size limits and causes "Failed to fetch". Canvas resize +
- * JPEG re-encode brings each image to ~300–800 KB so 29 images ≈ 10–20 MB total.
- *
- * The server-side Sharp pipeline still runs afterwards for EXIF correction,
- * final quality control, and metadata stripping.
- */
 async function compressForUpload(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -58,12 +46,11 @@ async function compressForUpload(file: File): Promise<Blob> {
         0.82,
       )
     }
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) } // fallback: send original
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
     img.src = url
   })
 }
 
-/** Poll /api/jobs/{id} until status is completed or failed. */
 async function pollJobUntilDone(
   jobId: string,
   onProgress: (pct: number) => void,
@@ -93,7 +80,6 @@ async function pollJobUntilDone(
       throw new Error(data.error || 'PDF generation failed on the server')
     }
 
-    // Forward server-reported progress (10 → 90 range) to the progress bar
     if (typeof data.progress === 'number') {
       onProgress(Math.min(data.progress, 95))
     }
@@ -103,6 +89,7 @@ async function pollJobUntilDone(
 }
 
 export function ImageToPdfClient() {
+  const { lang } = useI18n()
   const [images,      setImages]      = useState<ImageEntry[]>([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [error,       setError]       = useState<string | null>(null)
@@ -175,26 +162,13 @@ export function ImageToPdfClient() {
     progress.reset()
   }
 
-  /**
-   * Upload selected images to the server and let Sharp preprocess them
-   * before embedding into a PDF.
-   *
-   * Why server-side instead of client-side pdf-lib?
-   *   Browser pdf-lib embeds images raw — a 6 MB PNG stays 6 MB in the PDF.
-   *   The server runs Sharp which:
-   *     1. Resizes images to ≤ 1600 px (no reason to embed 4K pixels on A4)
-   *     2. Re-encodes as JPEG at quality 78 (PNG → JPEG is often 20–50× smaller)
-   *     3. Auto-corrects EXIF rotation (phone photos)
-   *     4. Strips all metadata
-   *   Result: 50 images that would produce a ~100 MB PDF now produce ~3 MB.
-   */
   const handleConvert = async () => {
     const selectedImages = images
       .filter((i) => i.order !== null)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     if (selectedImages.length === 0) {
-      setError('Please click on images to select and order them before converting.')
+      setError(t(lang, 'imageToPdf.selectImages'))
       return
     }
 
@@ -203,10 +177,6 @@ export function ImageToPdfClient() {
     progress.startProcessing('Uploading images…')
 
     try {
-      // ── Stage 1: client-side compress ────────────────────────────────────
-      // Resize + JPEG-encode each image in the browser so the total upload
-      // stays well under 80 MB even for 29+ large phone photos.
-      // A 5 MB PNG → ~500 KB JPEG at 1600 px wide; 29 images ≈ 15 MB total.
       const total = selectedImages.length
       const blobs: Blob[] = []
       for (let i = 0; i < total; i++) {
@@ -217,7 +187,6 @@ export function ImageToPdfClient() {
         blobs.push(await compressForUpload(selectedImages[i].file))
       }
 
-      // Safety check: if compressed total still exceeds limit, bail early
       const totalBytes = blobs.reduce((s, b) => s + b.size, 0)
       if (totalBytes > MAX_UPLOAD_BYTES) {
         throw new Error(
@@ -226,7 +195,6 @@ export function ImageToPdfClient() {
         )
       }
 
-      // ── Stage 2: upload ──────────────────────────────────────────────────
       progress.stageUpload(50, `Uploading ${total} image${total !== 1 ? 's' : ''}…`)
 
       const formData = new FormData()
@@ -234,11 +202,10 @@ export function ImageToPdfClient() {
       formData.append('options', JSON.stringify({
         pageSize:     'a4',
         margin:       20,
-        imageQuality: 78,   // JPEG quality 1-100 (separate from PDF quality 'low'|'medium'|'high')
-        maxWidthPx:   1600, // max image dimension before resize
+        imageQuality: 78,
+        maxWidthPx:   1600,
       }))
 
-      // File order must match the user-assigned page order
       blobs.forEach((blob, idx) => {
         const name = selectedImages[idx].file.name.replace(/\.[^.]+$/, '.jpg')
         formData.append(`file${idx}`, blob, name)
@@ -263,24 +230,20 @@ export function ImageToPdfClient() {
         error?:  string
       }
 
-      // ── Stage 2: wait for processing ────────────────────────────────────
       progress.stageValidation('Optimizing images…')
 
       let downloadPath: string
 
       if (createData.status === 'completed' && createData.result?.downloadUrl) {
-        // Processed synchronously (processNow=true path, if ever used)
         downloadPath = createData.result.downloadUrl
       } else if (createData.status === 'failed') {
         throw new Error(createData.error || 'PDF generation failed')
       } else {
-        // Processing happens asynchronously — poll until done
         downloadPath = await pollJobUntilDone(createData.id, (pct) => {
           progress.stageProcessing(pct, `Generating PDF… ${pct < 90 ? `${pct}%` : 'finishing…'}`)
         })
       }
 
-      // ── Stage 3: done ────────────────────────────────────────────────────
       setDownloadUrl(downloadPath)
       progress.stageDone('PDF generated successfully!')
     } catch (err: unknown) {
@@ -300,8 +263,8 @@ export function ImageToPdfClient() {
         accept="image/jpeg,image/jpg,image/png,image/webp"
         multiple
         onFilesSelected={handleFilesSelected}
-        label="Drop images here or click to browse"
-        sublabel="Supports JPG, PNG, WebP — click images below to set page order"
+        label={t(lang, 'imageToPdf.label')}
+        sublabel={t(lang, 'imageToPdf.sublabel')}
         maxSizeMB={50}
         maxTotalSizeMB={100}
         currentTotalSize={images.reduce((acc, img) => acc + img.file.size, 0)}
@@ -310,19 +273,16 @@ export function ImageToPdfClient() {
       {images.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-foreground">
-                {images.length} image{images.length !== 1 ? 's' : ''} added
-              </p>
-              <span className="text-xs text-muted-foreground">— click to assign page order</span>
-            </div>
+            <p className="text-sm font-medium text-foreground">
+              {images.length} image{images.length !== 1 ? 's' : ''} added
+            </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={selectAll}
                 disabled={isProcessing}
                 className="text-xs text-primary font-medium hover:underline disabled:opacity-50"
               >
-                Select All
+                {t(lang, 'imageToPdf.selectAll')}
               </button>
               <span className="text-muted-foreground text-xs">|</span>
               <button
@@ -330,15 +290,13 @@ export function ImageToPdfClient() {
                 disabled={isProcessing}
                 className="text-xs text-destructive font-medium hover:underline disabled:opacity-50"
               >
-                Clear All
+                {t(lang, 'imageToPdf.clearAll')}
               </button>
             </div>
           </div>
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-primary">
-            <strong>How it works:</strong> Click any image to assign it a page number (1, 2, 3…).
-            Click again to remove it from the selection. Drag to reorder. Only selected images
-            will be included in the PDF.
+            {t(lang, 'imageToPdf.howItWorks')}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -395,7 +353,7 @@ export function ImageToPdfClient() {
                 {img.order === null && (
                   <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <span className="text-white text-xs font-semibold bg-black/60 px-2 py-1 rounded-lg">
-                      Click to add
+                      {t(lang, 'imageToPdf.clickToAdd')}
                     </span>
                   </div>
                 )}
@@ -431,12 +389,12 @@ export function ImageToPdfClient() {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Generating PDF…
+                  {t(lang, 'imageToPdf.generating')}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5" />
-                  Convert to PDF ({selectedCount} {selectedCount === 1 ? 'image' : 'images'})
+                  {t(lang, 'imageToPdf.action')} ({selectedCount})
                 </>
               )}
             </button>
@@ -447,7 +405,7 @@ export function ImageToPdfClient() {
               className="flex items-center justify-center gap-2 border border-border px-5 py-3 rounded-xl text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
             >
               <RotateCcw className="w-4 h-4" />
-              Reset
+              {t(lang, 'imageToPdf.reset')}
             </button>
           </div>
 
@@ -471,7 +429,7 @@ export function ImageToPdfClient() {
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="font-semibold text-green-900">PDF generated successfully!</p>
+              <p className="font-semibold text-green-900">{t(lang, 'imageToPdf.successTitle')}</p>
               <p className="text-sm text-green-700">
                 {selectedCount} page{selectedCount !== 1 ? 's' : ''} · images optimized with Sharp
               </p>
@@ -483,7 +441,7 @@ export function ImageToPdfClient() {
             className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
           >
             <Download className="w-4 h-4" />
-            Download PDF
+            {t(lang, 'imageToPdf.downloadPdf')}
           </a>
         </div>
       )}

@@ -6,6 +6,8 @@ import { Download, Loader2, CheckCircle2, RotateCcw, X, FileText } from 'lucide-
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -14,6 +16,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function PdfToWordClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [filename, setFilename] = useState('')
@@ -86,12 +89,11 @@ export function PdfToWordClient() {
           accept="application/pdf"
           multiple={false}
           onFilesSelected={handleFileSelected}
-          label="Drop your PDF here or click to browse"
-          sublabel="Converts PDF to a formatted Microsoft Word (.docx) file"
+          label={t(lang, 'pdfToWord.dropFile')}
+          sublabel={t(lang, 'pdfToWord.subLabel')}
         />
       ) : (
         <div className="space-y-5">
-          {/* File info */}
           <div className="flex items-center gap-3 bg-white border border-border rounded-xl px-4 py-3">
             <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-indigo-600" />
@@ -109,9 +111,8 @@ export function PdfToWordClient() {
             </button>
           </div>
 
-          {/* Info */}
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 text-sm text-indigo-700">
-            <strong>Note:</strong> The converter generates a structured Word document with page content from your PDF. Layout and text are extracted and preserved as best as possible.
+            <strong>Note:</strong> {t(lang, 'pdfToWord.note')}
           </div>
 
           {error && (
@@ -128,9 +129,9 @@ export function PdfToWordClient() {
                 className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isProcessing ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Converting to Word...</>
+                  <><Loader2 className="w-5 h-5 animate-spin" /> {t(lang, 'pdfToWord.converting')}</>
                 ) : (
-                  <><FileText className="w-5 h-5" /> Convert to Word</>
+                  <><FileText className="w-5 h-5" /> {t(lang, 'pdfToWord.action')}</>
                 )}
               </button>
               <button
@@ -138,11 +139,10 @@ export function PdfToWordClient() {
                 disabled={isProcessing}
                 className="flex items-center justify-center gap-2 border border-border px-5 py-3 rounded-xl text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
               >
-                <RotateCcw className="w-4 h-4" /> Reset
+                <RotateCcw className="w-4 h-4" /> {t(lang, 'pdfToWord.reset')}
               </button>
             </div>
 
-            {/* Real Progress Bar */}
             <RealProgressBar
               status={progress.status}
               progress={progress.progress}
@@ -162,7 +162,7 @@ export function PdfToWordClient() {
                   <CheckCircle2 className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-green-900">Conversion successful!</p>
+                  <p className="font-semibold text-green-900">{t(lang, 'pdfToWord.successTitle')}</p>
                   <p className="text-sm text-green-700">{filename}</p>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export function PdfToWordClient() {
                 className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
               >
                 <Download className="w-4 h-4" />
-                Download .docx
+                {t(lang, 'pdfToWord.download')}
               </a>
             </div>
           )}

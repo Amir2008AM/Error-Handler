@@ -11,10 +11,13 @@ import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('word-to-pdf')!
 
 export function WordToPdfClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4')
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
@@ -103,9 +106,9 @@ export function WordToPdfClient() {
                   <Upload className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">Upload Word Document</p>
+                  <p className="font-semibold text-lg">{t(lang, 'wordToPdf.uploadTitle')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Supports .docx and .doc files
+                    {t(lang, 'wordToPdf.supportedFormats')}
                   </p>
                 </div>
               </div>
@@ -128,7 +131,7 @@ export function WordToPdfClient() {
                   onClick={() => { setFile(null); progress.reset() }}
                   disabled={isProcessing}
                 >
-                  Change
+                  {t(lang, 'common.change')}
                 </Button>
               </div>
             </Card>
@@ -136,12 +139,12 @@ export function WordToPdfClient() {
             <Card className="p-6 space-y-6">
               <h3 className="font-semibold flex items-center gap-2">
                 <Settings className="w-5 h-5" />
-                PDF Settings
+                {t(lang, 'wordToPdf.pdfSettings')}
               </h3>
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="pageSize">Page Size</Label>
+                  <Label htmlFor="pageSize">{t(lang, 'wordToPdf.pageSize')}</Label>
                   <Select 
                     value={pageSize} 
                     onValueChange={(v) => setPageSize(v as typeof pageSize)}
@@ -159,7 +162,7 @@ export function WordToPdfClient() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="orientation">Orientation</Label>
+                  <Label htmlFor="orientation">{t(lang, 'wordToPdf.orientation')}</Label>
                   <Select 
                     value={orientation} 
                     onValueChange={(v) => setOrientation(v as typeof orientation)}
@@ -169,8 +172,8 @@ export function WordToPdfClient() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="portrait">Portrait</SelectItem>
-                      <SelectItem value="landscape">Landscape</SelectItem>
+                      <SelectItem value="portrait">{t(lang, 'wordToPdf.portrait')}</SelectItem>
+                      <SelectItem value="landscape">{t(lang, 'wordToPdf.landscape')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -187,12 +190,12 @@ export function WordToPdfClient() {
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Converting...
+                    {t(lang, 'wordToPdf.converting')}
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Convert to PDF
+                    {t(lang, 'wordToPdf.action')}
                   </>
                 )}
               </Button>

@@ -12,10 +12,13 @@ import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('pdf-to-jpg')!
 
 export function PdfToJpgClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,13 +90,8 @@ export function PdfToJpgClient() {
           <div className="flex gap-3">
             <Info className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="text-sm text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">Heads up about quality</p>
-              <p>
-                PDF rendering uses an open-source engine and may not perfectly match
-                Adobe Acrobat. Pages with uncommon fonts, advanced typography, or
-                complex vector graphics can look slightly different in the exported
-                images. For best results, choose 150 DPI or higher.
-              </p>
+              <p className="font-medium text-foreground">{t(lang, 'pdfToJpg.headsUp')}</p>
+              <p>{t(lang, 'pdfToJpg.qualityNote')}</p>
             </div>
           </div>
         </Card>
@@ -111,8 +109,8 @@ export function PdfToJpgClient() {
                   <Upload className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">Upload PDF</p>
-                  <p className="text-sm text-muted-foreground">Click or drag and drop your PDF file here</p>
+                  <p className="font-semibold text-lg">{t(lang, 'pdfToJpg.uploadTitle')}</p>
+                  <p className="text-sm text-muted-foreground">{t(lang, 'pdfToJpg.clickOrDrag')}</p>
                 </div>
               </div>
             </Card>
@@ -131,7 +129,7 @@ export function PdfToJpgClient() {
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setFile(null)}>
-                  Change
+                  {t(lang, 'common.change')}
                 </Button>
               </div>
             </Card>
@@ -139,12 +137,12 @@ export function PdfToJpgClient() {
             <Card className="p-6 space-y-6">
               <h3 className="font-semibold flex items-center gap-2">
                 <Image className="w-5 h-5" />
-                Output Settings
+                {t(lang, 'pdfToJpg.outputSettings')}
               </h3>
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="format">Output Format</Label>
+                  <Label htmlFor="format">{t(lang, 'pdfToJpg.outputFormat')}</Label>
                   <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
                     <SelectTrigger id="format">
                       <SelectValue />
@@ -158,7 +156,7 @@ export function PdfToJpgClient() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="dpi">Resolution (DPI)</Label>
+                  <Label htmlFor="dpi">{t(lang, 'pdfToJpg.resolution')}</Label>
                   <Select value={dpi.toString()} onValueChange={(v) => setDpi(parseInt(v))}>
                     <SelectTrigger id="dpi">
                       <SelectValue />
@@ -175,7 +173,7 @@ export function PdfToJpgClient() {
               {format !== 'png' && (
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <Label>Quality</Label>
+                    <Label>{t(lang, 'pdfToJpg.quality')}</Label>
                     <span className="text-sm text-muted-foreground">{quality}%</span>
                   </div>
                   <Slider
@@ -205,12 +203,12 @@ export function PdfToJpgClient() {
                 {processing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Converting...
+                    {t(lang, 'pdfToJpg.converting')}
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Convert to {format.toUpperCase()}
+                    {t(lang, 'convert.convertTo')} {format.toUpperCase()}
                   </>
                 )}
               </Button>

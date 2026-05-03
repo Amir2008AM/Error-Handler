@@ -8,8 +8,11 @@ import { Download, Loader2, FileText, Wrench } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import { t } from '@/lib/i18n/translations'
 
 export function RepairPdfClient() {
+  const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const progress = useRealProgress()
 
@@ -85,8 +88,8 @@ export function RepairPdfClient() {
                   <Wrench className="w-8 h-8 text-orange-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">Upload Damaged PDF</p>
-                  <p className="text-sm text-muted-foreground">Click or drag and drop your PDF file here</p>
+                  <p className="font-semibold text-lg">{t(lang, 'repair.uploadTitle')}</p>
+                  <p className="text-sm text-muted-foreground">{t(lang, 'common.clickOrDragPdf')}</p>
                 </div>
               </div>
             </Card>
@@ -105,29 +108,29 @@ export function RepairPdfClient() {
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => { setFile(null); progress.reset() }} disabled={isProcessing}>
-                  Change
+                  {t(lang, 'common.change')}
                 </Button>
               </div>
             </Card>
 
             <Card className="p-6 bg-muted/50">
-              <h3 className="font-medium mb-3">What this tool does:</h3>
+              <h3 className="font-medium mb-3">{t(lang, 'repair.whatItDoes')}</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="text-primary">1.</span>
-                  Attempts to load and parse the PDF structure
+                  {t(lang, 'repair.step1')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">2.</span>
-                  Recovers all readable pages and content
+                  {t(lang, 'repair.step2')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">3.</span>
-                  Rebuilds the PDF with a clean structure
+                  {t(lang, 'repair.step3')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">4.</span>
-                  Preserves metadata where possible
+                  {t(lang, 'repair.step4')}
                 </li>
               </ul>
             </Card>
@@ -140,9 +143,9 @@ export function RepairPdfClient() {
                 className="min-w-[200px]"
               >
                 {isProcessing ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Repairing...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t(lang, 'repair.processing')}</>
                 ) : (
-                  <><Download className="w-4 h-4 mr-2" />Repair & Download</>
+                  <><Download className="w-4 h-4 mr-2" />{t(lang, 'repair.action')}</>
                 )}
               </Button>
 
