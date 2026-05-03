@@ -6,8 +6,10 @@ import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } f
 import Link from 'next/link'
 import { ToolCard } from './tool-card'
 import { AdBanner } from './ad-banner'
+import { Navbar } from './navbar'
 import { tools, categories, categoryMeta, searchTools, type ToolCategory } from '@/lib/tools'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n/context'
 
 const categoryIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
@@ -17,66 +19,37 @@ const categoryIconMap: Record<string, React.ComponentType<{ className?: string }
   Calculator,
 }
 
+const CATEGORY_KEY_MAP: Record<string, string> = {
+  'PDF Tools': 'home.pdfTools',
+  'Security Tools': 'home.securityTools',
+  'Converters': 'home.converters',
+  'OCR Tools': 'home.ocrTools',
+  'Image Tools': 'home.imageTools',
+  'Text Tools': 'home.textTools',
+  'Calculators': 'home.calculators',
+}
+
 export function HomeContent() {
+  const { t } = useI18n()
   const searchParams = useSearchParams()
   const urlCategory = searchParams.get('category') as ToolCategory | null
   const urlSearch = searchParams.get('search') ?? ''
 
   const [searchQuery, setSearchQuery] = useState(urlSearch)
-  const [activeCategory, setActiveCategory] = useState<ToolCategory | 'All' | null>(urlCategory ?? 'All')
+  const [activeCategory, setActiveCategory] = useState<ToolCategory | 'All' | null>(
+    urlCategory ?? 'All'
+  )
 
   const displayedTools = useMemo(() => {
-    if (searchQuery.trim()) {
-      return searchTools(searchQuery)
-    }
-    if (activeCategory && activeCategory !== 'All') {
-      return tools.filter((t) => t.category === activeCategory)
-    }
+    if (searchQuery.trim()) return searchTools(searchQuery)
+    if (activeCategory && activeCategory !== 'All')
+      return tools.filter((tool) => tool.category === activeCategory)
     return tools
   }, [searchQuery, activeCategory])
 
   return (
     <main className="flex-1 bg-background">
-      {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Zap className="w-4 h-4 text-primary-foreground" fill="currentColor" />
-              </div>
-              <span className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
-                Toolify
-              </span>
-            </Link>
-
-            {/* Nav */}
-            <nav className="hidden md:flex items-center gap-6">
-              {categories.map((cat) => {
-                const meta = categoryMeta[cat]
-                const CatIcon = categoryIconMap[meta.icon] ?? FileText
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      setActiveCategory(cat)
-                      setSearchQuery('')
-                    }}
-                    className={cn(
-                      'flex items-center gap-1.5 text-sm font-medium transition-colors',
-                      activeCategory === cat ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <CatIcon className="w-4 h-4" />
-                    {cat.replace(' Tools', '').replace('s', '')}
-                  </button>
-                )
-              })}
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="bg-white border-b border-border">
@@ -85,10 +58,10 @@ export function HomeContent() {
             className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 text-balance"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Online Tools for PDF & Image Lovers
+            {t('home.hero.title')}
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-8 text-pretty leading-relaxed">
-            Free PDF tools to merge, split, compress, and convert PDFs. Transform images to JPG or PDF. No installation or registration required.
+            {t('home.hero.subtitle')}
           </p>
 
           {/* Category Filter Pills */}
@@ -105,7 +78,7 @@ export function HomeContent() {
                   : 'bg-white text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
               )}
             >
-              All Tools
+              {t('home.allTools')}
             </button>
             {categories.map((cat) => (
               <button
@@ -121,17 +94,17 @@ export function HomeContent() {
                     : 'bg-white text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
                 )}
               >
-                {cat}
+                {t((CATEGORY_KEY_MAP[cat] ?? 'home.allTools') as Parameters<typeof t>[0])}
               </button>
             ))}
           </div>
 
-          {/* Search Bar */}
+          {/* Search */}
           <div className="max-w-md mx-auto relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search tools..."
+              placeholder={t('nav.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -147,14 +120,17 @@ export function HomeContent() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12">
         {searchQuery && (
           <p className="text-sm text-muted-foreground mb-6 text-center">
-            {displayedTools.length} result{displayedTools.length !== 1 ? 's' : ''} for &quot;{searchQuery}&quot;
+            {displayedTools.length} result{displayedTools.length !== 1 ? 's' : ''} for &quot;
+            {searchQuery}&quot;
           </p>
         )}
 
         {displayedTools.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p className="font-medium text-lg">No tools found for &quot;{searchQuery}&quot;</p>
+            <p className="font-medium text-lg">
+              No tools found for &quot;{searchQuery}&quot;
+            </p>
             <p className="text-sm mt-2">Try a different keyword or browse all tools</p>
             <button
               onClick={() => {
@@ -163,7 +139,7 @@ export function HomeContent() {
               }}
               className="mt-4 text-primary font-medium text-sm hover:underline"
             >
-              View all tools
+              {t('home.allTools')}
             </button>
           </div>
         ) : (
@@ -191,7 +167,7 @@ export function HomeContent() {
               <span className="text-sm font-semibold text-foreground">Toolify</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Free online tools for PDF and image processing. No registration required.
+              {t('common.free')} · {t('common.noRegistration')}
             </p>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>

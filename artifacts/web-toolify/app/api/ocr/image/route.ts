@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
         text: result.text,
         confidence: result.confidence,
         words: result.words,
-        engine: result.engine,
         language,
       })
     }
@@ -51,7 +50,6 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/plain; charset=utf-8',
         'Content-Disposition': `attachment; filename="${baseName}-ocr.txt"`,
         'X-OCR-Confidence': result.confidence.toFixed(2),
-        'X-OCR-Engine': result.engine ?? 'Tesseract.js',
         'Cache-Control': 'no-store',
       },
     })

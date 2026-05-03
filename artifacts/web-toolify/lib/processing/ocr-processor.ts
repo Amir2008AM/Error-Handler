@@ -1,17 +1,3 @@
-/**
- * OCR Processor — Multi-Engine Pipeline
- *
- * Primary engine : Tesseract.js (100+ languages, works offline)
- * Preprocessing  : sharp — grayscale, normalize, contrast boost, sharpen, upscale
- * Post-processing: language-aware Unicode text cleaning (text-cleaner.ts)
- *
- * Architecture note: The OCR pipeline is designed so that a Python-based
- * PaddleOCR engine can be plugged in as an alternative by calling the
- * paddle-ocr.py script via child_process. It is disabled by default because
- * paddlepaddle (~500 MB) is not pre-installed; enable it by installing
- * the Python dependencies listed in scripts/setup-paddleocr.sh.
- */
-
 import { createWorker, Worker, RecognizeResult } from 'tesseract.js'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import sharp from 'sharp'
@@ -36,7 +22,6 @@ export interface OCRResult {
     bbox: { x0: number; y0: number; x1: number; y1: number }
   }>
   pages?: Array<{ pageNumber: number; text: string; confidence: number }>
-  engine?: string
 }
 
 export interface OCRPageResult {
@@ -88,9 +73,9 @@ export class OCRProcessor {
 
   /**
    * Preprocess image for maximum OCR accuracy:
-   * - Upscale to ≥1800px (Tesseract accuracy peaks at ~300 DPI)
-   * - Grayscale → normalize histogram → contrast boost → unsharp-mask
-   * - Output lossless PNG so Tesseract gets clean pixels
+   * - Upscale small images to ≥1800px wide for adequate resolution
+   * - Grayscale → normalise histogram → contrast boost → unsharp-mask
+   * - Output lossless PNG so OCR gets clean pixels
    */
   private async preprocessImage(imageBuffer: Buffer): Promise<Buffer> {
     try {
@@ -112,8 +97,8 @@ export class OCRProcessor {
       return await pipeline
         .grayscale()
         .normalize()
-        .linear(1.25, -(0.25 * 128))
-        .sharpen({ sigma: 1.2, m1: 2.0, m2: 0.5 })
+        .linear(1.3, -(0.3 * 128))
+        .sharpen({ sigma: 1.5, m1: 2.5, m2: 0.5 })
         .png({ compressionLevel: 1 })
         .toBuffer()
     } catch {
@@ -121,11 +106,6 @@ export class OCRProcessor {
     }
   }
 
-  /**
-   * Perform OCR on an image.
-   * Language selection is MANDATORY — the caller must supply it.
-   * The result is post-processed with the language-aware text cleaner.
-   */
   async recognizeImage(imageBuffer: Buffer, options: OCROptions = {}): Promise<OCRResult> {
     const language = options.language ?? options.languages?.join('+') ?? 'eng'
 
@@ -147,7 +127,6 @@ export class OCRProcessor {
       const result = await recognizeWithTimeout()
       const formatted = this.formatResult(result)
       formatted.text = cleanOcrText(formatted.text, language)
-      formatted.engine = 'Tesseract.js (primary)'
       return formatted
     } catch (error) {
       throw new Error(`OCR failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -176,10 +155,6 @@ export class OCRProcessor {
     }
   }
 
-  /**
-   * Perform OCR on a PDF. Extracts native text first; if insufficient,
-   * instructs the user to convert pages to images with the PDF→JPG tool.
-   */
   async recognizePdf(
     pdfBuffer: Buffer,
     options: OCROptions = {}
@@ -200,7 +175,6 @@ export class OCRProcessor {
     if (extractedText && extractedText.length > 50) {
       results.text = cleanOcrText(extractedText, language)
       results.confidence = 100
-      results.engine = 'Native PDF text extraction'
       return results
     }
 
@@ -273,7 +247,8 @@ export class OCRProcessor {
     const combinedText = pageResults
       .map((r) => r.text)
       .join('\n\n--- Page Break ---\n\n')
-    const avgConfidence = pageResults.reduce((sum, r) => sum + r.confidence, 0) / pageResults.length
+    const avgConfidence =
+      pageResults.reduce((sum, r) => sum + r.confidence, 0) / pageResults.length
     const allWords = pageResults.flatMap((r) => r.words)
 
     return {
@@ -285,7 +260,6 @@ export class OCRProcessor {
         text: r.text,
         confidence: r.confidence,
       })),
-      engine: 'Tesseract.js (primary)',
     }
   }
 
