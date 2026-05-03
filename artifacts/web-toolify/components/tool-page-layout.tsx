@@ -106,7 +106,7 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
               <Icon className={cn('w-7 h-7', tool.color)} />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }} id="tool-title">
                 {displayName}
               </h1>
               <p className="text-muted-foreground mt-1 max-w-xl">{displayDescription}</p>

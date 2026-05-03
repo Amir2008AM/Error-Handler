@@ -9,11 +9,16 @@ import './globals.css'
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',   // prevents render-blocking — text shows immediately in fallback font
+  preload: true,
 })
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-plus-jakarta',
+  display: 'swap',
+  preload: true,
+  weight: ['400', '500', '600', '700'],  // only load weights actually used
 })
 
 export const metadata: Metadata = {

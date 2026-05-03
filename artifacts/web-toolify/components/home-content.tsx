@@ -117,7 +117,9 @@ export function HomeContent() {
       </section>
 
       {/* Tools Grid */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12" aria-labelledby="tools-heading">
+        {/* Screen-reader heading bridges h1→h3 for valid heading hierarchy */}
+        <h2 id="tools-heading" className="sr-only">{t('home.allTools')}</h2>
         {searchQuery && (
           <p className="text-sm text-muted-foreground mb-6 text-center">
             {displayedTools.length} result{displayedTools.length !== 1 ? 's' : ''} for &quot;
