@@ -67,25 +67,31 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
       <head>
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
-          crossOrigin="anonymous"
-        />
+        {process.env.NODE_ENV === 'production' && (
+          <script
+            async
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
+            crossOrigin="anonymous"
+          />
+        )}
       </head>
       <body className="font-sans antialiased">
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
-          strategy="afterInteractive"
-        />
-        <Script id="ga" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-SVNB9EP5YP');
-          `}
-        </Script>
+        {process.env.NODE_ENV === 'production' && (
+          <>
+            <Script
+              src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
+              strategy="afterInteractive"
+            />
+            <Script id="ga" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-SVNB9EP5YP');
+              `}
+            </Script>
+          </>
+        )}
         <I18nProvider>
           <LoadingBarProvider>
             {children}

@@ -24,14 +24,19 @@ export function AdBanner({
   const adRef = useRef<HTMLModElement>(null)
   const pushed = useRef(false)
 
+  // Only run AdSense in production — avoids 400 errors in dev/preview
+  const isProd = process.env.NODE_ENV === 'production'
+
   useEffect(() => {
-    if (pushed.current) return
+    if (!isProd || pushed.current) return
     try {
       const adsByGoogle = (window.adsbygoogle = window.adsbygoogle || [])
       adsByGoogle.push({})
       pushed.current = true
     } catch {}
-  }, [])
+  }, [isProd])
+
+  if (!isProd) return null
 
   return (
     <div className={`overflow-hidden ${className}`}>
