@@ -1,4 +1,4 @@
-import { createWorker, Worker, RecognizeResult } from 'tesseract.js'
+import { createWorker, Worker, RecognizeResult, PSM } from 'tesseract.js'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import sharp from 'sharp'
 import { cleanOcrText } from './text-cleaner'
@@ -93,7 +93,7 @@ export class OCRProcessor {
    */
   private async configureWorkerForLanguage(worker: Worker, language: string): Promise<void> {
     const family = this.getLangFamily(language)
-    const psm = family === 'latin' ? '3' : '6'
+    const psm = family === 'latin' ? PSM.AUTO : PSM.SINGLE_BLOCK
     try {
       await worker.setParameters({ tessedit_pageseg_mode: psm })
     } catch {
