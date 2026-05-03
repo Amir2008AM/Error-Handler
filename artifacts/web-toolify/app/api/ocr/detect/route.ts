@@ -3,17 +3,17 @@
  *
  * Stage 1 — Unicode Script Analysis (PRIMARY)
  *   Run a quick multi-script OCR pass, then count each character's Unicode
- *   block. The dominant block unambiguously identifies the writing system
- *   (Arabic, Cyrillic, CJK, Devanagari, Thai …) without any heuristics.
- *   Works offline, zero false "English" defaults for non-Latin scripts.
+ *   block. ALL significant scripts are recorded (threshold ≥ 15 %). When
+ *   an image mixes Arabic + Latin, both are returned and the OCR is run
+ *   with a merged language string ("ara+eng") for maximum accuracy.
  *
  * Stage 2 — franc (SUPPORT for Latin scripts)
- *   When the image is Latin-script, run franc's trigram model on the OCR
- *   output to identify the specific language (French, Spanish, German …).
+ *   When the image is Latin-script, franc's trigram model narrows it down
+ *   to a specific language (French, Spanish, German …).
  *
  * Stage 3 — Fallback
- *   If confidence is too low, return detectedLang = "" so the user is asked
- *   to select manually. No silent default to English.
+ *   If confidence is too low, return detectedLang = "" so the user selects
+ *   manually. No silent default to English.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { execFile } from 'child_process'
@@ -31,12 +31,12 @@ export const maxDuration = 60
 const execFileAsync = promisify(execFile)
 
 // ---------------------------------------------------------------------------
-// Unicode block → Tesseract language  (Stage 1)
+// Unicode block definitions
 // ---------------------------------------------------------------------------
 
 interface LangInfo { code: string; name: string }
 
-const UNICODE_BLOCK_LANG: Array<{ name: string; ranges: [number, number][]; lang: LangInfo }> = [
+const UNICODE_BLOCKS: Array<{ name: string; ranges: [number, number][]; lang: LangInfo }> = [
   {
     name: 'Arabic',
     ranges: [[0x0600, 0x06FF], [0x0750, 0x077F], [0x08A0, 0x08FF],
@@ -55,8 +55,7 @@ const UNICODE_BLOCK_LANG: Array<{ name: string; ranges: [number, number][]; lang
   },
   {
     name: 'CJK',
-    ranges: [[0x4E00, 0x9FFF], [0x3400, 0x4DBF], [0x20000, 0x2A6DF],
-             [0x2A700, 0x2B73F], [0xF900, 0xFAFF]],
+    ranges: [[0x4E00, 0x9FFF], [0x3400, 0x4DBF], [0x20000, 0x2A6DF], [0xF900, 0xFAFF]],
     lang: { code: 'chi_sim', name: 'Chinese (Simplified)' },
   },
   {
@@ -166,7 +165,6 @@ const UNICODE_BLOCK_LANG: Array<{ name: string; ranges: [number, number][]; lang
   },
 ]
 
-// Latin: A-Z a-z + Latin Extended blocks
 const LATIN_RANGES: [number, number][] = [
   [0x0041, 0x005A], [0x0061, 0x007A],
   [0x00C0, 0x00D6], [0x00D8, 0x00F6], [0x00F8, 0x024F],
@@ -176,75 +174,78 @@ function inRanges(cp: number, ranges: [number, number][]): boolean {
   return ranges.some(([lo, hi]) => cp >= lo && cp <= hi)
 }
 
-interface UnicodeDetection {
+// ---------------------------------------------------------------------------
+// Multi-script Unicode analyser
+// ---------------------------------------------------------------------------
+
+interface ScriptResult {
   script: string
-  lang: LangInfo | null
-  confidence: number   // 0–100
-  isLatin: boolean
+  lang: LangInfo
+  confidence: number   // 0–100, share of total chars
 }
 
-/**
- * Analyse the Unicode codepoints of text to identify the dominant script.
- * Returns confidence as the percentage of non-whitespace chars in that script.
- */
-function analyzeUnicodeScript(text: string): UnicodeDetection {
+interface UnicodeAnalysis {
+  /** All detected scripts above the significance threshold, sorted by dominance */
+  scripts: ScriptResult[]
+  /** True when Latin characters are a significant share */
+  hasLatin: boolean
+  latinConfidence: number
+}
+
+const NON_LATIN_THRESHOLD = 0.15   // ≥15 % of chars → significant script
+const LATIN_THRESHOLD     = 0.30   // ≥30 % of chars → Latin is significant
+
+function analyzeUnicodeScripts(text: string): UnicodeAnalysis {
   const chars = [...text].filter((c) => !/\s/.test(c))
+
   if (chars.length < 5) {
-    return { script: 'Unknown', lang: null, confidence: 0, isLatin: false }
+    return { scripts: [], hasLatin: false, latinConfidence: 0 }
   }
 
-  const scriptCounts: Record<string, { count: number; lang: LangInfo }> = {}
+  const blockCounts: Record<string, { count: number; lang: LangInfo }> = {}
   let latinCount = 0
-  let otherCount = 0
+  const total = chars.length
 
   for (const char of chars) {
     const cp = char.codePointAt(0) ?? 0
     let matched = false
-    for (const block of UNICODE_BLOCK_LANG) {
+    for (const block of UNICODE_BLOCKS) {
       if (inRanges(cp, block.ranges)) {
-        scriptCounts[block.name] = {
-          count: (scriptCounts[block.name]?.count ?? 0) + 1,
-          lang: block.lang,
+        if (!blockCounts[block.name]) {
+          blockCounts[block.name] = { count: 0, lang: block.lang }
         }
+        blockCounts[block.name].count++
         matched = true
         break
       }
     }
-    if (!matched) {
-      if (inRanges(cp, LATIN_RANGES)) latinCount++
-      else otherCount++
-    }
+    if (!matched && inRanges(cp, LATIN_RANGES)) latinCount++
   }
 
-  const total = chars.length
-  const nonLatinScript = Object.entries(scriptCounts).sort((a, b) => b[1].count - a[1].count)[0]
-
-  if (nonLatinScript) {
-    const [scriptName, { count, lang }] = nonLatinScript
+  // Deduplicate scripts that share the same Tesseract code (e.g. Hiragana + Katakana → jpn)
+  const merged: Record<string, ScriptResult> = {}
+  for (const [name, { count, lang }] of Object.entries(blockCounts)) {
     const ratio = count / total
-
-    // Non-Latin script is dominant — high confidence threshold: ≥20%
-    if (ratio >= 0.20) {
-      return {
-        script: scriptName,
+    if (ratio < NON_LATIN_THRESHOLD) continue
+    const existing = merged[lang.code]
+    if (!existing || existing.confidence < Math.round(ratio * 100)) {
+      merged[lang.code] = {
+        script: name,
         lang,
         confidence: Math.min(Math.round(ratio * 100), 99),
-        isLatin: false,
       }
     }
   }
 
-  // Fallback: mostly Latin
+  const scripts = Object.values(merged).sort((a, b) => b.confidence - a.confidence)
   const latinRatio = latinCount / total
-  if (latinRatio >= 0.40) {
-    return { script: 'Latin', lang: null, confidence: Math.min(Math.round(latinRatio * 100), 99), isLatin: true }
-  }
+  const hasLatin = latinRatio >= LATIN_THRESHOLD
 
-  return { script: 'Unknown', lang: null, confidence: 0, isLatin: false }
+  return { scripts, hasLatin, latinConfidence: Math.min(Math.round(latinRatio * 100), 99) }
 }
 
 // ---------------------------------------------------------------------------
-// franc ISO 639-3 → Tesseract code  (Stage 2 — Latin disambiguation)
+// franc → Tesseract  (Stage 2 — Latin language disambiguation)
 // ---------------------------------------------------------------------------
 
 const FRANC_TO_TESSERACT: Record<string, LangInfo> = {
@@ -283,15 +284,10 @@ const FRANC_TO_TESSERACT: Record<string, LangInfo> = {
 }
 
 // ---------------------------------------------------------------------------
-// OCR helper
+// Quick multi-script OCR pass
 // ---------------------------------------------------------------------------
 
-/**
- * Quick multi-script OCR pass to get raw text for Unicode analysis.
- * We use a broad language set so Tesseract can recognise most scripts.
- */
 async function quickOcrText(imagePath: string): Promise<string> {
-  // Broad set covering Arabic, Latin, Cyrillic, CJK, Devanagari, Thai, Hebrew
   const DETECT_LANGS = 'eng+ara+rus+chi_sim+jpn+kor+hin+tha+heb'
   try {
     const { stdout } = await execFileAsync(
@@ -301,7 +297,6 @@ async function quickOcrText(imagePath: string): Promise<string> {
     )
     return stdout.trim()
   } catch {
-    // Fallback: try with just English so we still have something for franc
     try {
       const { stdout } = await execFileAsync(
         'tesseract',
@@ -333,7 +328,6 @@ export async function POST(request: NextRequest) {
 
     const imageBuffer = await readFile(file.path)
 
-    // Preprocess: grayscale + normalise + cap at 800px for a fast pass
     const processed = await sharp(imageBuffer)
       .grayscale()
       .normalize()
@@ -348,20 +342,40 @@ export async function POST(request: NextRequest) {
 
       // ── Stage 1: Multi-script OCR → Unicode range analysis ─────────────────
       const rawText = await quickOcrText(tmpFile)
-      const unicode = analyzeUnicodeScript(rawText)
+      const analysis = analyzeUnicodeScripts(rawText)
 
-      // Non-Latin script detected with confidence
-      if (!unicode.isLatin && unicode.lang && unicode.confidence >= 20) {
+      // Build the detected language list
+      const detectedLangs: LangInfo[] = [...analysis.scripts.map((s) => s.lang)]
+
+      // If Latin is also significant alongside a non-Latin script, add English
+      // as a secondary language so Tesseract handles mixed content
+      if (analysis.hasLatin && analysis.scripts.length > 0) {
+        const alreadyHasLatin = detectedLangs.some((l) =>
+          ['eng', 'fra', 'deu', 'spa', 'por', 'ita'].includes(l.code)
+        )
+        if (!alreadyHasLatin) {
+          detectedLangs.push({ code: 'eng', name: 'English' })
+        }
+      }
+
+      // Non-empty non-Latin detection
+      if (detectedLangs.length > 0) {
+        const primary = detectedLangs[0]
+        const combined = detectedLangs.map((l) => l.code).join('+')
+        const overallConf = analysis.scripts[0]?.confidence ?? 50
+
         return NextResponse.json({
-          script: unicode.script,
-          scriptConfidence: unicode.confidence,
-          detectedLang: unicode.lang.code,
-          detectedLangName: unicode.lang.name,
+          script: analysis.scripts[0]?.script ?? 'Mixed',
+          scriptConfidence: overallConf,
+          detectedLang: combined,
+          detectedLangName: primary.name,
+          detectedLangs,                     // full list for multi-language badge
+          isMixed: detectedLangs.length > 1,
         })
       }
 
       // ── Stage 2: franc — Latin language disambiguation ──────────────────────
-      if ((unicode.isLatin || unicode.script === 'Unknown') && rawText.length >= 15) {
+      if (analysis.hasLatin && rawText.length >= 15) {
         try {
           const { franc } = await import('franc')
           const iso = franc(rawText, { minLength: 10 })
@@ -374,20 +388,24 @@ export async function POST(request: NextRequest) {
                 scriptConfidence: 65,
                 detectedLang: mapped.code,
                 detectedLangName: mapped.name,
+                detectedLangs: [mapped],
+                isMixed: false,
               })
             }
           }
         } catch {
-          // franc unavailable — fall through to fallback
+          // franc unavailable — fall through
         }
       }
 
       // ── Stage 3: Fallback — user must select ────────────────────────────────
       return NextResponse.json({
-        script: unicode.script,
+        script: 'Unknown',
         scriptConfidence: 0,
         detectedLang: '',
         detectedLangName: '',
+        detectedLangs: [],
+        isMixed: false,
       })
     } finally {
       await unlink(tmpFile).catch(() => {})

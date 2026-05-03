@@ -22,8 +22,10 @@ const tool = getToolBySlug('ocr-image')!
 interface DetectionResult {
   script: string
   scriptConfidence: number
-  detectedLang: string
-  detectedLangName: string
+  detectedLang: string       // combined string e.g. "ara+eng" for Tesseract
+  detectedLangName: string   // primary language name for display
+  detectedLangs?: Array<{ code: string; name: string }>  // all detected languages
+  isMixed?: boolean
 }
 
 function LanguageSelector({
@@ -59,7 +61,13 @@ function LanguageSelector({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const selected = OCR_LANGUAGES.find((l) => l.code === value)
+  // Handle both single ("ara") and combined ("ara+eng") codes
+  const selectedCodes = value ? value.split('+') : []
+  const selectedItems = selectedCodes
+    .map((c) => OCR_LANGUAGES.find((l) => l.code === c))
+    .filter(Boolean) as typeof OCR_LANGUAGES
+  const selected = selectedItems[0] ?? null
+  const isMixed = selectedItems.length > 1
 
   const filtered = OCR_LANGUAGES.filter(
     (l) =>
@@ -67,8 +75,10 @@ function LanguageSelector({
       l.code.toLowerCase().includes(search.toLowerCase())
   )
 
-  const detectedLangObj = detectedLang
-    ? OCR_LANGUAGES.find((l) => l.code === detectedLang.detectedLang)
+  // For the detected pill in the dropdown, use primary language only
+  const primaryDetectedCode = detectedLang?.detectedLang?.split('+')[0] ?? ''
+  const detectedLangObj = primaryDetectedCode
+    ? OCR_LANGUAGES.find((l) => l.code === primaryDetectedCode)
     : null
 
   return (
@@ -85,9 +95,16 @@ function LanguageSelector({
             : 'border-border hover:border-primary/40'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 min-w-0">
           <Languages className="w-4 h-4 text-muted-foreground shrink-0" />
-          {selected ? (
+          {isMixed ? (
+            <span className="text-foreground flex items-center gap-1.5">
+              {selectedItems.map((l) => l.name).join(' + ')}
+              <span className="bg-violet-100 text-violet-600 text-[10px] px-1.5 py-0.5 rounded shrink-0">
+                mixed
+              </span>
+            </span>
+          ) : selected ? (
             <span className="text-foreground">{selected.name}</span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
@@ -299,7 +316,13 @@ export function OcrImageClient() {
   }
 
   const isProcessing = progress.status === 'processing'
-  const selectedLang = OCR_LANGUAGES.find((l) => l.code === language)
+  // Support both single codes ("ara") and combined codes ("ara+eng")
+  const selectedLangCodes = language ? language.split('+') : []
+  const selectedLangs = selectedLangCodes
+    .map((code) => OCR_LANGUAGES.find((l) => l.code === code))
+    .filter(Boolean) as typeof OCR_LANGUAGES
+  const selectedLang = selectedLangs[0] ?? null
+  const isMixedSelection = selectedLangs.length > 1
 
   return (
     <ToolPageLayout tool={tool}>
@@ -364,7 +387,7 @@ export function OcrImageClient() {
               <Card className="p-4 space-y-4">
                 {/* Detection badge */}
                 {(detecting || detection) && (
-                  <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs bg-muted/50 rounded-lg px-3 py-2">
                     {detecting ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-muted-foreground" />
@@ -372,12 +395,28 @@ export function OcrImageClient() {
                       </>
                     ) : detection && detection.detectedLangName ? (
                       <>
-                        <span className="font-medium text-foreground">
-                          {detection.detectedLangName}
-                        </span>
-                        <span className="text-muted-foreground">
-                          {t('ocr.detectedLanguage').toLowerCase()}
-                        </span>
+                        {detection.isMixed && detection.detectedLangs && detection.detectedLangs.length > 1 ? (
+                          <>
+                            {detection.detectedLangs.map((lang) => (
+                              <span
+                                key={lang.code}
+                                className="bg-primary/10 text-primary px-2 py-0.5 rounded font-medium"
+                              >
+                                {lang.name}
+                              </span>
+                            ))}
+                            <span className="text-muted-foreground">{t('ocr.detectedLanguage').toLowerCase()}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-medium text-foreground">
+                              {detection.detectedLangName}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {t('ocr.detectedLanguage').toLowerCase()}
+                            </span>
+                          </>
+                        )}
                       </>
                     ) : null}
                   </div>
@@ -414,16 +453,25 @@ export function OcrImageClient() {
                   )}
                 </div>
 
-                {/* Selected language pill */}
-                {selectedLang && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-mono">
-                      {selectedLang.code}
-                    </span>
-                    <span>{selectedLang.name}</span>
-                    {selectedLang.rtl && (
-                      <span className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
-                        RTL
+                {/* Selected language pill(s) */}
+                {selectedLangs.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {selectedLangs.map((lang) => (
+                      <span key={lang.code} className="flex items-center gap-1">
+                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-mono">
+                          {lang.code}
+                        </span>
+                        <span>{lang.name}</span>
+                        {lang.rtl && (
+                          <span className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
+                            RTL
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                    {isMixedSelection && (
+                      <span className="bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded">
+                        mixed
                       </span>
                     )}
                   </div>
