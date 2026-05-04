@@ -1,6 +1,6 @@
 FROM node:24-bookworm-slim
 
-# Install system dependencies: Ghostscript + qpdf for real PDF processing
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ghostscript \
     qpdf \
@@ -16,6 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # tesseract OCR
     tesseract-ocr \
     libtesseract-dev \
+    # LibreOffice headless for PPT/PPTX → PDF and Word/Excel → PDF
+    libreoffice-impress \
+    libreoffice-writer \
+    libreoffice-calc \
+    # Fonts for accurate rendering of Office documents
+    fonts-liberation \
+    fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
@@ -45,7 +52,7 @@ COPY . .
 RUN pnpm --filter @workspace/web-toolify run build
 
 # Validate CLI tools are available
-RUN gs --version && qpdf --version
+RUN gs --version && qpdf --version && soffice --version
 
 # Railway injects PORT at runtime; Next.js production default is 3000
 ENV NODE_ENV=production \

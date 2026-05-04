@@ -72,9 +72,10 @@ System binaries used for real PDF processing — no JavaScript fallbacks:
 **Dockerfile** (root of repo) targets Railway deployment:
 - Base: `node:24-bookworm-slim`
 - Installs `ghostscript`, `qpdf`, `libuuid1`, native build deps (canvas, tesseract)
+- Installs `libreoffice-impress`, `libreoffice-writer`, `libreoffice-calc` + `fonts-liberation`, `fonts-dejavu-core` for PPT/Word/Excel → PDF
 - Runs `pnpm install --frozen-lockfile` then `next build`
 - `CMD ["pnpm", "start"]` from `artifacts/web-toolify/`
-- Validates `gs --version && qpdf --version` at build time
+- Validates `gs --version && qpdf --version && soffice --version` at build time
 
 ### Streaming Upload System
 
