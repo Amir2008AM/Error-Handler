@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OCRProcessor } from '@/lib/processing/ocr-processor'
 import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
 import { OCR_LANGUAGES } from '@/lib/i18n/ocr-languages'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -27,23 +28,23 @@ export async function POST(request: NextRequest) {
     }
 
     const outputType = (fields['outputType'] as 'text' | 'json') ?? 'json'
-    const buffer = await readFile(file.path)
+    const buffer     = await readFile(file.path)
 
     const ocrProcessor = new OCRProcessor()
-    const result = await ocrProcessor.recognizeImage(buffer, { language })
+    const result       = await ocrProcessor.recognizeImage(buffer, { language })
     await ocrProcessor.terminate()
 
     if (outputType === 'json') {
       return NextResponse.json({
-        text: result.text,
+        text:       result.text,
         confidence: result.confidence,
-        words: result.words,
+        words:      result.words,
         language,
       })
     }
 
     const textBuffer = Buffer.from(result.text, 'utf-8')
-    const baseName = file.filename.replace(/\.[^.]+$/, '')
+    const baseName   = safeFilename(file.filename.replace(/\.[^.]+$/, ''))
 
     return new NextResponse(textBuffer, {
       headers: {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('OCR image error:', error)
+    console.error('[ocr/image]', error)
     const msg = error instanceof Error ? error.message : 'Failed to perform OCR'
     return NextResponse.json({ error: msg }, { status: 500 })
   } finally {

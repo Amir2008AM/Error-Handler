@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OCRProcessor } from '@/lib/processing/ocr-processor'
 import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -26,14 +27,15 @@ export async function POST(request: NextRequest) {
     }
 
     const outputType = (fields['outputType'] as 'text' | 'searchable-pdf' | 'both') ?? 'text'
-    const buffer = await readFile(file.path)
+    const buffer     = await readFile(file.path)
 
     const ocrProcessor = new OCRProcessor()
-    const result = await ocrProcessor.recognizePdf(buffer, { language, outputType })
+    const result       = await ocrProcessor.recognizePdf(buffer, { language, outputType })
     await ocrProcessor.terminate()
 
+    const baseName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
+
     if (outputType === 'searchable-pdf' && result.searchablePdf) {
-      const baseName = file.filename.replace(/\.pdf$/i, '')
       return new NextResponse(result.searchablePdf, {
         headers: {
           'Content-Type': 'application/pdf',
@@ -45,15 +47,14 @@ export async function POST(request: NextRequest) {
 
     if (outputType === 'both') {
       return NextResponse.json({
-        text: result.text,
+        text:       result.text,
         confidence: result.confidence,
-        pages: result.pages,
-        hasPdf: !!result.searchablePdf,
+        pages:      result.pages,
+        hasPdf:     !!result.searchablePdf,
       })
     }
 
     const textBuffer = Buffer.from(result.text, 'utf-8')
-    const baseName = file.filename.replace(/\.pdf$/i, '')
 
     return new NextResponse(textBuffer, {
       headers: {
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('OCR PDF error:', error)
+    console.error('[ocr/pdf]', error)
     const msg = error instanceof Error ? error.message : 'Failed to perform OCR on PDF'
     return NextResponse.json({ error: msg }, { status: 500 })
   } finally {

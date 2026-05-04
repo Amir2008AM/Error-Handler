@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const originalName = file.filename.replace(/\.pdf$/i, '')
+    const originalName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
 
     return new NextResponse(result.data, {
       status: 200,

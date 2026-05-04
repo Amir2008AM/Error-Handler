@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
     const validationError = await validateStreamedFile(file, 'pdf')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const title = file.filename.replace(/\.pdf$/i, '')
+    const title  = safeFilename(file.filename.replace(/\.pdf$/i, ''))
     const buffer = await readFileAsArrayBuffer(file.path)
 
     const result = await pdf.toWord({ file: buffer })

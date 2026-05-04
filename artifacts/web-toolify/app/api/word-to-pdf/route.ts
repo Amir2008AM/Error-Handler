@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DocumentConverter } from '@/lib/processing/document-converter'
 import { streamUpload, readFile } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -22,17 +23,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const pageSize = (fields['pageSize'] as 'a4' | 'letter' | 'legal') ?? 'a4'
-    const orientation = (fields['orientation'] as 'portrait' | 'landscape') ?? 'portrait'
-    const fontSize = parseInt(fields['fontSize'] ?? '12') || 12
+    const pageSize    = (fields['pageSize']    as 'a4' | 'letter' | 'legal') ?? 'a4'
+    const orientation = (fields['orientation'] as 'portrait' | 'landscape')  ?? 'portrait'
+    const fontSize    = parseInt(fields['fontSize'] ?? '12') || 12
 
     const buffer = await readFile(file.path)
 
     const converter = new DocumentConverter()
+    const result    = await converter.wordToPdf(buffer, { pageSize, orientation, fontSize })
 
-    const result = await converter.wordToPdf(buffer, { pageSize, orientation, fontSize })
-
-    const baseName = file.filename.replace(/\.(docx?|doc)$/i, '')
+    const baseName = safeFilename(file.filename.replace(/\.(docx?|doc)$/i, ''))
 
     return new NextResponse(result.buffer, {
       headers: {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Word to PDF error:', error)
+    console.error('[word-to-pdf]', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to convert Word to PDF'
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   } finally {

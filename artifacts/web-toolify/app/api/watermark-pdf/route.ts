@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -17,10 +18,14 @@ export async function POST(req: NextRequest) {
     const validationError = await validateStreamedFile(file, 'pdf')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const text = fields['text'] ?? ''
-    const opacity = parseFloat(fields['opacity'] ?? '0.3')
+    const text     = fields['text'] ?? ''
     const position = fields['position'] ?? 'diagonal'
-    const fontSize = parseInt(fields['fontSize'] ?? '50', 10)
+
+    const rawOpacity  = parseFloat(fields['opacity']  ?? '0.3')
+    const rawFontSize = parseInt(fields['fontSize']    ?? '50', 10)
+
+    const opacity  = Math.min(1, Math.max(0.01, isNaN(rawOpacity)  ? 0.3  : rawOpacity))
+    const fontSize = Math.min(200, Math.max(8,  isNaN(rawFontSize) ? 50   : rawFontSize))
 
     if (!text.trim()) {
       return NextResponse.json({ error: 'Watermark text is required' }, { status: 400 })
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const originalName = file.filename.replace(/\.pdf$/i, '')
+    const originalName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
 
     return new NextResponse(result.data, {
       status: 200,

@@ -1,53 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PDFSecurityProcessor } from '@/lib/processing/pdf-security'
-import { validateFile } from '@/lib/validation'
+import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const signerName = formData.get('signerName') as string | null
-    const signatureText = formData.get('signatureText') as string | null
-    const reason = formData.get('reason') as string | null
-    const location = formData.get('location') as string | null
-    const signatureImage = formData.get('signatureImage') as File
-    const position = formData.get('position') as string || 'bottom-right'
-    const pageNumber = parseInt(formData.get('page') as string) || 0
+  const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
+    throw Object.assign(err, { _status: 400 })
+  })
 
-    const validationError = await validateFile(file, 'pdf')
-    if (validationError) return validationError
+  try {
+    const file = files.find((f) => f.fieldname === 'file')
+    if (!file) {
+      return NextResponse.json({ error: 'No PDF file provided.' }, { status: 400 })
+    }
+
+    const validationError = await validateStreamedFile(file, 'pdf')
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
+    }
+
+    const signerName    = fields['signerName']    ?? null
+    const signatureText = fields['signatureText'] ?? null
+    const reason        = fields['reason']        ?? null
+    const location      = fields['location']      ?? null
+    const position      = fields['position']      ?? 'bottom-right'
+    const pageNumber    = parseInt(fields['page'] ?? '0', 10) || 0
 
     const name = signerName || signatureText
     if (!name || name.trim().length === 0) {
-      return NextResponse.json({ error: 'Signer name or signature text is required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Signer name or signature text is required' },
+        { status: 400 }
+      )
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    
+    const buffer = await readFile(file.path)
+
     let signatureImageBuffer: Buffer | undefined
-    if (signatureImage) {
-      signatureImageBuffer = Buffer.from(await signatureImage.arrayBuffer())
+    const signatureImageFile = files.find((f) => f.fieldname === 'signatureImage')
+    if (signatureImageFile && signatureImageFile.size > 0) {
+      const imgErr = await validateStreamedFile(signatureImageFile, 'image')
+      if (!imgErr) {
+        signatureImageBuffer = await readFile(signatureImageFile.path)
+      }
     }
 
-    // Calculate position based on preset
-    const signatureBoxWidth = 200
+    const signatureBoxWidth  = 200
     const signatureBoxHeight = 80
-    const padding = 30
-    
-    // Default page dimensions (will be overridden by actual page size)
+    const padding            = 30
+
     let x: number
     let y: number
-    
+
     switch (position) {
       case 'top-left':
         x = padding
-        y = 700 // Approximate for A4
+        y = 700
         break
       case 'top-right':
-        x = 595 - padding - signatureBoxWidth // A4 width
+        x = 595 - padding - signatureBoxWidth
         y = 700
         break
       case 'bottom-left':
@@ -66,33 +80,35 @@ export async function POST(request: NextRequest) {
     }
 
     const securityProcessor = new PDFSecurityProcessor()
-    
+
     const signedPdf = await securityProcessor.addSignature(buffer, {
       signerName: name.trim(),
-      reason: reason || undefined,
+      reason:   reason   || undefined,
       location: location || undefined,
       signatureImage: signatureImageBuffer,
       position: {
-        page: pageNumber,
+        page:   pageNumber,
         x,
         y,
-        width: signatureBoxWidth,
+        width:  signatureBoxWidth,
         height: signatureBoxHeight,
       },
     })
 
+    const outputName = safeFilename(`signed-${file.filename}`)
+
     return new NextResponse(signedPdf, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="signed-${file.name}"`,
+        'Content-Disposition': `attachment; filename="${outputName}"`,
+        'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
-    console.error('Sign PDF error:', error)
+    console.error('[sign-pdf]', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to sign PDF'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } finally {
+    await cleanup()
   }
 }

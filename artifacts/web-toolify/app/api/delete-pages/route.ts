@@ -22,13 +22,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No pages specified' }, { status: 400 })
     }
 
-    const pagesToDelete = JSON.parse(pagesJson) as number[]
+    let pagesToDelete: number[]
+    try {
+      const parsed = JSON.parse(pagesJson)
+      if (!Array.isArray(parsed)) {
+        return NextResponse.json({ error: 'Pages must be an array of page numbers' }, { status: 400 })
+      }
+      pagesToDelete = parsed
+        .map((p) => parseInt(String(p), 10))
+        .filter((p) => Number.isFinite(p) && p > 0)
+      if (pagesToDelete.length === 0) {
+        return NextResponse.json({ error: 'No valid page numbers provided' }, { status: 400 })
+      }
+    } catch {
+      return NextResponse.json({ error: 'Invalid pages format — expected a JSON array of numbers' }, { status: 400 })
+    }
+
     const buffer = await readFileAsArrayBuffer(file.path)
 
     const result = await pdfProcessor.deletePages(buffer, pagesToDelete)
 
     if (!result.success || !result.data) {
-      return NextResponse.json({ error: result.error }, { status: 500 })
+      return NextResponse.json({ error: result.error || 'Failed to delete pages' }, { status: 500 })
     }
 
     return new NextResponse(result.data, {
@@ -39,7 +54,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Delete pages error:', error)
+    console.error('[delete-pages]', error)
     return NextResponse.json({ error: 'Failed to delete pages' }, { status: 500 })
   } finally {
     await cleanup()

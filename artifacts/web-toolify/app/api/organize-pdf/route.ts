@@ -22,7 +22,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No operations provided' }, { status: 400 })
     }
 
-    const operations = JSON.parse(operationsJson)
+    let operations: unknown
+    try {
+      operations = JSON.parse(operationsJson)
+      if (!Array.isArray(operations)) {
+        return NextResponse.json({ error: 'Operations must be a JSON array' }, { status: 400 })
+      }
+    } catch {
+      return NextResponse.json({ error: 'Invalid operations format — expected a JSON array' }, { status: 400 })
+    }
+
     const buffer = await readFileAsArrayBuffer(file.path)
 
     const result = await pdfProcessor.organize({
@@ -31,7 +40,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!result.success || !result.data) {
-      return NextResponse.json({ error: result.error }, { status: 500 })
+      return NextResponse.json({ error: result.error || 'Failed to organize PDF' }, { status: 500 })
     }
 
     return new NextResponse(result.data, {
@@ -42,7 +51,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Organize PDF error:', error)
+    console.error('[organize-pdf]', error)
     return NextResponse.json({ error: 'Failed to organize PDF' }, { status: 500 })
   } finally {
     await cleanup()

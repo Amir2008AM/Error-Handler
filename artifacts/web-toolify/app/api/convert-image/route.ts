@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { image } from '@/lib/processing'
 import type { ImageFormat } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
     const targetFormat = fields['format'] ?? 'jpeg'
-    const quality = parseInt(fields['quality'] ?? '90', 10)
+    const quality      = parseInt(fields['quality'] ?? '90', 10)
 
     const buffer = await readFileAsArrayBuffer(file.path)
 
@@ -36,9 +37,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const contentType = image.getContentType(targetFormat as ImageFormat)
-    const extension = image.getExtension(targetFormat as ImageFormat)
-    const originalName = file.filename.replace(/\.[^/.]+$/, '')
+    const contentType  = image.getContentType(targetFormat as ImageFormat)
+    const extension    = image.getExtension(targetFormat as ImageFormat)
+    const originalName = safeFilename(file.filename.replace(/\.[^/.]+$/, ''))
 
     return new NextResponse(result.data, {
       status: 200,
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
         'Content-Disposition': `attachment; filename="${originalName}.${extension}"`,
         'X-Original-Format': String(result.metadata?.inputFormat ?? 'unknown').toUpperCase(),
         'X-Output-Format': extension.toUpperCase(),
-        'X-Original-Size': (result.metadata?.inputSize ?? 0).toString(),
+        'X-Original-Size': (result.metadata?.inputSize  ?? 0).toString(),
         'X-Output-Size': (result.metadata?.outputSize ?? 0).toString(),
         'X-Processing-Time': `${result.metadata?.processingTime ?? 0}ms`,
         'Cache-Control': 'no-store',

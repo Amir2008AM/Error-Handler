@@ -17,8 +17,15 @@ export async function POST(req: NextRequest) {
     const validationError = await validateStreamedFile(file, 'pdf')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const mode = (fields['mode'] ?? 'all') as 'all' | 'range'
-    const rangeStr = fields['range'] ?? ''
+    const mode     = (fields['mode'] ?? 'all') as 'all' | 'range'
+    const rangeStr = (fields['range'] ?? '').trim()
+
+    if (mode === 'range' && !rangeStr) {
+      return NextResponse.json(
+        { error: 'Please specify a page range (e.g. "1-3,5") when using range mode.' },
+        { status: 400 }
+      )
+    }
 
     const buffer = await readFileAsArrayBuffer(file.path)
 

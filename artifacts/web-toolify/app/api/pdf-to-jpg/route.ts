@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PdfToImageConverter } from '@/lib/processing/pdf-to-image'
 import { createZipFromFiles } from '@/lib/processing/file-utils'
 import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -18,18 +19,16 @@ export async function POST(request: NextRequest) {
     const validationError = await validateStreamedFile(file, 'pdf')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const format = ((fields['format'] as 'jpg' | 'png' | 'webp') || 'jpg')
-    const quality = parseInt(fields['quality'] ?? '90') || 90
-    const dpi = parseInt(fields['dpi'] ?? '150') || 150
+    const format   = ((fields['format'] as 'jpg' | 'png' | 'webp') || 'jpg')
+    const quality  = parseInt(fields['quality'] ?? '90', 10) || 90
+    const dpi      = parseInt(fields['dpi']     ?? '150', 10) || 150
     const pagesStr = fields['pages'] ?? null
 
     const buffer = await readFile(file.path)
-    
-    // Parse pages parameter
+
     let pages: number[] | 'all' = 'all'
     if (pagesStr && pagesStr !== 'all') {
       try {
-        // Support formats like "1,3,5" or "1-5" or "1,3-5,7"
         pages = []
         const parts = pagesStr.split(',')
         for (const part of parts) {
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
               pages.push(i)
             }
           } else {
-            pages.push(parseInt(part))
+            pages.push(parseInt(part, 10))
           }
         }
         pages = pages.filter((p) => !isNaN(p) && p > 0)
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const converter = new PdfToImageConverter()
-    
+
     const results = await converter.convert(buffer, {
       format,
       quality,
@@ -64,17 +63,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If single page, return the image directly
     if (results.length === 1) {
+      const safeOutputName = safeFilename(results[0].fileName)
       return new NextResponse(results[0].buffer, {
         headers: {
           'Content-Type': results[0].mimeType,
-          'Content-Disposition': `attachment; filename="${results[0].fileName}"`,
+          'Content-Disposition': `attachment; filename="${safeOutputName}"`,
+          'Cache-Control': 'no-store',
         },
       })
     }
 
-    // Multiple pages - create ZIP
     const zipBuffer = await createZipFromFiles(
       results.map((r) => ({
         name: r.fileName,
@@ -82,7 +81,7 @@ export async function POST(request: NextRequest) {
       }))
     )
 
-    const baseName = file.filename.replace(/\.pdf$/i, '')
+    const baseName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
 
     return new NextResponse(zipBuffer, {
       headers: {
@@ -92,12 +91,9 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('PDF to JPG error:', error)
+    console.error('[pdf-to-jpg]', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to convert PDF to images'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   } finally {
     await cleanup()
   }

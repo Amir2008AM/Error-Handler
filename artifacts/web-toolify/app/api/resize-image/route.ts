@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { image } from '@/lib/processing'
 import type { ImageFormat } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -18,12 +19,12 @@ export async function POST(req: NextRequest) {
     const validationError = await validateStreamedFile(file, 'image')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    const widthStr = fields['width'] ?? null
-    const heightStr = fields['height'] ?? null
+    const widthStr     = fields['width']         ?? null
+    const heightStr    = fields['height']        ?? null
     const maintainAspect = fields['maintainAspect'] !== 'false'
-    const unit = fields['unit'] ?? 'px'
-    const format = fields['format'] ?? 'same'
-    const quality = parseInt(fields['quality'] ?? '90', 10)
+    const unit         = fields['unit']          ?? 'px'
+    const format       = fields['format']        ?? 'same'
+    const quality      = parseInt(fields['quality'] ?? '90', 10)
 
     let width: number | undefined
     let height: number | undefined
@@ -65,21 +66,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const outputFormat = format === 'same' ? 'jpeg' : (format as ImageFormat)
-    const contentType = image.getContentType(outputFormat)
-    const extension = image.getExtension(outputFormat)
-    const originalName = file.filename.replace(/\.[^/.]+$/, '')
+    // Use the actual output format reported by the engine — never assume 'jpeg'
+    // when format='same', because the input could be PNG, WebP, etc.
+    const outputFormat = (result.metadata?.outputFormat as ImageFormat) || 'jpeg'
+    const contentType  = image.getContentType(outputFormat)
+    const extension    = image.getExtension(outputFormat)
+    const originalName = safeFilename(file.filename.replace(/\.[^/.]+$/, ''))
 
     return new NextResponse(result.data, {
       status: 200,
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${originalName}-resized.${extension}"`,
-        'X-Original-Width': (result.metadata?.originalWidth ?? 0).toString(),
+        'X-Original-Width': (result.metadata?.originalWidth  ?? 0).toString(),
         'X-Original-Height': (result.metadata?.originalHeight ?? 0).toString(),
-        'X-Output-Width': (result.metadata?.width ?? 0).toString(),
+        'X-Output-Width': (result.metadata?.width  ?? 0).toString(),
         'X-Output-Height': (result.metadata?.height ?? 0).toString(),
-        'X-Original-Size': (result.metadata?.inputSize ?? 0).toString(),
+        'X-Original-Size': (result.metadata?.inputSize  ?? 0).toString(),
         'X-Output-Size': (result.metadata?.outputSize ?? 0).toString(),
         'X-Processing-Time': `${result.metadata?.processingTime ?? 0}ms`,
         'Cache-Control': 'no-store',

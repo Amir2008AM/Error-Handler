@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { repairPdf, UnrepairableError } from '@/lib/processing/pdf-repair'
 import { streamUpload, readFile } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 180
@@ -22,16 +23,19 @@ export async function POST(request: NextRequest) {
     const buffer = await readFile(file.path)
     const result = await repairPdf(buffer)
 
+    const outputName = safeFilename(`repaired-${file.filename}`)
+
     return new NextResponse(result.data as unknown as BodyInit, {
+      status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="repaired-${file.filename}"`,
+        'Content-Disposition': `attachment; filename="${outputName}"`,
         'X-Repair-Step': result.step,
         'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
-    console.error('Repair PDF error:', error)
+    console.error('[repair-pdf]', error)
 
     if (error instanceof UnrepairableError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 422 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DocumentConverter } from '@/lib/processing/document-converter'
 import { streamUpload, readFile } from '@/lib/stream-upload'
+import { safeFilename } from '@/lib/safe-filename'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -11,9 +12,9 @@ export async function POST(request: NextRequest) {
   })
 
   try {
-    const pageSize = (fields['pageSize'] as 'a4' | 'letter' | 'legal') ?? 'a4'
-    const orientation = (fields['orientation'] as 'portrait' | 'landscape') ?? 'portrait'
-    const fontSize = parseInt(fields['fontSize'] ?? '12') || 12
+    const pageSize    = (fields['pageSize']    as 'a4' | 'letter' | 'legal') ?? 'a4'
+    const orientation = (fields['orientation'] as 'portrait' | 'landscape')  ?? 'portrait'
+    const fontSize    = parseInt(fields['fontSize'] ?? '12') || 12
     const htmlContent = fields['html'] ?? null
 
     let html: string
@@ -31,8 +32,8 @@ export async function POST(request: NextRequest) {
       }
 
       const buffer = await readFile(file.path)
-      html = new TextDecoder('utf-8').decode(buffer)
-      baseName = file.filename.replace(/\.(html?|htm)$/i, '')
+      html     = new TextDecoder('utf-8').decode(buffer)
+      baseName = safeFilename(file.filename.replace(/\.(html?|htm)$/i, ''))
     } else if (htmlContent) {
       html = htmlContent
     } else {
@@ -40,8 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const converter = new DocumentConverter()
-
-    const result = await converter.htmlToPdf(html, { pageSize, orientation, fontSize })
+    const result    = await converter.htmlToPdf(html, { pageSize, orientation, fontSize })
 
     return new NextResponse(result.buffer, {
       headers: {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('HTML to PDF error:', error)
+    console.error('[html-to-pdf]', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to convert HTML to PDF'
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   } finally {
