@@ -1162,25 +1162,28 @@ export class PDFProcessor extends BaseProcessor {
   }
 
   /**
-   * Compress a PDF using a multi-strategy engine with a strict no-bloat guarantee.
+   * Compress a PDF using level-tuned Ghostscript settings.
    *
-   * Strategy order (all run; smallest valid result wins):
-   *   1. Ghostscript  — best compression for image-heavy PDFs
-   *   2. qpdf         — linearize + stream compression; good for text PDFs
-   *   3. Original     — returned as-is if no strategy beats it
+   * Compression is ALWAYS performed — no size-based skipping, no "already
+   * optimised" blocking.  The processed file is returned regardless of whether
+   * it ends up smaller or larger than the original.  The caller decides what
+   * to display; this engine never hides work or returns the original silently.
    *
-   * Level → Ghostscript preset mapping (fixed — higher level = smaller file):
-   *   low    → /ebook   150 dpi  (light touch, best quality)
-   *   medium → /screen   96 dpi  (good balance)
-   *   high   → /screen   72 dpi  + aggressive stream/font flags
+   * Level → Ghostscript preset mapping (real quality/size tradeoff per level):
+   *   low    → /ebook   150 dpi  — light touch, best quality
+   *   medium → /screen  100 dpi  — balanced, font optimisation enabled
+   *   high   → /screen   72 dpi  — aggressive: heavy downsampling, mono+color+gray,
+   *                                font subset, duplicate image detection
    *
-   * Guarantees:
-   *   - Output is NEVER larger than input.
-   *   - compressionRatio is NEVER negative.
-   *   - compressionStatus is always one of:
-   *       'compressed'        – file is smaller than original
-   *       'already_optimized' – best result < 1 % smaller (not worth applying)
-   *       'no_gain'           – no strategy reduced size; original returned
+   * compressionStatus values:
+   *   'compressed'     – output is smaller than input
+   *   'size_increased' – output is larger (returned as-is, never faked)
+   *
+   * compressionRatio can be negative (positive = reduction, negative = increase).
+   *
+   * Strategy order:
+   *   1. Ghostscript — always tried first with level-specific settings
+   *   2. qpdf        — fallback ONLY when Ghostscript fails entirely
    */
   async compress(
     file: ArrayBuffer | string,
@@ -1205,55 +1208,56 @@ export class PDFProcessor extends BaseProcessor {
         inputSize = sourceBuffer.length
       }
 
-      // ── Pre-flight: skip tiny files — GS overhead always inflates them ──────
-      if (inputSize < 100 * 1024) {
-        const original = sourceBuffer ?? await readFile(sourcePath!)
-        console.log({ originalSize: inputSize, newSize: inputSize, reduction: '0%', strategyUsed: 'skipped-too-small' })
-        return this.success(original, {
-          inputSize,
-          outputSize: inputSize,
-          compressionRatio: 0,
-          compressionStatus: 'already_optimized',
-          processingTime: 0,
-        })
-      }
-
-      // ── Content-type heuristic ───────────────────────────────────────────────
-      const contentType = await this.detectPdfContentType(sourcePath, sourceBuffer, inputSize)
-
-      // ── GS preset mapping (low = mild, high = most aggressive) ──────────────
+      // ── GS preset mapping ─────────────────────────────────────────────────────
+      // Each level uses genuinely different settings to produce a real size/quality
+      // tradeoff.  No level is silently promoted or demoted.
       type GsPreset = { pdfSettings: string; imageResolution: number; extraArgs: string[] }
       const GS_PRESETS: Record<typeof level, GsPreset> = {
+        // LIGHT — minimal compression, image quality preserved, slight downsampling only
         low: {
-          pdfSettings: '/ebook',
+          pdfSettings:     '/ebook',
           imageResolution: 150,
-          extraArgs: [],
+          extraArgs: [
+            '-dDownsampleColorImages=true',
+            '-dDownsampleGrayImages=true',
+          ],
         },
+        // MEDIUM — balanced: 100 dpi images, font subsetting, /screen colour model
         medium: {
-          pdfSettings: '/screen',
-          imageResolution: 96,
-          extraArgs: ['-dCompressFonts=true', '-dSubsetFonts=true'],
+          pdfSettings:     '/screen',
+          imageResolution: 100,
+          extraArgs: [
+            '-dDownsampleColorImages=true',
+            '-dDownsampleGrayImages=true',
+            '-dCompressFonts=true',
+            '-dSubsetFonts=true',
+          ],
         },
+        // MAXIMUM — aggressive: 72 dpi all channels, mono downsampled, font + object
+        //           optimisation, duplicate image detection, page stream compression
         high: {
-          pdfSettings: '/screen',
+          pdfSettings:     '/screen',
           imageResolution: 72,
           extraArgs: [
+            '-dDownsampleColorImages=true',
+            '-dColorImageResolution=72',
+            '-dDownsampleGrayImages=true',
+            '-dGrayImageResolution=72',
+            '-dDownsampleMonoImages=true',
+            '-dMonoImageResolution=72',
             '-dCompressFonts=true',
             '-dSubsetFonts=true',
             '-dDetectDuplicateImages=true',
-            '-dDownsampleMonoImages=true',
-            '-dMonoImageResolution=144',
+            '-dCompressPages=true',
+            '-dOptimize=true',
           ],
         },
       }
 
-      // For text-heavy PDFs, cap at medium — /screen on pure-text files bloats them.
-      const effectiveLevel: typeof level = (contentType === 'text-heavy' && level === 'high') ? 'medium' : level
-      const preset = GS_PRESETS[effectiveLevel]
+      const preset = GS_PRESETS[level]
+      const t0     = Date.now()
 
-      const t0 = Date.now()
-
-      // ── Strategy 1: Ghostscript ──────────────────────────────────────────────
+      // ── Strategy 1: Ghostscript ───────────────────────────────────────────────
       let gsResult: Buffer | null = null
       try {
         gsResult = await withGsTempDir(async (dir) => {
@@ -1294,71 +1298,59 @@ export class PDFProcessor extends BaseProcessor {
         console.warn('[compress-pdf] Ghostscript strategy failed:', err instanceof Error ? err.message : err)
       }
 
-      // ── Strategy 2: qpdf linearize + compress streams ────────────────────────
+      // ── Strategy 2: qpdf — fallback ONLY when GS failed ──────────────────────
       let qpdfResult: Buffer | null = null
-      try {
-        qpdfResult = await withGsTempDir(async (dir) => {
-          const outPath = join(dir, 'out.pdf')
-          let inPath: string
+      if (!gsResult) {
+        try {
+          qpdfResult = await withGsTempDir(async (dir) => {
+            const outPath = join(dir, 'out.pdf')
+            let inPath: string
 
-          if (sourcePath) {
-            inPath = sourcePath
-          } else {
-            inPath = join(dir, 'in.pdf')
-            await writeFile(inPath, sourceBuffer!)
-          }
+            if (sourcePath) {
+              inPath = sourcePath
+            } else {
+              inPath = join(dir, 'in.pdf')
+              await writeFile(inPath, sourceBuffer!)
+            }
 
-          await this.runQpdf(inPath, outPath)
+            await this.runQpdf(inPath, outPath)
 
-          const out = await readFile(outPath)
-          if (out.length < 5 || out.subarray(0, 5).toString('ascii') !== '%PDF-') {
-            throw new Error('qpdf produced invalid output')
-          }
-          return out
-        })
-      } catch (err) {
-        console.warn('[compress-pdf] qpdf strategy failed:', err instanceof Error ? err.message : err)
+            const out = await readFile(outPath)
+            if (out.length < 5 || out.subarray(0, 5).toString('ascii') !== '%PDF-') {
+              throw new Error('qpdf produced invalid output')
+            }
+            return out
+          })
+        } catch (err) {
+          console.warn('[compress-pdf] qpdf strategy failed:', err instanceof Error ? err.message : err)
+        }
       }
 
       const processingTime = Date.now() - t0
 
-      // ── Pick the smallest result that is strictly smaller than the original ──
-      // Always include the original as the baseline candidate.
-      const originalBuffer = sourceBuffer ?? await readFile(sourcePath!)
-
-      type Candidate = { buffer: Buffer; strategy: string }
-      const candidates: Candidate[] = [{ buffer: originalBuffer, strategy: 'original' }]
-      if (gsResult)   candidates.push({ buffer: gsResult,   strategy: 'ghostscript' })
-      if (qpdfResult) candidates.push({ buffer: qpdfResult, strategy: 'qpdf' })
-
-      const best = candidates.reduce((a, b) =>
-        b.buffer.length < a.buffer.length ? b : a
-      )
-
-      const newSize  = best.buffer.length
-      const rawRatio = ((inputSize - newSize) / inputSize) * 100
-      const compressionRatio   = Math.max(0, rawRatio)    // NEVER negative
-
-      let compressionStatus: string
-      if (best.strategy === 'original' || rawRatio <= 0) {
-        compressionStatus = 'no_gain'
-      } else if (compressionRatio < 1) {
-        compressionStatus = 'already_optimized'
-      } else {
-        compressionStatus = 'compressed'
+      // ── Always return the processed file ──────────────────────────────────────
+      // GS result is preferred.  qpdf is used only when GS failed.
+      // The original is never returned silently — if both strategies fail, error out.
+      const outputBuffer = gsResult ?? qpdfResult
+      if (!outputBuffer) {
+        return this.error('Compression failed: Ghostscript and qpdf both failed')
       }
+
+      const newSize = outputBuffer.length
+      // compressionRatio: positive = smaller (good), negative = larger (honest)
+      const compressionRatio  = ((inputSize - newSize) / inputSize) * 100
+      const compressionStatus = compressionRatio > 0 ? 'compressed' : 'size_increased'
 
       console.log({
         originalSize:      inputSize,
         newSize,
-        reduction:         compressionRatio.toFixed(2) + '%',
-        strategyUsed:      best.strategy,
-        contentType,
-        effectiveLevel,
+        changePercent:     compressionRatio.toFixed(2) + '%',
+        strategyUsed:      gsResult ? 'ghostscript' : 'qpdf',
+        level,
         compressionStatus,
       })
 
-      return this.success(best.buffer, {
+      return this.success(outputBuffer, {
         inputSize,
         outputSize:        newSize,
         compressionRatio,

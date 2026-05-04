@@ -28,24 +28,25 @@ const nextConfig = {
     const isProd = process.env.NODE_ENV === 'production'
 
     return [
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
+      // In production Next.js chunk filenames include a content hash, so
+      // immutable caching is safe.  In development Turbopack reuses the same
+      // filenames across hot reloads, so immutable caching breaks HMR.
+      ...(isProd
+        ? [
+            {
+              source: '/_next/static/:path*',
+              headers: [
+                { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+              ],
+            },
+            {
+              source: '/static/:path*',
+              headers: [
+                { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+              ],
+            },
+          ]
+        : []),
       {
         source: '/(favicon.ico|icon.svg|apple-icon.png|manifest.json)',
         headers: [
