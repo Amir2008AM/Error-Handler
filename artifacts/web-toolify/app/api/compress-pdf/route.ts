@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    const compressionRatio = (result.metadata?.compressionRatio as number) || 0
+    const compressionRatio   = Math.max(0, (result.metadata?.compressionRatio   as number) || 0)
+    const compressionStatus  = (result.metadata?.compressionStatus as string) || 'compressed'
     const outputFilename = `compressed-${file.filename}`
 
     // Persist so the client can download (and re-download) without reprocessing.
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       originalSize: file.size,
       compressedSize: result.data.length,
       compressionRatio,
+      compressionStatus,
       level,
     })
   } catch (error) {

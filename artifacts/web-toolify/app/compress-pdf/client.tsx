@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Upload, Download, Loader2, FileText, TrendingDown } from 'lucide-react'
+import { Upload, Download, Loader2, FileText, TrendingDown, Minus, CheckCircle } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -29,12 +29,15 @@ const LEVEL_LABEL: Record<CompressionLevel, string> = {
   high: 'Maximum',
 }
 
+type CompressionStatus = 'compressed' | 'already_optimized' | 'no_gain'
+
 interface CompressResult {
   fileId: string
   filename: string
   originalSize: number
   compressedSize: number
   compressionRatio: number
+  compressionStatus: CompressionStatus
   level: CompressionLevel
 }
 
@@ -154,18 +157,49 @@ export function CompressPdfClient() {
               </div>
             </Card>
 
-            {result && progress.status === 'completed' && (
-              <ProcessedFileCard fileId={result.fileId} filename={result.filename}>
-                <div className="flex items-start gap-3 mt-2">
-                  <TrendingDown className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <div className="text-sm text-green-700 space-y-0.5">
-                    <p className="font-medium">Reduced by {Math.round(result.compressionRatio)}%</p>
-                    <p>Original: {formatSize(result.originalSize)} → {formatSize(result.compressedSize)}</p>
-                    <p>Level: {LEVEL_LABEL[result.level]}</p>
+            {result && progress.status === 'completed' && (() => {
+              const ratio = Math.max(0, Math.round(result.compressionRatio))
+              const status = result.compressionStatus ?? (ratio > 0 ? 'compressed' : 'no_gain')
+
+              const statusConfig = {
+                compressed: {
+                  icon: <TrendingDown className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />,
+                  labelClass: 'text-green-700',
+                  headline: `Compressed successfully — reduced by ${ratio}%`,
+                },
+                already_optimized: {
+                  icon: <CheckCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />,
+                  labelClass: 'text-blue-700',
+                  headline: 'Already optimized — no further reduction possible',
+                },
+                no_gain: {
+                  icon: <Minus className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />,
+                  labelClass: 'text-muted-foreground',
+                  headline: 'No compression gain — original file returned',
+                },
+              }[status] ?? {
+                icon: <TrendingDown className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />,
+                labelClass: 'text-green-700',
+                headline: `Reduced by ${ratio}%`,
+              }
+
+              return (
+                <ProcessedFileCard fileId={result.fileId} filename={result.filename}>
+                  <div className="flex items-start gap-3 mt-2">
+                    {statusConfig.icon}
+                    <div className={`text-sm space-y-0.5 ${statusConfig.labelClass}`}>
+                      <p className="font-medium">{statusConfig.headline}</p>
+                      <p>
+                        Original: {formatSize(result.originalSize)}
+                        {' → '}
+                        Final: {formatSize(result.compressedSize)}
+                      </p>
+                      <p>Level: {LEVEL_LABEL[result.level]}</p>
+                    </div>
                   </div>
-                </div>
-              </ProcessedFileCard>
-            )}
+                </ProcessedFileCard>
+              )
+            })()}
 
             <div>
               <p className="text-sm font-medium mb-3">Compression level</p>

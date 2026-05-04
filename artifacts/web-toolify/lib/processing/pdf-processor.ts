@@ -1091,84 +1091,175 @@ export class PDFProcessor extends BaseProcessor {
   }
 
   /**
-   * Compress a PDF using Ghostscript for maximum real file-size reduction.
+   * Heuristic: scan a sample of the PDF bytes to classify content.
    *
-   * Three quality levels map to Ghostscript -dPDFSETTINGS presets:
-   *  - low    → /ebook   150 dpi images, good quality, moderate compression
-   *  - medium → /screen  72 dpi images, strong compression (default)
-   *  - high   → /screen  72 dpi + aggressive flags (no metadata, no thumbnails,
-   *                       compress fonts, downsampled colour/gray/mono streams)
+   * Image-based PDFs contain XObject image dictionaries and image-stream
+   * filters (DCTDecode = JPEG, JPXDecode = JPEG 2000).  Text-heavy PDFs
+   * contain BT/ET (Begin/End Text) operators but few image markers.
    *
-   * The process is killed after 2 minutes and temp files are always cleaned up.
-   * If Ghostscript is not available the method throws with a clear message
-   * rather than silently returning the original file.
+   * Returns 'image-heavy' | 'text-heavy' | 'mixed'.
+   * Falls back to 'mixed' on any read error.
+   */
+  private async detectPdfContentType(
+    sourcePath: string | null,
+    sourceBuffer: Buffer | null,
+    fileSize: number,
+  ): Promise<'image-heavy' | 'text-heavy' | 'mixed'> {
+    try {
+      const SAMPLE = 256 * 1024 // first 256 KB is enough
+      let sample: Buffer
+
+      if (sourcePath) {
+        const { open } = await import('node:fs/promises')
+        const fh = await open(sourcePath, 'r')
+        const buf = Buffer.alloc(Math.min(fileSize, SAMPLE))
+        await fh.read(buf, 0, buf.length, 0)
+        await fh.close()
+        sample = buf
+      } else {
+        sample = sourceBuffer!.subarray(0, Math.min(sourceBuffer!.length, SAMPLE))
+      }
+
+      const text = sample.toString('latin1')
+
+      // Image signals: XObject image dictionaries, JPEG/JPEG2000 stream filters
+      const imageHits = (text.match(/\/Image\b|\/DCTDecode|\/JPXDecode/g) ?? []).length
+      // Text signals: PDF text block markers
+      const textHits  = (text.match(/\bBT\b|\bTj\b|\bTJ\b/g) ?? []).length
+
+      if (imageHits > 0 && imageHits >= textHits) return 'image-heavy'
+      if (textHits > imageHits * 3)               return 'text-heavy'
+      return 'mixed'
+    } catch {
+      return 'mixed'
+    }
+  }
+
+  /**
+   * Run qpdf to linearize + compress streams as a lightweight fallback strategy.
+   * Exit code 3 means warnings only — still treat as success.
+   */
+  private runQpdf(inPath: string, outPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const proc = spawn('qpdf', [
+        '--linearize',
+        '--compress-streams=y',
+        '--decode-level=generalized',
+        inPath,
+        outPath,
+      ], { stdio: ['ignore', 'ignore', 'pipe'] })
+
+      let stderr = ''
+      proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString('utf8') })
+      proc.on('error', reject)
+      proc.on('close', (code) => {
+        if (code === 0 || code === 3) resolve()
+        else reject(new Error(`qpdf failed (exit ${code}): ${stderr.trim()}`))
+      })
+
+      setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('qpdf timed out')) }, 60_000)
+    })
+  }
+
+  /**
+   * Compress a PDF using a multi-strategy engine with a strict no-bloat guarantee.
+   *
+   * Strategy order (all run; smallest valid result wins):
+   *   1. Ghostscript  — best compression for image-heavy PDFs
+   *   2. qpdf         — linearize + stream compression; good for text PDFs
+   *   3. Original     — returned as-is if no strategy beats it
+   *
+   * Level → Ghostscript preset mapping (fixed — higher level = smaller file):
+   *   low    → /ebook   150 dpi  (light touch, best quality)
+   *   medium → /screen   96 dpi  (good balance)
+   *   high   → /screen   72 dpi  + aggressive stream/font flags
+   *
+   * Guarantees:
+   *   - Output is NEVER larger than input.
+   *   - compressionRatio is NEVER negative.
+   *   - compressionStatus is always one of:
+   *       'compressed'        – file is smaller than original
+   *       'already_optimized' – best result < 1 % smaller (not worth applying)
+   *       'no_gain'           – no strategy reduced size; original returned
    */
   async compress(
     file: ArrayBuffer | string,
-    level: 'low' | 'medium' | 'high' = 'medium'
+    level: 'low' | 'medium' | 'high' = 'medium',
   ): Promise<ProcessingResult<Buffer>> {
     try {
-      // `file` can be:
-      //   - an ArrayBuffer / Buffer (legacy in-memory path)
-      //   - a string (absolute path to a file already on disk — streamed uploads)
       const isPath = typeof file === 'string'
-
       let inputSize: number
       let sourceBuffer: Buffer | null = null
-      let sourcePath: string | null = null
+      let sourcePath:  string | null  = null
 
       if (isPath) {
         sourcePath = file
-        const stat = await import('node:fs/promises').then(m => m.stat(sourcePath!))
-        inputSize = stat.size
+        const { stat } = await import('node:fs/promises')
+        inputSize = (await stat(sourcePath)).size
       } else {
         this.validateBuffer(file)
-        inputSize = file.byteLength
         sourceBuffer = Buffer.from(file)
-        // Sanity-check: must be a PDF
         if (sourceBuffer.length < 5 || sourceBuffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
           return this.error('File is not a valid PDF')
         }
+        inputSize = sourceBuffer.length
       }
 
-      // Map compression levels to Ghostscript settings
-      const gsPresets: Record<typeof level, {
-        pdfSettings: string
-        imageResolution: number
-        extraArgs: string[]
-      }> = {
-        // low  = maximum compression, screen-resolution images (/screen 72 dpi)
+      // ── Pre-flight: skip tiny files — GS overhead always inflates them ──────
+      if (inputSize < 100 * 1024) {
+        const original = sourceBuffer ?? await readFile(sourcePath!)
+        console.log({ originalSize: inputSize, newSize: inputSize, reduction: '0%', strategyUsed: 'skipped-too-small' })
+        return this.success(original, {
+          inputSize,
+          outputSize: inputSize,
+          compressionRatio: 0,
+          compressionStatus: 'already_optimized',
+          processingTime: 0,
+        })
+      }
+
+      // ── Content-type heuristic ───────────────────────────────────────────────
+      const contentType = await this.detectPdfContentType(sourcePath, sourceBuffer, inputSize)
+
+      // ── GS preset mapping (low = mild, high = most aggressive) ──────────────
+      type GsPreset = { pdfSettings: string; imageResolution: number; extraArgs: string[] }
+      const GS_PRESETS: Record<typeof level, GsPreset> = {
         low: {
-          pdfSettings: '/screen',
-          imageResolution: 72,
-          extraArgs: [],
-        },
-        // medium = balanced — ebook-quality images, good text fidelity (/ebook 150 dpi)
-        medium: {
           pdfSettings: '/ebook',
           imageResolution: 150,
           extraArgs: [],
         },
-        // high = best quality — print-ready resolution, fonts fully embedded (/printer 300 dpi)
+        medium: {
+          pdfSettings: '/screen',
+          imageResolution: 96,
+          extraArgs: ['-dCompressFonts=true', '-dSubsetFonts=true'],
+        },
         high: {
-          pdfSettings: '/printer',
-          imageResolution: 300,
+          pdfSettings: '/screen',
+          imageResolution: 72,
           extraArgs: [
             '-dCompressFonts=true',
             '-dSubsetFonts=true',
+            '-dDetectDuplicateImages=true',
+            '-dDownsampleMonoImages=true',
+            '-dMonoImageResolution=144',
           ],
         },
       }
 
-      const preset = gsPresets[level]
+      // For text-heavy PDFs, cap at medium — /screen on pure-text files bloats them.
+      const effectiveLevel: typeof level = (contentType === 'text-heavy' && level === 'high') ? 'medium' : level
+      const preset = GS_PRESETS[effectiveLevel]
 
-      const { result, time } = await this.measureTime(async () => {
-        return withGsTempDir(async (dir) => {
+      const t0 = Date.now()
+
+      // ── Strategy 1: Ghostscript ──────────────────────────────────────────────
+      let gsResult: Buffer | null = null
+      try {
+        gsResult = await withGsTempDir(async (dir) => {
           const outPath = join(dir, 'out.pdf')
-
-          // When caller already has the file on disk (streamed upload), use that
-          // path directly — no extra disk write needed.
           let inPath: string
+
           if (sourcePath) {
             inPath = sourcePath
           } else {
@@ -1177,14 +1268,10 @@ export class PDFProcessor extends BaseProcessor {
           }
 
           const args = [
-            '-q',              // quiet — suppress informational messages
-            '-dBATCH',         // no interactive loop
-            '-dNOPAUSE',       // no pause after each page
-            '-dSAFER',         // restrict file-system access
+            '-q', '-dBATCH', '-dNOPAUSE', '-dSAFER',
             '-sDEVICE=pdfwrite',
             '-dCompatibilityLevel=1.4',
             `-dPDFSETTINGS=${preset.pdfSettings}`,
-            // Base downsampling flags (overridden by preset extra args for high)
             '-dDownsampleColorImages=true',
             `-dColorImageResolution=${preset.imageResolution}`,
             '-dDownsampleGrayImages=true',
@@ -1195,34 +1282,88 @@ export class PDFProcessor extends BaseProcessor {
           ]
 
           const { code, stderr } = await runGs(args)
+          if (code !== 0) throw new Error(`Ghostscript failed (exit ${code}): ${stderr.trim()}`)
 
-          if (code !== 0) {
-            throw new Error(
-              `Ghostscript compression failed (exit ${code}): ${stderr.trim() || 'no details'}`
-            )
+          const out = await readFile(outPath)
+          if (out.length < 5 || out.subarray(0, 5).toString('ascii') !== '%PDF-') {
+            throw new Error('Ghostscript produced invalid output')
           }
-
-          const output = await readFile(outPath)
-
-          // Safety: if GS somehow produces an empty or non-PDF output, throw.
-          if (output.length < 5 || output.subarray(0, 5).toString('ascii') !== '%PDF-') {
-            throw new Error('Ghostscript produced invalid output — original file may be corrupted')
-          }
-
-          return output
+          return out
         })
+      } catch (err) {
+        console.warn('[compress-pdf] Ghostscript strategy failed:', err instanceof Error ? err.message : err)
+      }
+
+      // ── Strategy 2: qpdf linearize + compress streams ────────────────────────
+      let qpdfResult: Buffer | null = null
+      try {
+        qpdfResult = await withGsTempDir(async (dir) => {
+          const outPath = join(dir, 'out.pdf')
+          let inPath: string
+
+          if (sourcePath) {
+            inPath = sourcePath
+          } else {
+            inPath = join(dir, 'in.pdf')
+            await writeFile(inPath, sourceBuffer!)
+          }
+
+          await this.runQpdf(inPath, outPath)
+
+          const out = await readFile(outPath)
+          if (out.length < 5 || out.subarray(0, 5).toString('ascii') !== '%PDF-') {
+            throw new Error('qpdf produced invalid output')
+          }
+          return out
+        })
+      } catch (err) {
+        console.warn('[compress-pdf] qpdf strategy failed:', err instanceof Error ? err.message : err)
+      }
+
+      const processingTime = Date.now() - t0
+
+      // ── Pick the smallest result that is strictly smaller than the original ──
+      // Always include the original as the baseline candidate.
+      const originalBuffer = sourceBuffer ?? await readFile(sourcePath!)
+
+      type Candidate = { buffer: Buffer; strategy: string }
+      const candidates: Candidate[] = [{ buffer: originalBuffer, strategy: 'original' }]
+      if (gsResult)   candidates.push({ buffer: gsResult,   strategy: 'ghostscript' })
+      if (qpdfResult) candidates.push({ buffer: qpdfResult, strategy: 'qpdf' })
+
+      const best = candidates.reduce((a, b) =>
+        b.buffer.length < a.buffer.length ? b : a
+      )
+
+      const newSize  = best.buffer.length
+      const rawRatio = ((inputSize - newSize) / inputSize) * 100
+      const compressionRatio   = Math.max(0, rawRatio)    // NEVER negative
+
+      let compressionStatus: string
+      if (best.strategy === 'original' || rawRatio <= 0) {
+        compressionStatus = 'no_gain'
+      } else if (compressionRatio < 1) {
+        compressionStatus = 'already_optimized'
+      } else {
+        compressionStatus = 'compressed'
+      }
+
+      console.log({
+        originalSize:      inputSize,
+        newSize,
+        reduction:         compressionRatio.toFixed(2) + '%',
+        strategyUsed:      best.strategy,
+        contentType,
+        effectiveLevel,
+        compressionStatus,
       })
 
-      const compressionRatio = inputSize > 0
-        ? (1 - result.length / inputSize) * 100
-        : 0
-
-      return this.success(result, {
+      return this.success(best.buffer, {
         inputSize,
-        outputSize: result.length,
+        outputSize:        newSize,
         compressionRatio,
-        processingTime: time,
-        level,
+        compressionStatus,
+        processingTime,
       })
     } catch (err) {
       return this.error(`Failed to compress PDF: ${err instanceof Error ? err.message : 'Unknown error'}`)
