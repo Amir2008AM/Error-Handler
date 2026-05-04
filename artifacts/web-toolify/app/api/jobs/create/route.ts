@@ -1,10 +1,13 @@
 /**
  * Create Job API Route
- * Creates a new processing job and returns job ID for polling
+ * Creates a new processing job and returns job ID for polling.
+ *
+ * Rate limited: 20 job submissions per minute per IP.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getJobManager, processJob, JobType } from '@/lib/queue'
+import { applyRateLimit, JOB_CREATE_LIMIT } from '@/lib/middleware/rate-limit'
 
 export const maxDuration = 300 // 5 minutes for heavy operations
 
@@ -38,9 +41,13 @@ const VALID_JOB_TYPES: JobType[] = [
 ]
 
 export async function POST(request: NextRequest) {
+  // Rate limiting: 20 job submissions per minute per IP
+  const rateLimited = applyRateLimit(request, JOB_CREATE_LIMIT, 'job-create')
+  if (rateLimited) return rateLimited
+
   try {
     const formData = await request.formData()
-    
+
     const jobType = formData.get('type') as JobType
     const optionsStr = formData.get('options') as string | null
     const processImmediately = formData.get('processNow') === 'true'
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Extract files from form data
     const files: Array<{ name: string; buffer: Buffer; type: string }> = []
-    
+
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('file') && value instanceof File) {
         const arrayBuffer = await value.arrayBuffer()
@@ -87,7 +94,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create the job
+    // Create the job (size + total-size limits enforced inside createJob)
     const manager = getJobManager()
     const job = manager.createJob(jobType, files, options)
 
@@ -96,7 +103,7 @@ export async function POST(request: NextRequest) {
       try {
         const result = await processJob(job.id)
         const status = manager.getJobStatus(job.id)
-        
+
         return NextResponse.json({
           id: job.id,
           status: status?.status || 'completed',
@@ -113,10 +120,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Otherwise return job ID for polling
-    // Start processing in the background (fire and forget)
+    // Fire-and-forget: process in background, client polls /api/jobs/[id]
     processJob(job.id).catch((error) => {
-      console.error(`Job ${job.id} failed:`, error)
+      console.error(`[Queue] Job ${job.id} (${job.type}) failed:`, error)
     })
 
     return NextResponse.json({
@@ -128,7 +134,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating job:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to create job'
-    
+
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }

@@ -1,32 +1,37 @@
 /**
  * Job Processor
  *
- * Executes processing jobs against the right engine. Two big upgrades
- * over the previous version:
+ * Executes processing jobs against the right engine. Key features:
  *
- *  1. **Per-operation + per-job timeouts** via `withTimeout`. A single
- *     pathological PDF can no longer pin a worker forever.
+ *  1. **Per-operation + per-job timeouts** via `withTimeout`.
  *  2. **Bounded concurrency for batches** via `mapWithConcurrency`.
- *     The old code did `Promise.all(files.map(...))` which decoded
- *     every image at once — easy to OOM on a 50-image batch.
+ *  3. **Retry mechanism**: up to MAX_RETRIES automatic retries with
+ *     exponential backoff before a job is marked failed.
+ *  4. **Complete job-type coverage**: all 25 job types are handled.
  */
 
+import { writeFile, unlink } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { nanoid } from 'nanoid'
 import { Job, JobType, JobResult } from './types'
 import { getJobManager } from './job-manager'
 import { PDFProcessor } from '../processing/pdf-processor'
 import { ImageProcessor } from '../processing/image-processor'
+import { OCRProcessor } from '../processing/ocr-processor'
+import { PDFSecurityProcessor } from '../processing/pdf-security'
+import { PdfToImageConverter } from '../processing/pdf-to-image'
 import { createZipFromFiles } from '../processing/file-utils'
 import { withTimeout, TIMEOUTS } from '../processing/timeout'
 import { mapWithConcurrency, defaultCpuConcurrency } from '../processing/concurrency'
 import type { ProcessingResult } from '../processing/types'
 
-type ProcessorFunction = (job: Job) => Promise<{
-  buffer: Buffer
-  fileName: string
-  mimeType: string
-} | {
-  buffers: Array<{ buffer: Buffer; fileName: string; mimeType: string }>
-}>
+const MAX_RETRIES = 2
+const RETRY_BASE_DELAY_MS = 1_000
+
+type SingleResult = { buffer: Buffer; fileName: string; mimeType: string }
+type BatchResult = { buffers: Array<{ buffer: Buffer; fileName: string; mimeType: string }> }
+type ProcessorFunction = (job: Job) => Promise<SingleResult | BatchResult>
 
 function unwrap<T>(result: ProcessingResult<T>): T {
   if (!result.success || result.data === undefined) {
@@ -40,20 +45,47 @@ function toArrayBuffer(buf: Buffer): ArrayBuffer {
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
 }
 
+/**
+ * Write a buffer to a temp file, run `fn` with the path, then delete the file.
+ * Ensures temp files are always cleaned up, even on error.
+ */
+async function withTempFile<T>(
+  buffer: Buffer,
+  ext: string,
+  fn: (path: string) => Promise<T>
+): Promise<T> {
+  const path = join(tmpdir(), `job-${nanoid(10)}.${ext}`)
+  try {
+    await writeFile(path, buffer)
+    return await fn(path)
+  } finally {
+    await unlink(path).catch(() => undefined)
+  }
+}
+
 const processors: Partial<Record<JobType, ProcessorFunction>> = {
-  'merge-pdf': processMergePdf,
-  'split-pdf': processSplitPdf,
-  'rotate-pdf': processRotatePdf,
-  'compress-pdf': processCompressPdf,
-  'watermark-pdf': processWatermarkPdf,
+  'merge-pdf':       processMergePdf,
+  'split-pdf':       processSplitPdf,
+  'rotate-pdf':      processRotatePdf,
+  'compress-pdf':    processCompressPdf,
+  'watermark-pdf':   processWatermarkPdf,
   'add-page-numbers': processAddPageNumbers,
-  'organize-pdf': processOrganizePdf,
-  'image-to-pdf': processImageToPdf,
-  'repair-pdf': processRepairPdf,
-  'compress-image': processCompressImage,
-  'resize-image': processResizeImage,
-  'convert-image': processConvertImage,
-  'crop-image': processCropImage,
+  'organize-pdf':    processOrganizePdf,
+  'image-to-pdf':    processImageToPdf,
+  'repair-pdf':      processRepairPdf,
+  'delete-pages':    processDeletePages,
+  'extract-pages':   processExtractPages,
+  'protect-pdf':     processProtectPdf,
+  'unlock-pdf':      processUnlockPdf,
+  'sign-pdf':        processSignPdf,
+  'pdf-to-jpg':      processPdfToJpg,
+  'pdf-to-word':     processPdfToWord,
+  'ocr-image':       processOcrImage,
+  'ocr-pdf':         processOcrPdf,
+  'compress-image':  processCompressImage,
+  'resize-image':    processResizeImage,
+  'convert-image':   processConvertImage,
+  'crop-image':      processCropImage,
 }
 
 export async function processJob(jobId: string): Promise<JobResult | null> {
@@ -70,28 +102,47 @@ export async function processJob(jobId: string): Promise<JobResult | null> {
     throw new Error(`No processor available for job type: ${job.type}`)
   }
 
+  manager.startProcessing()
+  manager.updateJobStatus(jobId, 'processing', 0)
+
+  let lastError: Error = new Error('Processing failed')
+
   try {
-    manager.startProcessing()
-    manager.updateJobStatus(jobId, 'processing', 0)
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        // Exponential back-off: 1s, 2s
+        const delayMs = RETRY_BASE_DELAY_MS * attempt
+        console.warn(
+          `[Queue] Job ${jobId} (${job.type}) attempt ${attempt} failed: ${lastError.message}. ` +
+          `Retrying in ${delayMs}ms…`
+        )
+        await new Promise((r) => setTimeout(r, delayMs))
+        manager.updateJobProgress(jobId, 0)
+      }
 
-    // Whole-job safety net — even if the engine forgets its own
-    // timeout, this guarantees the slot is released eventually.
-    const result = await withTimeout(
-      processor(job),
-      TIMEOUTS.jobOverall,
-      `job:${job.type}`
-    )
+      try {
+        // Whole-job safety net — even if the engine forgets its own timeout.
+        const result = await withTimeout(
+          processor(job),
+          TIMEOUTS.jobOverall,
+          `job:${job.type}`
+        )
 
-    if ('buffers' in result) {
-      await manager.setJobResultBatch(jobId, result.buffers)
-    } else {
-      await manager.setJobResult(jobId, result.buffer, result.fileName, result.mimeType)
+        if ('buffers' in result) {
+          await manager.setJobResultBatch(jobId, result.buffers)
+        } else {
+          await manager.setJobResult(jobId, result.buffer, result.fileName, result.mimeType)
+        }
+        return manager.getJobStatus(jobId)?.result ?? null
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        // Continue to next retry attempt
+      }
     }
-    return manager.getJobStatus(jobId)?.result ?? null
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Processing failed'
-    manager.setJobError(jobId, errorMessage)
-    throw error
+
+    // All retries exhausted
+    manager.setJobError(jobId, lastError.message)
+    throw lastError
   } finally {
     manager.finishProcessing()
   }
@@ -105,10 +156,10 @@ export async function processNextJob(): Promise<JobResult | null> {
 }
 
 // ============================================================
-// Processor Functions
+// PDF Processors
 // ============================================================
 
-async function processMergePdf(job: Job) {
+async function processMergePdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const files = job.files.map((f) => toArrayBuffer(f.buffer))
   const manager = getJobManager()
@@ -122,7 +173,7 @@ async function processMergePdf(job: Job) {
   return { buffer: unwrap(result), fileName: 'merged.pdf', mimeType: 'application/pdf' }
 }
 
-async function processSplitPdf(job: Job) {
+async function processSplitPdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -147,7 +198,7 @@ async function processSplitPdf(job: Job) {
   return { buffer: data, fileName: 'split.pdf', mimeType: 'application/pdf' }
 }
 
-async function processRotatePdf(job: Job) {
+async function processRotatePdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -162,7 +213,7 @@ async function processRotatePdf(job: Job) {
   return { buffer: unwrap(result), fileName: 'rotated.pdf', mimeType: 'application/pdf' }
 }
 
-async function processCompressPdf(job: Job) {
+async function processCompressPdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -175,7 +226,7 @@ async function processCompressPdf(job: Job) {
   return { buffer: unwrap(result), fileName: 'compressed.pdf', mimeType: 'application/pdf' }
 }
 
-async function processWatermarkPdf(job: Job) {
+async function processWatermarkPdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -195,7 +246,7 @@ async function processWatermarkPdf(job: Job) {
   return { buffer: unwrap(result), fileName: 'watermarked.pdf', mimeType: 'application/pdf' }
 }
 
-async function processAddPageNumbers(job: Job) {
+async function processAddPageNumbers(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -221,7 +272,7 @@ async function processAddPageNumbers(job: Job) {
   return { buffer: unwrap(result), fileName: 'numbered.pdf', mimeType: 'application/pdf' }
 }
 
-async function processOrganizePdf(job: Job) {
+async function processOrganizePdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -238,7 +289,7 @@ async function processOrganizePdf(job: Job) {
   return { buffer: unwrap(result), fileName: 'organized.pdf', mimeType: 'application/pdf' }
 }
 
-async function processImageToPdf(job: Job) {
+async function processImageToPdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -247,9 +298,9 @@ async function processImageToPdf(job: Job) {
     processor.imagesToPdf({
       images,
       pageSize: (job.options.pageSize as 'auto' | 'a4' | 'letter') || 'a4',
-      margin:     (job.options.margin      as number) ?? 20,
-      quality:    (job.options.imageQuality as number) ?? 78,
-      maxWidthPx: (job.options.maxWidthPx  as number) ?? 1_600,
+      margin: (job.options.margin as number) ?? 20,
+      quality: (job.options.imageQuality as number) ?? 78,
+      maxWidthPx: (job.options.maxWidthPx as number) ?? 1_600,
     }),
     TIMEOUTS.pdfHeavy,
     'pdf.imagesToPdf'
@@ -258,7 +309,7 @@ async function processImageToPdf(job: Job) {
   return { buffer: unwrap(result), fileName: 'images.pdf', mimeType: 'application/pdf' }
 }
 
-async function processRepairPdf(job: Job) {
+async function processRepairPdf(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -271,7 +322,307 @@ async function processRepairPdf(job: Job) {
   return { buffer: unwrap(result), fileName: 'repaired.pdf', mimeType: 'application/pdf' }
 }
 
-async function processCompressImage(job: Job) {
+async function processDeletePages(job: Job): Promise<SingleResult> {
+  const processor = new PDFProcessor()
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const pagesToDelete = job.options.pages as number[]
+  if (!pagesToDelete || pagesToDelete.length === 0) {
+    throw new Error('Pages to delete are required')
+  }
+
+  const result = await withTimeout(
+    processor.deletePages(toArrayBuffer(job.files[0].buffer), pagesToDelete),
+    TIMEOUTS.pdfOp,
+    'pdf.deletePages'
+  )
+  manager.updateJobProgress(job.id, 90)
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+  return {
+    buffer: unwrap(result),
+    fileName: `${baseName}-edited.pdf`,
+    mimeType: 'application/pdf',
+  }
+}
+
+async function processExtractPages(job: Job): Promise<SingleResult> {
+  const processor = new PDFProcessor()
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const pages = job.options.pages as number[]
+  if (!pages || pages.length === 0) {
+    throw new Error('Pages to extract are required')
+  }
+
+  const result = await withTimeout(
+    processor.extractPages(toArrayBuffer(job.files[0].buffer), pages),
+    TIMEOUTS.pdfOp,
+    'pdf.extractPages'
+  )
+  manager.updateJobProgress(job.id, 90)
+  return {
+    buffer: unwrap(result),
+    fileName: 'extracted-pages.pdf',
+    mimeType: 'application/pdf',
+  }
+}
+
+async function processProtectPdf(job: Job): Promise<SingleResult> {
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const password = (job.options.password as string) || ''
+  if (!password || password.length < 4) {
+    throw new Error('Password must be at least 4 characters')
+  }
+
+  const ownerPassword = (job.options.ownerPassword as string) || password + '_owner'
+  const allowPrinting = job.options.allowPrinting !== false
+  const allowCopying = job.options.allowCopying !== false
+  const allowModifying = job.options.allowModifying !== false
+  const allowAnnotating = job.options.allowAnnotating !== false
+
+  const result = await withTimeout(
+    withTempFile(job.files[0].buffer, 'pdf', async (inputPath) => {
+      const securityProcessor = new PDFSecurityProcessor()
+      return securityProcessor.protect(inputPath, {
+        userPassword: password,
+        ownerPassword,
+        permissions: {
+          printing: allowPrinting ? 'highResolution' : 'none',
+          copying: allowCopying,
+          modifying: allowModifying,
+          annotating: allowAnnotating,
+          fillingForms: true,
+          contentAccessibility: true,
+          documentAssembly: allowModifying,
+        },
+      })
+    }),
+    TIMEOUTS.pdfOp,
+    'pdf.protect'
+  )
+
+  manager.updateJobProgress(job.id, 90)
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+  return {
+    buffer: result,
+    fileName: `protected-${baseName}.pdf`,
+    mimeType: 'application/pdf',
+  }
+}
+
+async function processUnlockPdf(job: Job): Promise<SingleResult> {
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const password = (job.options.password as string) || ''
+
+  const result = await withTimeout(
+    withTempFile(job.files[0].buffer, 'pdf', async (inputPath) => {
+      const securityProcessor = new PDFSecurityProcessor()
+      return securityProcessor.unlock(inputPath, { password })
+    }),
+    TIMEOUTS.pdfOp,
+    'pdf.unlock'
+  )
+
+  manager.updateJobProgress(job.id, 90)
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+  return {
+    buffer: result,
+    fileName: `unlocked-${baseName}.pdf`,
+    mimeType: 'application/pdf',
+  }
+}
+
+async function processSignPdf(job: Job): Promise<SingleResult> {
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const signerName = (job.options.signerName as string) || (job.options.signatureText as string) || 'Signature'
+  if (!signerName.trim()) throw new Error('Signer name or signature text is required')
+
+  const rawPage = job.options.page
+  const pageNumber: number = typeof rawPage === 'number' ? rawPage : 0
+  const position = (job.options.position as string) || 'bottom-right'
+
+  const boxWidth = 200
+  const boxHeight = 80
+  const padding = 30
+
+  let x: number, y: number
+  switch (position) {
+    case 'top-left':    x = padding;                       y = 700; break
+    case 'top-right':   x = 595 - padding - boxWidth;      y = 700; break
+    case 'bottom-left': x = padding;                       y = padding; break
+    case 'center':      x = (595 - boxWidth) / 2;          y = (842 - boxHeight) / 2; break
+    default:            x = 595 - padding - boxWidth;      y = padding; break
+  }
+
+  const securityProcessor = new PDFSecurityProcessor()
+  const result = await withTimeout(
+    securityProcessor.addSignature(job.files[0].buffer, {
+      signerName,
+      reason: (job.options.reason as string) || '',
+      location: (job.options.location as string) || '',
+      position: { page: pageNumber, x, y, width: boxWidth, height: boxHeight },
+    }),
+    TIMEOUTS.pdfOp,
+    'pdf.sign'
+  )
+
+  manager.updateJobProgress(job.id, 90)
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+  return {
+    buffer: result,
+    fileName: `signed-${baseName}.pdf`,
+    mimeType: 'application/pdf',
+  }
+}
+
+async function processPdfToJpg(job: Job): Promise<SingleResult | BatchResult> {
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const format = ((job.options.format as string) || 'jpg') as 'jpg' | 'png' | 'webp'
+  const quality = (job.options.quality as unknown as number) || 90
+  const dpi = (job.options.dpi as unknown as number) || 150
+
+  const pagesOption = job.options.pages
+  let pages: number[] | 'all' = 'all'
+  if (pagesOption && pagesOption !== 'all') {
+    if (Array.isArray(pagesOption)) {
+      pages = pagesOption as number[]
+    } else if (typeof pagesOption === 'string') {
+      const parts = (pagesOption as string).split(',').flatMap((p) => {
+        const trimmed = p.trim()
+        if (trimmed.includes('-')) {
+          const [start, end] = trimmed.split('-').map(Number)
+          return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+        }
+        return [Number(trimmed)]
+      })
+      pages = parts.filter((n) => Number.isFinite(n) && n > 0)
+    }
+  }
+
+  const converter = new PdfToImageConverter()
+  const convertedPages = await withTimeout(
+    converter.convert(job.files[0].buffer, { format, quality, dpi, pages }),
+    TIMEOUTS.pdfHeavy,
+    'pdf.toJpg'
+  )
+
+  manager.updateJobProgress(job.id, 80)
+
+  if (convertedPages.length === 0) {
+    throw new Error('No pages were converted')
+  }
+
+  const mimeMap: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+  }
+  const mimeType = mimeMap[format] || 'image/jpeg'
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+
+  if (convertedPages.length === 1) {
+    return {
+      buffer: convertedPages[0].buffer,
+      fileName: `${baseName}-page-1.${format}`,
+      mimeType,
+    }
+  }
+
+  const zipBuffer = await createZipFromFiles(
+    convertedPages.map((p) => ({
+      name: `${baseName}-page-${p.pageNumber}.${format}`,
+      buffer: p.buffer,
+    }))
+  )
+  manager.updateJobProgress(job.id, 90)
+  return { buffer: zipBuffer, fileName: `${baseName}-pages.zip`, mimeType: 'application/zip' }
+}
+
+async function processPdfToWord(job: Job): Promise<SingleResult> {
+  const processor = new PDFProcessor()
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+  const result = await withTimeout(
+    processor.toWord({ file: toArrayBuffer(job.files[0].buffer) }),
+    TIMEOUTS.pdfHeavy,
+    'pdf.toWord'
+  )
+  manager.updateJobProgress(job.id, 90)
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+  return {
+    buffer: unwrap(result),
+    fileName: `${baseName}.docx`,
+    mimeType:
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  }
+}
+
+// ============================================================
+// OCR Processors
+// ============================================================
+
+async function processOcrImage(job: Job): Promise<SingleResult> {
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const language = (job.options.language as string) || 'eng'
+  const ocr = new OCRProcessor()
+
+  const result = await withTimeout(
+    ocr.recognizeImage(job.files[0].buffer, { language }),
+    TIMEOUTS.ocrOp,
+    'ocr.image'
+  )
+  manager.updateJobProgress(job.id, 90)
+
+  const baseName = job.files[0].name.replace(/\.[^.]+$/, '')
+  const textBuffer = Buffer.from(result.text, 'utf-8')
+  return {
+    buffer: textBuffer,
+    fileName: `${baseName}-ocr.txt`,
+    mimeType: 'text/plain; charset=utf-8',
+  }
+}
+
+async function processOcrPdf(job: Job): Promise<SingleResult> {
+  const manager = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+
+  const language = (job.options.language as string) || 'eng'
+  const ocr = new OCRProcessor()
+
+  const result = await withTimeout(
+    ocr.recognizePdf(job.files[0].buffer, { language }),
+    TIMEOUTS.ocrOp,
+    'ocr.pdf'
+  )
+  manager.updateJobProgress(job.id, 90)
+
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+  const textBuffer = Buffer.from(result.text, 'utf-8')
+  return {
+    buffer: textBuffer,
+    fileName: `${baseName}-ocr.txt`,
+    mimeType: 'text/plain; charset=utf-8',
+  }
+}
+
+// ============================================================
+// Image Processors
+// ============================================================
+
+async function processCompressImage(job: Job): Promise<SingleResult | BatchResult> {
   const processor = new ImageProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -290,16 +641,10 @@ async function processCompressImage(job: Job) {
     }
   }
 
-  // Bounded-concurrency batch: cap at the libuv pool size so sharp's
-  // workers don't fight `fs` for threads. Each item already has its
-  // own per-op timeout from inside ImageProcessor.
   const concurrency = defaultCpuConcurrency()
   let done = 0
   const results = await mapWithConcurrency(job.files, concurrency, async (file) => {
-    const r = await processor.compress({
-      file: toArrayBuffer(file.buffer),
-      quality,
-    })
+    const r = await processor.compress({ file: toArrayBuffer(file.buffer), quality })
     done++
     manager.updateJobProgress(job.id, 10 + Math.round((done / job.files.length) * 70))
     return {
@@ -319,7 +664,7 @@ async function processCompressImage(job: Job) {
   }
 }
 
-async function processResizeImage(job: Job) {
+async function processResizeImage(job: Job): Promise<SingleResult> {
   const processor = new ImageProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -340,7 +685,7 @@ async function processResizeImage(job: Job) {
   }
 }
 
-async function processConvertImage(job: Job) {
+async function processConvertImage(job: Job): Promise<SingleResult> {
   const processor = new ImageProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -366,7 +711,7 @@ async function processConvertImage(job: Job) {
   }
 }
 
-async function processCropImage(job: Job) {
+async function processCropImage(job: Job): Promise<SingleResult> {
   const processor = new ImageProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)

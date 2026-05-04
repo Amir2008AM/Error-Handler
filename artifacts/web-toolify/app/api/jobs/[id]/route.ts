@@ -1,15 +1,21 @@
 /**
  * Job Status API Route
- * Get job status and cancel pending jobs
+ * Get job status and cancel/delete pending jobs.
+ *
+ * Rate limited: 120 status polls per minute per IP.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getJobManager } from '@/lib/queue'
+import { applyRateLimit, JOB_STATUS_LIMIT } from '@/lib/middleware/rate-limit'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rateLimited = applyRateLimit(request, JOB_STATUS_LIMIT, 'job-status')
+  if (rateLimited) return rateLimited
+
   try {
     const { id } = await params
     const manager = getJobManager()
@@ -39,9 +45,9 @@ export async function DELETE(
   try {
     const { id } = await params
     const manager = getJobManager()
-    
+
     const job = manager.getJob(id)
-    
+
     if (!job) {
       return NextResponse.json(
         { error: 'Job not found or expired' },
@@ -49,10 +55,10 @@ export async function DELETE(
       )
     }
 
-    // Cancel if pending, delete if completed/failed
-    if (job.status === 'pending') {
+    // Cancel if pending/processing, delete if completed/failed
+    if (job.status === 'pending' || job.status === 'processing') {
       const cancelled = manager.cancelJob(id)
-      
+
       if (!cancelled) {
         return NextResponse.json(
           { error: 'Failed to cancel job' },
@@ -66,9 +72,9 @@ export async function DELETE(
       })
     }
 
-    // Delete completed/failed jobs
+    // Delete completed/failed/cancelled jobs
     const deleted = manager.deleteJob(id)
-    
+
     if (!deleted) {
       return NextResponse.json(
         { error: 'Failed to delete job' },
