@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 /** Default upload ceiling. Per-tool routes may override via `validateFile(opts)`. */
-export const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+export const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100 MB
 
 /**
  * Magic-byte signatures we trust over `file.type` (which is just the

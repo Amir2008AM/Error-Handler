@@ -32,6 +32,7 @@ export type JobType =
   | 'extract-pages'
   | 'delete-pages'
   | 'repair-pdf'
+  | 'ppt-to-pdf'
 
 export interface JobFile {
   id: string

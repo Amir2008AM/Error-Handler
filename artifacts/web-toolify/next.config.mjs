@@ -8,6 +8,7 @@ const nextConfig = {
     'pdf-parse', 'sharp', 'canvas', 'pdfjs-dist',
     'tesseract.js', 'franc', 'nanoid',
     'child_process', 'fs', 'os', 'path',
+    'bullmq', 'ioredis',
   ],
 
   allowedDevOrigins: [
@@ -20,7 +21,7 @@ const nextConfig = {
   experimental: {
     proxyClientMaxBodySize: '100mb',
     serverActions: {
-      bodySizeLimit: '50mb',
+      bodySizeLimit: '100mb',
     },
   },
 

@@ -83,6 +83,38 @@ class JobManager {
     return job
   }
 
+  /**
+   * Register an externally-created job (e.g. from BullMQ) with a pre-assigned ID.
+   * Used by the BullMQ worker so existing processJob() can run unchanged.
+   */
+  registerJobWithId(
+    id: string,
+    type: JobType,
+    files: Array<{ name: string; buffer: Buffer; type: string }>,
+    options: JobOptions = {}
+  ): Job {
+    const now = Date.now()
+    const jobFiles: JobFile[] = files.map((f) => ({
+      id: nanoid(8),
+      name: f.name,
+      size: f.buffer.length,
+      type: f.type,
+      buffer: f.buffer,
+    }))
+    const job: Job = {
+      id,
+      type,
+      status: 'pending',
+      progress: 0,
+      files: jobFiles,
+      options,
+      createdAt: now,
+      expiresAt: now + this.config.jobTtlMs,
+    }
+    this.jobs.set(id, job)
+    return job
+  }
+
   getJob(id: string): Job | null {
     const job = this.jobs.get(id)
     if (!job) return null

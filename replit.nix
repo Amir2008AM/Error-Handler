@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.redis
     pkgs.tesseract5
     pkgs.wkhtmltopdf
     pkgs.libreoffice-fresh

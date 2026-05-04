@@ -1,143 +1,166 @@
 /**
  * Create Job API Route
- * Creates a new processing job and returns job ID for polling.
+ *
+ * Validates the upload, stores files, and enqueues a job.
+ * The server NEVER processes files directly in this handler.
+ *
+ * When REDIS_URL is set (BullMQ backend):
+ *   Upload → disk (streaming, zero RAM) → TempStorage → Redis queue → return jobId
+ *
+ * Fallback (in-memory backend):
+ *   Upload → disk → read buffer → in-memory queue → fire-and-forget process
  *
  * Rate limited: 20 job submissions per minute per IP.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getJobManager, processJob, JobType } from '@/lib/queue'
+import { createReadStream } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { getJobManager, processJob } from '@/lib/queue'
 import { applyRateLimit, JOB_CREATE_LIMIT } from '@/lib/middleware/rate-limit'
+import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
+import { getTempStorage } from '@/lib/storage'
+import type { JobType, JobOptions } from '@/lib/queue/types'
 
-export const maxDuration = 300 // 5 minutes for heavy operations
+export const runtime = 'nodejs'
+export const maxDuration = 300
 
-const VALID_JOB_TYPES: JobType[] = [
-  'merge-pdf',
-  'split-pdf',
-  'rotate-pdf',
-  'compress-pdf',
-  'watermark-pdf',
-  'protect-pdf',
-  'unlock-pdf',
-  'sign-pdf',
-  'pdf-to-jpg',
-  'pdf-to-word',
-  'pdf-to-excel',
-  'word-to-pdf',
-  'excel-to-pdf',
-  'html-to-pdf',
-  'ocr-pdf',
-  'ocr-image',
-  'compress-image',
-  'resize-image',
-  'convert-image',
-  'crop-image',
-  'image-to-pdf',
-  'add-page-numbers',
-  'organize-pdf',
-  'extract-pages',
-  'delete-pages',
-  'repair-pdf',
-]
+const VALID_JOB_TYPES = new Set<JobType>([
+  'merge-pdf', 'split-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
+  'protect-pdf', 'unlock-pdf', 'sign-pdf', 'pdf-to-jpg', 'pdf-to-word',
+  'pdf-to-excel', 'word-to-pdf', 'excel-to-pdf', 'html-to-pdf', 'ppt-to-pdf',
+  'ocr-pdf', 'ocr-image', 'compress-image', 'resize-image', 'convert-image',
+  'crop-image', 'image-to-pdf', 'add-page-numbers', 'organize-pdf',
+  'extract-pages', 'delete-pages', 'repair-pdf',
+])
+
+/**
+ * Determine which magic-byte family to validate against for a given job type.
+ * Document-conversion types (word-to-pdf, ppt-to-pdf, etc.) use 'any' because
+ * their containers are OLE2 / ZIP — not PDF or image headers.
+ */
+function getFileKind(type: JobType): 'pdf' | 'image' | 'any' {
+  const PDF_ONLY = new Set<JobType>([
+    'merge-pdf', 'split-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
+    'protect-pdf', 'unlock-pdf', 'sign-pdf', 'pdf-to-jpg', 'pdf-to-word',
+    'pdf-to-excel', 'add-page-numbers', 'organize-pdf', 'extract-pages',
+    'delete-pages', 'repair-pdf', 'ocr-pdf',
+  ])
+  const IMAGE_ONLY = new Set<JobType>([
+    'compress-image', 'resize-image', 'convert-image', 'crop-image', 'ocr-image',
+  ])
+  if (PDF_ONLY.has(type))   return 'pdf'
+  if (IMAGE_ONLY.has(type)) return 'image'
+  return 'any'
+}
 
 export async function POST(request: NextRequest) {
-  // Rate limiting: 20 job submissions per minute per IP
   const rateLimited = applyRateLimit(request, JOB_CREATE_LIMIT, 'job-create')
   if (rateLimited) return rateLimited
 
+  // Stream the upload to disk — never buffers the whole request in RAM
+  const uploadResult = await streamUpload(request).catch((err: Error & { _status?: number }) => {
+    const msg = err.message || 'Upload failed'
+    const status = err._status ?? 413
+    throw Object.assign(new Error(msg), { _status: status })
+  })
+
+  const { fields, files: diskFiles, cleanup } = uploadResult
+
   try {
-    const formData = await request.formData()
-
-    const jobType = formData.get('type') as JobType
-    const optionsStr = formData.get('options') as string | null
-    const processImmediately = formData.get('processNow') === 'true'
-
-    // Validate job type
-    if (!jobType || !VALID_JOB_TYPES.includes(jobType)) {
-      return NextResponse.json(
-        { error: `Invalid job type: ${jobType}` },
-        { status: 400 }
-      )
+    // ── Validate job type ──────────────────────────────────────────────────
+    const jobType = fields['type'] as JobType
+    if (!jobType || !VALID_JOB_TYPES.has(jobType)) {
+      return NextResponse.json({ error: `Invalid job type: ${jobType || '(missing)'}` }, { status: 400 })
     }
 
-    // Extract files from form data
-    const files: Array<{ name: string; buffer: Buffer; type: string }> = []
-
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith('file') && value instanceof File) {
-        const arrayBuffer = await value.arrayBuffer()
-        files.push({
-          name: value.name,
-          buffer: Buffer.from(arrayBuffer),
-          type: value.type,
-        })
-      }
+    if (diskFiles.length === 0) {
+      return NextResponse.json({ error: 'At least one file is required.' }, { status: 400 })
     }
 
-    if (files.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one file is required' },
-        { status: 400 }
-      )
-    }
-
-    // Parse options
-    let options = {}
+    // ── Parse options ──────────────────────────────────────────────────────
+    let options: JobOptions = {}
+    const optionsStr = fields['options']
     if (optionsStr) {
       try {
         options = JSON.parse(optionsStr)
       } catch {
-        return NextResponse.json(
-          { error: 'Invalid options JSON' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Invalid options JSON.' }, { status: 400 })
       }
     }
 
-    // Create the job (size + total-size limits enforced inside createJob)
+    // ── Validate files (magic bytes) ───────────────────────────────────────
+    const kind = getFileKind(jobType)
+    for (const file of diskFiles) {
+      const err = await validateStreamedFile(file, kind)
+      if (err) return NextResponse.json({ error: err }, { status: 400 })
+    }
+
+    // ── BullMQ path — stream files to TempStorage, push fileIds to Redis ──
+    if (process.env.REDIS_URL) {
+      const { enqueueJob, isRedisAvailable } = await import('@/lib/queue/bullmq-backend')
+
+      const redisOk = await isRedisAvailable().catch(() => false)
+      if (redisOk) {
+        const storage = getTempStorage()
+        const inputFileIds:  string[] = []
+        const fileNames:     string[] = []
+        const fileMimeTypes: string[] = []
+
+        for (const file of diskFiles) {
+          // Stream directly from disk → TempStorage (zero in-RAM buffer)
+          const stream = createReadStream(file.path)
+          const fileId = await storage.storeStream(
+            stream,
+            file.filename,
+            file.mimeType,
+            { expectedSize: file.size }
+          )
+          inputFileIds.push(fileId)
+          fileNames.push(file.filename)
+          fileMimeTypes.push(file.mimeType)
+        }
+
+        const jobId = await enqueueJob(jobType, inputFileIds, fileNames, fileMimeTypes, options)
+
+        return NextResponse.json({
+          id:       jobId,
+          status:   'pending',
+          progress: 0,
+          pollUrl:  `/api/jobs/${encodeURIComponent(jobId)}`,
+        })
+      }
+    }
+
+    // ── In-memory fallback ─────────────────────────────────────────────────
+    const fileBuffers: Array<{ name: string; buffer: Buffer; type: string }> = []
+    for (const file of diskFiles) {
+      const buffer = await readFile(file.path)
+      fileBuffers.push({ name: file.filename, buffer, type: file.mimeType })
+    }
+
     const manager = getJobManager()
-    const job = manager.createJob(jobType, files, options)
+    const job = manager.createJob(jobType, fileBuffers, options)
 
-    // If processNow is true, process immediately and wait for result
-    if (processImmediately) {
-      try {
-        const result = await processJob(job.id)
-        const status = manager.getJobStatus(job.id)
-
-        return NextResponse.json({
-          id: job.id,
-          status: status?.status || 'completed',
-          progress: 100,
-          result,
-        })
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Processing failed'
-        return NextResponse.json({
-          id: job.id,
-          status: 'failed',
-          error: errorMessage,
-        })
-      }
-    }
-
-    // Fire-and-forget: process in background, client polls /api/jobs/[id]
-    processJob(job.id).catch((error) => {
-      console.error(`[Queue] Job ${job.id} (${job.type}) failed:`, error)
+    // Fire-and-forget: client polls /api/jobs/:id
+    processJob(job.id).catch((err: Error) => {
+      console.error(`[Queue] Job ${job.id} (${job.type}) failed:`, err.message)
     })
 
     return NextResponse.json({
-      id: job.id,
-      status: 'pending',
+      id:       job.id,
+      status:   'pending',
       progress: 0,
-      pollUrl: `/api/jobs/${job.id}`,
+      pollUrl:  `/api/jobs/${job.id}`,
     })
-  } catch (error) {
-    console.error('Error creating job:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to create job'
 
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+  } catch (error) {
+    console.error('[jobs/create]', error)
+    const msg    = error instanceof Error ? error.message : 'Failed to create job'
+    const status = (error as { _status?: number })._status ?? 500
+    return NextResponse.json({ error: msg }, { status })
+  } finally {
+    // Always clean up the temp upload directory
+    await cleanup()
   }
 }

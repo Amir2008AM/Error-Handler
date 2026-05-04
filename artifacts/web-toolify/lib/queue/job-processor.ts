@@ -21,6 +21,7 @@ import { ImageProcessor } from '../processing/image-processor'
 import { OCRProcessor } from '../processing/ocr-processor'
 import { PDFSecurityProcessor } from '../processing/pdf-security'
 import { PdfToImageConverter } from '../processing/pdf-to-image'
+import { DocumentConverter } from '../processing/document-converter'
 import { createZipFromFiles } from '../processing/file-utils'
 import { withTimeout, TIMEOUTS } from '../processing/timeout'
 import { mapWithConcurrency, defaultCpuConcurrency } from '../processing/concurrency'
@@ -86,6 +87,7 @@ const processors: Partial<Record<JobType, ProcessorFunction>> = {
   'resize-image':    processResizeImage,
   'convert-image':   processConvertImage,
   'crop-image':      processCropImage,
+  'ppt-to-pdf':      processPptToPdf,
 }
 
 export async function processJob(jobId: string): Promise<JobResult | null> {
@@ -734,5 +736,23 @@ async function processCropImage(job: Job): Promise<SingleResult> {
     buffer: unwrap(result),
     fileName: `cropped-${job.files[0].name}`,
     mimeType: job.files[0].type,
+  }
+}
+
+async function processPptToPdf(job: Job): Promise<SingleResult> {
+  const converter = new DocumentConverter()
+  const manager   = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+  const result = await withTimeout(
+    converter.pptToPdf(job.files[0].buffer),
+    TIMEOUTS.pdfHeavy,
+    'ppt.toPdf'
+  )
+  manager.updateJobProgress(job.id, 90)
+  const baseName = job.files[0].name.replace(/\.pptx?$/i, '')
+  return {
+    buffer:   result.buffer,
+    fileName: `${baseName}.pdf`,
+    mimeType: 'application/pdf',
   }
 }

@@ -241,6 +241,20 @@ export const tools: Tool[] = [
     tags: ['html', 'pdf', 'convert', 'web to pdf'],
     isNew: true,
   },
+  {
+    id: 'ppt-to-pdf',
+    name: 'PPT to PDF',
+    description: 'Convert PowerPoint presentations to PDF files.',
+    longDescription:
+      'Convert your PowerPoint presentations (.pptx, .ppt) to PDF format. Preserves slides, formatting, and layout using LibreOffice.',
+    category: 'Converters',
+    slug: 'ppt-to-pdf',
+    icon: 'Presentation',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+    tags: ['powerpoint', 'ppt', 'pptx', 'pdf', 'convert', 'slides'],
+    isNew: true,
+  },
   
   // OCR Tools
   {

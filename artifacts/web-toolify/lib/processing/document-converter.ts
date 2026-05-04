@@ -228,6 +228,44 @@ export class DocumentConverter {
     }
   }
 
+  // ── PowerPoint → PDF ──────────────────────────────────────────────────
+
+  /**
+   * Convert a PowerPoint presentation (.pptx / .ppt) to PDF.
+   * Primary: LibreOffice headless  →  Fallback: stub PDF with error message
+   */
+  async pptToPdf(
+    buffer: Buffer,
+    options: ConversionOptions = {}
+  ): Promise<ConversionResult> {
+    // Detect format from magic bytes:
+    // .pptx → ZIP (PK: 50 4B)
+    // .ppt  → OLE2 compound doc (D0 CF 11 E0)
+    const isPptx = buffer[0] === 0x50 && buffer[1] === 0x4b
+    const inputExt = isPptx ? '.pptx' : '.ppt'
+
+    if (await binaryExists('soffice')) {
+      try {
+        return await this.libreOfficeConvert(buffer, inputExt, inputExt.slice(1))
+      } catch (err) {
+        console.warn(
+          '[DocumentConverter] LibreOffice PPT→PDF failed:',
+          err instanceof Error ? err.message : String(err)
+        )
+        throw new Error(
+          `Failed to convert presentation to PDF: ${err instanceof Error ? err.message : String(err)}`
+        )
+      }
+    }
+
+    // No LibreOffice available — produce an informative error rather than
+    // a blank PDF, because there is no viable text-extraction fallback for PPTX.
+    throw new Error(
+      'LibreOffice (soffice) is required to convert PowerPoint files. ' +
+      'Please ensure it is installed on the server.'
+    )
+  }
+
   // ── Excel → PDF ───────────────────────────────────────────────────────
 
   /**

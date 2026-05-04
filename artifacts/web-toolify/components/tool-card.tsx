@@ -3,7 +3,7 @@ import {
   FileText, Image, Minimize2, FilePlus2, Scissors,
   Expand, RefreshCw, Type, CaseSensitive, Percent,
   Calendar, AlignLeft, ArrowRightLeft, Calculator,
-  ImageIcon, RotateCw, Droplets, Crop,
+  ImageIcon, RotateCw, Droplets, Crop, Presentation,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Tool } from '@/lib/tools'
@@ -27,6 +27,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   RotateCw,
   Droplets,
   Crop,
+  Presentation,
 }
 
 interface ToolCardProps {

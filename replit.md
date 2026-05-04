@@ -28,7 +28,19 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ## Toolify (artifacts/web-toolify)
 
-Next.js 16 + React 19 web app providing free PDF/image/text utilities. Workflow: `Web Toolify` runs `PORT=3000 pnpm --filter @workspace/web-toolify run dev`.
+Next.js 16 + React 19 web app providing free PDF/image/text utilities. Workflow: `Web Toolify` starts Redis then runs the dev server at `PORT=5000` with `REDIS_URL=redis://localhost:6379`.
+
+### Queue Architecture (BullMQ + Redis)
+
+`lib/queue/bullmq-backend.ts` — production queue backend:
+- Four typed worker pools: **pdf** (concurrency 4), **image** (concurrency 8), **ocr** (concurrency 4), **document** (concurrency 1).
+- `enqueueJob(type, payload)` → returns BullMQ job ID prefixed `bq-<group>-<id>`.
+- `getBullMQJobStatus(id)` → maps BullMQ state to the internal `JobStatus` type with progress.
+- `isRedisAvailable()` — tests the connection before committing to the BullMQ path.
+- Workers dispatch to `processJob()` from `lib/queue/job-processor.ts` via `registerJobWithId()` on the in-memory manager.
+- Jobs/create route checks REDIS_URL + connectivity → BullMQ path if available, in-memory fallback otherwise.
+- Status route (`jobs/[id]`) detects `bq-` prefix and queries BullMQ; otherwise queries in-memory manager.
+- Workers are started in `instrumentation.ts` (Next.js instrumentation hook) at server boot.
 
 ### Migration / setup notes
 
@@ -89,6 +101,14 @@ After processing, all PDF tools store results in `TempStorage` (20-min TTL) and 
 - `VALIDATION_END: 55` — brief server validation
 - `PROCESSING_END: 90` — server-side work (Ghostscript/qpdf)
 - `DONE: 100`
+
+### PPT to PDF (`/ppt-to-pdf`)
+
+`lib/processing/document-converter.ts` → `DocumentConverter.pptToPdf()`:
+- Converts `.pptx` / `.ppt` files via **LibreOffice headless** (`soffice --headless --convert-to pdf`).
+- Streams input from TempStorage to a temp file, spawns LibreOffice, reads output PDF back into TempStorage.
+- Job type: `ppt-to-pdf`; dispatched through the **document** BullMQ worker.
+- Accepts files up to 100 MB; validates `.pptx`/`.ppt` magic bytes via `validateStreamedFile`.
 
 ### PDF to JPG (`/pdf-to-jpg`)
 
