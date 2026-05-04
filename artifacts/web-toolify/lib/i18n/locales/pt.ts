@@ -22,7 +22,6 @@ const pt = {
   'home.noToolsFoundHint': 'Tente uma palavra-chave diferente ou navegue em todas as ferramentas',
   'home.footer.privacy': 'Privacidade',
   'home.footer.terms': 'Termos',
-  'home.footer.contact': 'Contato',
   'common.home': 'Início',
   'common.upload': 'Enviar',
   'common.download': 'Baixar',

@@ -22,7 +22,6 @@ const ru = {
   'home.noToolsFoundHint': 'Попробуйте другое ключевое слово или просмотрите все инструменты',
   'home.footer.privacy': 'Конфиденциальность',
   'home.footer.terms': 'Условия',
-  'home.footer.contact': 'Контакты',
   'common.home': 'Главная',
   'common.upload': 'Загрузить',
   'common.download': 'Скачать',

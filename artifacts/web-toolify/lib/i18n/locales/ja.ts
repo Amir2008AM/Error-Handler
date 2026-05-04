@@ -22,7 +22,6 @@ const ja = {
   'home.noToolsFoundHint': '別のキーワードで検索するか、すべてのツールを閲覧してください',
   'home.footer.privacy': 'プライバシー',
   'home.footer.terms': '利用規約',
-  'home.footer.contact': 'お問い合わせ',
   'common.home': 'ホーム',
   'common.upload': 'アップロード',
   'common.download': 'ダウンロード',

@@ -22,7 +22,6 @@ export type TranslationKey =
   | 'home.noToolsFoundHint'
   | 'home.footer.privacy'
   | 'home.footer.terms'
-  | 'home.footer.contact'
   | 'common.home'
   | 'common.upload'
   | 'common.download'
@@ -330,7 +329,6 @@ export const en: TranslationMap = {
   'home.noToolsFoundHint': 'Try a different keyword or browse all tools',
   'home.footer.privacy': 'Privacy',
   'home.footer.terms': 'Terms',
-  'home.footer.contact': 'Contact',
   'common.home': 'Home',
   'common.upload': 'Upload',
   'common.download': 'Download',

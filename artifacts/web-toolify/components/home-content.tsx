@@ -174,7 +174,6 @@ export function HomeContent() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>
               <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
-              <Link href="#" className="hover:text-foreground transition-colors">Contact</Link>
             </div>
           </div>
         </div>

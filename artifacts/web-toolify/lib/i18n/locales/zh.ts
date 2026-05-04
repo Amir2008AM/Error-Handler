@@ -22,7 +22,6 @@ const zh = {
   'home.noToolsFoundHint': '尝试不同的关键词或浏览所有工具',
   'home.footer.privacy': '隐私',
   'home.footer.terms': '条款',
-  'home.footer.contact': '联系',
   'common.home': '主页',
   'common.upload': '上传',
   'common.download': '下载',

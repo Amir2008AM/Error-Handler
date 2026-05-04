@@ -22,7 +22,6 @@ const ar = {
   'home.noToolsFoundHint': 'جرّب كلمة مفتاحية مختلفة أو تصفح جميع الأدوات',
   'home.footer.privacy': 'الخصوصية',
   'home.footer.terms': 'الشروط',
-  'home.footer.contact': 'تواصل',
   'common.home': 'الرئيسية',
   'common.upload': 'رفع',
   'common.download': 'تنزيل',

@@ -22,7 +22,6 @@ const fr = {
   'home.noToolsFoundHint': 'Essayez un autre mot-clé ou parcourez tous les outils',
   'home.footer.privacy': 'Confidentialité',
   'home.footer.terms': 'Conditions',
-  'home.footer.contact': 'Contact',
   'common.home': 'Accueil',
   'common.upload': 'Téléverser',
   'common.download': 'Télécharger',
