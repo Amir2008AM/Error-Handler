@@ -120,6 +120,26 @@ export async function deleteWebhook(): Promise<void> {
 }
 
 /**
+ * Delete a message from a chat.
+ * Best-effort: bots cannot delete user messages in private chats —
+ * the call is made silently and failures are swallowed.
+ */
+export async function deleteMessage(chatId: number, messageId: number): Promise<void> {
+  try {
+    await fetch(`${TELEGRAM_API}/deleteMessage`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ chat_id: chatId, message_id: messageId }),
+      signal:  AbortSignal.timeout(5_000),
+    })
+    // Response not checked — deletion is best-effort only.
+    // Telegram does not allow bots to delete user messages in private chats.
+  } catch {
+    // Silently ignore — never let a failed deletion crash the auth flow
+  }
+}
+
+/**
  * Acknowledge a callback_query (dismisses the loading spinner on the button).
  * Must be called within 10 s of receiving the callback_query update.
  */
