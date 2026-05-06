@@ -140,6 +140,41 @@ export async function deleteMessage(chatId: number, messageId: number): Promise<
 }
 
 /**
+ * Edit the text (and optionally the keyboard) of an existing bot message.
+ * Silently swallows "message is not modified" errors (Telegram returns 400
+ * when text + markup haven't changed — this is expected and not an error).
+ */
+export async function editMessageText(
+  chatId:    number,
+  messageId: number,
+  text:      string,
+  extra:     Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    const res = await fetch(`${TELEGRAM_API}/editMessageText`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id:    chatId,
+        message_id: messageId,
+        text:       text.slice(0, 4096),
+        parse_mode: 'Markdown',
+        ...extra,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      // 400 "message is not modified" is normal — ignore it
+      if (res.status === 400 && body.includes('message is not modified')) return
+      console.error(`[TelegramAPI] editMessageText failed ${res.status}: ${body.slice(0, 200)}`)
+    }
+  } catch (err) {
+    console.error('[TelegramAPI] editMessageText error:', (err as Error).message)
+  }
+}
+
+/**
  * Acknowledge a callback_query (dismisses the loading spinner on the button).
  * Must be called within 10 s of receiving the callback_query update.
  */

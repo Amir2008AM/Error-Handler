@@ -1,16 +1,25 @@
 /**
- * Telegram Bot — core update dispatcher.
+ * Telegram Bot — Core Update Dispatcher
  *
- * All messages pass through a 2-step auth gate before any command is executed:
- *   Step 1 — Full legal name  (3 parts, case-insensitive exact match)
- *   Step 2 — Admin password   (exact match)
+ * UI Rules:
+ *   • All features accessible through inline keyboard buttons — no manual typing required.
+ *   • /start and /help → show the main menu.
+ *   • Authentication success → show the main menu automatically.
+ *   • Menu navigation edits the message in-place (no chat noise).
+ *   • Command results replace the message text + append a Back button.
+ *   • Destructive actions (Pause Workers, Clear Queue) require confirmation.
  *
- * Once authenticated, sessions last 1 hour and then require re-auth.
- * Failed attempts are rate-limited; 3 failures trigger a 10-minute lockout.
- * No sensitive inputs are logged. User messages are deleted best-effort.
+ * Auth:
+ *   • 2-step gate: Full name → Password before any command runs.
+ *   • Sessions last 1 hour; 3 failures → 10-minute lockout.
+ *   • No sensitive input is logged. User messages deleted best-effort.
+ *
+ * Stability (Safe Bot-Sync Rule):
+ *   • Every callback handler is wrapped in try/catch — errors are logged,
+ *     never thrown, so the poll loop and server keep running.
  */
 
-import { sendMessage, answerCallbackQuery, deleteMessage } from './api'
+import { sendMessage, editMessageText, answerCallbackQuery, deleteMessage } from './api'
 import { isRateLimited } from './rate-limiter'
 import { dbGetLanguage, dbSetLanguage } from './db'
 import { t, type Lang } from './i18n'
@@ -24,6 +33,11 @@ import {
   isAuthenticated, isLockedOut, lockoutMinutesLeft, sessionMinutesLeft,
   getStep, setStep, recordFailure, validateName, validatePassword,
 } from './auth'
+import {
+  mainMenu, analyticsMenu, systemMenu, controlMenu, settingsMenu,
+  confirmMenu, languageMenu, backButton, sectionKeyboard, cmdSection,
+  menuTitle, confirmTitle,
+} from './menu'
 
 // ── Telegram update types ─────────────────────────────────────────────────────
 
@@ -67,46 +81,10 @@ const MSG_DENIED =
   '⛔ *Access Denied*'
 
 const MSG_AUTHENTICATED = (minutesLeft: number) =>
-  `✅ *Authenticated*\n\nSession active for ${minutesLeft} minutes.\nType /help to see available commands.`
-
-const MSG_SESSION_EXPIRED =
-  '⏳ *Session expired.* Please re\\-authenticate.\n\n' + MSG_ASK_NAME.slice(3)
+  `✅ *Authenticated*\n\nSession active for ${minutesLeft} minutes.\nUse the menu below to navigate.`
 
 const MSG_LOCKED = (minutesLeft: number) =>
   `🔒 Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'}.`
-
-// ── Command map ───────────────────────────────────────────────────────────────
-
-type Handler = (lang: Lang, chatId: number) => Promise<string>
-
-const COMMAND_MAP: Record<string, Handler> = {
-  '/stats':           handleStats,
-  '/health':          handleHealth,
-  '/tools':           handleTools,
-  '/queue':           handleQueue,
-  '/users':           handleUsers,
-  '/errors':          handleErrors,
-  '/live':            handleLive,
-  '/files':           handleFiles,
-  '/insights':        handleInsights,
-  '/status':          handleStatus,
-  '/pause-workers':   handlePauseWorkers,
-  '/resume-workers':  handleResumeWorkers,
-  '/clear-queue':     handleClearQueue,
-  '/help':            handleHelp,
-  '/start':           handleHelp,
-}
-
-// ── Inline keyboard for /language ─────────────────────────────────────────────
-
-function languageKeyboard(lang: Lang) {
-  return {
-    inline_keyboard: [[
-      { text: t(lang, 'lang_btn_en'), callback_data: 'set_lang:en' },
-      { text: t(lang, 'lang_btn_ar'), callback_data: 'set_lang:ar' },
-    ]],
-  }
-}
 
 // ── Auth gate ─────────────────────────────────────────────────────────────────
 
@@ -117,77 +95,58 @@ function languageKeyboard(lang: Lang) {
  */
 async function handleAuthFlow(msg: TelegramMessage, userId: number): Promise<boolean> {
   const chatId = msg.chat.id
+  const lang   = dbGetLanguage(userId)
 
-  // ── Brute-force lockout ───────────────────────────────────────────────────
   if (isLockedOut(userId)) {
     await sendMessage(chatId, MSG_LOCKED(lockoutMinutesLeft(userId)))
     return false
   }
 
-  const step = getStep(userId)
-
-  // ── Already authenticated ─────────────────────────────────────────────────
   if (isAuthenticated(userId)) return true
 
-  // ── Session just expired — reset to IDLE and re-prompt ───────────────────
-  if (step === 'IDLE' && msg.text?.startsWith('/')) {
-    // Could be a returning user whose session expired mid-session
-  }
+  const step = getStep(userId)
 
-  // ── IDLE — start the auth flow ────────────────────────────────────────────
   if (step === 'IDLE') {
     setStep(userId, 'AWAITING_NAME')
     await sendMessage(chatId, MSG_ASK_NAME)
     return false
   }
 
-  // ── AWAITING_NAME — validate the submitted name ───────────────────────────
   if (step === 'AWAITING_NAME') {
     const input = msg.text ?? ''
-
-    // Delete user's name message immediately (best-effort)
     void deleteMessage(chatId, msg.message_id)
 
     if (!validateName(input)) {
       const nowLocked = recordFailure(userId)
-      if (nowLocked) {
-        await sendMessage(chatId, MSG_LOCKED(lockoutMinutesLeft(userId)))
-      } else {
-        await sendMessage(chatId, MSG_DENIED)
-      }
+      await sendMessage(chatId, nowLocked ? MSG_LOCKED(lockoutMinutesLeft(userId)) : MSG_DENIED)
       console.warn(`[Auth] userId=${userId} failed name verification`)
       return false
     }
 
-    // Name correct — advance without confirming ("correct/wrong" leak prevention)
     setStep(userId, 'AWAITING_PASSWORD')
     await sendMessage(chatId, MSG_ASK_PASSWORD)
     return false
   }
 
-  // ── AWAITING_PASSWORD — validate the submitted password ───────────────────
   if (step === 'AWAITING_PASSWORD') {
     const input = msg.text ?? ''
-
-    // Delete user's password message immediately (best-effort)
     void deleteMessage(chatId, msg.message_id)
 
     if (!validatePassword(input)) {
       const nowLocked = recordFailure(userId)
-      if (nowLocked) {
-        await sendMessage(chatId, MSG_LOCKED(lockoutMinutesLeft(userId)))
-      } else {
-        await sendMessage(chatId, MSG_DENIED)
-      }
+      await sendMessage(chatId, nowLocked ? MSG_LOCKED(lockoutMinutesLeft(userId)) : MSG_DENIED)
       console.warn(`[Auth] userId=${userId} failed password verification`)
       return false
     }
 
-    // Password correct — grant session
     setStep(userId, 'AUTHENTICATED')
     auditLog(userId, msg.from?.username, 'authenticated')
-    await sendMessage(chatId, MSG_AUTHENTICATED(sessionMinutesLeft(userId)))
-    return false  // this message was the password — don't process it as a command
+
+    // Send auth-success message with the main menu keyboard attached
+    await sendMessage(chatId, MSG_AUTHENTICATED(sessionMinutesLeft(userId)), {
+      reply_markup: mainMenu(lang),
+    })
+    return false
   }
 
   return false
@@ -198,29 +157,134 @@ async function handleAuthFlow(msg: TelegramMessage, userId: number): Promise<boo
 async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> {
   const userId = query.from.id
   const chatId = query.message?.chat.id
+  const msgId  = query.message?.message_id
+  const data   = query.data ?? ''
 
-  // Require active session for inline keyboard interactions too
-  if (!chatId || !isAuthenticated(userId)) {
-    await answerCallbackQuery(query.id)
+  // Always answer first — dismisses the spinner on the button
+  await answerCallbackQuery(query.id)
+
+  if (!chatId || !isAuthenticated(userId)) return
+
+  const lang = dbGetLanguage(userId)
+
+  // ── Menu section navigation — edits the message in-place ─────────────────
+  if (data.startsWith('menu:') && msgId) {
+    const section = data.slice(5)
+    const title   = menuTitle(section, lang)
+    const kb      = sectionKeyboard(section, lang)
+    await editMessageText(chatId, msgId, title, { reply_markup: kb })
     return
   }
 
-  await answerCallbackQuery(query.id)
+  // ── Command buttons ───────────────────────────────────────────────────────
+  if (data.startsWith('cmd:') && msgId) {
+    const cmd     = data.slice(4)
+    const section = cmdSection(cmd)
 
-  if (query.data?.startsWith('set_lang:')) {
-    const newLang = query.data.split(':')[1] as Lang
+    // Language picker — show inline keyboard
+    if (cmd === 'language') {
+      const text = t(lang, 'language_prompt')
+      await editMessageText(chatId, msgId, text, { reply_markup: languageMenu(lang) })
+      return
+    }
+
+    // Help — show help text with main menu
+    if (cmd === 'help') {
+      const text = await handleHelp(lang)
+      await editMessageText(chatId, msgId, text, { reply_markup: mainMenu(lang) })
+      return
+    }
+
+    // All other commands — run, show result + back button
+    try {
+      let result: string
+      switch (cmd) {
+        case 'stats':    result = await handleStats(lang);          break
+        case 'health':   result = await handleHealth(lang);         break
+        case 'tools':    result = await handleTools(lang);          break
+        case 'queue':    result = await handleQueue(lang);          break
+        case 'users':    result = await handleUsers(lang);          break
+        case 'errors':   result = await handleErrors(lang, chatId); break
+        case 'live':     result = await handleLive(lang);           break
+        case 'files':    result = await handleFiles(lang);          break
+        case 'insights': result = await handleInsights(lang);       break
+        case 'status':   result = await handleStatus(lang);         break
+        case 'resume':
+          result = await handleResumeWorkers(lang)
+          auditLog(userId, query.from.username, 'resume-workers')
+          break
+        default:
+          result = t(lang, 'unknown_command').replace('{cmd}', cmd)
+      }
+      await editMessageText(chatId, msgId, result, { reply_markup: backButton(section, lang) })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[TelegramBot] cmd:${cmd} error:`, msg)
+      await editMessageText(
+        chatId, msgId,
+        t(lang, 'command_failed').replace('{err}', msg.slice(0, 200)),
+        { reply_markup: backButton(section, lang) },
+      )
+    }
+    return
+  }
+
+  // ── Confirmation dialogs for destructive actions ──────────────────────────
+  if (data.startsWith('confirm:') && msgId) {
+    const action = data.slice(8)
+    await editMessageText(
+      chatId, msgId,
+      confirmTitle(action, lang),
+      { reply_markup: confirmMenu(action, lang) },
+    )
+    return
+  }
+
+  // ── Execute confirmed destructive actions ─────────────────────────────────
+  if (data.startsWith('do:') && msgId) {
+    const action = data.slice(3)
+    try {
+      let result: string
+      switch (action) {
+        case 'pause': result = await handlePauseWorkers(lang); break
+        case 'clear': result = await handleClearQueue(lang);   break
+        default:      result = t(lang, 'unknown_command').replace('{cmd}', action)
+      }
+      auditLog(userId, query.from.username, `confirmed:${action}`)
+      await editMessageText(chatId, msgId, result, { reply_markup: controlMenu(lang) })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[TelegramBot] do:${action} error:`, msg)
+      await editMessageText(
+        chatId, msgId,
+        t(lang, 'command_failed').replace('{err}', msg.slice(0, 200)),
+        { reply_markup: controlMenu(lang) },
+      )
+    }
+    return
+  }
+
+  // ── Language selection ────────────────────────────────────────────────────
+  if (data.startsWith('set_lang:')) {
+    const newLang = data.split(':')[1] as Lang
     if (newLang !== 'en' && newLang !== 'ar') return
 
     dbSetLanguage(userId, newLang)
     auditLog(userId, query.from.username, `set_lang:${newLang}`)
 
-    const confirmKey: 'language_changed_ar' | 'language_changed_en' =
-      newLang === 'ar' ? 'language_changed_ar' : 'language_changed_en'
-    await sendMessage(chatId, t(newLang, confirmKey))
+    const confirmKey = newLang === 'ar' ? 'language_changed_ar' : 'language_changed_en'
+    if (msgId) {
+      await editMessageText(
+        chatId, msgId,
+        t(newLang, confirmKey),
+        { reply_markup: settingsMenu(newLang) },
+      )
+    }
+    return
   }
 }
 
-// ── message handler ───────────────────────────────────────────────────────────
+// ── Text message handler ──────────────────────────────────────────────────────
 
 async function handleMessage(msg: TelegramMessage): Promise<void> {
   if (!msg.text) return
@@ -231,48 +295,68 @@ async function handleMessage(msg: TelegramMessage): Promise<void> {
 
   if (!userId) return
 
-  // ── Session expired mid-session — re-prompt without leaking it ───────────
-  if (!isAuthenticated(userId) && getStep(userId) === 'IDLE') {
-    // If user was previously authenticated (step was AUTHENTICATED but expired),
-    // proactively inform them their session lapsed before restarting auth.
-    const wasAuthenticated = false // can't detect without extra state; auth flow handles it cleanly
-    void wasAuthenticated  // suppress unused warning
-  }
-
-  // ── 2-step auth gate — returns true only when fully authenticated ─────────
   const authenticated = await handleAuthFlow(msg, userId)
   if (!authenticated) return
 
-  // ── Rate limiting (post-auth, per-user command throttle) ──────────────────
   if (isRateLimited(userId)) {
     const lang = dbGetLanguage(userId)
     await sendMessage(chatId, t(lang, 'slow_down'))
     return
   }
 
-  // ── Command dispatch ──────────────────────────────────────────────────────
   const rawText = msg.text.trim()
   const command = rawText.split('@')[0].split(' ')[0].toLowerCase()
+  const lang    = dbGetLanguage(userId)
 
   auditLog(userId, username, command)
 
-  const lang = dbGetLanguage(userId)
-
-  if (command === '/language') {
-    const text = await handleLanguage(lang)
-    await sendMessage(chatId, text, { reply_markup: languageKeyboard(lang) })
+  // /start and /help → show main menu
+  if (command === '/start' || command === '/help') {
+    const text = menuTitle('main', lang)
+    await sendMessage(chatId, text, { reply_markup: mainMenu(lang) })
     return
+  }
+
+  // /language → show language picker
+  if (command === '/language') {
+    const text = t(lang, 'language_prompt')
+    await sendMessage(chatId, text, { reply_markup: languageMenu(lang) })
+    return
+  }
+
+  // All other commands typed manually — still supported, result sent with back button
+  const COMMAND_MAP: Record<string, (lang: Lang, chatId?: number) => Promise<string>> = {
+    '/stats':           handleStats,
+    '/health':          handleHealth,
+    '/tools':           handleTools,
+    '/queue':           handleQueue,
+    '/users':           handleUsers,
+    '/errors':          handleErrors,
+    '/live':            handleLive,
+    '/files':           handleFiles,
+    '/insights':        handleInsights,
+    '/status':          handleStatus,
+    '/pause-workers':   handlePauseWorkers,
+    '/resume-workers':  handleResumeWorkers,
+    '/clear-queue':     handleClearQueue,
   }
 
   const handler = COMMAND_MAP[command]
   if (!handler) {
-    await sendMessage(chatId, t(lang, 'unknown_command').replace('{cmd}', command))
+    // Unknown command — show the menu so they can navigate
+    await sendMessage(
+      chatId,
+      t(lang, 'unknown_command').replace('{cmd}', command),
+      { reply_markup: mainMenu(lang) },
+    )
     return
   }
 
   try {
+    const cmdName = command.slice(1).replace('-', '')
+    const section = cmdSection(cmdName)
     const response = await handler(lang, chatId)
-    await sendMessage(chatId, response)
+    await sendMessage(chatId, response, { reply_markup: backButton(section, lang) })
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     console.error(`[TelegramBot] Command ${command} error:`, errMsg)
@@ -283,9 +367,14 @@ async function handleMessage(msg: TelegramMessage): Promise<void> {
 // ── Top-level update dispatcher ───────────────────────────────────────────────
 
 export async function handleUpdate(update: TelegramUpdate): Promise<void> {
-  if (update.callback_query) {
-    await handleCallbackQuery(update.callback_query)
-  } else if (update.message) {
-    await handleMessage(update.message)
+  try {
+    if (update.callback_query) {
+      await handleCallbackQuery(update.callback_query)
+    } else if (update.message) {
+      await handleMessage(update.message)
+    }
+  } catch (err) {
+    // Last-resort guard — errors here must never escape to the poll loop
+    console.error('[TelegramBot] Unhandled error in handleUpdate:', (err as Error).message)
   }
 }
