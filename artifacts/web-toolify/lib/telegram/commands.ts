@@ -7,10 +7,11 @@
  * All handlers fall back to "No data yet" if the DB is unavailable.
  */
 
-import { getLiveActivity } from './analytics'
+import { getLiveActivity, recordJob } from './analytics'
 import {
   dbReadGlobalStats, dbReadToolStats, dbReadRecentErrors,
   dbReadFileStats, dbReadUserStats, dbReadInsights, dbReadAllDetailedErrors,
+  getDb,
   type DetailedErrorRecord,
 } from './db'
 import {
@@ -261,6 +262,63 @@ export async function handleInsights(lang: Lang): Promise<string> {
     t(lang, 'insights_suggestions'),
     ...suggestions,
   ].join('\n')
+}
+
+// ── /test-pipeline ────────────────────────────────────────────────────────────
+export async function handleTestPipeline(lang: Lang): Promise<string> {
+  const ar = lang === 'ar'
+
+  // 1. Verify DB is reachable
+  const db = getDb()
+  if (!db) {
+    return ar
+      ? '❌ *فشل اختبار الاتصال*\n\nلا يمكن الوصول إلى قاعدة البيانات.'
+      : '❌ *Pipeline Test Failed*\n\nDatabase is not reachable.'
+  }
+
+  // 2. Write a synthetic test job entry via the normal recordJob() path
+  const testId = `test-${Date.now().toString(36)}`
+  const before = dbReadGlobalStats()
+  const countBefore = before?.totalJobs ?? 0
+
+  recordJob({
+    type:       'test-pipeline',
+    success:    true,
+    durationMs: 1,
+    fileSizeB:  0,
+    format:     'test',
+    userId:     testId,
+    ts:         Date.now(),
+  })
+
+  // 3. Give the setImmediate write time to commit (it's non-blocking)
+  await new Promise<void>((r) => setImmediate(r))
+
+  // 4. Read back — confirm the count increased
+  const after = dbReadGlobalStats()
+  const countAfter = after?.totalJobs ?? 0
+
+  if (countAfter > countBefore) {
+    return ar
+      ? [
+          '✅ *اختبار الاتصال نجح*', '',
+          `المهام قبل: \`${countBefore}\``,
+          `المهام بعد:  \`${countAfter}\``,
+          '',
+          '🔗 البيانات تتدفق بشكل صحيح من الخادم إلى قاعدة البيانات.',
+        ].join('\n')
+      : [
+          '✅ *Pipeline Test Passed*', '',
+          `Jobs before: \`${countBefore}\``,
+          `Jobs after:  \`${countAfter}\``,
+          '',
+          '🔗 Data is flowing correctly from server → DB → bot.',
+        ].join('\n')
+  }
+
+  return ar
+    ? '⚠️ *اختبار الاتصال: كتابة غير مؤكدة*\n\nتم الكتابة ولكن العدد لم يتغير. تحقق من سجلات الخادم.'
+    : '⚠️ *Pipeline Test: Write Unconfirmed*\n\nWrite was called but count did not change. Check server logs for errors.'
 }
 
 // ── /status ──────────────────────────────────────────────────────────────────

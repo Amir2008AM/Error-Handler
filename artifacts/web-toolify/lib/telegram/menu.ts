@@ -99,6 +99,9 @@ export function analyticsMenu(lang: Lang): InlineKeyboard {
         { text: ar ? '🧠 رؤى'       : '🧠 Insights', callback_data: 'cmd:insights' },
       ],
       [
+        { text: ar ? '🔬 اختبار الاتصال' : '🔬 Test Pipeline', callback_data: 'cmd:test-pipeline' },
+      ],
+      [
         { text: ar ? '◀️ رجوع' : '◀️ Back', callback_data: 'menu:main' },
       ],
     ],
@@ -208,9 +211,9 @@ export function sectionKeyboard(section: string, lang: Lang): InlineKeyboard {
 
 /** Maps a command name to the section it lives in (for the Back button). */
 export function cmdSection(cmd: string): string {
-  if (['stats', 'users', 'tools', 'files', 'live', 'insights'].includes(cmd)) return 'analytics'
-  if (['health', 'queue', 'errors', 'status'].includes(cmd))                   return 'system'
-  if (['pause', 'resume', 'clear'].includes(cmd))                               return 'control'
-  if (['language'].includes(cmd))                                               return 'settings'
+  if (['stats', 'users', 'tools', 'files', 'live', 'insights', 'test-pipeline'].includes(cmd)) return 'analytics'
+  if (['health', 'queue', 'errors', 'status'].includes(cmd))                                    return 'system'
+  if (['pause', 'resume', 'clear'].includes(cmd))                                               return 'control'
+  if (['language'].includes(cmd))                                                               return 'settings'
   return 'main'
 }

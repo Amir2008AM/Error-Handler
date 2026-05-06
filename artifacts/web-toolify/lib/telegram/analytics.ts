@@ -46,6 +46,10 @@ export function recordJob(record: JobRecord): void {
   if (liveJobs.length > MAX_LIVE_JOBS) liveJobs.shift()
 
   // 2. SQLite persistence (non-blocking, fire-and-forget via setImmediate)
+  console.log(
+    `[Analytics] recordJob → type=${record.type} success=${record.success} ` +
+    `duration=${record.durationMs}ms size=${record.fileSizeB}B format=${record.format}`
+  )
   dbWriteJob(
     record.userId,
     record.type,
@@ -62,9 +66,10 @@ export function recordJob(record: JobRecord): void {
 }
 
 export function recordError(tool: string, message: string): void {
-  // SQLite only — errors are not needed for the live view
+  console.log(`[Analytics] recordError → tool=${tool} message=${message.slice(0, 80)}`)
   dbWriteError(tool, message)
 }
+
 
 // ── Live read API (in-memory only — used by /live command) ───────────────────
 

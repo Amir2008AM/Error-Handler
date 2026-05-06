@@ -96,7 +96,10 @@ export async function register() {
   }
 
   try {
-    const { startPolling } = await import('./lib/telegram/poller')
+    const { stopPolling, startPolling } = await import('./lib/telegram/poller')
+    // Stop any existing poll loop (survives HMR via globalThis) before starting a new one.
+    // This prevents 409 "Conflict: terminated by other getUpdates request" on hot reloads.
+    stopPolling()
     startPolling()
   } catch (err) {
     console.warn(`[TelegramBot] Failed to start polling: ${(err as Error).message} — bot disabled`)

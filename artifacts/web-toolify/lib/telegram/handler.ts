@@ -27,7 +27,7 @@ import {
   handleStats, handleHealth, handleTools, handleQueue,
   handleUsers, handleErrors, handleLive, handleFiles,
   handleInsights, handleStatus, handlePauseWorkers, handleResumeWorkers,
-  handleClearQueue, handleHelp,
+  handleClearQueue, handleHelp, handleTestPipeline,
 } from './commands'
 import {
   isAuthenticated, isLockedOut, lockoutMinutesLeft, sessionMinutesLeft,
@@ -199,18 +199,17 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
     try {
       let result: string
       switch (cmd) {
-        case 'stats':    result = await handleStats(lang);          break
-        case 'health':   result = await handleHealth(lang);         break
-        case 'tools':    result = await handleTools(lang);          break
-        case 'queue':    result = await handleQueue(lang);          break
-        case 'users':    result = await handleUsers(lang);          break
-        case 'errors':   result = await handleErrors(lang, chatId); break
-        case 'live':
-          result = await handleLive(lang)
-          break
-        case 'files':    result = await handleFiles(lang);          break
-        case 'insights': result = await handleInsights(lang);       break
-        case 'status':   result = await handleStatus(lang);         break
+        case 'stats':         result = await handleStats(lang);          break
+        case 'health':        result = await handleHealth(lang);         break
+        case 'tools':         result = await handleTools(lang);          break
+        case 'queue':         result = await handleQueue(lang);          break
+        case 'users':         result = await handleUsers(lang);          break
+        case 'errors':        result = await handleErrors(lang, chatId); break
+        case 'live':          result = await handleLive(lang);           break
+        case 'files':         result = await handleFiles(lang);          break
+        case 'insights':      result = await handleInsights(lang);       break
+        case 'status':        result = await handleStatus(lang);         break
+        case 'test-pipeline': result = await handleTestPipeline(lang);   break
         case 'resume':
           result = await handleResumeWorkers(lang)
           auditLog(userId, query.from.username, 'resume-workers')
