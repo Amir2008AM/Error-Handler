@@ -2,9 +2,11 @@
  * Next.js Instrumentation Hook
  *
  * Runs once at server startup (Node.js runtime only).
- * 1. Starts BullMQ workers (when Redis is available)
- * 2. Starts the Telegram alert monitor
- * 3. Registers the Telegram webhook with Telegram's API
+ * 1. Validates required Telegram env vars — CRASHES if missing
+ * 2. Starts BullMQ workers (when Redis is available)
+ * 3. Starts the Telegram alert monitor
+ * 4. Validates the bot token via getMe
+ * 5. Registers the Telegram webhook and verifies it via getWebhookInfo
  */
 
 export async function register() {
@@ -45,39 +47,69 @@ export async function register() {
     console.log('[Instrumentation] REDIS_URL not set — using in-memory queue backend')
   }
 
-  // ── 2. Telegram alert monitor ────────────────────────────────────────────
-  if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_IDS) {
-    try {
-      const { startAlertMonitor } = await import('./lib/telegram/alerts')
-      startAlertMonitor()
-    } catch (err) {
-      console.warn('[Instrumentation] Alert monitor failed to start:', (err as Error).message)
-    }
+  // ── 2. Telegram secrets validation — HARD FAIL if missing ────────────────
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    throw new Error('❌ TELEGRAM_BOT_TOKEN is MISSING — set it in Replit Secrets and restart')
+  }
+  if (!process.env.TELEGRAM_ADMIN_IDS) {
+    throw new Error('❌ TELEGRAM_ADMIN_IDS is MISSING — set it in Replit Secrets and restart')
+  }
+  console.log('[TelegramBot] ✅ TELEGRAM_BOT_TOKEN loaded')
+  console.log('[TelegramBot] ✅ TELEGRAM_ADMIN_IDS loaded')
+
+  // ── 3. Telegram alert monitor ─────────────────────────────────────────────
+  try {
+    const { startAlertMonitor } = await import('./lib/telegram/alerts')
+    startAlertMonitor()
+  } catch (err) {
+    console.warn('[Instrumentation] Alert monitor failed to start:', (err as Error).message)
   }
 
-  // ── 3. Register Telegram webhook ─────────────────────────────────────────
-  if (process.env.TELEGRAM_BOT_TOKEN) {
-    try {
-      // Derive the public URL from Replit's domain env vars
-      const host =
-        process.env.REPLIT_DEV_DOMAIN ||
-        process.env.RAILWAY_PUBLIC_DOMAIN ||
-        process.env.VERCEL_URL
-
-      if (host) {
-        const webhookUrl = `https://${host}/api/telegram/admin-webhook`
-        const { setWebhook } = await import('./lib/telegram/api')
-        const ok = await setWebhook(webhookUrl)
-        if (ok) {
-          console.log(`[Instrumentation] Telegram webhook registered → ${webhookUrl}`)
-        } else {
-          console.warn('[Instrumentation] Telegram webhook registration failed — check TELEGRAM_BOT_TOKEN is valid')
-        }
-      } else {
-        console.warn('[Instrumentation] No public host found — skipping webhook registration')
-      }
-    } catch (err) {
-      console.warn('[Instrumentation] Webhook registration failed:', (err as Error).message)
+  // ── 4. Validate token via getMe ───────────────────────────────────────────
+  try {
+    const { getMe } = await import('./lib/telegram/api')
+    const bot = await getMe()
+    if (bot) {
+      console.log(`[TelegramBot] ✅ Token valid — bot: @${bot.username} (id: ${bot.id})`)
+    } else {
+      throw new Error('getMe returned null — token is invalid or Telegram is unreachable')
     }
+  } catch (err) {
+    throw new Error(`❌ Telegram token validation failed: ${(err as Error).message}`)
+  }
+
+  // ── 5. Register webhook + verify ─────────────────────────────────────────
+  const host =
+    process.env.REPLIT_DEV_DOMAIN ||
+    process.env.RAILWAY_PUBLIC_DOMAIN ||
+    process.env.VERCEL_URL
+
+  if (!host) {
+    console.warn('[Instrumentation] No public host env var found — skipping webhook registration')
+    return
+  }
+
+  const webhookUrl = `https://${host}/api/telegram/admin-webhook`
+
+  try {
+    const { setWebhook, getWebhookInfo } = await import('./lib/telegram/api')
+
+    const ok = await setWebhook(webhookUrl)
+    if (!ok) {
+      throw new Error('setWebhook returned false — check token and URL')
+    }
+    console.log(`[TelegramBot] ✅ Webhook registered → ${webhookUrl}`)
+
+    const info = await getWebhookInfo()
+    console.log('[TelegramBot] Webhook info:', JSON.stringify(info, null, 2))
+
+    if (info?.last_error_message) {
+      console.warn(`[TelegramBot] ⚠️  Last webhook error: ${info.last_error_message}`)
+    }
+    if (info?.pending_update_count > 0) {
+      console.log(`[TelegramBot] Pending updates in queue: ${info.pending_update_count}`)
+    }
+  } catch (err) {
+    throw new Error(`❌ Webhook registration failed: ${(err as Error).message}`)
   }
 }

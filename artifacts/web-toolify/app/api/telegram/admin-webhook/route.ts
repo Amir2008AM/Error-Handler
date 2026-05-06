@@ -188,6 +188,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
+  console.log('TELEGRAM HIT:', JSON.stringify(body))
+
   const update = parseUpdate(body)
   if (!update) {
     return NextResponse.json({ ok: false }, { status: 200 })

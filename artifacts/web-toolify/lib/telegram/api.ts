@@ -29,7 +29,7 @@ export async function sendMessage(
 ): Promise<void> {
   await call('sendMessage', {
     chat_id:    chatId,
-    text:       text.slice(0, 4096),   // Telegram hard limit
+    text:       text.slice(0, 4096),
     parse_mode: 'Markdown',
     ...extra,
   })
@@ -41,8 +41,29 @@ export async function sendAlert(chatIds: Iterable<number>, text: string): Promis
 }
 
 /**
+ * Validate the bot token. Returns bot info on success, null on failure.
+ */
+export async function getMe(): Promise<{ id: number; username: string; first_name: string } | null> {
+  try {
+    const res = await fetch(`${TELEGRAM_API}/getMe`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(10_000),
+    })
+    const data = await res.json() as { ok: boolean; result?: { id: number; username: string; first_name: string } }
+    if (!data.ok || !data.result) {
+      console.error('[TelegramAPI] getMe failed:', JSON.stringify(data))
+      return null
+    }
+    return data.result
+  } catch (err) {
+    console.error('[TelegramAPI] getMe error:', (err as Error).message)
+    return null
+  }
+}
+
+/**
  * Register the webhook with Telegram.
- * Returns true on success, false on failure (so the caller can log clearly).
+ * Returns true on success, false on failure.
  */
 export async function setWebhook(url: string): Promise<boolean> {
   try {
@@ -53,14 +74,43 @@ export async function setWebhook(url: string): Promise<boolean> {
       signal:  AbortSignal.timeout(10_000),
     })
     const data = await res.json() as { ok: boolean; description?: string }
+    console.log('[TelegramAPI] setWebhook full response:', JSON.stringify(data))
     if (!data.ok) {
       console.error(`[TelegramAPI] setWebhook failed: ${data.description ?? 'unknown error'}`)
       return false
     }
     return true
   } catch (err) {
-    console.error(`[TelegramAPI] setWebhook error:`, (err as Error).message)
+    console.error('[TelegramAPI] setWebhook error:', (err as Error).message)
     return false
+  }
+}
+
+/**
+ * Fetch current webhook status from Telegram.
+ */
+export async function getWebhookInfo(): Promise<{
+  url: string
+  has_custom_certificate: boolean
+  pending_update_count: number
+  last_error_date?: number
+  last_error_message?: string
+  max_connections?: number
+} | null> {
+  try {
+    const res = await fetch(`${TELEGRAM_API}/getWebhookInfo`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(10_000),
+    })
+    const data = await res.json() as { ok: boolean; result?: Record<string, unknown> }
+    if (!data.ok || !data.result) {
+      console.error('[TelegramAPI] getWebhookInfo failed:', JSON.stringify(data))
+      return null
+    }
+    return data.result as ReturnType<typeof getWebhookInfo> extends Promise<infer T> ? NonNullable<T> : never
+  } catch (err) {
+    console.error('[TelegramAPI] getWebhookInfo error:', (err as Error).message)
+    return null
   }
 }
 
