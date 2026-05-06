@@ -19,7 +19,7 @@ import { t, type Lang } from '@/lib/telegram/i18n'
 import {
   handleStats, handleHealth, handleTools, handleQueue,
   handleUsers, handleErrors, handleLive, handleFiles,
-  handleInsights, handlePauseWorkers, handleResumeWorkers,
+  handleInsights, handleStatus, handlePauseWorkers, handleResumeWorkers,
   handleClearQueue, handleHelp, handleLanguage,
 } from '@/lib/telegram/commands'
 
@@ -67,6 +67,7 @@ const COMMAND_MAP: Record<string, Handler> = {
   '/live':            handleLive,
   '/files':           handleFiles,
   '/insights':        handleInsights,
+  '/status':          handleStatus,
   '/pause-workers':   handlePauseWorkers,
   '/resume-workers':  handleResumeWorkers,
   '/clear-queue':     handleClearQueue,

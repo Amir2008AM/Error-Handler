@@ -94,6 +94,16 @@ const STRINGS = {
     insights_high_failure:  '• `{tool}` has high failure rate — check server logs',
     insights_ok:            '• No critical bottlenecks detected ✅',
 
+    // ── /status ───────────────────────────────────────────────────────────
+    status_title:       '🖥 *System Status*',
+    status_redis_ok:    '🟢 Redis:    `connected`',
+    status_redis_fail:  '🔴 Redis:    `unreachable`',
+    status_db_ok:       '🟢 Database: `connected`',
+    status_db_fail:     '🔴 Database: `unreachable`',
+    status_workers:     '⚙️ Workers:  `{count}` active',
+    status_uptime:      '⏰ Uptime:   `{uptime}`',
+    status_memory:      '🧠 Memory:   `{pct}%` ({used} / {total})',
+
     // ── /pause-workers ────────────────────────────────────────────────────
     pause_workers: '🛑 *All queues paused.*\nNew jobs will wait. Use /resume-workers to continue.',
 
@@ -125,6 +135,7 @@ const STRINGS = {
     help_files_cmd:    '`/files` — File upload statistics',
     help_insights_cmd: '`/insights` — Bottleneck detection',
     help_language_cmd: '`/language` — Switch language / تغيير اللغة',
+    help_status_cmd:   '`/status` — Live system snapshot (Redis, DB, workers)',
     help_pause_cmd:    '`/pause-workers` — Pause all queues',
     help_resume_cmd:   '`/resume-workers` — Resume all queues',
     help_clear_cmd:    '`/clear-queue` — Remove all waiting jobs',
@@ -211,6 +222,16 @@ const STRINGS = {
     insights_high_failure:  '• `{tool}` معدل فشل مرتفع — راجع سجلات الخادم',
     insights_ok:            '• لا توجد اختناقات حرجة ✅',
 
+    // ── /status ───────────────────────────────────────────────────────────
+    status_title:       '🖥 *حالة النظام*',
+    status_redis_ok:    '🟢 Redis:    `متصل`',
+    status_redis_fail:  '🔴 Redis:    `غير متاح`',
+    status_db_ok:       '🟢 قاعدة البيانات: `متصلة`',
+    status_db_fail:     '🔴 قاعدة البيانات: `غير متاحة`',
+    status_workers:     '⚙️ العمال:  `{count}` نشط',
+    status_uptime:      '⏰ وقت التشغيل: `{uptime}`',
+    status_memory:      '🧠 الذاكرة:  `{pct}%` ({used} / {total})',
+
     // ── /pause-workers ────────────────────────────────────────────────────
     pause_workers: '🛑 *تم إيقاف جميع قوائم الانتظار.*\nستنتظر المهام الجديدة. استخدم /resume-workers للمتابعة.',
 
@@ -242,6 +263,7 @@ const STRINGS = {
     help_files_cmd:    '`/files` — إحصائيات رفع الملفات',
     help_insights_cmd: '`/insights` — كشف الاختناقات',
     help_language_cmd: '`/language` — Switch language / تغيير اللغة',
+    help_status_cmd:   '`/status` — لقطة فورية للنظام (Redis، DB، العمال)',
     help_pause_cmd:    '`/pause-workers` — إيقاف جميع قوائم الانتظار',
     help_resume_cmd:   '`/resume-workers` — استئناف جميع قوائم الانتظار',
     help_clear_cmd:    '`/clear-queue` — حذف جميع المهام المنتظرة',

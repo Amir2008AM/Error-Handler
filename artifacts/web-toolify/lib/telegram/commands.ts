@@ -14,7 +14,7 @@ import {
 } from './db'
 import {
   getCpuPercent, getDiskUsage, getMemoryInfo,
-  getQueueCounts, fmtBytes, fmtUptime,
+  getQueueCounts, pingRedis, pingDb, fmtBytes, fmtUptime,
 } from './metrics'
 import { pauseAllQueues, resumeAllQueues, clearAllQueues } from './worker-control'
 import { t, fmt, type Lang } from './i18n'
@@ -188,6 +188,29 @@ export async function handleInsights(lang: Lang): Promise<string> {
   ].join('\n')
 }
 
+// ── /status ──────────────────────────────────────────────────────────────────
+export async function handleStatus(lang: Lang): Promise<string> {
+  const [redisOk, dbOk, queue, mem] = await Promise.all([
+    pingRedis(),
+    pingDb(),
+    getQueueCounts(),
+    Promise.resolve(getMemoryInfo()),
+  ])
+
+  const activeWorkers = queue.active
+  const uptime = fmtUptime(Math.floor(process.uptime()))
+
+  return [
+    t(lang, 'status_title'),
+    '',
+    redisOk ? t(lang, 'status_redis_ok') : t(lang, 'status_redis_fail'),
+    dbOk    ? t(lang, 'status_db_ok')    : t(lang, 'status_db_fail'),
+    fmt(t(lang, 'status_workers'), { count: activeWorkers }),
+    fmt(t(lang, 'status_uptime'),  { uptime }),
+    fmt(t(lang, 'status_memory'),  { pct: mem.pct, used: fmtBytes(mem.used), total: fmtBytes(mem.total) }),
+  ].join('\n')
+}
+
 // ── /pause-workers ───────────────────────────────────────────────────────────
 export async function handlePauseWorkers(lang: Lang): Promise<string> {
   await pauseAllQueues()
@@ -228,6 +251,7 @@ export async function handleHelp(lang: Lang): Promise<string> {
     t(lang, 'help_files_cmd'),
     t(lang, 'help_insights_cmd'),
     t(lang, 'help_language_cmd'),
+    t(lang, 'help_status_cmd'),
     '',
     t(lang, 'help_control'),
     t(lang, 'help_pause_cmd'),

@@ -111,6 +111,34 @@ export async function getQueueCounts(): Promise<QueueCounts & { byQueue: Record<
   return { ...totals, byQueue }
 }
 
+// ── Connectivity probes ──────────────────────────────────────────────────────
+
+export async function pingRedis(): Promise<boolean> {
+  const r = getRedis()
+  if (!r) return false
+  try {
+    const reply = await r.ping()
+    return reply === 'PONG'
+  } catch {
+    return false
+  }
+}
+
+export async function pingDb(): Promise<boolean> {
+  if (!process.env.DATABASE_URL) return false
+  try {
+    const { Pool } = await import('pg')
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 3_000 })
+    const client = await pool.connect()
+    await client.query('SELECT 1')
+    client.release()
+    await pool.end()
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ── Format helpers ───────────────────────────────────────────────────────────
 export function fmtBytes(b: number): string {
   if (b >= 1e9) return `${(b / 1e9).toFixed(1)} GB`
