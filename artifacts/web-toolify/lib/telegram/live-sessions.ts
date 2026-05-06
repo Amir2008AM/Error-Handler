@@ -1,31 +1,28 @@
 /**
  * Live Session Manager
  *
- * Provides auto-refreshing Telegram messages — the bot edits the same
- * message every REFRESH_MS milliseconds with fresh data.
+ * Auto-refreshes a Telegram message every REFRESH_MS with live server data.
+ * No time limit — runs until the owner explicitly presses ⏹ Stop.
+ * No session cap — owner has full control.
  *
- * Design:
- *  - One session per chatId (starting a new one replaces the old one)
- *  - Auto-stops after SESSION_TTL_MS (5 minutes) to avoid runaway timers
- *  - Max MAX_SESSIONS concurrent sessions (evicts oldest if exceeded)
- *  - Every tick is fully try/catch — a Telegram API error never kills the interval
- *  - Uses setInterval.unref() so the process can exit cleanly
+ * Safe Bot-Sync Rule:
+ *  - Every tick is fully wrapped in try/catch
+ *  - Telegram API errors (rate-limit, message deleted, etc.) are silently ignored
+ *  - setInterval.unref() lets the process exit cleanly if needed
  */
 
 import { editMessageText } from './api'
 import { handleLive } from './commands'
 import { type Lang } from './i18n'
 
-const REFRESH_MS     = 10_000        // 10 seconds between edits
-const SESSION_TTL_MS = 5 * 60_000   // auto-stop after 5 minutes
-const MAX_SESSIONS   = 20
+const REFRESH_MS = 10_000  // 10 seconds between edits
 
 interface LiveSession {
   intervalId: ReturnType<typeof setInterval>
   messageId:  number
   userId:     number
   lang:       Lang
-  stopAt:     number
+  startedAt:  number
 }
 
 const sessions = new Map<number, LiveSession>() // chatId → session
@@ -39,55 +36,44 @@ function stopButton(lang: Lang): Record<string, unknown> {
   }
 }
 
-function expiredText(lang: Lang): string {
-  return lang === 'ar'
-    ? '⏹ *انتهى التحديث المباشر*\n\nانتهت الجلسة تلقائياً بعد 5 دقائق.'
-    : '⏹ *Live session ended*\n\nAuto-stopped after 5 minutes.'
-}
-
 async function tick(chatId: number): Promise<void> {
   const session = sessions.get(chatId)
   if (!session) return
 
-  // Auto-stop on TTL expiry
-  if (Date.now() >= session.stopAt) {
-    stopLiveSession(chatId)
-    try {
-      await editMessageText(chatId, session.messageId, expiredText(session.lang))
-    } catch { /* ignore */ }
-    return
-  }
-
   try {
     const data = await handleLive(session.lang)
     const ts   = new Date().toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false })
+
+    const runningSec = Math.floor((Date.now() - session.startedAt) / 1000)
+    const runningFmt = runningSec >= 60
+      ? `${Math.floor(runningSec / 60)}m ${runningSec % 60}s`
+      : `${runningSec}s`
+
     const footer = session.lang === 'ar'
-      ? `\n\n🕐 آخر تحديث: \`${ts} UTC\``
-      : `\n\n🕐 Updated: \`${ts} UTC\``
+      ? `\n\n🕐 آخر تحديث: \`${ts} UTC\`  •  ⏱ منذ: \`${runningFmt}\``
+      : `\n\n🕐 Updated: \`${ts} UTC\`  •  ⏱ Running: \`${runningFmt}\``
 
     await editMessageText(chatId, session.messageId, data + footer, {
       reply_markup: stopButton(session.lang),
     })
   } catch {
-    // Silently ignore edit errors (message deleted, rate-limited, etc.)
+    // Silently ignore — message may have been deleted or Telegram rate-limited us
   }
 }
 
-/** Start a live auto-refresh session for a chat. Replaces any existing session. */
+/**
+ * Start a live auto-refresh session for a chat.
+ * Replaces any existing session for the same chatId.
+ * Runs indefinitely until stopLiveSession() is called.
+ */
 export function startLiveSession(
   chatId:    number,
   messageId: number,
   userId:    number,
   lang:      Lang,
 ): void {
-  // Replace existing session for this chat
+  // Stop any existing session for this chat first
   stopLiveSession(chatId)
-
-  // Evict oldest session if at capacity
-  if (sessions.size >= MAX_SESSIONS) {
-    const oldest = sessions.keys().next().value
-    if (oldest !== undefined) stopLiveSession(oldest)
-  }
 
   const intervalId = setInterval(() => { void tick(chatId) }, REFRESH_MS)
   if ((intervalId as unknown as { unref?: () => void }).unref) {
@@ -99,11 +85,11 @@ export function startLiveSession(
     messageId,
     userId,
     lang,
-    stopAt: Date.now() + SESSION_TTL_MS,
+    startedAt: Date.now(),
   })
 }
 
-/** Stop and remove an active live session. */
+/** Stop and remove an active live session. Returns true if one was running. */
 export function stopLiveSession(chatId: number): boolean {
   const session = sessions.get(chatId)
   if (!session) return false
