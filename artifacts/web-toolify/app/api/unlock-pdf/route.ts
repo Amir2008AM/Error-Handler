@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PDFSecurityProcessor, WrongPasswordError } from '@/lib/processing/pdf-security'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -10,6 +11,8 @@ export async function POST(request: NextRequest) {
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'file')
@@ -26,10 +29,8 @@ export async function POST(request: NextRequest) {
 
     const securityProcessor = new PDFSecurityProcessor()
 
-    // Check encryption status using the on-disk path — no memory copy needed.
     const securityInfo = await securityProcessor.getSecurityInfo(file.path)
 
-    // Pass the path directly to qpdf — no Buffer allocation for the upload.
     const unlockedPdf = await securityProcessor.unlock(file.path, {
       password: password || '',
     })
@@ -37,6 +38,8 @@ export async function POST(request: NextRequest) {
     const outputFilename = `unlocked-${file.filename}`
     const storage = getTempStorage()
     const fileId = await storage.store(unlockedPdf, outputFilename, 'application/pdf')
+
+    trackRoute({ tool: 'unlock-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return NextResponse.json({
       success: true,
@@ -46,6 +49,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Unlock PDF error:', error)
+    trackRoute({ tool: 'unlock-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
 
     if (error instanceof WrongPasswordError) {
       return NextResponse.json(

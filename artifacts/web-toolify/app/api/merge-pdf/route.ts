@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 import { mapWithConcurrency } from '@/lib/processing/concurrency'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -11,8 +12,9 @@ export async function POST(req: NextRequest) {
     throw Object.assign(err, { _status: 400 })
   })
 
+  const start = Date.now()
+
   try {
-    // Collect files with fieldnames like pdf_0, pdf_1, ...
     const pdfEntries = files
       .filter((f) => f.fieldname.startsWith('pdf_'))
       .map((f) => {
@@ -30,20 +32,22 @@ export async function POST(req: NextRequest) {
       if (err) return NextResponse.json({ error: err }, { status: 400 })
     }
 
-    // Load buffers from disk with bounded concurrency — avoids loading all
-    // large PDFs into RAM simultaneously (e.g. 10 × 20 MB = 200 MB spike).
     const fileBuffers = await mapWithConcurrency(pdfEntries, 3, ({ file }) =>
       readFileAsArrayBuffer(file.path)
     )
 
+    const totalSize = pdfEntries.reduce((s, e) => s + e.file.size, 0)
     const result = await pdf.merge({ files: fileBuffers as ArrayBuffer[] })
 
     if (!result.success || !result.data) {
+      trackRoute({ tool: 'merge-pdf', fileSizeB: totalSize, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'merge failed' })
       return NextResponse.json(
         { error: result.error || 'Failed to merge PDFs' },
         { status: 500 }
       )
     }
+
+    trackRoute({ tool: 'merge-pdf', fileSizeB: totalSize, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data, {
       status: 200,
@@ -57,6 +61,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[merge-pdf]', err)
+    trackRoute({ tool: 'merge-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to merge PDFs' }, { status: 500 })
   } finally {
     await cleanup()

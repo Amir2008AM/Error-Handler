@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OCRProcessor } from '@/lib/processing/ocr-processor'
 import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -10,6 +11,8 @@ export async function POST(request: NextRequest) {
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'file')
@@ -34,6 +37,7 @@ export async function POST(request: NextRequest) {
     await ocrProcessor.terminate()
 
     const baseName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
+    trackRoute({ tool: 'ocr-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     if (outputType === 'searchable-pdf' && result.searchablePdf) {
       return new NextResponse(result.searchablePdf, {
@@ -66,6 +70,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[ocr/pdf]', error)
+    trackRoute({ tool: 'ocr-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     const msg = error instanceof Error ? error.message : 'Failed to perform OCR on PDF'
     return NextResponse.json({ error: msg }, { status: 500 })
   } finally {

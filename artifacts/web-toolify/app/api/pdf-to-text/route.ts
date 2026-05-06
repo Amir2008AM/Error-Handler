@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -9,6 +10,8 @@ export async function POST(request: NextRequest) {
   const { files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'file')
@@ -21,8 +24,11 @@ export async function POST(request: NextRequest) {
     const result = await pdfProcessor.toText(buffer)
 
     if (!result.success || !result.data) {
+      trackRoute({ tool: 'pdf-to-text', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'pdf-to-text failed' })
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
+
+    trackRoute({ tool: 'pdf-to-text', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data, {
       headers: {
@@ -33,6 +39,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('PDF to text error:', error)
+    trackRoute({ tool: 'pdf-to-text', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to extract text from PDF' }, { status: 500 })
   } finally {
     await cleanup()

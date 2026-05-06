@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -13,6 +14,8 @@ export async function POST(request: NextRequest) {
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'file')
@@ -34,21 +37,21 @@ export async function POST(request: NextRequest) {
     }
     const level = rawLevel as CompressionLevel
 
-    // Pass the on-disk path directly — Ghostscript reads it without a memory copy.
     const result = await pdfProcessor.compress(file.path, level)
 
     if (!result.success || !result.data) {
+      trackRoute({ tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'compress failed' })
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    // compressionRatio is passed raw — it CAN be negative (size increased).
-    // The client is responsible for displaying this honestly.
     const compressionRatio  = (result.metadata?.compressionRatio  as number) ?? 0
     const compressionStatus = (result.metadata?.compressionStatus as string) || 'compressed'
     const outputFilename    = `compressed-${file.filename}`
 
     const storage = getTempStorage()
     const fileId  = await storage.store(result.data, outputFilename, 'application/pdf')
+
+    trackRoute({ tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return NextResponse.json({
       success: true,
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[compress-pdf]', error)
+    trackRoute({ tool: 'compress-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to compress PDF' }, { status: 500 })
   } finally {
     await cleanup()

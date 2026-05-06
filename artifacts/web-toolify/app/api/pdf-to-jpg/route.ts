@@ -3,6 +3,7 @@ import { PdfToImageConverter } from '@/lib/processing/pdf-to-image'
 import { createZipFromFiles } from '@/lib/processing/file-utils'
 import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -11,6 +12,8 @@ export async function POST(request: NextRequest) {
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'file')
@@ -33,8 +36,8 @@ export async function POST(request: NextRequest) {
         const parts = pagesStr.split(',')
         for (const part of parts) {
           if (part.includes('-')) {
-            const [start, end] = part.split('-').map(Number)
-            for (let i = start; i <= end; i++) {
+            const [start2, end] = part.split('-').map(Number)
+            for (let i = start2; i <= end; i++) {
               pages.push(i)
             }
           } else {
@@ -57,6 +60,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (results.length === 0) {
+      trackRoute({ tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: 'No pages converted' })
       return NextResponse.json(
         { error: 'No pages could be converted' },
         { status: 500 }
@@ -65,6 +69,7 @@ export async function POST(request: NextRequest) {
 
     if (results.length === 1) {
       const safeOutputName = safeFilename(results[0].fileName)
+      trackRoute({ tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
       return new NextResponse(results[0].buffer, {
         headers: {
           'Content-Type': results[0].mimeType,
@@ -82,6 +87,7 @@ export async function POST(request: NextRequest) {
     )
 
     const baseName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
+    trackRoute({ tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(zipBuffer, {
       headers: {
@@ -92,6 +98,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[pdf-to-jpg]', error)
+    trackRoute({ tool: 'pdf-to-jpg', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     const errorMessage = error instanceof Error ? error.message : 'Failed to convert PDF to images'
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   } finally {

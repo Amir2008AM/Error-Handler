@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PDFSecurityProcessor } from '@/lib/processing/pdf-security'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -10,6 +11,8 @@ export async function POST(request: NextRequest) {
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'file')
@@ -57,6 +60,8 @@ export async function POST(request: NextRequest) {
     const storage = getTempStorage()
     const fileId = await storage.store(protectedPdf, outputFilename, 'application/pdf')
 
+    trackRoute({ tool: 'protect-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+
     return NextResponse.json({
       success: true,
       fileId,
@@ -64,6 +69,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Protect PDF error:', error)
+    trackRoute({ tool: 'protect-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     const errorMessage = error instanceof Error ? error.message : 'Failed to protect PDF'
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 })
   } finally {

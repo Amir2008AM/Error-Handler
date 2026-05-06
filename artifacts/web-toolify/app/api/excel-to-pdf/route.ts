@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DocumentConverter } from '@/lib/processing/document-converter'
 import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
+import { trackRoute } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -10,6 +11,8 @@ export async function POST(request: NextRequest) {
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'file')
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
     const result    = await converter.excelToPdf(buffer, { pageSize, orientation, fontSize })
 
     const baseName = safeFilename(file.filename.replace(/\.(xlsx?|xls|csv)$/i, ''))
+    trackRoute({ tool: 'excel-to-pdf', fileSizeB: file.size, format: 'xlsx', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.buffer, {
       headers: {
@@ -44,6 +48,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[excel-to-pdf]', error)
+    trackRoute({ tool: 'excel-to-pdf', fileSizeB: files[0]?.size, format: 'xlsx', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     const errorMessage = error instanceof Error ? error.message : 'Failed to convert Excel to PDF'
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   } finally {

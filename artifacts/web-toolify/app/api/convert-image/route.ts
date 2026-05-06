@@ -3,6 +3,7 @@ import { image } from '@/lib/processing'
 import type { ImageFormat } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
+import { trackRoute, extOf } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest) {
   const { fields, files, cleanup } = await streamUpload(req).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
+
+  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'image')
@@ -31,6 +34,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!result.success || !result.data) {
+      trackRoute({ tool: 'convert-image', fileSizeB: file.size, format: extOf(file.filename, 'image'), success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'convert failed' })
       return NextResponse.json(
         { error: result.error || 'Failed to convert image' },
         { status: 500 }
@@ -40,6 +44,8 @@ export async function POST(req: NextRequest) {
     const contentType  = image.getContentType(targetFormat as ImageFormat)
     const extension    = image.getExtension(targetFormat as ImageFormat)
     const originalName = safeFilename(file.filename.replace(/\.[^/.]+$/, ''))
+
+    trackRoute({ tool: 'convert-image', fileSizeB: file.size, format: extOf(file.filename, 'image'), success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data, {
       status: 200,
@@ -56,6 +62,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[convert-image]', err)
+    trackRoute({ tool: 'convert-image', fileSizeB: files[0]?.size, format: extOf(files[0]?.filename, 'image'), success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to convert image' }, { status: 500 })
   } finally {
     await cleanup()
