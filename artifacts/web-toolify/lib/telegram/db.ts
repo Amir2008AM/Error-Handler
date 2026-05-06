@@ -75,6 +75,20 @@ export function getDb(): DatabaseSync | null {
         created_at       INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_fs_created_at ON file_stats(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS errors_detail (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        service     TEXT    NOT NULL,
+        location    TEXT    NOT NULL DEFAULT '',
+        error_type  TEXT    NOT NULL,
+        raw_message TEXT    NOT NULL,
+        severity    TEXT    NOT NULL DEFAULT 'medium',
+        diagnosis   TEXT    NOT NULL DEFAULT '',
+        root_cause  TEXT    NOT NULL DEFAULT '',
+        fix         TEXT    NOT NULL DEFAULT '',
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_ed_created_at ON errors_detail(created_at DESC);
     `)
 
     console.log(`[Analytics DB] node:sqlite ready (WAL) → ${DB_PATH}`)
@@ -93,12 +107,18 @@ function _scheduleCleanup(db: DatabaseSync): void {
   const interval = setInterval(() => {
     try {
       const cutoff = Date.now() - THIRTY_DAYS
-      db.exec(`DELETE FROM jobs_history WHERE created_at < ${cutoff}`)
-      db.exec(`DELETE FROM errors_log   WHERE created_at < ${cutoff}`)
-      db.exec(`DELETE FROM file_stats   WHERE created_at < ${cutoff}`)
+      db.exec(`DELETE FROM jobs_history  WHERE created_at < ${cutoff}`)
+      db.exec(`DELETE FROM errors_log    WHERE created_at < ${cutoff}`)
+      db.exec(`DELETE FROM file_stats    WHERE created_at < ${cutoff}`)
+      db.exec(`DELETE FROM errors_detail WHERE created_at < ${cutoff}`)
       db.exec(`
         DELETE FROM errors_log WHERE id NOT IN (
           SELECT id FROM errors_log ORDER BY created_at DESC LIMIT 5000
+        )
+      `)
+      db.exec(`
+        DELETE FROM errors_detail WHERE id NOT IN (
+          SELECT id FROM errors_detail ORDER BY created_at DESC LIMIT 500
         )
       `)
     } catch { /* never crash the server */ }
@@ -113,6 +133,7 @@ let _stmtInsertJob: StatementSync | null = null
 let _stmtUpsertUser: StatementSync | null = null
 let _stmtInsertError: StatementSync | null = null
 let _stmtInsertFile: StatementSync | null = null
+let _stmtInsertDetailedError: StatementSync | null = null
 
 function _prepareStatements(db: DatabaseSync): void {
   if (_stmtInsertJob) return
@@ -135,6 +156,11 @@ function _prepareStatements(db: DatabaseSync): void {
   _stmtInsertFile = db.prepare(`
     INSERT INTO file_stats (file_size_bytes, file_type, created_at)
     VALUES (?, ?, ?)
+  `)
+  _stmtInsertDetailedError = db.prepare(`
+    INSERT INTO errors_detail
+      (service, location, error_type, raw_message, severity, diagnosis, root_cause, fix, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 }
 
@@ -182,6 +208,72 @@ export function dbWriteFileStat(fileSizeBytes: number, fileType: string): void {
       console.error('[Analytics DB] dbWriteFileStat failed:', (err as Error).message)
     }
   })
+}
+
+export interface DetailedErrorRecord {
+  service:    string
+  location:   string
+  errorType:  string
+  rawMessage: string
+  severity:   'low' | 'medium' | 'high' | 'critical'
+  diagnosis:  string
+  rootCause:  string
+  fix:        string
+  createdAt:  number
+}
+
+export function dbWriteDetailedError(rec: DetailedErrorRecord): void {
+  setImmediate(() => {
+    const db = getDb()
+    if (!db) return
+    try {
+      _prepareStatements(db)
+      _stmtInsertDetailedError!.run(
+        rec.service,
+        rec.location.slice(0, 300),
+        rec.errorType.slice(0, 100),
+        rec.rawMessage.slice(0, 600),
+        rec.severity,
+        rec.diagnosis.slice(0, 500),
+        rec.rootCause.slice(0, 300),
+        rec.fix.slice(0, 300),
+        rec.createdAt,
+      )
+    } catch (err) {
+      console.error('[Analytics DB] dbWriteDetailedError failed:', (err as Error).message)
+    }
+  })
+}
+
+export function dbReadAllDetailedErrors(limit = 500): DetailedErrorRecord[] {
+  const db = getDb()
+  if (!db) return []
+  try {
+    const rows = db.prepare(`
+      SELECT service, location, error_type, raw_message, severity,
+             diagnosis, root_cause, fix, created_at
+      FROM errors_detail
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `).all() as Array<{
+      service: string; location: string; error_type: string; raw_message: string
+      severity: string; diagnosis: string; root_cause: string; fix: string; created_at: number
+    }>
+    return rows.map((r) => ({
+      service:    r.service,
+      location:   r.location,
+      errorType:  r.error_type,
+      rawMessage: r.raw_message,
+      severity:   r.severity as DetailedErrorRecord['severity'],
+      diagnosis:  r.diagnosis,
+      rootCause:  r.root_cause,
+      fix:        r.fix,
+      createdAt:  r.created_at,
+    }))
+  } catch (err) {
+    console.error('[Analytics DB] dbReadAllDetailedErrors failed:', (err as Error).message)
+    return []
+  }
 }
 
 // ── Public read API (synchronous, indexed queries — sub-millisecond) ─────────

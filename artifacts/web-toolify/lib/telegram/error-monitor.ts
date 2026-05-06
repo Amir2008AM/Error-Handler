@@ -14,6 +14,7 @@
 
 import { ADMIN_IDS, ALERT_COOLDOWN_MS } from './config'
 import { sendAlert } from './api'
+import { dbWriteDetailedError } from './db'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,7 +96,67 @@ function sanitiseStack(stack: string | undefined): string | null {
   return frames || null
 }
 
-// ── Rule-based Diagnosis Engine ──────────────────────────────────────────────
+// ── Severity Classification ───────────────────────────────────────────────────
+
+export type Severity = 'low' | 'medium' | 'high' | 'critical'
+
+const SEVERITY_EMOJI: Record<Severity, string> = {
+  critical: '⛔',
+  high:     '🔴',
+  medium:   '🟡',
+  low:      '🟢',
+}
+
+export function classifySeverity(errorType: string, rawMessage: string): Severity {
+  const et  = errorType.toLowerCase()
+  const msg = rawMessage.toLowerCase()
+
+  // ── Critical: service completely down or fundamentally broken ────────────
+  if (
+    et.includes('redis connection error') ||
+    et.includes('redis dns') ||
+    et.includes('redis authentication') ||
+    et.includes('database connection') ||
+    et.includes('database authentication') ||
+    et.includes('missing system binary') ||
+    et.includes('out of memory') ||
+    msg.includes('out of memory') ||
+    msg.includes('heap out of memory') ||
+    msg.includes('econnrefused') ||
+    msg.includes('err noauth') || msg.includes('wrongpass')
+  ) return 'critical'
+
+  // ── High: degraded performance or code bug affecting multiple jobs ────────
+  if (
+    et.includes('timeout') ||
+    et.includes('pool exhaustion') ||
+    et.includes('schema mismatch') ||
+    et.includes('permission error') ||
+    et.includes('unhandled promise') ||
+    et.includes('redis timeout') ||
+    msg.includes('etimedout') ||
+    msg.includes('too many connections') ||
+    msg.includes('eacces') || msg.includes('eperm')
+  ) return 'high'
+
+  // ── Medium: isolated job failure, user-triggered or recoverable ───────────
+  if (
+    et.includes('corrupt') || et.includes('invalid pdf') ||
+    et.includes('encrypted pdf') ||
+    et.includes('tempstorage ttl') || et.includes('file expired') ||
+    et.includes('image processing') ||
+    et.includes('runtime error')
+  ) return 'medium'
+
+  // ── Low: expected validation or single-job edge case ─────────────────────
+  return 'low'
+}
+
+export function severityLabel(s: Severity): string {
+  return `${SEVERITY_EMOJI[s]} ${s.charAt(0).toUpperCase() + s.slice(1)}`
+}
+
+// ── Rule-based Diagnosis Engine ───────────────────────────────────────────────
 
 const RULES: Array<{
   match:     (msg: string, service: string) => boolean
@@ -387,17 +448,34 @@ export function reportError(ctx: ErrorContext): void {
 
 async function _sendAsync(ctx: ErrorContext): Promise<void> {
   try {
-    const err     = ctx.error instanceof Error ? ctx.error : new Error(String(ctx.error))
-    const message = err.message || String(ctx.error)
+    const err      = ctx.error instanceof Error ? ctx.error : new Error(String(ctx.error))
+    const message  = err.message || String(ctx.error)
+    const capturedAt = Date.now()
 
     const fp = _fingerprint(ctx.service, message)
     const occurrences = (_occurrences.get(fp) ?? 0) + 1
+    const isFirst = _shouldSend(fp)
 
-    if (!_shouldSend(fp)) return
+    const diag     = diagnose(ctx.service, message)
+    const severity = classifySeverity(diag.errorType, message)
 
-    const diag = diagnose(ctx.service, message)
+    // Always persist to DB (every occurrence, not just first)
+    dbWriteDetailedError({
+      service:    ctx.service,
+      location:   ctx.location ?? ctx.jobType ?? ctx.service,
+      errorType:  diag.errorType,
+      rawMessage: sanitise(message),
+      severity,
+      diagnosis:  diag.diagnosis,
+      rootCause:  diag.rootCause,
+      fix:        diag.fix,
+      createdAt:  capturedAt,
+    })
+
+    // Only send Telegram alert for first occurrence in cooldown window
+    if (!isFirst) return
+
     const text = buildMessage(ctx, diag, occurrences)
-
     await sendAlert(ADMIN_IDS, text)
   } catch {
     // Never let the monitoring system crash the server

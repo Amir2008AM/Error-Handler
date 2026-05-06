@@ -55,7 +55,7 @@ function auditLog(userId: number, username: string | undefined, action: string):
 
 // ── Command map ───────────────────────────────────────────────────────────────
 
-type Handler = (lang: Lang) => Promise<string>
+type Handler = (lang: Lang, chatId: number) => Promise<string>
 
 const COMMAND_MAP: Record<string, Handler> = {
   '/stats':           handleStats,
@@ -159,7 +159,7 @@ async function handleMessage(msg: TelegramMessage): Promise<void> {
   }
 
   try {
-    const response = await handler(lang)
+    const response = await handler(lang, chatId)
     await sendMessage(chatId, response)
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)

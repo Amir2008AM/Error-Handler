@@ -10,7 +10,8 @@
 import { getLiveActivity } from './analytics'
 import {
   dbReadGlobalStats, dbReadToolStats, dbReadRecentErrors,
-  dbReadFileStats, dbReadUserStats, dbReadInsights,
+  dbReadFileStats, dbReadUserStats, dbReadInsights, dbReadAllDetailedErrors,
+  type DetailedErrorRecord,
 } from './db'
 import {
   getCpuPercent, getDiskUsage, getMemoryInfo,
@@ -18,6 +19,7 @@ import {
 } from './metrics'
 import { pauseAllQueues, resumeAllQueues, clearAllQueues } from './worker-control'
 import { t, fmt, type Lang } from './i18n'
+import { sendMessage } from './api'
 
 function ms(n: number): string {
   if (n >= 60_000) return `${(n / 60_000).toFixed(1)}m`
@@ -123,14 +125,87 @@ export async function handleUsers(lang: Lang): Promise<string> {
 }
 
 // ── /errors ──────────────────────────────────────────────────────────────────
-export async function handleErrors(lang: Lang): Promise<string> {
-  const errs = dbReadRecentErrors(10)
-  if (!errs.length) return t(lang, 'errors_no_data')
-  const lines = errs.map((e) => {
-    const time = new Date(e.ts).toISOString().slice(11, 19)
-    return `• \`${time}\` [${e.tool}] ${e.message.slice(0, 120)}`
+
+const SEVERITY_LABEL: Record<string, string> = {
+  critical: '⛔ Critical',
+  high:     '🔴 High',
+  medium:   '🟡 Medium',
+  low:      '🟢 Low',
+}
+
+function _formatDetailedError(e: DetailedErrorRecord, idx: number): string {
+  const ts  = new Date(e.createdAt).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
+  const sev = SEVERITY_LABEL[e.severity] ?? '🟡 Medium'
+  return [
+    `*#${idx} — ${e.errorType}*`,
+    `📍 *Service:*  ${e.service}`,
+    `📁 *Location:* \`${e.location || e.service}\``,
+    `🧾 *Error:*    \`${e.rawMessage.slice(0, 180)}\``,
+    `⏱ *Time:*     \`${ts}\``,
+    `⚠️ *Severity:* ${sev}`,
+    `🧠 *Diagnosis:* ${e.diagnosis}`,
+    `🔍 *Root Cause:* ${e.rootCause}`,
+    `💡 *Fix:* ${e.fix}`,
+  ].join('\n')
+}
+
+/** Split pre-built blocks into pages that fit within Telegram's 4096-char limit. */
+function _paginate(header: string, blocks: string[], maxChars = 3800): string[] {
+  const pages: string[] = []
+  let current = header
+
+  for (const block of blocks) {
+    const sep = current === header ? '' : '\n\n' + '─'.repeat(22) + '\n\n'
+    const candidate = current + sep + block
+    if (candidate.length > maxChars && current !== header) {
+      pages.push(current)
+      current = block
+    } else {
+      current = candidate
+    }
+  }
+  if (current) pages.push(current)
+  return pages
+}
+
+export async function handleErrors(lang: Lang, chatId?: number): Promise<string> {
+  // Primary source: fully-diagnosed errors_detail table
+  const detailed = dbReadAllDetailedErrors()
+
+  if (detailed.length > 0) {
+    const total  = detailed.length
+    const header = `📋 *Error Audit Log* — ${total} error${total !== 1 ? 's' : ''} (newest first)\n\n`
+    const blocks = detailed.map((e, i) => _formatDetailedError(e, i + 1))
+    const pages  = _paginate(header, blocks)
+
+    // If caller supplied chatId, send overflow pages directly
+    if (chatId && pages.length > 1) {
+      for (let i = 1; i < pages.length; i++) {
+        await sendMessage(chatId, pages[i])
+      }
+    }
+
+    return pages[0]
+  }
+
+  // Fallback: legacy errors_log (simpler format, still accurate timestamps)
+  const legacy = dbReadRecentErrors(50)
+  if (!legacy.length) return t(lang, 'errors_no_data')
+
+  const header = `📋 *Error Log* — ${legacy.length} record${legacy.length !== 1 ? 's' : ''}\n\n`
+  const blocks = legacy.map((e, i) => {
+    const ts = new Date(e.ts).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
+    return `*#${i + 1}*\n📍 Tool: \`${e.tool}\`\n🧾 Error: \`${e.message.slice(0, 200)}\`\n⏱ Time: \`${ts}\``
   })
-  return [t(lang, 'errors_title'), '', ...lines].join('\n')
+  const pages = _paginate(header, blocks)
+
+  if (chatId && pages.length > 1) {
+    for (let i = 1; i < pages.length; i++) {
+      await sendMessage(chatId, pages[i])
+    }
+  }
+
+  return pages[0]
 }
 
 // ── /live ────────────────────────────────────────────────────────────────────
