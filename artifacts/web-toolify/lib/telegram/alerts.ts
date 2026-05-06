@@ -4,6 +4,12 @@
  * Monitors CPU, queue size, and error rate on a periodic schedule.
  * Sends Telegram messages to all admins when thresholds are breached.
  * Alerts are de-duplicated per type within a cooldown window.
+ *
+ * Safe Bot-Sync Rule compliance:
+ * - checkAlerts() is fully wrapped in try/catch — metric errors never
+ *   kill the interval or propagate to the server
+ * - sendAlert() already uses Promise.allSettled, so a failed delivery
+ *   to one admin does not block others
  */
 
 import { ADMIN_IDS, ALERT_COOLDOWN_MS } from './config'
@@ -29,19 +35,24 @@ function shouldAlert(key: string): boolean {
 async function checkAlerts(): Promise<void> {
   if (ADMIN_IDS.size === 0) return
 
-  const [cpu, queue] = await Promise.all([getCpuPercent(), getQueueCounts()])
-  const stats = dbReadGlobalStats()
+  try {
+    const [cpu, queue] = await Promise.all([getCpuPercent(), getQueueCounts()])
+    const stats = dbReadGlobalStats()
 
-  if (cpu >= THRESHOLDS.CPU_PCT && shouldAlert('cpu')) {
-    await sendAlert(ADMIN_IDS, `🚨 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\` (threshold: ${THRESHOLDS.CPU_PCT}%)`)
-  }
+    if (cpu >= THRESHOLDS.CPU_PCT && shouldAlert('cpu')) {
+      await sendAlert(ADMIN_IDS, `🚨 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\` (threshold: ${THRESHOLDS.CPU_PCT}%)`)
+    }
 
-  if (queue.waiting >= THRESHOLDS.QUEUE_WAITING && shouldAlert('queue')) {
-    await sendAlert(ADMIN_IDS, `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${queue.waiting}\` (threshold: ${THRESHOLDS.QUEUE_WAITING})`)
-  }
+    if (queue.waiting >= THRESHOLDS.QUEUE_WAITING && shouldAlert('queue')) {
+      await sendAlert(ADMIN_IDS, `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${queue.waiting}\` (threshold: ${THRESHOLDS.QUEUE_WAITING})`)
+    }
 
-  if (stats && stats.totalJobs > 10 && stats.successRate < (100 - THRESHOLDS.ERROR_RATE_PCT) && shouldAlert('errors')) {
-    await sendAlert(ADMIN_IDS, `❌ *HIGH ERROR RATE*\nSuccess rate: \`${stats.successRate}%\` (failed: ${stats.failedCount} jobs)`)
+    if (stats && stats.totalJobs > 10 && stats.successRate < (100 - THRESHOLDS.ERROR_RATE_PCT) && shouldAlert('errors')) {
+      await sendAlert(ADMIN_IDS, `❌ *HIGH ERROR RATE*\nSuccess rate: \`${stats.successRate}%\` (failed: ${stats.failedCount} jobs)`)
+    }
+  } catch (err) {
+    // Never let a metrics/alert error crash the interval or bubble up
+    console.warn('[TelegramBot] Alert check failed (non-fatal):', (err as Error).message)
   }
 }
 
@@ -60,6 +71,10 @@ export function stopAlertMonitor(): void {
 
 /** Send a worker-crash alert immediately (called from worker error handler). */
 export async function alertWorkerCrash(group: string, message: string): Promise<void> {
-  if (!shouldAlert(`worker-${group}`)) return
-  await sendAlert(ADMIN_IDS, `💥 *WORKER CRASH*\nGroup: \`${group}\`\nError: ${message.slice(0, 300)}`)
+  try {
+    if (!shouldAlert(`worker-${group}`)) return
+    await sendAlert(ADMIN_IDS, `💥 *WORKER CRASH*\nGroup: \`${group}\`\nError: ${message.slice(0, 300)}`)
+  } catch (err) {
+    console.warn('[TelegramBot] alertWorkerCrash failed (non-fatal):', (err as Error).message)
+  }
 }
