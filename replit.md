@@ -112,7 +112,9 @@ Files: `lib/telegram/` — config, api, analytics, metrics, alerts, rate-limiter
 - **Security**: admin-only (TELEGRAM_ADMIN_IDS env), rate-limited (5s window), all actions audit-logged.
 - **Commands**: `/stats` `/health` `/tools` `/queue` `/users` `/errors` `/live` `/files` `/insights` `/pause-workers` `/resume-workers` `/clear-queue` `/help`
 - **Alerts**: CPU >90%, queue backlog >50, error rate >20% — sent to all admins with 5-min cooldown.
-- **Analytics**: `recordJob()` / `recordError()` called from `job-processor.ts` on every job completion/failure. In-memory ring buffer (10k jobs, 500 errors) — no DB required.
+- **Analytics**: Two-layer store. `recordJob()` / `recordError()` called from `job-processor.ts` on every job completion/failure.
+  - **In-memory ring buffer** — used only by `/live` (last 60 s), zero-latency, ephemeral.
+  - **SQLite (`analytics.db`)** — persistent store for all historical bot commands. Uses `node:sqlite` built-in (Node.js 24, SQLite 3.51.2 — no native compilation). WAL mode. Writes are fire-and-forget (`setImmediate`). Tables: `jobs_history`, `user_activity`, `errors_log`, `file_stats`. DB init happens at server boot in `instrumentation.ts`. Auto-cleanup deletes rows >30 days old hourly. DB file: `./analytics.db` (override via `ANALYTICS_DB_PATH` env var). Logic lives in `lib/telegram/db.ts`. Strictly isolated from all core processing / job-queue code.
 - **Webhook registration**: auto-registered at server boot in `instrumentation.ts` using `REPLIT_DEV_DOMAIN` / `RAILWAY_PUBLIC_DOMAIN`.
 - **Required secrets**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_IDS` (comma-separated user IDs).
 

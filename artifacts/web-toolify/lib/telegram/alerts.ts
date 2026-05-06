@@ -9,7 +9,7 @@
 import { ADMIN_IDS, ALERT_COOLDOWN_MS } from './config'
 import { sendAlert } from './api'
 import { getCpuPercent, getQueueCounts } from './metrics'
-import { getGlobalStats } from './analytics'
+import { dbReadGlobalStats } from './db'
 
 const THRESHOLDS = {
   CPU_PCT:        90,
@@ -29,11 +29,8 @@ function shouldAlert(key: string): boolean {
 async function checkAlerts(): Promise<void> {
   if (ADMIN_IDS.size === 0) return
 
-  const [cpu, queue, stats] = await Promise.all([
-    getCpuPercent(),
-    getQueueCounts(),
-    Promise.resolve(getGlobalStats()),
-  ])
+  const [cpu, queue] = await Promise.all([getCpuPercent(), getQueueCounts()])
+  const stats = dbReadGlobalStats()
 
   if (cpu >= THRESHOLDS.CPU_PCT && shouldAlert('cpu')) {
     await sendAlert(ADMIN_IDS, `🚨 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\` (threshold: ${THRESHOLDS.CPU_PCT}%)`)
@@ -43,7 +40,7 @@ async function checkAlerts(): Promise<void> {
     await sendAlert(ADMIN_IDS, `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${queue.waiting}\` (threshold: ${THRESHOLDS.QUEUE_WAITING})`)
   }
 
-  if (stats.totalJobs > 10 && stats.successRate < (100 - THRESHOLDS.ERROR_RATE_PCT) && shouldAlert('errors')) {
+  if (stats && stats.totalJobs > 10 && stats.successRate < (100 - THRESHOLDS.ERROR_RATE_PCT) && shouldAlert('errors')) {
     await sendAlert(ADMIN_IDS, `❌ *HIGH ERROR RATE*\nSuccess rate: \`${stats.successRate}%\` (failed: ${stats.failedCount} jobs)`)
   }
 }

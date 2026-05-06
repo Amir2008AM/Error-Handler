@@ -10,6 +10,14 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
 
+  // ── 0. Analytics SQLite DB ───────────────────────────────────────────────
+  try {
+    const { getDb } = await import('./lib/telegram/db')
+    getDb() // opens + migrates the DB, sets WAL mode
+  } catch (err) {
+    console.warn('[Instrumentation] Analytics DB failed to init:', (err as Error).message)
+  }
+
   // ── 1. BullMQ workers ────────────────────────────────────────────────────
   if (process.env.REDIS_URL) {
     try {
