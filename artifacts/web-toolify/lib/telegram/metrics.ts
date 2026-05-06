@@ -125,14 +125,11 @@ export async function pingRedis(): Promise<boolean> {
 }
 
 export async function pingDb(): Promise<boolean> {
-  if (!process.env.DATABASE_URL) return false
   try {
-    const { Pool } = await import('pg')
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 3_000 })
-    const client = await pool.connect()
-    await client.query('SELECT 1')
-    client.release()
-    await pool.end()
+    const { getDb } = await import('./db')
+    const db = getDb()
+    if (!db) return false
+    db.prepare('SELECT 1').get()
     return true
   } catch {
     return false
