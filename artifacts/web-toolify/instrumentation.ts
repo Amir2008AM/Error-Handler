@@ -18,6 +18,14 @@ export async function register() {
     console.warn('[Instrumentation] Analytics DB failed to init:', (err as Error).message)
   }
 
+  // ── 0b. Global error monitoring hooks ────────────────────────────────────
+  try {
+    const { installGlobalHooks } = await import('./lib/telegram/error-monitor')
+    installGlobalHooks()
+  } catch (err) {
+    console.warn('[Instrumentation] Error monitor failed to init:', (err as Error).message)
+  }
+
   // ── 1. BullMQ workers ────────────────────────────────────────────────────
   if (process.env.REDIS_URL) {
     try {

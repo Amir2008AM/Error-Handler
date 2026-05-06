@@ -24,6 +24,7 @@ import { getTempStorage } from '../storage'
 import { getJobManager } from './job-manager'
 import { processJob } from './job-processor'
 import type { JobType, JobResult, JobOptions, JobStatusResponse } from './types'
+import { reportError } from '../telegram/error-monitor'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,11 @@ function getRedis(): Redis {
     })
     redisInstance.on('error', (err: Error) => {
       console.error('[BullMQ] Redis connection error:', err.message)
+      reportError({
+        service:  'Redis (BullMQ Connection)',
+        location: 'lib/queue/bullmq-backend.ts → getRedis()',
+        error:    err,
+      })
     })
   }
   return redisInstance
@@ -301,14 +307,22 @@ export function startWorkers(): void {
       console.log(`[Worker:${group}] Job ${job.id} (${job.name}) completed`)
     })
     worker.on('failed', (job, err) => {
-      console.error(`[Worker:${group}] Job ${job?.id} (${job?.name}) failed:`, err.message)
+      const jobType = job?.name ?? 'unknown'
+      console.error(`[Worker:${group}] Job ${job?.id} (${jobType}) failed:`, err.message)
+      reportError({
+        service:  `${group.charAt(0).toUpperCase() + group.slice(1)} Worker`,
+        location: `lib/queue/bullmq-backend.ts → worker.on('failed')`,
+        error:    err,
+        jobType,
+      })
     })
     worker.on('error', (err) => {
       console.error(`[Worker:${group}] Worker error:`, err.message)
-      // Fire alert asynchronously — never block the worker
-      import('../telegram/alerts').then(({ alertWorkerCrash }) => {
-        void alertWorkerCrash(group, err.message)
-      }).catch(() => {})
+      reportError({
+        service:  `${group.charAt(0).toUpperCase() + group.slice(1)} Worker`,
+        location: `lib/queue/bullmq-backend.ts → worker.on('error')`,
+        error:    err,
+      })
     })
 
     workers.push(worker)
