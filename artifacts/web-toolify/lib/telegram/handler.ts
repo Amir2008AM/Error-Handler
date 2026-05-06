@@ -38,6 +38,7 @@ import {
   confirmMenu, languageMenu, backButton, sectionKeyboard, cmdSection,
   menuTitle, confirmTitle,
 } from './menu'
+import { startLiveSession, stopLiveSession } from './live-sessions'
 
 // ── Telegram update types ─────────────────────────────────────────────────────
 
@@ -205,7 +206,23 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
         case 'queue':    result = await handleQueue(lang);          break
         case 'users':    result = await handleUsers(lang);          break
         case 'errors':   result = await handleErrors(lang, chatId); break
-        case 'live':     result = await handleLive(lang);           break
+        case 'live': {
+          // Start auto-refresh session — first tick fires immediately
+          const initialText = await handleLive(lang)
+          const ts   = new Date().toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false })
+          const footer = lang === 'ar'
+            ? `\n\n🕐 آخر تحديث: \`${ts} UTC\``
+            : `\n\n🕐 Updated: \`${ts} UTC\``
+          const stopBtn = {
+            inline_keyboard: [[{
+              text:          lang === 'ar' ? '⏹ إيقاف التحديث' : '⏹ Stop Live',
+              callback_data: 'live:stop',
+            }]],
+          }
+          await editMessageText(chatId, msgId, initialText + footer, { reply_markup: stopBtn })
+          startLiveSession(chatId, msgId, userId, lang)
+          return  // already sent — skip the default editMessageText below
+        }
         case 'files':    result = await handleFiles(lang);          break
         case 'insights': result = await handleInsights(lang);       break
         case 'status':   result = await handleStatus(lang);         break
@@ -261,6 +278,18 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
         { reply_markup: controlMenu(lang) },
       )
     }
+    return
+  }
+
+  // ── Live session stop ─────────────────────────────────────────────────────
+  if (data === 'live:stop' && msgId) {
+    stopLiveSession(chatId)
+    const stoppedText = lang === 'ar'
+      ? '⏹ *تم إيقاف التحديث المباشر*'
+      : '⏹ *Live updates stopped*'
+    await editMessageText(chatId, msgId, stoppedText, {
+      reply_markup: backButton('analytics', lang),
+    })
     return
   }
 
