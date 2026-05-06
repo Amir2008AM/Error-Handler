@@ -26,6 +26,7 @@ import { createZipFromFiles } from '../processing/file-utils'
 import { withTimeout, TIMEOUTS } from '../processing/timeout'
 import { mapWithConcurrency, defaultCpuConcurrency } from '../processing/concurrency'
 import type { ProcessingResult } from '../processing/types'
+import { recordJob, recordError } from '../telegram/analytics'
 
 const MAX_RETRIES = 2
 const RETRY_BASE_DELAY_MS = 1_000
@@ -108,6 +109,7 @@ export async function processJob(jobId: string): Promise<JobResult | null> {
   manager.updateJobStatus(jobId, 'processing', 0)
 
   let lastError: Error = new Error('Processing failed')
+  const startedAt = Date.now()
 
   try {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -135,6 +137,21 @@ export async function processJob(jobId: string): Promise<JobResult | null> {
         } else {
           await manager.setJobResult(jobId, result.buffer, result.fileName, result.mimeType)
         }
+
+        // ── Analytics: record successful job ──────────────────────────────
+        const durationMs = Date.now() - startedAt
+        const primaryFile = job.files[0]
+        const ext = primaryFile?.name.split('.').pop()?.toLowerCase() ?? 'unknown'
+        recordJob({
+          type:       job.type,
+          success:    true,
+          durationMs,
+          fileSizeB:  primaryFile?.size ?? 0,
+          format:     ext,
+          userId:     jobId.slice(0, 12), // anonymised — no PII stored
+          ts:         Date.now(),
+        })
+
         return manager.getJobStatus(jobId)?.result ?? null
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
@@ -144,6 +161,19 @@ export async function processJob(jobId: string): Promise<JobResult | null> {
 
     // All retries exhausted
     manager.setJobError(jobId, lastError.message)
+
+    // ── Analytics: record failed job ──────────────────────────────────────
+    recordJob({
+      type:       job.type,
+      success:    false,
+      durationMs: Date.now() - startedAt,
+      fileSizeB:  job.files[0]?.size ?? 0,
+      format:     job.files[0]?.name.split('.').pop()?.toLowerCase() ?? 'unknown',
+      userId:     jobId.slice(0, 12),
+      ts:         Date.now(),
+    })
+    recordError(job.type, lastError.message)
+
     throw lastError
   } finally {
     manager.finishProcessing()

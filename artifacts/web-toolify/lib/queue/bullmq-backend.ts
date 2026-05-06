@@ -305,6 +305,10 @@ export function startWorkers(): void {
     })
     worker.on('error', (err) => {
       console.error(`[Worker:${group}] Worker error:`, err.message)
+      // Fire alert asynchronously — never block the worker
+      import('../telegram/alerts').then(({ alertWorkerCrash }) => {
+        void alertWorkerCrash(group, err.message)
+      }).catch(() => {})
     })
 
     workers.push(worker)

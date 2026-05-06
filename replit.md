@@ -103,6 +103,19 @@ After processing, all PDF tools store results in `TempStorage` (20-min TTL) and 
 - `PROCESSING_END: 90` — server-side work (Ghostscript/qpdf)
 - `DONE: 100`
 
+### Telegram Admin Bot
+
+Webhook endpoint: `POST /api/telegram/admin-webhook`
+
+Files: `lib/telegram/` — config, api, analytics, metrics, alerts, rate-limiter, worker-control, commands.
+
+- **Security**: admin-only (TELEGRAM_ADMIN_IDS env), rate-limited (5s window), all actions audit-logged.
+- **Commands**: `/stats` `/health` `/tools` `/queue` `/users` `/errors` `/live` `/files` `/insights` `/pause-workers` `/resume-workers` `/clear-queue` `/help`
+- **Alerts**: CPU >90%, queue backlog >50, error rate >20% — sent to all admins with 5-min cooldown.
+- **Analytics**: `recordJob()` / `recordError()` called from `job-processor.ts` on every job completion/failure. In-memory ring buffer (10k jobs, 500 errors) — no DB required.
+- **Webhook registration**: auto-registered at server boot in `instrumentation.ts` using `REPLIT_DEV_DOMAIN` / `RAILWAY_PUBLIC_DOMAIN`.
+- **Required secrets**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_IDS` (comma-separated user IDs).
+
 ### PPT to PDF (`/ppt-to-pdf`)
 
 `lib/processing/document-converter.ts` → `DocumentConverter.pptToPdf()`:
