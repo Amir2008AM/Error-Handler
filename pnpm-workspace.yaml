@@ -69,9 +69,11 @@ autoInstallPeers: false
 
 onlyBuiltDependencies:
   - '@swc/core'
+  - better-sqlite3
   - canvas
   - core-js
   - esbuild
+  - msgpackr-extract
   - msw
   - sharp
   - tesseract.js
