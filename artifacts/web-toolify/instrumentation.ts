@@ -48,12 +48,10 @@ export async function register() {
     console.log('[Instrumentation] REDIS_URL not set — using in-memory queue backend')
   }
 
-  // ── 2. Telegram secrets — HARD FAIL if missing ───────────────────────────
-  if (!process.env.TELEGRAM_BOT_TOKEN) {
-    throw new Error('❌ TELEGRAM_BOT_TOKEN is MISSING — set it in Replit Secrets and restart')
-  }
-  if (!process.env.TELEGRAM_ADMIN_IDS) {
-    throw new Error('❌ TELEGRAM_ADMIN_IDS is MISSING — set it in Replit Secrets and restart')
+  // ── 2. Telegram bot (optional — skipped if secrets are not set) ──────────
+  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_ADMIN_IDS) {
+    console.warn('[TelegramBot] TELEGRAM_BOT_TOKEN or TELEGRAM_ADMIN_IDS not set — Telegram admin bot disabled')
+    return
   }
   console.log('[TelegramBot] ✅ TELEGRAM_BOT_TOKEN loaded')
   console.log('[TelegramBot] ✅ TELEGRAM_ADMIN_IDS loaded')
@@ -73,10 +71,12 @@ export async function register() {
     if (bot) {
       console.log(`[TelegramBot] ✅ Token valid — bot: @${bot.username} (id: ${bot.id})`)
     } else {
-      throw new Error('getMe returned null — token is invalid or Telegram is unreachable')
+      console.warn('[TelegramBot] getMe returned null — token may be invalid or Telegram unreachable')
+      return
     }
   } catch (err) {
-    throw new Error(`❌ Telegram token validation failed: ${(err as Error).message}`)
+    console.warn(`[TelegramBot] Token validation failed: ${(err as Error).message} — bot disabled`)
+    return
   }
 
   // ── 5. Remove stale webhook + start long polling ──────────────────────────
@@ -99,6 +99,6 @@ export async function register() {
     const { startPolling } = await import('./lib/telegram/poller')
     startPolling()
   } catch (err) {
-    throw new Error(`❌ Failed to start Telegram polling: ${(err as Error).message}`)
+    console.warn(`[TelegramBot] Failed to start polling: ${(err as Error).message} — bot disabled`)
   }
 }
