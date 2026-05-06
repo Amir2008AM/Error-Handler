@@ -27,14 +27,14 @@ import {
   handleStats, handleHealth, handleTools, handleQueue,
   handleUsers, handleErrors, handleLive, handleFiles,
   handleInsights, handleStatus, handlePauseWorkers, handleResumeWorkers,
-  handleClearQueue, handleHelp, handleLanguage,
+  handleClearQueue, handleHelp,
 } from './commands'
 import {
   isAuthenticated, isLockedOut, lockoutMinutesLeft, sessionMinutesLeft,
   getStep, setStep, recordFailure, validateName, validatePassword,
 } from './auth'
 import {
-  mainMenu, analyticsMenu, systemMenu, controlMenu, settingsMenu,
+  mainMenu, controlMenu, settingsMenu,
   confirmMenu, languageMenu, backButton, sectionKeyboard, cmdSection,
   menuTitle, confirmTitle,
 } from './menu'
@@ -353,7 +353,8 @@ async function handleMessage(msg: TelegramMessage): Promise<void> {
   }
 
   try {
-    const cmdName = command.slice(1).replace('-', '')
+    // slice(1) removes '/', split('-')[0] gets first word: "pause-workers" → "pause"
+    const cmdName = command.slice(1).split('-')[0]
     const section = cmdSection(cmdName)
     const response = await handler(lang, chatId)
     await sendMessage(chatId, response, { reply_markup: backButton(section, lang) })
