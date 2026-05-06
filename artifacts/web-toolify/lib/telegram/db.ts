@@ -366,3 +366,54 @@ export function dbReadInsights(): DbInsights {
     mostFailing: tools.slice().sort((a, b) => b.failureRate - a.failureRate)[0] ?? null,
   }
 }
+
+// ── User Preferences (language per admin) ────────────────────────────────────
+
+import type { Lang } from './i18n'
+
+function _ensurePreferencesTable(db: DatabaseSync): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id   INTEGER PRIMARY KEY,
+      language  TEXT    NOT NULL DEFAULT 'en'
+    )
+  `)
+}
+
+let _prefsTableReady = false
+function _getPrefsDb(): DatabaseSync | null {
+  const db = getDb()
+  if (!db) return null
+  if (!_prefsTableReady) {
+    _ensurePreferencesTable(db)
+    _prefsTableReady = true
+  }
+  return db
+}
+
+/** Get stored language for an admin user. Returns 'en' if not set or DB unavailable. */
+export function dbGetLanguage(userId: number): Lang {
+  try {
+    const db = _getPrefsDb()
+    if (!db) return 'en'
+    const row = db.prepare(
+      'SELECT language FROM user_preferences WHERE user_id = ?'
+    ).get(userId) as { language: string } | undefined
+    const lang = row?.language
+    return (lang === 'en' || lang === 'ar') ? lang : 'en'
+  } catch { return 'en' }
+}
+
+/** Persist language preference for an admin user (synchronous — user action, not hot path). */
+export function dbSetLanguage(userId: number, lang: Lang): void {
+  try {
+    const db = _getPrefsDb()
+    if (!db) return
+    db.prepare(`
+      INSERT INTO user_preferences (user_id, language) VALUES (?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET language = excluded.language
+    `).run(userId, lang)
+  } catch (err) {
+    console.error('[Analytics DB] dbSetLanguage failed:', (err as Error).message)
+  }
+}

@@ -110,7 +110,8 @@ Webhook endpoint: `POST /api/telegram/admin-webhook`
 Files: `lib/telegram/` — config, api, analytics, metrics, alerts, rate-limiter, worker-control, commands.
 
 - **Security**: admin-only (TELEGRAM_ADMIN_IDS env), rate-limited (5s window), all actions audit-logged.
-- **Commands**: `/stats` `/health` `/tools` `/queue` `/users` `/errors` `/live` `/files` `/insights` `/pause-workers` `/resume-workers` `/clear-queue` `/help`
+- **Commands**: `/stats` `/health` `/tools` `/queue` `/users` `/errors` `/live` `/files` `/insights` `/pause-workers` `/resume-workers` `/clear-queue` `/language` `/help`
+- **Language switching**: `/language` sends an inline keyboard (🇬🇧 English / 🇸🇦 العربية). Preference stored per admin userId in `user_preferences` SQLite table. All command responses use the stored language via `lib/telegram/i18n.ts`. Defaults to English. `callback_query` updates handled in the webhook route.
 - **Alerts**: CPU >90%, queue backlog >50, error rate >20% — sent to all admins with 5-min cooldown.
 - **Analytics**: Two-layer store. `recordJob()` / `recordError()` called from `job-processor.ts` on every job completion/failure.
   - **In-memory ring buffer** — used only by `/live` (last 60 s), zero-latency, ephemeral.

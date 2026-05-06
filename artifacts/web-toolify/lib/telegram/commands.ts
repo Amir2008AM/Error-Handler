@@ -1,10 +1,10 @@
 /**
  * Bot Command Handlers
  *
- * Each handler is async and returns a Markdown string.
+ * Each handler accepts `lang: Lang` and returns a Markdown string in that language.
  * Historical data comes from SQLite (persistent across restarts).
  * Real-time /live data comes from the in-memory ring buffer.
- * All fallback gracefully to "No data yet" if the DB is unavailable.
+ * All handlers fall back to "No data yet" if the DB is unavailable.
  */
 
 import { getLiveActivity } from './analytics'
@@ -17,6 +17,7 @@ import {
   getQueueCounts, fmtBytes, fmtUptime,
 } from './metrics'
 import { pauseAllQueues, resumeAllQueues, clearAllQueues } from './worker-control'
+import { t, fmt, type Lang } from './i18n'
 
 function ms(n: number): string {
   if (n >= 60_000) return `${(n / 60_000).toFixed(1)}m`
@@ -30,24 +31,23 @@ function bar(pct: number): string {
 }
 
 // ── /stats ───────────────────────────────────────────────────────────────────
-export async function handleStats(): Promise<string> {
+export async function handleStats(lang: Lang): Promise<string> {
   const s = dbReadGlobalStats()
-  if (!s) return '📈 *Global Statistics*\n\nNo data yet — process some files first.'
+  if (!s) return t(lang, 'stats_no_data')
   return [
-    '📈 *Global Statistics*',
-    '',
-    `👥 Total users:      \`${s.totalUsers}\``,
-    `🟢 Active (24h):     \`${s.activeUsers24h}\``,
-    `📁 Files processed:  \`${s.totalJobs}\``,
-    `📦 Jobs today:       \`${s.jobsToday}\``,
-    `✅ Success rate:     \`${s.successRate}%\``,
-    `❌ Failed jobs:      \`${s.failedCount}\``,
-    `⏱ Avg processing:   \`${ms(s.avgDurationMs)}\``,
+    t(lang, 'stats_title'), '',
+    `${t(lang, 'stats_total_users')}     \`${s.totalUsers}\``,
+    `${t(lang, 'stats_active_24h')}      \`${s.activeUsers24h}\``,
+    `${t(lang, 'stats_files_processed')} \`${s.totalJobs}\``,
+    `${t(lang, 'stats_jobs_today')}      \`${s.jobsToday}\``,
+    `${t(lang, 'stats_success_rate')}    \`${s.successRate}%\``,
+    `${t(lang, 'stats_failed_jobs')}     \`${s.failedCount}\``,
+    `${t(lang, 'stats_avg_processing')}  \`${ms(s.avgDurationMs)}\``,
   ].join('\n')
 }
 
 // ── /health ──────────────────────────────────────────────────────────────────
-export async function handleHealth(): Promise<string> {
+export async function handleHealth(lang: Lang): Promise<string> {
   const [cpu, disk, queue] = await Promise.all([
     getCpuPercent(),
     getDiskUsage(),
@@ -57,177 +57,181 @@ export async function handleHealth(): Promise<string> {
   const uptime = fmtUptime(Math.floor(process.uptime()))
 
   return [
-    '⚙️ *System Health*',
+    t(lang, 'health_title'), '',
+    `${t(lang, 'health_cpu')}    ${bar(cpu)} \`${cpu}%\``,
+    `${t(lang, 'health_memory')} ${bar(mem.pct)} \`${mem.pct}%\` (${fmtBytes(mem.used)} / ${fmtBytes(mem.total)})`,
+    `${t(lang, 'health_disk')}   ${bar(disk.pct)} \`${disk.pct}%\` (${fmtBytes(disk.used)} / ${fmtBytes(disk.total)})`,
+    `${t(lang, 'health_uptime')} \`${uptime}\``,
     '',
-    `🖥 CPU:    ${bar(cpu)} \`${cpu}%\``,
-    `🧠 Memory: ${bar(mem.pct)} \`${mem.pct}%\` (${fmtBytes(mem.used)} / ${fmtBytes(mem.total)})`,
-    `💾 Disk:   ${bar(disk.pct)} \`${disk.pct}%\` (${fmtBytes(disk.used)} / ${fmtBytes(disk.total)})`,
-    `⏰ Uptime: \`${uptime}\``,
-    '',
-    `⚡ Active jobs:  \`${queue.active}\``,
-    `🕐 Waiting jobs: \`${queue.waiting}\``,
-    `✅ Completed:    \`${queue.completed}\``,
-    `❌ Failed:       \`${queue.failed}\``,
+    `${t(lang, 'health_active_jobs')} \`${queue.active}\``,
+    `${t(lang, 'health_waiting')}     \`${queue.waiting}\``,
+    `${t(lang, 'health_completed')}   \`${queue.completed}\``,
+    `${t(lang, 'health_failed')}      \`${queue.failed}\``,
   ].join('\n')
 }
 
 // ── /tools ───────────────────────────────────────────────────────────────────
-export async function handleTools(): Promise<string> {
+export async function handleTools(lang: Lang): Promise<string> {
   const stats = dbReadToolStats()
-  if (!stats.length) return '🧰 *Tool Analytics*\n\nNo data yet — process some files first.'
-  const lines = stats.slice(0, 15).map((t) =>
-    `• \`${t.name}\` → ${t.count} uses | ${t.successRate}% success | ${ms(t.avgDurationMs)} avg`
+  if (!stats.length) return t(lang, 'tools_no_data')
+  const lines = stats.slice(0, 15).map((tool) =>
+    fmt(t(lang, 'tools_row'), {
+      name:  tool.name,
+      count: tool.count,
+      rate:  tool.successRate,
+      avg:   ms(tool.avgDurationMs),
+    })
   )
-  return ['🧰 *Tool Analytics*', '', ...lines].join('\n')
+  return [t(lang, 'tools_title'), '', ...lines].join('\n')
 }
 
 // ── /queue ───────────────────────────────────────────────────────────────────
-export async function handleQueue(): Promise<string> {
+export async function handleQueue(lang: Lang): Promise<string> {
   const q = await getQueueCounts()
   const lines = Object.entries(q.byQueue).map(([name, c]) => {
     const short = name.replace('toolify-', '')
     return `• \`${short}\`: ⏳${c.waiting} ⚡${c.active} ✅${c.completed} ❌${c.failed}`
   })
   return [
-    '📦 *Queue Status*',
+    t(lang, 'queue_title'), '',
+    `${t(lang, 'queue_waiting')}   \`${q.waiting}\``,
+    `${t(lang, 'queue_active')}    \`${q.active}\``,
+    `${t(lang, 'queue_completed')} \`${q.completed}\``,
+    `${t(lang, 'queue_failed')}    \`${q.failed}\``,
+    `${t(lang, 'queue_delayed')}   \`${q.delayed}\``,
     '',
-    `⏳ Waiting:   \`${q.waiting}\``,
-    `⚡ Active:    \`${q.active}\``,
-    `✅ Completed: \`${q.completed}\``,
-    `❌ Failed:    \`${q.failed}\``,
-    `🔄 Delayed:   \`${q.delayed}\``,
-    '',
-    '*By worker group:*',
+    t(lang, 'queue_by_worker'),
     ...lines,
   ].join('\n')
 }
 
 // ── /users ───────────────────────────────────────────────────────────────────
-export async function handleUsers(): Promise<string> {
+export async function handleUsers(lang: Lang): Promise<string> {
   const u = dbReadUserStats()
-  if (!u) return '👤 *User Analytics*\n\nNo data yet.'
+  if (!u) return t(lang, 'users_no_data')
   const topLines = u.top.slice(0, 5).map((x, i) =>
-    `${i + 1}. \`${x.userId.slice(0, 8)}…\` — ${x.count} requests`
+    `${i + 1}. \`${x.userId.slice(0, 8)}…\` — ${x.count}`
   )
   return [
-    '👤 *User Analytics*',
+    t(lang, 'users_title'), '',
+    `${t(lang, 'users_total')} \`${u.total}\``,
+    `${t(lang, 'users_new')}   \`${u.newToday}\``,
     '',
-    `📊 Total sessions: \`${u.total}\``,
-    `🆕 New today:      \`${u.newToday}\``,
-    '',
-    '*Top users (by requests):*',
-    ...(topLines.length ? topLines : ['No data yet.']),
+    t(lang, 'users_top'),
+    ...(topLines.length ? topLines : [t(lang, 'users_no_top')]),
   ].join('\n')
 }
 
 // ── /errors ──────────────────────────────────────────────────────────────────
-export async function handleErrors(): Promise<string> {
+export async function handleErrors(lang: Lang): Promise<string> {
   const errs = dbReadRecentErrors(10)
-  if (!errs.length) return '❌ *Error Tracking*\n\nNo errors recorded — great sign! ✅'
+  if (!errs.length) return t(lang, 'errors_no_data')
   const lines = errs.map((e) => {
-    const t = new Date(e.ts).toISOString().slice(11, 19)
-    return `• \`${t}\` [${e.tool}] ${e.message.slice(0, 120)}`
+    const time = new Date(e.ts).toISOString().slice(11, 19)
+    return `• \`${time}\` [${e.tool}] ${e.message.slice(0, 120)}`
   })
-  return ['❌ *Last 10 Errors* _(persistent across restarts)_', '', ...lines].join('\n')
+  return [t(lang, 'errors_title'), '', ...lines].join('\n')
 }
 
 // ── /live ────────────────────────────────────────────────────────────────────
-export async function handleLive(): Promise<string> {
-  // /live uses in-memory only — real-time last 60 s
+export async function handleLive(lang: Lang): Promise<string> {
   const live  = getLiveActivity()
   const queue = await getQueueCounts()
-  const byTool = live.byTool.map((x) => `• \`${x.tool}\`: ${x.count} jobs`)
+  const byTool = live.byTool.map((x) => `• \`${x.tool}\`: ${x.count}`)
   return [
-    '🚀 *Live Activity (last 60s)*',
+    t(lang, 'live_title'), '',
+    `${t(lang, 'live_jobs')}     \`${live.recentJobs}\``,
+    `${t(lang, 'live_sessions')} \`${live.activeUsers}\``,
+    `${t(lang, 'live_queue')}    \`${queue.active}\``,
     '',
-    `📦 Jobs processed:          \`${live.recentJobs}\``,
-    `👥 Active sessions:         \`${live.activeUsers}\``,
-    `⚡ Currently active in queue: \`${queue.active}\``,
-    '',
-    '*Tools in use:*',
-    ...(byTool.length ? byTool : ['None right now.']),
+    t(lang, 'live_tools_header'),
+    ...(byTool.length ? byTool : [t(lang, 'live_none')]),
   ].join('\n')
 }
 
 // ── /files ───────────────────────────────────────────────────────────────────
-export async function handleFiles(): Promise<string> {
+export async function handleFiles(lang: Lang): Promise<string> {
   const f = dbReadFileStats()
-  if (!f || f.total === 0) return '📁 *File Statistics*\n\nNo files processed yet.'
+  if (!f || f.total === 0) return t(lang, 'files_no_data')
   return [
-    '📁 *File Statistics* _(persistent)_',
-    '',
-    `📊 Total uploaded:    \`${f.total}\``,
-    `📏 Avg file size:     \`${fmtBytes(f.avgSizeB)}\``,
-    `🏋️ Largest file:      \`${fmtBytes(f.maxSizeB)}\``,
-    `🏆 Most used format:  \`${f.topFormat.toUpperCase()}\``,
+    t(lang, 'files_title'), '',
+    `${t(lang, 'files_total')}   \`${f.total}\``,
+    `${t(lang, 'files_avg')}     \`${fmtBytes(f.avgSizeB)}\``,
+    `${t(lang, 'files_largest')} \`${fmtBytes(f.maxSizeB)}\``,
+    `${t(lang, 'files_top_fmt')} \`${f.topFormat.toUpperCase()}\``,
   ].join('\n')
 }
 
 // ── /insights ────────────────────────────────────────────────────────────────
-export async function handleInsights(): Promise<string> {
-  const i = dbReadInsights()
+export async function handleInsights(lang: Lang): Promise<string> {
+  const i   = dbReadInsights()
   const mem = process.memoryUsage()
   const heapPct = Math.round((mem.heapUsed / mem.heapTotal) * 100)
 
   const suggestions: string[] = []
   if ((i.slowest?.avgDurationMs ?? 0) > 30_000) {
-    suggestions.push(`• \`${i.slowest!.name}\` is slow — consider increasing worker concurrency`)
+    suggestions.push(fmt(t(lang, 'insights_slow_worker'), { tool: i.slowest!.name }))
   }
   if ((i.mostFailing?.failureRate ?? 0) > 10) {
-    suggestions.push(`• \`${i.mostFailing!.name}\` has high failure rate — check server logs`)
+    suggestions.push(fmt(t(lang, 'insights_high_failure'), { tool: i.mostFailing!.name }))
   }
-  if (!suggestions.length) suggestions.push('• No critical bottlenecks detected ✅')
+  if (!suggestions.length) suggestions.push(t(lang, 'insights_ok'))
 
   return [
-    '🧠 *Performance Insights* _(from full history)_',
+    t(lang, 'insights_title'), '',
+    `${t(lang, 'insights_slowest')}      \`${i.slowest?.name ?? 'n/a'}\` (${ms(i.slowest?.avgDurationMs ?? 0)})`,
+    `${t(lang, 'insights_most_failing')} \`${i.mostFailing?.name ?? 'n/a'}\` (${i.mostFailing?.failureRate ?? 0}%)`,
+    `${t(lang, 'insights_heap')}         \`${heapPct}%\``,
     '',
-    `🐢 Slowest tool:  \`${i.slowest?.name ?? 'n/a'}\` (${ms(i.slowest?.avgDurationMs ?? 0)} avg)`,
-    `💥 Most failing:  \`${i.mostFailing?.name ?? 'n/a'}\` (${i.mostFailing?.failureRate ?? 0}% fail rate)`,
-    `🧠 Heap usage:    \`${heapPct}%\``,
-    '',
-    '*Suggestions:*',
+    t(lang, 'insights_suggestions'),
     ...suggestions,
   ].join('\n')
 }
 
 // ── /pause-workers ───────────────────────────────────────────────────────────
-export async function handlePauseWorkers(): Promise<string> {
+export async function handlePauseWorkers(lang: Lang): Promise<string> {
   await pauseAllQueues()
-  return '🛑 *All queues paused.*\nNew jobs will wait. Use /resume-workers to continue.'
+  return t(lang, 'pause_workers')
 }
 
 // ── /resume-workers ──────────────────────────────────────────────────────────
-export async function handleResumeWorkers(): Promise<string> {
+export async function handleResumeWorkers(lang: Lang): Promise<string> {
   await resumeAllQueues()
-  return '▶️ *All queues resumed.*\nWorkers are processing jobs again.'
+  return t(lang, 'resume_workers')
 }
 
 // ── /clear-queue ─────────────────────────────────────────────────────────────
-export async function handleClearQueue(): Promise<string> {
+export async function handleClearQueue(lang: Lang): Promise<string> {
   const removed = await clearAllQueues()
-  return `🧹 *Queue cleared.*\nRemoved \`${removed}\` waiting jobs.`
+  return fmt(t(lang, 'clear_queue'), { count: removed })
+}
+
+// ── /language ────────────────────────────────────────────────────────────────
+export async function handleLanguage(lang: Lang): Promise<string> {
+  return t(lang, 'language_prompt')
 }
 
 // ── /help ────────────────────────────────────────────────────────────────────
-export async function handleHelp(): Promise<string> {
+export async function handleHelp(lang: Lang): Promise<string> {
   return [
-    '🤖 *Toolify Admin Bot*',
-    '_(All stats persist across server restarts via SQLite)_',
+    t(lang, 'help_header'),
+    t(lang, 'help_subtitle'),
     '',
-    '*Analytics:*',
-    '`/stats` — Global platform statistics',
-    '`/health` — CPU, memory, disk, uptime',
-    '`/tools` — Per-tool usage & success rates',
-    '`/queue` — Queue depths per worker group',
-    '`/users` — User counts & top sessions',
-    '`/errors` — Last 10 errors',
-    '`/live` — Real-time activity (last 60s)',
-    '`/files` — File upload statistics',
-    '`/insights` — Bottleneck detection',
+    t(lang, 'help_analytics'),
+    t(lang, 'help_stats_cmd'),
+    t(lang, 'help_health_cmd'),
+    t(lang, 'help_tools_cmd'),
+    t(lang, 'help_queue_cmd'),
+    t(lang, 'help_users_cmd'),
+    t(lang, 'help_errors_cmd'),
+    t(lang, 'help_live_cmd'),
+    t(lang, 'help_files_cmd'),
+    t(lang, 'help_insights_cmd'),
+    t(lang, 'help_language_cmd'),
     '',
-    '*Control:*',
-    '`/pause-workers` — Pause all queues',
-    '`/resume-workers` — Resume all queues',
-    '`/clear-queue` — Remove all waiting jobs',
+    t(lang, 'help_control'),
+    t(lang, 'help_pause_cmd'),
+    t(lang, 'help_resume_cmd'),
+    t(lang, 'help_clear_cmd'),
   ].join('\n')
 }

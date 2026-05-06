@@ -68,3 +68,17 @@ export async function setWebhook(url: string): Promise<boolean> {
 export async function deleteWebhook(): Promise<void> {
   await call('deleteWebhook', { drop_pending_updates: false })
 }
+
+/**
+ * Acknowledge a callback_query (dismisses the loading spinner on the button).
+ * Must be called within 10 s of receiving the callback_query update.
+ */
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string,
+): Promise<void> {
+  await call('answerCallbackQuery', {
+    callback_query_id: callbackQueryId,
+    ...(text ? { text, show_alert: false } : {}),
+  })
+}

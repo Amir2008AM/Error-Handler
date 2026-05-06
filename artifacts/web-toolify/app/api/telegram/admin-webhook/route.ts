@@ -4,24 +4,44 @@
  * Telegram webhook receiver. Handles all incoming updates, validates
  * admin access, applies rate limiting, dispatches commands.
  * Non-blocking: always returns 200 immediately; processing is async.
+ *
+ * Supports:
+ *  - message updates  → command dispatch (with per-user language)
+ *  - callback_query   → inline keyboard responses (language selection)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ADMIN_IDS } from '@/lib/telegram/config'
-import { sendMessage } from '@/lib/telegram/api'
+import { sendMessage, answerCallbackQuery } from '@/lib/telegram/api'
 import { isRateLimited } from '@/lib/telegram/rate-limiter'
+import { dbGetLanguage, dbSetLanguage } from '@/lib/telegram/db'
+import { t, type Lang } from '@/lib/telegram/i18n'
 import {
   handleStats, handleHealth, handleTools, handleQueue,
   handleUsers, handleErrors, handleLive, handleFiles,
   handleInsights, handlePauseWorkers, handleResumeWorkers,
-  handleClearQueue, handleHelp,
+  handleClearQueue, handleHelp, handleLanguage,
 } from '@/lib/telegram/commands'
 
-interface TelegramUser { id: number; first_name?: string; username?: string }
-interface TelegramMessage { message_id: number; from?: TelegramUser; chat: { id: number }; text?: string }
-interface TelegramUpdate { update_id: number; message?: TelegramMessage }
+// ── Telegram update types ─────────────────────────────────────────────────────
 
-/** Validate the update has the minimum required shape. */
+interface TelegramUser    { id: number; first_name?: string; username?: string }
+interface TelegramChat    { id: number }
+interface TelegramMessage { message_id: number; from?: TelegramUser; chat: TelegramChat; text?: string }
+
+interface TelegramCallbackQuery {
+  id:       string
+  from:     TelegramUser
+  message?: { message_id: number; chat: TelegramChat }
+  data?:    string
+}
+
+interface TelegramUpdate {
+  update_id:       number
+  message?:        TelegramMessage
+  callback_query?: TelegramCallbackQuery
+}
+
 function parseUpdate(body: unknown): TelegramUpdate | null {
   if (!body || typeof body !== 'object') return null
   const u = body as Record<string, unknown>
@@ -29,12 +49,15 @@ function parseUpdate(body: unknown): TelegramUpdate | null {
   return u as unknown as TelegramUpdate
 }
 
-/** Log all admin interactions for audit purposes. */
-function auditLog(userId: number, username: string | undefined, command: string): void {
-  console.log(`[TelegramBot] Admin ${userId} (${username ?? 'unknown'}) → ${command}`)
+function auditLog(userId: number, username: string | undefined, action: string): void {
+  console.log(`[TelegramBot] Admin ${userId} (${username ?? 'unknown'}) → ${action}`)
 }
 
-const COMMAND_MAP: Record<string, () => Promise<string>> = {
+// ── Command map ───────────────────────────────────────────────────────────────
+
+type Handler = (lang: Lang) => Promise<string>
+
+const COMMAND_MAP: Record<string, Handler> = {
   '/stats':           handleStats,
   '/health':          handleHealth,
   '/tools':           handleTools,
@@ -51,52 +74,112 @@ const COMMAND_MAP: Record<string, () => Promise<string>> = {
   '/start':           handleHelp,
 }
 
-async function handleUpdate(update: TelegramUpdate): Promise<void> {
-  const msg = update.message
-  if (!msg?.text) return
+// ── Inline keyboard for /language ─────────────────────────────────────────────
 
-  const chatId = msg.chat.id
-  const userId = msg.from?.id
+function languageKeyboard(lang: Lang) {
+  return {
+    inline_keyboard: [[
+      { text: t(lang, 'lang_btn_en'), callback_data: 'set_lang:en' },
+      { text: t(lang, 'lang_btn_ar'), callback_data: 'set_lang:ar' },
+    ]],
+  }
+}
+
+// ── callback_query handler ────────────────────────────────────────────────────
+
+async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> {
+  const userId = query.from.id
+  const chatId = query.message?.chat.id
+
+  if (!chatId || !ADMIN_IDS.has(userId)) {
+    // Acknowledge to dismiss spinner even for non-admins
+    await answerCallbackQuery(query.id)
+    return
+  }
+
+  // Dismiss the button spinner immediately
+  await answerCallbackQuery(query.id)
+
+  if (query.data?.startsWith('set_lang:')) {
+    const newLang = query.data.split(':')[1] as Lang
+    if (newLang !== 'en' && newLang !== 'ar') return
+
+    dbSetLanguage(userId, newLang)
+    auditLog(userId, query.from.username, `set_lang:${newLang}`)
+
+    const confirmKey: 'language_changed_ar' | 'language_changed_en' =
+      newLang === 'ar' ? 'language_changed_ar' : 'language_changed_en'
+    await sendMessage(chatId, t(newLang, confirmKey))
+  }
+}
+
+// ── message handler ───────────────────────────────────────────────────────────
+
+async function handleMessage(msg: TelegramMessage): Promise<void> {
+  if (!msg.text) return
+
+  const chatId   = msg.chat.id
+  const userId   = msg.from?.id
   const username = msg.from?.username
 
-  // ── Security: admin-only ──────────────────────────────────────────────────
+  // Security: admin-only
   if (!userId || !ADMIN_IDS.has(userId)) {
     await sendMessage(chatId, '⛔ Access denied. This bot is restricted to admins only.')
     console.warn(`[TelegramBot] Rejected non-admin userId=${userId} chatId=${chatId}`)
     return
   }
 
-  // ── Rate limiting ─────────────────────────────────────────────────────────
+  // Rate limiting
   if (isRateLimited(userId)) {
-    await sendMessage(chatId, '⏳ Slow down — one command at a time please.')
+    const lang = dbGetLanguage(userId)
+    await sendMessage(chatId, t(lang, 'slow_down'))
     return
   }
 
-  // ── Command dispatch ──────────────────────────────────────────────────────
-  // Strip @BotName suffix if present (e.g. /stats@MyBot)
+  // Strip @BotName suffix (e.g. /stats@MyBot → /stats)
   const rawText = msg.text.trim()
   const command = rawText.split('@')[0].split(' ')[0].toLowerCase()
 
   auditLog(userId, username, command)
 
+  const lang = dbGetLanguage(userId)
+
+  // /language is special — response includes an inline keyboard
+  if (command === '/language') {
+    const text = await handleLanguage(lang)
+    await sendMessage(chatId, text, { reply_markup: languageKeyboard(lang) })
+    return
+  }
+
   const handler = COMMAND_MAP[command]
   if (!handler) {
-    await sendMessage(chatId, `❓ Unknown command: \`${command}\`\n\nType /help to see all commands.`)
+    await sendMessage(chatId, t(lang, 'unknown_command').replace('{cmd}', command))
     return
   }
 
   try {
-    const response = await handler()
+    const response = await handler(lang)
     await sendMessage(chatId, response)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[TelegramBot] Command ${command} error:`, msg)
-    await sendMessage(chatId, `⚠️ Command failed: ${msg.slice(0, 200)}`)
+    const errMsg = err instanceof Error ? err.message : String(err)
+    console.error(`[TelegramBot] Command ${command} error:`, errMsg)
+    await sendMessage(chatId, t(lang, 'command_failed').replace('{err}', errMsg.slice(0, 200)))
   }
 }
 
+// ── Top-level update dispatcher ───────────────────────────────────────────────
+
+async function handleUpdate(update: TelegramUpdate): Promise<void> {
+  if (update.callback_query) {
+    await handleCallbackQuery(update.callback_query)
+  } else if (update.message) {
+    await handleMessage(update.message)
+  }
+}
+
+// ── Next.js route handlers ────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // Always return 200 immediately — Telegram will retry on non-200
   let body: unknown
   try {
     body = await request.json()
@@ -109,7 +192,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false }, { status: 200 })
   }
 
-  // Fire-and-forget — do not await so Telegram gets 200 instantly
+  // Fire-and-forget — return 200 instantly so Telegram doesn't retry
   void handleUpdate(update).catch((err) => {
     console.error('[TelegramBot] Unhandled error in handleUpdate:', err)
   })
@@ -117,7 +200,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ ok: true })
 }
 
-// GET for webhook verification / health check
 export async function GET(): Promise<NextResponse> {
   return NextResponse.json({
     status: 'ok',
