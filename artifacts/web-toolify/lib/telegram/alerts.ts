@@ -12,7 +12,7 @@
  *   to one admin does not block others
  */
 
-import { ADMIN_IDS, ALERT_COOLDOWN_MS } from './config'
+import { getAdminIds, ALERT_COOLDOWN_MS } from './config'
 import { sendAlert } from './api'
 import { getCpuPercent, getQueueCounts } from './metrics'
 import { dbReadGlobalStats } from './db'
@@ -33,22 +33,23 @@ function shouldAlert(key: string): boolean {
 }
 
 async function checkAlerts(): Promise<void> {
-  if (ADMIN_IDS.size === 0) return
+  const adminIds = getAdminIds()
+  if (adminIds.size === 0) return
 
   try {
     const [cpu, queue] = await Promise.all([getCpuPercent(), getQueueCounts()])
     const stats = dbReadGlobalStats()
 
     if (cpu >= THRESHOLDS.CPU_PCT && shouldAlert('cpu')) {
-      await sendAlert(ADMIN_IDS, `🚨 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\` (threshold: ${THRESHOLDS.CPU_PCT}%)`)
+      await sendAlert(adminIds, `🚨 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\` (threshold: ${THRESHOLDS.CPU_PCT}%)`)
     }
 
     if (queue.waiting >= THRESHOLDS.QUEUE_WAITING && shouldAlert('queue')) {
-      await sendAlert(ADMIN_IDS, `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${queue.waiting}\` (threshold: ${THRESHOLDS.QUEUE_WAITING})`)
+      await sendAlert(adminIds, `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${queue.waiting}\` (threshold: ${THRESHOLDS.QUEUE_WAITING})`)
     }
 
     if (stats && stats.totalJobs > 10 && stats.successRate < (100 - THRESHOLDS.ERROR_RATE_PCT) && shouldAlert('errors')) {
-      await sendAlert(ADMIN_IDS, `❌ *HIGH ERROR RATE*\nSuccess rate: \`${stats.successRate}%\` (failed: ${stats.failedCount} jobs)`)
+      await sendAlert(adminIds, `❌ *HIGH ERROR RATE*\nSuccess rate: \`${stats.successRate}%\` (failed: ${stats.failedCount} jobs)`)
     }
   } catch (err) {
     // Never let a metrics/alert error crash the interval or bubble up
@@ -73,7 +74,7 @@ export function stopAlertMonitor(): void {
 export async function alertWorkerCrash(group: string, message: string): Promise<void> {
   try {
     if (!shouldAlert(`worker-${group}`)) return
-    await sendAlert(ADMIN_IDS, `💥 *WORKER CRASH*\nGroup: \`${group}\`\nError: ${message.slice(0, 300)}`)
+    await sendAlert(getAdminIds(), `💥 *WORKER CRASH*\nGroup: \`${group}\`\nError: ${message.slice(0, 300)}`)
   } catch (err) {
     console.warn('[TelegramBot] alertWorkerCrash failed (non-fatal):', (err as Error).message)
   }

@@ -12,7 +12,7 @@
  *  - No external AI: diagnosis is pure rule-based pattern matching (zero latency)
  */
 
-import { ADMIN_IDS, ALERT_COOLDOWN_MS } from './config'
+import { getAdminIds, ALERT_COOLDOWN_MS } from './config'
 import { sendAlert } from './api'
 import { dbWriteDetailedError } from './db'
 
@@ -439,7 +439,7 @@ function buildMessage(ctx: ErrorContext, diag: Diagnosis, occurrences: number): 
  */
 export function reportError(ctx: ErrorContext): void {
   // Guard: no admins configured → skip entirely
-  if (ADMIN_IDS.size === 0) return
+  if (getAdminIds().size === 0) return
 
   setImmediate(() => {
     void _sendAsync(ctx)
@@ -476,7 +476,7 @@ async function _sendAsync(ctx: ErrorContext): Promise<void> {
     if (!isFirst) return
 
     const text = buildMessage(ctx, diag, occurrences)
-    await sendAlert(ADMIN_IDS, text)
+    await sendAlert(getAdminIds(), text)
   } catch {
     // Never let the monitoring system crash the server
   }

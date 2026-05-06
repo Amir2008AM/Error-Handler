@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { parseUpdate, handleUpdate } from '@/lib/telegram/handler'
-import { ADMIN_IDS } from '@/lib/telegram/config'
+import { getAdminIds } from '@/lib/telegram/config'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Guard: if bot token is missing, acknowledge silently without processing
@@ -51,7 +51,7 @@ export async function GET(): Promise<NextResponse> {
   return NextResponse.json({
     status:    process.env.TELEGRAM_BOT_TOKEN ? 'ok' : 'disabled',
     bot:       'Toolify Admin Bot',
-    admins:    ADMIN_IDS.size,
+    admins:    getAdminIds().size,
     configured: !!process.env.TELEGRAM_BOT_TOKEN,
   })
 }
