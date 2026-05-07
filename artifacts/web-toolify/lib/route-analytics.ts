@@ -1,19 +1,20 @@
 /**
  * Route Analytics Tracker
  *
- * Inspired by the Google Analytics beacon pattern:
- * - Fires asynchronously (setImmediate) so it NEVER blocks the HTTP response
- * - Silent — errors are swallowed so a tracking bug can't crash a route
- * - Single call site: trackRouteRequest(request, { tool, ... })
+ * Bridges direct-route processing (synchronous API routes) with both
+ * the Telegram bot's SQLite analytics pipeline AND the Supabase
+ * monitoring layer.
  *
- * Call this from every API route after processing completes (success or failure).
- * It bridges the gap between direct-route processing and the Telegram bot's
- * analytics pipeline (recordJob / recordError → SQLite → bot commands).
+ * Rules:
+ *  - Fires asynchronously (setImmediate) — never blocks the HTTP response
+ *  - Silent — errors are swallowed so a tracking bug can't crash a route
+ *  - Single call site: trackRouteRequest(request, { tool, ... })
  */
 
 import { createHash } from 'node:crypto'
 import type { NextRequest } from 'next/server'
 import { recordJob, recordError } from '@/lib/telegram/analytics'
+import { emitEvent, upsertSession } from '@/lib/monitoring/emitter'
 
 export interface RouteTrackOptions {
   tool:        string
@@ -27,9 +28,7 @@ export interface RouteTrackOptions {
 
 /**
  * Derive a stable, anonymised client fingerprint from the HTTP request.
- * Uses the client IP address hashed with SHA-256 — no PII is stored.
- * The same IP always maps to the same ID so the user_activity UPSERT
- * correctly increments requests_count instead of inserting a new row.
+ * Uses SHA-256 of the client IP — no PII stored.
  */
 export function getClientId(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for')
@@ -41,8 +40,7 @@ export function getClientId(request: NextRequest): string {
 
 /**
  * Preferred call site — automatically derives a stable client ID from the
- * request IP so repeated calls by the same user are de-duplicated in the
- * user_activity table (UPSERT increments requests_count, not a new row).
+ * request IP so repeated calls by the same user are de-duplicated.
  */
 export function trackRouteRequest(
   request: NextRequest,
@@ -54,35 +52,51 @@ export function trackRouteRequest(
 
 /**
  * Fire-and-forget analytics event.
+ * Writes to in-memory ring buffer + SQLite + Supabase.
  * Always safe to call — never throws, never blocks.
  */
 export function trackRoute(opts: RouteTrackOptions): void {
   setImmediate(() => {
     try {
-      const format = (opts.format ?? 'unknown').toLowerCase().replace(/^\./, '')
+      const format   = (opts.format ?? 'unknown').toLowerCase().replace(/^\./, '')
+      const clientId = opts.requestId ?? `anon-${Math.random().toString(36).slice(2, 10)}`
 
+      // 1. SQLite + in-memory (existing pipeline)
       recordJob({
         type:       opts.tool,
         success:    opts.success,
         durationMs: opts.durationMs,
         fileSizeB:  opts.fileSizeB ?? 0,
         format,
-        userId:     opts.requestId ?? `anon-${Math.random().toString(36).slice(2, 10)}`,
+        userId:     clientId,
         ts:         Date.now(),
       })
 
       if (!opts.success && opts.errorMsg) {
         recordError(opts.tool, opts.errorMsg)
       }
+
+      // 2. Supabase — emit upload_received event + upsert session
+      emitEvent({
+        event_type:  'upload_received',
+        tool:        opts.tool,
+        status:      opts.success ? 'completed' : 'failed',
+        duration_ms: opts.durationMs,
+        file_size:   opts.fileSizeB ?? null,
+        session_id:  clientId,
+        error_message: opts.success ? null : (opts.errorMsg?.slice(0, 500) ?? null),
+        metadata:    { format },
+      })
+
+      upsertSession(clientId, opts.tool)
     } catch {
-      // Intentionally silent — analytics must never affect the user experience
+      // Intentionally silent
     }
   })
 }
 
 /**
- * Extract the file extension from a filename, defaulting to a fallback.
- * e.g. 'document.pdf' → 'pdf', 'photo.JPEG' → 'jpeg', 'file' → fallback
+ * Extract the file extension from a filename.
  */
 export function extOf(filename: string | undefined, fallback = 'unknown'): string {
   if (!filename) return fallback

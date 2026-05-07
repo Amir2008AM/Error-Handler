@@ -2,26 +2,23 @@
  * Analytics Store
  *
  * Two-layer architecture:
- *  1. In-memory ring buffer  → used ONLY for /live (last 60 s of activity).
- *     Fast, zero-latency, ephemeral.
- *  2. SQLite (db.ts)         → persistent store for all historical queries.
- *     Writes are fire-and-forget (setImmediate), never block the job pipeline.
- *
- * The rest of the app calls recordJob() / recordError().
- * Commands read from SQLite (see commands.ts + db.ts).
+ *  1. In-memory ring buffer  → /live (last 10s). Fast, ephemeral.
+ *  2. SQLite (db.ts)         → persistent history. Fire-and-forget writes.
+ *  3. Supabase (monitoring/) → cross-restart observability. Fire-and-forget.
  *
  * SCOPE: bot analytics ONLY — no core system data lives here.
  */
 
 import { dbWriteJob, dbWriteError, dbWriteFileStat } from './db'
+import { emitEvent, emitError } from '../monitoring/emitter'
 
 export interface JobRecord {
   type:       string
   success:    boolean
   durationMs: number
   fileSizeB:  number
-  format:     string   // e.g. 'pdf', 'jpg', 'png', 'docx'
-  userId:     string   // anonymised session id — no PII
+  format:     string
+  userId:     string
   ts:         number
 }
 
@@ -31,25 +28,20 @@ export interface ErrorRecord {
   ts:      number
 }
 
-// ── In-memory ring buffer (live view only) ───────────────────────────────────
-// Kept short intentionally — /live only needs last 60 s.
+// ── In-memory ring buffer (live view only) ────────────────────────────────────
 const LIVE_WINDOW_MS = 10_000
-const MAX_LIVE_JOBS  = 2_000   // hard cap to bound memory
+const MAX_LIVE_JOBS  = 2_000
 
 const liveJobs: JobRecord[] = []
 
-// ── Write API (called from job-processor.ts) ─────────────────────────────────
+// ── Write API ─────────────────────────────────────────────────────────────────
 
 export function recordJob(record: JobRecord): void {
   // 1. In-memory (sync, for /live)
   liveJobs.push(record)
   if (liveJobs.length > MAX_LIVE_JOBS) liveJobs.shift()
 
-  // 2. SQLite persistence (non-blocking, fire-and-forget via setImmediate)
-  console.log(
-    `[Analytics] recordJob → type=${record.type} success=${record.success} ` +
-    `duration=${record.durationMs}ms size=${record.fileSizeB}B format=${record.format}`
-  )
+  // 2. SQLite (fire-and-forget)
   dbWriteJob(
     record.userId,
     record.type,
@@ -59,19 +51,40 @@ export function recordJob(record: JobRecord): void {
     record.format,
   )
 
-  // 3. File stat (separate table for file-level analytics)
-  if (record.fileSizeB > 0) {
-    dbWriteFileStat(record.fileSizeB, record.format)
-  }
+  // 3. File stat
+  if (record.fileSizeB > 0) dbWriteFileStat(record.fileSizeB, record.format)
+
+  // 4. Supabase monitoring (fire-and-forget — never blocks)
+  emitEvent({
+    event_type:  record.success ? 'job_completed' : 'job_failed',
+    tool:        record.type,
+    status:      record.success ? 'completed' : 'failed',
+    duration_ms: record.durationMs,
+    file_size:   record.fileSizeB,
+    session_id:  record.userId,
+    metadata:    { format: record.format },
+  })
 }
 
 export function recordError(tool: string, message: string): void {
-  console.log(`[Analytics] recordError → tool=${tool} message=${message.slice(0, 80)}`)
   dbWriteError(tool, message)
+
+  // Supabase enriched error (fire-and-forget)
+  const severity = message.toLowerCase().includes('timeout')   ? 'high'
+                 : message.toLowerCase().includes('crash')     ? 'critical'
+                 : message.toLowerCase().includes('memory')    ? 'high'
+                 : message.toLowerCase().includes('enoent')    ? 'medium'
+                 : 'medium'
+
+  emitError({
+    tool,
+    error_type:    'job_error',
+    error_message: message.slice(0, 500),
+    severity,
+  })
 }
 
-
-// ── Live read API (in-memory only — used by /live command) ───────────────────
+// ── Live read API (in-memory only) ────────────────────────────────────────────
 
 export function getLiveActivity() {
   const cutoff = Date.now() - LIVE_WINDOW_MS
@@ -80,7 +93,7 @@ export function getLiveActivity() {
   for (const j of recent) byTool.set(j.type, (byTool.get(j.type) ?? 0) + 1)
   return {
     recentJobs:  recent.length,
-    activePeriod: '60s',
+    activePeriod: '10s',
     byTool:      [...byTool.entries()].map(([tool, count]) => ({ tool, count })),
     activeUsers: new Set(recent.map((j) => j.userId)).size,
   }

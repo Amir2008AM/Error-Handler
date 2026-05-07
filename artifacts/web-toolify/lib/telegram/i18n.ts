@@ -99,14 +99,17 @@ const STRINGS = {
     insights_ok:            '• No critical bottlenecks detected ✅',
 
     // ── /status ───────────────────────────────────────────────────────────
-    status_title:       '🖥 *System Status*',
-    status_redis_ok:    '🟢 Redis:    `connected`',
-    status_redis_fail:  '🔴 Redis:    `unreachable`',
-    status_db_ok:       '🟢 Database: `connected`',
-    status_db_fail:     '🔴 Database: `unreachable`',
-    status_workers:     '⚙️ Workers:  `{count}` active',
-    status_uptime:      '⏰ Uptime:   `{uptime}`',
-    status_memory:      '🧠 Memory:   `{pct}%` ({used} / {total})',
+    status_title:         '🖥 *System Status*',
+    status_redis_ok:      '🟢 Redis:     `connected`',
+    status_redis_fail:    '🔴 Redis:     `unreachable`',
+    status_db_ok:         '🟢 Database:  `connected`',
+    status_db_fail:       '🔴 Database:  `unreachable`',
+    status_supabase_ok:   '🟢 Supabase:  `connected`',
+    status_supabase_fail: '🔴 Supabase:  `unreachable`',
+    status_supabase_off:  '⚫ Supabase:  `disabled`',
+    status_workers:       '⚙️ Workers:   `{count}` active',
+    status_uptime:        '⏰ Uptime:    `{uptime}`',
+    status_memory:        '🧠 Memory:    `{pct}%` ({used} / {total})',
 
     // ── /pause-workers ────────────────────────────────────────────────────
     pause_workers: '🛑 *All queues paused.*\nNew jobs will wait. Use /resume-workers to continue.',
@@ -231,14 +234,17 @@ const STRINGS = {
     insights_ok:            '• لا توجد اختناقات حرجة ✅',
 
     // ── /status ───────────────────────────────────────────────────────────
-    status_title:       '🖥 *حالة النظام*',
-    status_redis_ok:    '🟢 Redis:    `متصل`',
-    status_redis_fail:  '🔴 Redis:    `غير متاح`',
-    status_db_ok:       '🟢 قاعدة البيانات: `متصلة`',
-    status_db_fail:     '🔴 قاعدة البيانات: `غير متاحة`',
-    status_workers:     '⚙️ العمال:  `{count}` نشط',
-    status_uptime:      '⏰ وقت التشغيل: `{uptime}`',
-    status_memory:      '🧠 الذاكرة:  `{pct}%` ({used} / {total})',
+    status_title:         '🖥 *حالة النظام*',
+    status_redis_ok:      '🟢 Redis:          `متصل`',
+    status_redis_fail:    '🔴 Redis:          `غير متاح`',
+    status_db_ok:         '🟢 قاعدة البيانات: `متصلة`',
+    status_db_fail:       '🔴 قاعدة البيانات: `غير متاحة`',
+    status_supabase_ok:   '🟢 Supabase:       `متصل`',
+    status_supabase_fail: '🔴 Supabase:       `غير متاح`',
+    status_supabase_off:  '⚫ Supabase:       `معطّل`',
+    status_workers:       '⚙️ العمال:         `{count}` نشط',
+    status_uptime:        '⏰ وقت التشغيل:    `{uptime}`',
+    status_memory:        '🧠 الذاكرة:        `{pct}%` ({used} / {total})',
 
     // ── /pause-workers ────────────────────────────────────────────────────
     pause_workers: '🛑 *تم إيقاف جميع قوائم الانتظار.*\nستنتظر المهام الجديدة. استخدم /resume-workers للمتابعة.',

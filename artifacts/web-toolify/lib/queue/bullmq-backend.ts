@@ -25,6 +25,7 @@ import { getJobManager } from './job-manager'
 import { processJob } from './job-processor'
 import type { JobType, JobResult, JobOptions, JobStatusResponse } from './types'
 import { reportError } from '../telegram/error-monitor'
+import { emitEvent, emitWorkerStatus } from '../monitoring/emitter'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -303,8 +304,16 @@ export function startWorkers(): void {
       }
     )
 
+    // Register worker in Supabase monitoring (fire-and-forget)
+    emitWorkerStatus({ worker_id: group, worker_type: group, status: 'idle' })
+
+    worker.on('active', (job) => {
+      emitWorkerStatus({ worker_id: group, worker_type: group, status: 'busy', current_job: job.name })
+      emitEvent({ event_type: 'job_started', tool: job.name, worker_id: group, session_id: job.id ?? undefined })
+    })
     worker.on('completed', (job) => {
       console.log(`[Worker:${group}] Job ${job.id} (${job.name}) completed`)
+      emitWorkerStatus({ worker_id: group, worker_type: group, status: 'idle', current_job: null })
     })
     worker.on('failed', (job, err) => {
       const jobType = job?.name ?? 'unknown'
@@ -315,6 +324,8 @@ export function startWorkers(): void {
         error:    err,
         jobType,
       })
+      emitWorkerStatus({ worker_id: group, worker_type: group, status: 'idle', current_job: null })
+      emitEvent({ event_type: 'job_failed', tool: jobType, worker_id: group, error_message: err.message.slice(0, 500) })
     })
     worker.on('error', (err) => {
       console.error(`[Worker:${group}] Worker error:`, err.message)
@@ -323,6 +334,8 @@ export function startWorkers(): void {
         location: `lib/queue/bullmq-backend.ts → worker.on('error')`,
         error:    err,
       })
+      emitWorkerStatus({ worker_id: group, worker_type: group, status: 'crashed' })
+      emitEvent({ event_type: 'worker_crashed', worker_id: group, error_message: err.message.slice(0, 500) })
     })
 
     workers.push(worker)

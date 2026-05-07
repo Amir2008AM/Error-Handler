@@ -2,12 +2,10 @@
  * Next.js Instrumentation Hook
  *
  * Runs once at server startup (Node.js runtime only).
- * 1.  Validates required Telegram env vars — CRASHES if missing
- * 2.  Starts BullMQ workers (when Redis is available)
- * 3.  Validates the bot token via getMe
- * 4.  Removes any stale webhook and starts long polling
- *     (Replit's dev-domain proxy blocks inbound external connections,
- *      so polling is used in dev; webhooks work in production deployments)
+ * 1.  Init analytics SQLite DB
+ * 2.  Init Supabase monitoring (if configured)
+ * 3.  Start BullMQ workers
+ * 4.  Start Telegram admin bot
  */
 
 export async function register() {
@@ -29,6 +27,18 @@ export async function register() {
     console.warn('[Instrumentation] Error monitor failed to init:', (err as Error).message)
   }
 
+  // ── 0c. Supabase monitoring layer ─────────────────────────────────────────
+  try {
+    const { getMonitoringClient, isMonitoringEnabled } = await import('./lib/monitoring/client')
+    getMonitoringClient()
+    if (isMonitoringEnabled()) {
+      const { startMetricsCollector } = await import('./lib/monitoring/emitter')
+      startMetricsCollector()
+    }
+  } catch (err) {
+    console.warn('[Monitoring] Failed to init (non-fatal):', (err as Error).message)
+  }
+
   // ── 1. BullMQ workers ────────────────────────────────────────────────────
   if (process.env.REDIS_URL) {
     try {
@@ -48,7 +58,7 @@ export async function register() {
     console.log('[Instrumentation] REDIS_URL not set — using in-memory queue backend')
   }
 
-  // ── 2. Telegram bot (optional — skipped if secrets are not set) ──────────
+  // ── 2. Telegram bot (optional) ───────────────────────────────────────────
   if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_ADMIN_IDS) {
     console.warn('[TelegramBot] TELEGRAM_BOT_TOKEN or TELEGRAM_ADMIN_IDS not set — Telegram admin bot disabled')
     return
@@ -56,7 +66,7 @@ export async function register() {
   console.log('[TelegramBot] ✅ TELEGRAM_BOT_TOKEN loaded')
   console.log('[TelegramBot] ✅ TELEGRAM_ADMIN_IDS loaded')
 
-  // ── 3. Telegram alert monitor ─────────────────────────────────────────────
+  // ── 3. Alert monitor ──────────────────────────────────────────────────────
   try {
     const { startAlertMonitor } = await import('./lib/telegram/alerts')
     startAlertMonitor()
@@ -64,7 +74,7 @@ export async function register() {
     console.warn('[Instrumentation] Alert monitor failed to start:', (err as Error).message)
   }
 
-  // ── 4. Validate token via getMe ───────────────────────────────────────────
+  // ── 4. Validate Telegram token ────────────────────────────────────────────
   try {
     const { getMe } = await import('./lib/telegram/api')
     const bot = await getMe()
@@ -80,13 +90,6 @@ export async function register() {
   }
 
   // ── 5. Remove stale webhook + start long polling ──────────────────────────
-  //
-  // Replit's dev-domain proxy blocks inbound requests from external services
-  // (Telegram's servers get a 502). Long polling avoids this entirely:
-  // the bot reaches OUT to Telegram instead of waiting for inbound calls.
-  //
-  // When deployed to production (stable public HTTPS URL), you can switch
-  // back to webhooks by calling setWebhook() here instead.
   try {
     const { deleteWebhook } = await import('./lib/telegram/api')
     await deleteWebhook()
@@ -97,8 +100,6 @@ export async function register() {
 
   try {
     const { stopPolling, startPolling } = await import('./lib/telegram/poller')
-    // Stop any existing poll loop (survives HMR via globalThis) before starting a new one.
-    // This prevents 409 "Conflict: terminated by other getUpdates request" on hot reloads.
     stopPolling()
     startPolling()
   } catch (err) {
