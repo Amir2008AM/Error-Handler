@@ -23,7 +23,7 @@ const STRINGS = {
     // ── /stats ────────────────────────────────────────────────────────────
     stats_title:           '📈 *Global Statistics*',
     stats_no_data:         '📈 *Global Statistics*\n\nNo data yet — process some files first.',
-    stats_online_now:      '🟢 Online now (60s):',
+    stats_online_now:      '🟢 Online now (10s):',
     stats_total_users:     '👥 Unique users (all time):',
     stats_files_processed: '📁 Files processed:',
     stats_jobs_today:      '📦 Jobs today:',
@@ -50,8 +50,8 @@ const STRINGS = {
 
     // ── /queue ────────────────────────────────────────────────────────────
     queue_title:        '📦 *Activity & Queue Status*',
-    queue_live_jobs:    '⚡ Jobs processed (60s):',
-    queue_live_users:   '👥 Active users (60s):',
+    queue_live_jobs:    '⚡ Jobs processed (10s):',
+    queue_live_users:   '👥 Active users (10s):',
     queue_async_header: '*Async queue (Redis):*',
     queue_waiting:      '⏳ Waiting:',
     queue_active:       '⚡ Active:',
@@ -73,7 +73,7 @@ const STRINGS = {
     errors_no_data:  '❌ *Error Tracking*\n\nNo errors recorded — great sign! ✅',
 
     // ── /live ─────────────────────────────────────────────────────────────
-    live_title:          '🚀 *Live Activity (last 60s)*',
+    live_title:          '🚀 *Live Activity (last 10s)*',
     live_jobs:           '📦 Jobs processed:',
     live_sessions:       '👥 Active sessions:',
     live_queue:          '⚡ Currently active in queue:',
@@ -155,7 +155,7 @@ const STRINGS = {
     // ── /stats ────────────────────────────────────────────────────────────
     stats_title:           '📈 *إحصائيات المنصة*',
     stats_no_data:         '📈 *إحصائيات المنصة*\n\nلا توجد بيانات بعد — قم بمعالجة بعض الملفات أولاً.',
-    stats_online_now:      '🟢 متصل الآن (60 ث):',
+    stats_online_now:      '🟢 متصل الآن (10 ث):',
     stats_total_users:     '👥 مستخدمون فريدون (الكل):',
     stats_files_processed: '📁 الملفات المعالجة:',
     stats_jobs_today:      '📦 مهام اليوم:',
@@ -182,8 +182,8 @@ const STRINGS = {
 
     // ── /queue ────────────────────────────────────────────────────────────
     queue_title:        '📦 *النشاط وحالة قائمة الانتظار*',
-    queue_live_jobs:    '⚡ مهام منجزة (60 ث):',
-    queue_live_users:   '👥 مستخدمون نشطون (60 ث):',
+    queue_live_jobs:    '⚡ مهام منجزة (10 ث):',
+    queue_live_users:   '👥 مستخدمون نشطون (10 ث):',
     queue_async_header: '*قائمة الانتظار (Redis):*',
     queue_waiting:      '⏳ منتظرة:',
     queue_active:       '⚡ نشطة:',
@@ -205,7 +205,7 @@ const STRINGS = {
     errors_no_data:  '❌ *تتبع الأخطاء*\n\nلم يتم تسجيل أي أخطاء — علامة جيدة! ✅',
 
     // ── /live ─────────────────────────────────────────────────────────────
-    live_title:         '🚀 *النشاط المباشر (آخر 60 ثانية)*',
+    live_title:         '🚀 *النشاط المباشر (آخر 10 ثواني)*',
     live_jobs:          '📦 المهام المعالجة:',
     live_sessions:      '👥 الجلسات النشطة:',
     live_queue:         '⚡ نشط حالياً في قائمة الانتظار:',

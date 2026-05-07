@@ -33,7 +33,7 @@ export interface ErrorRecord {
 
 // ── In-memory ring buffer (live view only) ───────────────────────────────────
 // Kept short intentionally — /live only needs last 60 s.
-const LIVE_WINDOW_MS = 60_000
+const LIVE_WINDOW_MS = 10_000
 const MAX_LIVE_JOBS  = 2_000   // hard cap to bound memory
 
 const liveJobs: JobRecord[] = []
