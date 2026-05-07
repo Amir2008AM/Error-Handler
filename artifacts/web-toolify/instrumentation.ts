@@ -39,7 +39,15 @@ export async function register() {
     console.warn('[Monitoring] Failed to init (non-fatal):', (err as Error).message)
   }
 
-  // ── 0d. Dashboard engine (background collector + auto-refresh) ───────────
+  // ── 0d. Analytics cache — isolated background collectors (MUST start first) ─
+  try {
+    const { startAnalyticsCache } = await import('./lib/telegram/analytics-cache')
+    startAnalyticsCache()
+  } catch (err) {
+    console.warn('[AC] Failed to start (non-fatal):', (err as Error).message)
+  }
+
+  // ── 0e. Dashboard engine — auto-refresh live sessions ─────────────────────
   try {
     const { startDashboardEngine } = await import('./lib/telegram/dashboard')
     startDashboardEngine()
