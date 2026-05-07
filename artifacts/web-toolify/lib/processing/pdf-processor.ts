@@ -1328,18 +1328,52 @@ export class PDFProcessor extends BaseProcessor {
 
       const processingTime = Date.now() - t0
 
-      // ── Always return the processed file ──────────────────────────────────────
-      // GS result is preferred.  qpdf is used only when GS failed.
-      // The original is never returned silently — if both strategies fail, error out.
+      // ── Pick best result (GS preferred, qpdf fallback) ────────────────────────
       const outputBuffer = gsResult ?? qpdfResult
       if (!outputBuffer) {
         return this.error('Compression failed: Ghostscript and qpdf both failed')
       }
 
       const newSize = outputBuffer.length
-      // compressionRatio: positive = smaller (good), negative = larger (honest)
-      const compressionRatio  = ((inputSize - newSize) / inputSize) * 100
-      const compressionStatus = compressionRatio > 0 ? 'compressed' : 'size_increased'
+      // compressionRatio: positive = smaller (good), negative = larger
+      const compressionRatio = ((inputSize - newSize) / inputSize) * 100
+
+      // ── Meaningful-reduction guard ─────────────────────────────────────────────
+      // Ghostscript sometimes produces a larger file when the source is already
+      // optimised (e.g. a previously compressed PDF, a scanned image PDF, or one
+      // with lossless content that cannot be downsampled further).  Rather than
+      // returning a bigger file as a "success", we detect this case and swap in
+      // the original, marking it as already_optimized so the UI can show a
+      // clear, honest message.
+      //
+      // Threshold: < 1% reduction is treated as "no meaningful saving" —
+      // the overhead of the re-write can exceed any theoretical gain at this scale.
+      const MIN_MEANINGFUL_REDUCTION_PCT = 1
+
+      if (compressionRatio < MIN_MEANINGFUL_REDUCTION_PCT) {
+        // Re-read the original from disk (if we were given a path) or use the
+        // in-memory buffer we already have.  The streamUpload temp file is still
+        // on disk at this point — cleanup only runs in the route's finally block.
+        const originalBuffer: Buffer = sourceBuffer
+          ?? await (await import('node:fs/promises')).readFile(sourcePath!)
+
+        console.log({
+          originalSize:  inputSize,
+          newSize,
+          changePercent: compressionRatio.toFixed(2) + '%',
+          strategyUsed:  gsResult ? 'ghostscript' : 'qpdf',
+          level,
+          status:        'already_optimized — returning original',
+        })
+
+        return this.success(originalBuffer, {
+          inputSize,
+          outputSize:        originalBuffer.length,
+          compressionRatio:  0,
+          compressionStatus: 'already_optimized',
+          processingTime,
+        })
+      }
 
       console.log({
         originalSize:      inputSize,
@@ -1347,14 +1381,14 @@ export class PDFProcessor extends BaseProcessor {
         changePercent:     compressionRatio.toFixed(2) + '%',
         strategyUsed:      gsResult ? 'ghostscript' : 'qpdf',
         level,
-        compressionStatus,
+        compressionStatus: 'compressed',
       })
 
       return this.success(outputBuffer, {
         inputSize,
         outputSize:        newSize,
         compressionRatio,
-        compressionStatus,
+        compressionStatus: 'compressed',
         processingTime,
       })
     } catch (err) {

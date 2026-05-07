@@ -46,7 +46,11 @@ export async function POST(request: NextRequest) {
 
     const compressionRatio  = (result.metadata?.compressionRatio  as number) ?? 0
     const compressionStatus = (result.metadata?.compressionStatus as string) || 'compressed'
-    const outputFilename    = `compressed-${file.filename}`
+    const alreadyOptimized  = compressionStatus === 'already_optimized'
+
+    // When already optimised we return the original — keep the original filename
+    // so the download is clearly labelled and not confusingly prefixed "compressed-".
+    const outputFilename = alreadyOptimized ? file.filename : `compressed-${file.filename}`
 
     const storage = getTempStorage()
     const fileId  = await storage.store(result.data, outputFilename, 'application/pdf')
@@ -56,11 +60,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       fileId,
-      filename: outputFilename,
+      filename:       outputFilename,
       originalSize:   file.size,
       compressedSize: result.data.length,
       compressionRatio,
       compressionStatus,
+      alreadyOptimized,
       level,
     })
   } catch (error) {

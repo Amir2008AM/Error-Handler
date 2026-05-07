@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Upload, Download, Loader2, FileText, TrendingDown, TrendingUp } from 'lucide-react'
+import { Upload, Download, Loader2, FileText, TrendingDown, CheckCircle2 } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -49,7 +49,7 @@ const LEVEL_LABEL: Record<CompressionLevel, string> = {
 }
 
 // compressionStatus sent by the server
-type CompressionStatus = 'compressed' | 'size_increased'
+type CompressionStatus = 'compressed' | 'size_increased' | 'already_optimized'
 
 interface CompressResult {
   fileId:            string
@@ -58,6 +58,7 @@ interface CompressResult {
   compressedSize:    number
   compressionRatio:  number   // positive = smaller, negative = larger
   compressionStatus: CompressionStatus
+  alreadyOptimized:  boolean
   level:             CompressionLevel
 }
 
@@ -125,7 +126,7 @@ export function CompressPdfClient() {
     <ToolPageLayout
       toolId="compress-pdf"
       title="Compress PDF"
-      description="Reduce the file size of your PDF documents. Choose your compression level — compression is always applied."
+      description="Reduce the file size of your PDF documents. Already-optimized PDFs are detected automatically."
     >
       <div className="max-w-2xl mx-auto">
         <BackButton />
@@ -180,41 +181,51 @@ export function CompressPdfClient() {
 
             {/* Result card — shown once done */}
             {result && progress.status === 'completed' && (() => {
-              const ratio   = result.compressionRatio          // raw, can be negative
-              const gained  = ratio > 0                        // true = file got smaller
-              const absPct  = Math.abs(Math.round(ratio))
-              const delta   = result.compressedSize - result.originalSize
-              const absDelta = Math.abs(delta)
+              const { alreadyOptimized, compressionStatus } = result
+              const ratio    = result.compressionRatio
+              const gained   = ratio > 0 && compressionStatus === 'compressed'
+              const absPct   = Math.abs(Math.round(ratio))
+              const savedBytes = result.originalSize - result.compressedSize
+              const absDelta = Math.abs(savedBytes)
 
+              // ── Already optimised — neutral informational state ───────────────
+              if (alreadyOptimized || compressionStatus === 'already_optimized') {
+                return (
+                  <ProcessedFileCard fileId={result.fileId} filename={result.filename}>
+                    <div className="flex items-start gap-3 mt-2">
+                      <CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                      <div className="text-sm space-y-0.5 text-blue-800">
+                        <p className="font-medium">
+                          This PDF is already highly optimized
+                        </p>
+                        <p className="text-blue-700">
+                          No further compression is possible without degrading quality.
+                          Your original file is available to download below.
+                        </p>
+                        <p className="text-blue-600 text-xs mt-1">
+                          Size: {formatSize(result.originalSize)} · Level tried: {LEVEL_LABEL[result.level]}
+                        </p>
+                      </div>
+                    </div>
+                  </ProcessedFileCard>
+                )
+              }
+
+              // ── Successful compression ────────────────────────────────────────
               return (
                 <ProcessedFileCard fileId={result.fileId} filename={result.filename}>
                   <div className="flex items-start gap-3 mt-2">
-                    {gained
-                      ? <TrendingDown className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                      : <TrendingUp   className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    }
-                    <div className={`text-sm space-y-0.5 ${gained ? 'text-green-700' : 'text-amber-700'}`}>
-                      {gained ? (
-                        <p className="font-medium">
-                          Compressed — reduced by {absPct}% ({formatSize(absDelta)} saved)
-                        </p>
-                      ) : (
-                        <p className="font-medium">
-                          Compression applied — file size increased by {absPct}%
-                          {' '}({formatSize(absDelta)} larger)
-                        </p>
-                      )}
+                    <TrendingDown className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                    <div className="text-sm space-y-0.5 text-green-700">
+                      <p className="font-medium">
+                        Compressed — reduced by {absPct}% ({formatSize(absDelta)} saved)
+                      </p>
                       <p>
                         {formatSize(result.originalSize)}
                         {' → '}
                         {formatSize(result.compressedSize)}
                       </p>
                       <p>Level: {LEVEL_LABEL[result.level]}</p>
-                      {!gained && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          This PDF was already highly optimised. The processed file is still available to download.
-                        </p>
-                      )}
                     </div>
                   </div>
                 </ProcessedFileCard>
