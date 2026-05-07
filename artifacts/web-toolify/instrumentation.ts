@@ -39,6 +39,14 @@ export async function register() {
     console.warn('[Monitoring] Failed to init (non-fatal):', (err as Error).message)
   }
 
+  // ── 0d. Dashboard engine (background collector + auto-refresh) ───────────
+  try {
+    const { startDashboardEngine } = await import('./lib/telegram/dashboard')
+    startDashboardEngine()
+  } catch (err) {
+    console.warn('[Dashboard] Failed to start (non-fatal):', (err as Error).message)
+  }
+
   // ── 1. BullMQ workers ────────────────────────────────────────────────────
   if (process.env.REDIS_URL) {
     try {

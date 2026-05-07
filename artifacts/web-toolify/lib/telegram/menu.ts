@@ -5,7 +5,7 @@
  * No manual command typing required.
  *
  * Sections:
- *   Main → Analytics | System | Control | Settings | Help
+ *   Main → Dashboard | Analytics | System | Control | Settings | Help
  *   Analytics → Stats | Users | Tools | Files | Live | Insights
  *   System    → Health | Queue | Errors | Status
  *   Control   → Pause Workers | Resume Workers | Clear Queue
@@ -13,8 +13,9 @@
  *
  * Navigation model:
  *   - Section switches edit the message in-place (no chat noise)
- *   - Command results replace the message text + add a Back button
+ *   - Command results replace the message text + add Refresh + Back buttons
  *   - Destructive actions (Pause, Clear) show a confirm dialog first
+ *   - Every result panel has a 🔄 Refresh button for instant re-fetch
  */
 
 import type { Lang } from './i18n'
@@ -23,7 +24,7 @@ export type InlineButton   = { text: string; callback_data: string }
 export type InlineRow      = InlineButton[]
 export type InlineKeyboard = { inline_keyboard: InlineRow[] }
 
-// ── Section titles (shown as the message text when navigating) ────────────────
+// ── Section titles ────────────────────────────────────────────────────────────
 
 export function menuTitle(section: string, lang: Lang): string {
   const ar = lang === 'ar'
@@ -68,15 +69,18 @@ export function mainMenu(lang: Lang): InlineKeyboard {
   return {
     inline_keyboard: [
       [
-        { text: ar ? '📊 التحليلات' : '📊 Analytics', callback_data: 'menu:analytics' },
-        { text: ar ? '🖥 النظام'    : '🖥 System',    callback_data: 'menu:system'    },
+        { text: ar ? '📊 لوحة التحكم' : '📊 Dashboard',  callback_data: 'cmd:dashboard' },
       ],
       [
-        { text: ar ? '🎛 التحكم'    : '🎛 Control',   callback_data: 'menu:control'   },
-        { text: ar ? '⚙️ الإعدادات' : '⚙️ Settings',  callback_data: 'menu:settings'  },
+        { text: ar ? '📈 التحليلات'  : '📈 Analytics',   callback_data: 'menu:analytics' },
+        { text: ar ? '🖥 النظام'     : '🖥 System',      callback_data: 'menu:system'    },
       ],
       [
-        { text: ar ? '❓ المساعدة'  : '❓ Help',       callback_data: 'cmd:help'       },
+        { text: ar ? '🎛 التحكم'     : '🎛 Control',     callback_data: 'menu:control'   },
+        { text: ar ? '⚙️ الإعدادات'  : '⚙️ Settings',    callback_data: 'menu:settings'  },
+      ],
+      [
+        { text: ar ? '❓ المساعدة'   : '❓ Help',         callback_data: 'cmd:help'       },
       ],
     ],
   }
@@ -113,12 +117,12 @@ export function systemMenu(lang: Lang): InlineKeyboard {
   return {
     inline_keyboard: [
       [
-        { text: ar ? '❤️ الصحة'           : '❤️ Health', callback_data: 'cmd:health' },
-        { text: ar ? '📦 قائمة الانتظار'  : '📦 Queue',  callback_data: 'cmd:queue'  },
+        { text: ar ? '❤️ الصحة'          : '❤️ Health', callback_data: 'cmd:health' },
+        { text: ar ? '📦 قائمة الانتظار' : '📦 Queue',  callback_data: 'cmd:queue'  },
       ],
       [
-        { text: ar ? '❌ الأخطاء'          : '❌ Errors', callback_data: 'cmd:errors' },
-        { text: ar ? '🖥 الحالة'           : '🖥 Status', callback_data: 'cmd:status' },
+        { text: ar ? '❌ الأخطاء'         : '❌ Errors', callback_data: 'cmd:errors' },
+        { text: ar ? '🖥 الحالة'          : '🖥 Status', callback_data: 'cmd:status' },
       ],
       [
         { text: ar ? '◀️ رجوع' : '◀️ Back', callback_data: 'menu:main' },
@@ -132,11 +136,11 @@ export function controlMenu(lang: Lang): InlineKeyboard {
   return {
     inline_keyboard: [
       [
-        { text: ar ? '⏸ إيقاف العمال'        : '⏸ Pause Workers',   callback_data: 'confirm:pause' },
-        { text: ar ? '▶️ استئناف العمال'      : '▶️ Resume Workers',  callback_data: 'cmd:resume'   },
+        { text: ar ? '⏸ إيقاف العمال'        : '⏸ Pause Workers',  callback_data: 'confirm:pause' },
+        { text: ar ? '▶️ استئناف العمال'      : '▶️ Resume Workers', callback_data: 'cmd:resume'   },
       ],
       [
-        { text: ar ? '🧹 مسح قائمة الانتظار' : '🧹 Clear Queue',     callback_data: 'confirm:clear' },
+        { text: ar ? '🧹 مسح قائمة الانتظار' : '🧹 Clear Queue',    callback_data: 'confirm:clear' },
       ],
       [
         { text: ar ? '◀️ رجوع' : '◀️ Back', callback_data: 'menu:main' },
@@ -178,8 +182,8 @@ export function languageMenu(lang: Lang): InlineKeyboard {
   return {
     inline_keyboard: [
       [
-        { text: '🇬🇧 English',   callback_data: 'set_lang:en' },
-        { text: '🇸🇦 العربية',  callback_data: 'set_lang:ar' },
+        { text: '🇬🇧 English',  callback_data: 'set_lang:en' },
+        { text: '🇸🇦 العربية', callback_data: 'set_lang:ar' },
       ],
       [
         { text: ar ? '◀️ رجوع' : '◀️ Back', callback_data: 'menu:settings' },
@@ -188,12 +192,47 @@ export function languageMenu(lang: Lang): InlineKeyboard {
   }
 }
 
-/** Single back-button row appended beneath command results. */
+/**
+ * Refresh + Back button row appended beneath command results.
+ * The Refresh button re-fetches the same command from cache (instant).
+ */
+export function resultButtons(cmd: string, toSection: string, lang: Lang): InlineKeyboard {
+  const ar = lang === 'ar'
+  return {
+    inline_keyboard: [
+      [
+        { text: ar ? '🔄 تحديث' : '🔄 Refresh', callback_data: `refresh:${cmd}` },
+        { text: ar ? '◀️ رجوع'  : '◀️ Back',    callback_data: `menu:${toSection}` },
+      ],
+    ],
+  }
+}
+
+/** Single back-button row (no refresh — for menus that don't support it). */
 export function backButton(toSection: string, lang: Lang): InlineKeyboard {
   const ar = lang === 'ar'
   return {
     inline_keyboard: [
       [{ text: ar ? '◀️ رجوع' : '◀️ Back', callback_data: `menu:${toSection}` }],
+    ],
+  }
+}
+
+/** Dashboard keyboard — Refresh + Live toggle + Back. */
+export function dashboardButtons(lang: Lang, isLive: boolean): InlineKeyboard {
+  const ar = lang === 'ar'
+  return {
+    inline_keyboard: [
+      [
+        { text: ar ? '🔄 تحديث'  : '🔄 Refresh', callback_data: 'refresh:dashboard' },
+        {
+          text:          isLive
+            ? (ar ? '🔴 إيقاف المباشر' : '🔴 Stop Live')
+            : (ar ? '🟢 بث مباشر'      : '🟢 Go Live'),
+          callback_data: isLive ? 'live:stop' : 'live:start',
+        },
+      ],
+      [{ text: ar ? '◀️ رجوع' : '◀️ Back', callback_data: 'menu:main' }],
     ],
   }
 }
@@ -215,5 +254,6 @@ export function cmdSection(cmd: string): string {
   if (['health', 'queue', 'errors', 'status'].includes(cmd))                                    return 'system'
   if (['pause', 'resume', 'clear'].includes(cmd))                                               return 'control'
   if (['language'].includes(cmd))                                                               return 'settings'
+  if (['dashboard'].includes(cmd))                                                              return 'main'
   return 'main'
 }
