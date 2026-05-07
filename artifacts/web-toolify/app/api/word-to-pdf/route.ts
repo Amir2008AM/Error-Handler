@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DocumentConverter } from '@/lib/processing/document-converter'
 import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
-import { trackRoute } from '@/lib/route-analytics'
+import { trackRouteRequest } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const result    = await converter.wordToPdf(buffer, { pageSize, orientation, fontSize })
 
     const baseName = safeFilename(file.filename.replace(/\.(docx?|doc)$/i, ''))
-    trackRoute({ tool: 'word-to-pdf', fileSizeB: file.size, format: 'docx', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(request, { tool: 'word-to-pdf', fileSizeB: file.size, format: 'docx', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.buffer, {
       headers: {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[word-to-pdf]', error)
-    trackRoute({ tool: 'word-to-pdf', fileSizeB: files[0]?.size, format: 'docx', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
+    trackRouteRequest(request, { tool: 'word-to-pdf', fileSizeB: files[0]?.size, format: 'docx', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     const errorMessage = error instanceof Error ? error.message : 'Failed to convert Word to PDF'
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   } finally {

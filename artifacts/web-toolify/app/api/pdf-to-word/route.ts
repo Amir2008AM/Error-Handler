@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
-import { trackRoute } from '@/lib/route-analytics'
+import { trackRouteRequest } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -27,14 +27,14 @@ export async function POST(req: NextRequest) {
     const result = await pdf.toWord({ file: buffer })
 
     if (!result.success || !result.data) {
-      trackRoute({ tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'pdf-to-word failed' })
+      trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'pdf-to-word failed' })
       return NextResponse.json(
         { error: result.error || 'Failed to convert PDF to Word' },
         { status: 500 }
       )
     }
 
-    trackRoute({ tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data, {
       status: 200,
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[pdf-to-word]', err)
-    trackRoute({ tool: 'pdf-to-word', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
+    trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to convert PDF to Word' }, { status: 500 })
   } finally {
     await cleanup()

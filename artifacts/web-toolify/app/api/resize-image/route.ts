@@ -3,7 +3,7 @@ import { image } from '@/lib/processing'
 import type { ImageFormat } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
-import { trackRoute, extOf } from '@/lib/route-analytics'
+import { trackRouteRequest, extOf } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!result.success || !result.data) {
-      trackRoute({ tool: 'resize-image', fileSizeB: file.size, format: extOf(file.filename, 'image'), success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'resize failed' })
+      trackRouteRequest(req, { tool: 'resize-image', fileSizeB: file.size, format: extOf(file.filename, 'image'), success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'resize failed' })
       return NextResponse.json(
         { error: result.error || 'Failed to resize image' },
         { status: 500 }
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     const extension    = image.getExtension(outputFormat)
     const originalName = safeFilename(file.filename.replace(/\.[^/.]+$/, ''))
 
-    trackRoute({ tool: 'resize-image', fileSizeB: file.size, format: extOf(file.filename, 'image'), success: true, durationMs: Date.now() - start })
+    trackRouteRequest(req, { tool: 'resize-image', fileSizeB: file.size, format: extOf(file.filename, 'image'), success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data, {
       status: 200,
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[resize-image]', err)
-    trackRoute({ tool: 'resize-image', fileSizeB: files[0]?.size, format: extOf(files[0]?.filename, 'image'), success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
+    trackRouteRequest(req, { tool: 'resize-image', fileSizeB: files[0]?.size, format: extOf(files[0]?.filename, 'image'), success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to resize image' }, { status: 500 })
   } finally {
     await cleanup()

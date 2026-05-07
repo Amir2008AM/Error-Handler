@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PDFSecurityProcessor, WrongPasswordError } from '@/lib/processing/pdf-security'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
-import { trackRoute } from '@/lib/route-analytics'
+import { trackRouteRequest } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const storage = getTempStorage()
     const fileId = await storage.store(unlockedPdf, outputFilename, 'application/pdf')
 
-    trackRoute({ tool: 'unlock-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(request, { tool: 'unlock-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return NextResponse.json({
       success: true,
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Unlock PDF error:', error)
-    trackRoute({ tool: 'unlock-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
+    trackRouteRequest(request, { tool: 'unlock-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
 
     if (error instanceof WrongPasswordError) {
       return NextResponse.json(

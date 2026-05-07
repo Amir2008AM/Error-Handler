@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
-import { trackRoute } from '@/lib/route-analytics'
+import { trackRouteRequest } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!result.success || !result.data) {
-      trackRoute({ tool: 'split-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'split failed' })
+      trackRouteRequest(req, { tool: 'split-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'split failed' })
       return NextResponse.json(
         { error: result.error || 'Failed to split PDF' },
         { status: 500 }
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     const isZip = result.metadata?.outputFormat === 'zip'
-    trackRoute({ tool: 'split-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(req, { tool: 'split-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data, {
       status: 200,
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[split-pdf]', err)
-    trackRoute({ tool: 'split-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
+    trackRouteRequest(req, { tool: 'split-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to split PDF' }, { status: 500 })
   } finally {
     await cleanup()

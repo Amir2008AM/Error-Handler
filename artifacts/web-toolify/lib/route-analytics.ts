@@ -4,13 +4,15 @@
  * Inspired by the Google Analytics beacon pattern:
  * - Fires asynchronously (setImmediate) so it NEVER blocks the HTTP response
  * - Silent — errors are swallowed so a tracking bug can't crash a route
- * - Single call site: trackRoute({ tool, file, success, durationMs, error })
+ * - Single call site: trackRouteRequest(request, { tool, ... })
  *
  * Call this from every API route after processing completes (success or failure).
  * It bridges the gap between direct-route processing and the Telegram bot's
  * analytics pipeline (recordJob / recordError → SQLite → bot commands).
  */
 
+import { createHash } from 'node:crypto'
+import type { NextRequest } from 'next/server'
 import { recordJob, recordError } from '@/lib/telegram/analytics'
 
 export interface RouteTrackOptions {
@@ -21,6 +23,33 @@ export interface RouteTrackOptions {
   durationMs:  number
   errorMsg?:   string
   requestId?:  string
+}
+
+/**
+ * Derive a stable, anonymised client fingerprint from the HTTP request.
+ * Uses the client IP address hashed with SHA-256 — no PII is stored.
+ * The same IP always maps to the same ID so the user_activity UPSERT
+ * correctly increments requests_count instead of inserting a new row.
+ */
+export function getClientId(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  const realIp    = request.headers.get('x-real-ip')
+  const ip        = (forwarded?.split(',')[0] ?? realIp ?? '').trim()
+  if (!ip) return `anon-${Math.random().toString(36).slice(2, 10)}`
+  return createHash('sha256').update(ip).digest('hex').slice(0, 16)
+}
+
+/**
+ * Preferred call site — automatically derives a stable client ID from the
+ * request IP so repeated calls by the same user are de-duplicated in the
+ * user_activity table (UPSERT increments requests_count, not a new row).
+ */
+export function trackRouteRequest(
+  request: NextRequest,
+  opts: Omit<RouteTrackOptions, 'requestId'>,
+): void {
+  const clientId = getClientId(request)
+  trackRoute({ ...opts, requestId: clientId })
 }
 
 /**
@@ -38,7 +67,7 @@ export function trackRoute(opts: RouteTrackOptions): void {
         durationMs: opts.durationMs,
         fileSizeB:  opts.fileSizeB ?? 0,
         format,
-        userId:     opts.requestId ?? `route-${Date.now().toString(36)}`,
+        userId:     opts.requestId ?? `anon-${Math.random().toString(36).slice(2, 10)}`,
         ts:         Date.now(),
       })
 

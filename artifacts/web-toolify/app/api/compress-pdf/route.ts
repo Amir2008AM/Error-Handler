@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
-import { trackRoute } from '@/lib/route-analytics'
+import { trackRouteRequest } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const result = await pdfProcessor.compress(file.path, level)
 
     if (!result.success || !result.data) {
-      trackRoute({ tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'compress failed' })
+      trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'compress failed' })
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     const storage = getTempStorage()
     const fileId  = await storage.store(result.data, outputFilename, 'application/pdf')
 
-    trackRoute({ tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return NextResponse.json({
       success: true,
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[compress-pdf]', error)
-    trackRoute({ tool: 'compress-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
+    trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to compress PDF' }, { status: 500 })
   } finally {
     await cleanup()

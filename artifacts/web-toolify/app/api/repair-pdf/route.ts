@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { repairPdf, UnrepairableError } from '@/lib/processing/pdf-repair'
 import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
-import { trackRoute } from '@/lib/route-analytics'
+import { trackRouteRequest } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 180
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const result = await repairPdf(buffer)
 
     const outputName = safeFilename(`repaired-${file.filename}`)
-    trackRoute({ tool: 'repair-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(request, { tool: 'repair-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data as unknown as BodyInit, {
       status: 200,
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[repair-pdf]', error)
-    trackRoute({ tool: 'repair-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
+    trackRouteRequest(request, { tool: 'repair-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
 
     if (error instanceof UnrepairableError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 422 })

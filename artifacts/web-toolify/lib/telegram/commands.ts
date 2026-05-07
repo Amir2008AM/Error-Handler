@@ -37,6 +37,7 @@ function bar(pct: number): string {
 export async function handleStats(lang: Lang): Promise<string> {
   const s = dbReadGlobalStats()
   if (!s) return t(lang, 'stats_no_data')
+  const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
   return [
     t(lang, 'stats_title'), '',
     `${t(lang, 'stats_total_users')}     \`${s.totalUsers}\``,
@@ -46,6 +47,8 @@ export async function handleStats(lang: Lang): Promise<string> {
     `${t(lang, 'stats_success_rate')}    \`${s.successRate}%\``,
     `${t(lang, 'stats_failed_jobs')}     \`${s.failedCount}\``,
     `${t(lang, 'stats_avg_processing')}  \`${ms(s.avgDurationMs)}\``,
+    '',
+    `${t(lang, 'stats_generated_at')} \`${generatedAt}\``,
   ].join('\n')
 }
 

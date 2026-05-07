@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
-import { trackRoute } from '@/lib/route-analytics'
+import { trackRouteRequest } from '@/lib/route-analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (!result.success || !result.data) {
-      trackRoute({ tool: 'page-numbers', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'page numbers failed' })
+      trackRouteRequest(request, { tool: 'page-numbers', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'page numbers failed' })
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    trackRoute({ tool: 'page-numbers', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(request, { tool: 'page-numbers', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
 
     return new NextResponse(result.data, {
       headers: {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Page numbers error:', error)
-    trackRoute({ tool: 'page-numbers', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
+    trackRouteRequest(request, { tool: 'page-numbers', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
     return NextResponse.json({ error: 'Failed to add page numbers' }, { status: 500 })
   } finally {
     await cleanup()

@@ -23,13 +23,14 @@ const STRINGS = {
     // ── /stats ────────────────────────────────────────────────────────────
     stats_title:           '📈 *Global Statistics*',
     stats_no_data:         '📈 *Global Statistics*\n\nNo data yet — process some files first.',
-    stats_total_users:     '👥 Total users:',
+    stats_total_users:     '👥 Unique users:',
     stats_active_24h:      '🟢 Active (24h):',
     stats_files_processed: '📁 Files processed:',
     stats_jobs_today:      '📦 Jobs today:',
     stats_success_rate:    '✅ Success rate:',
     stats_failed_jobs:     '❌ Failed jobs:',
     stats_avg_processing:  '⏱ Avg processing:',
+    stats_generated_at:    '🕐 Updated at:',
 
     // ── /health ───────────────────────────────────────────────────────────
     health_title:       '⚙️ *System Health*',
@@ -59,8 +60,8 @@ const STRINGS = {
     // ── /users ────────────────────────────────────────────────────────────
     users_title:    '👤 *User Analytics*',
     users_no_data:  '👤 *User Analytics*\n\nNo data yet.',
-    users_total:    '📊 Total sessions:',
-    users_new:      '🆕 New today:',
+    users_total:    '📊 Unique users (all time):',
+    users_new:      '🟢 Active (last 24h):',
     users_top:      '*Top users (by requests):*',
     users_no_top:   'No data yet.',
 
@@ -151,13 +152,14 @@ const STRINGS = {
     // ── /stats ────────────────────────────────────────────────────────────
     stats_title:           '📈 *إحصائيات المنصة*',
     stats_no_data:         '📈 *إحصائيات المنصة*\n\nلا توجد بيانات بعد — قم بمعالجة بعض الملفات أولاً.',
-    stats_total_users:     '👥 إجمالي المستخدمين:',
+    stats_total_users:     '👥 المستخدمون الفريدون:',
     stats_active_24h:      '🟢 نشط (24 ساعة):',
     stats_files_processed: '📁 الملفات المعالجة:',
     stats_jobs_today:      '📦 مهام اليوم:',
     stats_success_rate:    '✅ معدل النجاح:',
     stats_failed_jobs:     '❌ المهام الفاشلة:',
     stats_avg_processing:  '⏱ متوسط المعالجة:',
+    stats_generated_at:    '🕐 تم التحديث:',
 
     // ── /health ───────────────────────────────────────────────────────────
     health_title:       '⚙️ *صحة النظام*',
@@ -187,8 +189,8 @@ const STRINGS = {
     // ── /users ────────────────────────────────────────────────────────────
     users_title:    '👤 *تحليلات المستخدمين*',
     users_no_data:  '👤 *تحليلات المستخدمين*\n\nلا توجد بيانات بعد.',
-    users_total:    '📊 إجمالي الجلسات:',
-    users_new:      '🆕 جديد اليوم:',
+    users_total:    '📊 مستخدمون فريدون (الكل):',
+    users_new:      '🟢 نشط (آخر 24 ساعة):',
     users_top:      '*أكثر المستخدمين نشاطاً:*',
     users_no_top:   'لا توجد بيانات بعد.',
 
