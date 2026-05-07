@@ -3,22 +3,29 @@ pdf_table_extractor.py
 ======================
 Production-ready PDF → Excel table extraction pipeline.
 
-Pipeline:
-  1. Detect table structure (lattice vs stream) via a fast byte-scan
-  2. Extract tables with Camelot (primary) or pdfplumber (fallback)
-  3. Clean each DataFrame with vectorised pandas ops
+Pipeline (fully automatic — works on ANY PDF):
+  1. Detect whether PDF is text-based or scanned (image-only)
+  2a. Text PDF  → Camelot (primary) or pdfplumber (fallback)
+  2b. Scanned PDF → OCR via Tesseract 5 + pdf2image → table reconstruction
+  3. Clean each DataFrame with vectorised pandas ops (pandas 2/3 compatible)
   4. Write results to a single .xlsx file (one sheet per table + metadata)
 
 Usage:
   python pdf_table_extractor.py input.pdf [output.xlsx]
   python pdf_table_extractor.py *.pdf            # batch mode
+  python pdf_table_extractor.py report.pdf -q    # quiet
+  python pdf_table_extractor.py report.pdf -v    # verbose
 
 Performance notes:
-  - Detection scan reads only the first 128 KB — never the whole PDF
+  - Text/scan detection reads only the first page — never the whole PDF
   - Camelot is invoked once per PDF, pages='all' — no per-page loops
   - DataFrame cleaning uses vectorised str/mask operations — no apply()
-  - openpyxl writes in write-only mode for large sheets (deferred cells)
+  - OCR runs page-by-page with Tesseract 5 (--psm 6 for tabular layouts)
   - Logging is lazy-formatted (% style) — zero cost when level is OFF
+
+Requirements:
+  pip install camelot-py[cv] pdfplumber pandas openpyxl pytesseract pdf2image
+  System: tesseract >= 4, poppler (pdftoppm)
 """
 
 from __future__ import annotations
@@ -77,6 +84,231 @@ def detect_flavor(pdf_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Scan detection — is the PDF image-only (no embedded text)?
+# ---------------------------------------------------------------------------
+
+_MIN_CHARS_PER_PAGE = 40  # fewer than this → treat as scanned
+
+
+def is_scanned_pdf(pdf_path: str) -> bool:
+    """
+    Return True when the PDF appears to have no meaningful embedded text.
+    Uses pdfplumber to extract text from up to the first 3 pages.
+    Cost: opens the file once, reads only text layer — no rendering.
+    """
+    try:
+        import pdfplumber
+        with pdfplumber.open(pdf_path) as pdf:
+            sample_pages = pdf.pages[:3]
+            total_chars = sum(
+                len((p.extract_text() or "").strip())
+                for p in sample_pages
+            )
+            pages_checked = len(sample_pages)
+        avg = total_chars / max(pages_checked, 1)
+        result = avg < _MIN_CHARS_PER_PAGE
+        log.info(
+            "Scan detection: avg %.0f chars/page (threshold %d) → %s",
+            avg, _MIN_CHARS_PER_PAGE, "SCANNED" if result else "text-based",
+        )
+        return result
+    except Exception as exc:
+        log.warning("Scan detection failed (%s) — assuming text-based", exc)
+        return False
+
+
+# ---------------------------------------------------------------------------
+# OCR extraction — for scanned / image-only PDFs
+# ---------------------------------------------------------------------------
+
+def _ocr_page_to_df(image) -> Optional[pd.DataFrame]:
+    """
+    Run Tesseract on a single PIL image and reconstruct a table DataFrame.
+
+    Algorithm (gap-voting — robust to wide title rows):
+      1. Get per-word bounding boxes from Tesseract (TSV output)
+      2. Filter low-confidence / empty tokens
+      3. Cluster words into rows by Y midpoint (55 % of median line height tolerance)
+      4. For EACH ROW find the large horizontal gaps between consecutive words
+         (gap = next_word.left − cur_word.right; large = > 1.5× median inter-word gap)
+      5. Collect all "gap centre-X" positions and build a histogram;
+         peaks with enough votes across rows become column split points
+      6. Assign each word to a column region; concatenate multi-word cells
+      7. Return a DataFrame (rows × cols)
+    """
+    import pytesseract
+    import numpy as np
+
+    data = pytesseract.image_to_data(
+        image,
+        output_type=pytesseract.Output.DATAFRAME,
+        config="--psm 6",
+    )
+
+    # Keep only confident, non-empty words
+    data = data[
+        (data["conf"] >= 30) &
+        (data["text"].astype(str).str.strip() != "") &
+        (data["text"].notna())
+    ].copy()
+
+    if len(data) < 4:
+        return None
+
+    data = data.copy()
+    data["left"]    = data["left"].astype(int)
+    data["width"]   = data["width"].astype(int)
+    data["top"]     = data["top"].astype(int)
+    data["height"]  = data["height"].astype(int)
+    data["x_right"] = data["left"] + data["width"]
+    data["y_mid"]   = data["top"]  + data["height"] / 2.0
+
+    # ── Step 1: cluster words into rows ──────────────────────────────────────
+    median_h = float(data["height"].median())
+    row_tol  = max(8.0, median_h * 0.55)
+
+    data = data.sort_values(["y_mid", "left"]).reset_index(drop=True)
+
+    rows_raw: list[list[tuple[int, int, str]]] = []
+    cur_row:  list[tuple[int, int, str]] = []
+    cur_y = float(data.iloc[0]["y_mid"])
+
+    for _, w in data.iterrows():
+        ym = float(w["y_mid"])
+        if abs(ym - cur_y) <= row_tol:
+            cur_row.append((int(w["left"]), int(w["x_right"]), str(w["text"]).strip()))
+        else:
+            if cur_row:
+                rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
+            cur_row = [(int(w["left"]), int(w["x_right"]), str(w["text"]).strip())]
+            cur_y = ym
+    if cur_row:
+        rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
+
+    if len(rows_raw) < 2:
+        return None
+
+    # ── Step 2: collect ALL inter-word gaps from every multi-word row ────────
+    all_gap_records: list[tuple[int, int]] = []   # (size, centre_x)
+
+    for row in rows_raw:
+        if len(row) < 2:
+            continue
+        for i in range(len(row) - 1):
+            gap_left  = row[i][1]      # right edge of word i
+            gap_right = row[i + 1][0]  # left  edge of word i+1
+            size = gap_right - gap_left
+            if size > 0:
+                all_gap_records.append((size, (gap_left + gap_right) // 2))
+
+    if not all_gap_records:
+        return None
+
+    # ── Step 3: bimodal threshold — find natural split between small (intra-cell)
+    #   and large (inter-column) gaps using the biggest jump in sorted sizes ────
+    sorted_sizes = sorted(s for s, _ in all_gap_records)
+
+    if len(sorted_sizes) < 2:
+        return None
+
+    # Find the largest jump between consecutive sorted gap sizes
+    biggest_jump_idx = int(np.argmax(np.diff(sorted_sizes)))
+    small_max = sorted_sizes[biggest_jump_idx]
+    large_min = sorted_sizes[biggest_jump_idx + 1]
+    col_gap_threshold = (small_max + large_min) // 2
+
+    # If there is no bimodal structure (all gaps similar), bail out
+    if large_min - small_max < 50:
+        return None
+
+    # ── Step 4: cluster column-gap centre-X positions → split points ─────────
+    col_gap_centres = [c for s, c in all_gap_records if s > col_gap_threshold]
+
+    if not col_gap_centres:
+        return None
+
+    x_max = int(data["x_right"].max()) + 1
+    # Bin width = ~5 % of the large-gap size for fine grouping
+    bin_width = max(20, int(large_min * 0.10))
+    n_bins    = max(1, x_max // bin_width + 1)
+
+    hist = np.zeros(n_bins, dtype=np.int32)
+    for gx in col_gap_centres:
+        bi = min(gx // bin_width, n_bins - 1)
+        hist[bi] += 1
+
+    # Treat a bin as a column split if it received any votes
+    col_splits: list[int] = []
+    in_peak   = False
+    peak_vals: list[int] = []
+
+    for bi in range(n_bins):
+        if hist[bi] > 0:
+            if not in_peak:
+                in_peak   = True
+                peak_vals = []
+            peak_vals.extend([bi * bin_width] * int(hist[bi]))
+        else:
+            if in_peak:
+                col_splits.append(int(np.mean(peak_vals)))
+                in_peak   = False
+                peak_vals = []
+    if in_peak and peak_vals:
+        col_splits.append(int(np.mean(peak_vals)))
+
+    col_splits.append(x_max)   # sentinel at right edge
+
+    if len(col_splits) < 2:
+        return None
+
+    ncols = len(col_splits)
+
+    def _col_of(left: int) -> int:
+        for ci, boundary in enumerate(col_splits):
+            if left < boundary:
+                return ci
+        return ncols - 1
+
+    # ── Step 4: build cell matrix ─────────────────────────────────────────────
+    matrix: list[list[str]] = []
+    for row in rows_raw:
+        cells: list[str] = [""] * ncols
+        for left, _right, text in row:
+            ci = _col_of(left)
+            cells[ci] = (cells[ci] + " " + text).strip() if cells[ci] else text
+        matrix.append(cells)
+
+    if not matrix:
+        return None
+
+    return pd.DataFrame(matrix)
+
+
+def _extract_ocr(pdf_path: str) -> list[pd.DataFrame]:
+    """
+    Convert each PDF page to an image and extract tables via Tesseract OCR.
+    Returns a list of DataFrames (one per page that contains a recognisable table).
+    """
+    from pdf2image import convert_from_path
+
+    log.info("OCR extraction starting: converting pages to images …")
+    images = convert_from_path(pdf_path, dpi=300)
+    log.info("OCR: %d page(s) to process", len(images))
+
+    dfs: list[pd.DataFrame] = []
+    for i, img in enumerate(images, start=1):
+        log.debug("OCR: processing page %d/%d", i, len(images))
+        df = _ocr_page_to_df(img)
+        if df is not None and not df.empty:
+            dfs.append(df)
+        else:
+            log.debug("OCR: page %d — no table detected", i)
+
+    log.info("OCR found %d raw table(s)", len(dfs))
+    return dfs
+
+
+# ---------------------------------------------------------------------------
 # Extraction helpers
 # ---------------------------------------------------------------------------
 
@@ -112,17 +344,23 @@ def _extract_pdfplumber(pdf_path: str) -> list[pd.DataFrame]:
 
 def extract_tables(pdf_path: str, flavor: str) -> tuple[list[pd.DataFrame], str]:
     """
-    Try Camelot first; fall back to pdfplumber on any error.
+    Try Camelot first; fall back to pdfplumber; fall back to OCR.
     Returns (list_of_dataframes, engine_used).
     """
     try:
         return _extract_camelot(pdf_path, flavor), f"camelot/{flavor}"
     except Exception as exc:
         log.warning("Camelot failed (%s) — falling back to pdfplumber", exc)
-        try:
-            return _extract_pdfplumber(pdf_path), "pdfplumber"
-        except Exception as exc2:
-            raise RuntimeError(f"Both extractors failed: {exc2}") from exc2
+
+    try:
+        return _extract_pdfplumber(pdf_path), "pdfplumber"
+    except Exception as exc2:
+        log.warning("pdfplumber failed (%s) — falling back to OCR", exc2)
+
+    try:
+        return _extract_ocr(pdf_path), "tesseract-ocr"
+    except Exception as exc3:
+        raise RuntimeError(f"All extractors failed: {exc3}") from exc3
 
 
 # ---------------------------------------------------------------------------
@@ -329,9 +567,29 @@ def write_excel(
 # Per-file orchestrator
 # ---------------------------------------------------------------------------
 
+def _clean_batch(raw_dfs: list[pd.DataFrame]) -> list[pd.DataFrame]:
+    """Run clean_dataframe on a list; skip empty/failed tables. Returns cleaned list."""
+    clean: list[pd.DataFrame] = []
+    for idx, raw in enumerate(raw_dfs):
+        try:
+            df = clean_dataframe(raw)
+            if df is not None:
+                clean.append(df)
+            else:
+                log.debug("Table %d skipped (empty after cleaning)", idx + 1)
+        except Exception as exc:
+            log.warning("Table %d cleaning error — skipping: %s", idx + 1, exc)
+    return clean
+
+
 def process_pdf(pdf_path: str, output_path: Optional[str] = None) -> str:
     """
-    Full pipeline for a single PDF.
+    Full pipeline for a single PDF — text-based or scanned.
+
+    Routing:
+      • Scanned PDF  → OCR (Tesseract) directly
+      • Text PDF     → Camelot → pdfplumber → OCR (if previous yield 0 tables)
+
     Returns the path of the written .xlsx file.
     Raises RuntimeError with a user-friendly message on failure.
     """
@@ -345,33 +603,49 @@ def process_pdf(pdf_path: str, output_path: Optional[str] = None) -> str:
     t0 = time.perf_counter()
     log.info("=== Processing: %s ===", pdf_path)
 
-    # Step 1: auto-detect flavor
-    flavor = detect_flavor(pdf_path)
+    # ── Step 1: detect PDF type ──────────────────────────────────────────────
+    scanned = is_scanned_pdf(pdf_path)
 
-    # Step 2: extract
-    raw_dfs, engine = extract_tables(pdf_path, flavor)
-
-    # Step 3: clean (skip empty/trivial tables silently)
-    clean: list[pd.DataFrame] = []
-    for idx, raw in enumerate(raw_dfs):
+    # ── Step 2: extract ──────────────────────────────────────────────────────
+    if scanned:
+        log.info("Routing to OCR engine (scanned/image PDF detected)")
         try:
-            df = clean_dataframe(raw)
-            if df is not None:
-                clean.append(df)
-            else:
-                log.debug("Table %d skipped (empty after cleaning)", idx + 1)
+            raw_dfs, engine = _extract_ocr(pdf_path), "tesseract-ocr"
         except Exception as exc:
-            log.warning("Table %d cleaning error — skipping: %s", idx + 1, exc)
+            raise RuntimeError(
+                f"OCR extraction failed for '{os.path.basename(pdf_path)}': {exc}"
+            ) from exc
+    else:
+        flavor = detect_flavor(pdf_path)
+        raw_dfs, engine = extract_tables(pdf_path, flavor)
+
+    # ── Step 3: clean ────────────────────────────────────────────────────────
+    clean = _clean_batch(raw_dfs)
+
+    # ── Step 3b: OCR fallback if text-based extraction returned 0 tables ─────
+    if not clean and not scanned:
+        log.info(
+            "Text-based engines found 0 tables — attempting OCR fallback "
+            "(PDF may mix text and image content)"
+        )
+        try:
+            ocr_raw = _extract_ocr(pdf_path)
+            ocr_clean = _clean_batch(ocr_raw)
+            if ocr_clean:
+                clean = ocr_clean
+                engine = "tesseract-ocr (fallback)"
+        except Exception as exc:
+            log.warning("OCR fallback also failed: %s", exc)
 
     if not clean:
         raise RuntimeError(
             f"No usable tables found in '{os.path.basename(pdf_path)}'. "
-            "The PDF may contain only images or non-tabular content."
+            "The PDF may contain no tables or only complex graphical content."
         )
 
     log.info("%d usable table(s) after cleaning", len(clean))
 
-    # Step 4: write Excel
+    # ── Step 4: write Excel ──────────────────────────────────────────────────
     write_excel(clean, output_path, pdf_path, engine)
 
     elapsed = time.perf_counter() - t0
