@@ -514,6 +514,76 @@ export class DocumentConverter {
     }
   }
 
+  // ── PDF → PowerPoint ──────────────────────────────────────────────────
+
+  /**
+   * Convert a PDF document to a PowerPoint presentation (.pptx).
+   * Uses LibreOffice headless: soffice --convert-to pptx input.pdf
+   * Each PDF page is rendered as a slide in the output presentation.
+   */
+  async pdfToPresentation(
+    pdfBuffer: Buffer
+  ): Promise<ConversionResult> {
+    if (!isPdf(pdfBuffer)) {
+      throw new Error('File is not a valid PDF')
+    }
+
+    if (await binaryExists('soffice')) {
+      return withTempDir('lo-pdf-ppt-', async (dir) => {
+        const inFile = join(dir, 'input.pdf')
+        await writeFile(inFile, pdfBuffer)
+
+        const result = await runCli(
+          'soffice',
+          [
+            '--headless',
+            '--norestore',
+            '--nofirststartwizard',
+            '--convert-to', 'pptx',
+            '--outdir', dir,
+            inFile,
+          ],
+          {
+            timeoutMs: 120_000,
+            env: { HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' },
+          }
+        )
+
+        if (result.code !== 0) {
+          throw new Error(
+            `LibreOffice exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(0, 400)}`
+          )
+        }
+
+        const outFile = join(dir, 'input.pptx')
+        const pptxBuffer = await fsReadFile(outFile)
+
+        if (pptxBuffer.length < 4) {
+          throw new Error('LibreOffice produced an empty or invalid PowerPoint file')
+        }
+
+        // Estimate slide count from page count of source PDF
+        let pageCount = 1
+        try {
+          const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+          pageCount = pdfDoc.getPageCount()
+        } catch { /* best-effort */ }
+
+        return {
+          buffer:         pptxBuffer,
+          pageCount,
+          originalFormat: 'pdf',
+          engine:         'libreoffice',
+        }
+      })
+    }
+
+    throw new Error(
+      'LibreOffice (soffice) is required to convert PDF to PowerPoint. ' +
+      'Please ensure it is installed on the server.'
+    )
+  }
+
   // ── Plain text → PDF ──────────────────────────────────────────────────
 
   async textToPdf(

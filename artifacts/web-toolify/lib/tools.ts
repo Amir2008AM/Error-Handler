@@ -243,7 +243,7 @@ export const tools: Tool[] = [
   },
   {
     id: 'ppt-to-pdf',
-    name: 'PPT to PDF',
+    name: 'PowerPoint to PDF',
     description: 'Convert PowerPoint presentations to PDF files.',
     longDescription:
       'Convert your PowerPoint presentations (.pptx, .ppt) to PDF format. Preserves slides, formatting, and layout using LibreOffice.',
@@ -253,6 +253,20 @@ export const tools: Tool[] = [
     color: 'text-red-600',
     bgColor: 'bg-red-50',
     tags: ['powerpoint', 'ppt', 'pptx', 'pdf', 'convert', 'slides'],
+    isNew: true,
+  },
+  {
+    id: 'pdf-to-ppt',
+    name: 'PDF to PowerPoint',
+    description: 'Convert PDF documents to editable PowerPoint presentations.',
+    longDescription:
+      'Transform your PDF documents into editable Microsoft PowerPoint (.pptx) presentations. Each PDF page becomes a slide, preserving layout and content using LibreOffice.',
+    category: 'Converters',
+    slug: 'pdf-to-ppt',
+    icon: 'Presentation',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
+    tags: ['pdf', 'powerpoint', 'pptx', 'convert', 'presentation', 'slides'],
     isNew: true,
   },
   

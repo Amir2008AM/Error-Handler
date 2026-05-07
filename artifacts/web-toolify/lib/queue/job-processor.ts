@@ -89,6 +89,7 @@ const processors: Partial<Record<JobType, ProcessorFunction>> = {
   'convert-image':   processConvertImage,
   'crop-image':      processCropImage,
   'ppt-to-pdf':      processPptToPdf,
+  'pdf-to-ppt':      processPdfToPpt,
 }
 
 export async function processJob(jobId: string): Promise<JobResult | null> {
@@ -784,5 +785,23 @@ async function processPptToPdf(job: Job): Promise<SingleResult> {
     buffer:   result.buffer,
     fileName: `${baseName}.pdf`,
     mimeType: 'application/pdf',
+  }
+}
+
+async function processPdfToPpt(job: Job): Promise<SingleResult> {
+  const converter = new DocumentConverter()
+  const manager   = getJobManager()
+  manager.updateJobProgress(job.id, 10)
+  const result = await withTimeout(
+    converter.pdfToPresentation(job.files[0].buffer),
+    TIMEOUTS.pdfHeavy,
+    'pdf.toPpt'
+  )
+  manager.updateJobProgress(job.id, 90)
+  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
+  return {
+    buffer:   result.buffer,
+    fileName: `${baseName}.pptx`,
+    mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   }
 }
