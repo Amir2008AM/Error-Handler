@@ -91,6 +91,15 @@ export function getDb(): DatabaseSync | null {
       CREATE INDEX IF NOT EXISTS idx_ed_created_at ON errors_detail(created_at DESC);
     `)
 
+    // Remove legacy user IDs written before the IP-hash fix.
+    // Old format: 'route-*', 'test-*', 'anon-*'  New format: 16 hex chars.
+    _db.exec(`
+      DELETE FROM user_activity
+      WHERE user_id LIKE 'route-%'
+         OR user_id LIKE 'test-%'
+         OR user_id LIKE 'anon-%'
+    `)
+
     console.log(`[Analytics DB] node:sqlite ready (WAL) → ${DB_PATH}`)
     _scheduleCleanup(_db)
     return _db

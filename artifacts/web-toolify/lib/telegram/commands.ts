@@ -35,13 +35,14 @@ function bar(pct: number): string {
 
 // ── /stats ───────────────────────────────────────────────────────────────────
 export async function handleStats(lang: Lang): Promise<string> {
-  const s = dbReadGlobalStats()
+  const s    = dbReadGlobalStats()
   if (!s) return t(lang, 'stats_no_data')
+  const live = getLiveActivity()
   const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
   return [
     t(lang, 'stats_title'), '',
+    `${t(lang, 'stats_online_now')}      \`${live.activeUsers}\``,
     `${t(lang, 'stats_total_users')}     \`${s.totalUsers}\``,
-    `${t(lang, 'stats_active_24h')}      \`${s.activeUsers24h}\``,
     `${t(lang, 'stats_files_processed')} \`${s.totalJobs}\``,
     `${t(lang, 'stats_jobs_today')}      \`${s.jobsToday}\``,
     `${t(lang, 'stats_success_rate')}    \`${s.successRate}%\``,
@@ -93,21 +94,24 @@ export async function handleTools(lang: Lang): Promise<string> {
 
 // ── /queue ───────────────────────────────────────────────────────────────────
 export async function handleQueue(lang: Lang): Promise<string> {
-  const q = await getQueueCounts()
+  const q    = await getQueueCounts()
+  const live = getLiveActivity()
   const lines = Object.entries(q.byQueue).map(([name, c]) => {
     const short = name.replace('toolify-', '')
     return `• \`${short}\`: ⏳${c.waiting} ⚡${c.active} ✅${c.completed} ❌${c.failed}`
   })
   return [
     t(lang, 'queue_title'), '',
+    `${t(lang, 'queue_live_jobs')}  \`${live.recentJobs}\``,
+    `${t(lang, 'queue_live_users')} \`${live.activeUsers}\``,
+    '',
+    t(lang, 'queue_async_header'),
     `${t(lang, 'queue_waiting')}   \`${q.waiting}\``,
     `${t(lang, 'queue_active')}    \`${q.active}\``,
     `${t(lang, 'queue_completed')} \`${q.completed}\``,
     `${t(lang, 'queue_failed')}    \`${q.failed}\``,
     `${t(lang, 'queue_delayed')}   \`${q.delayed}\``,
-    '',
-    t(lang, 'queue_by_worker'),
-    ...lines,
+    ...(lines.length ? ['', t(lang, 'queue_by_worker'), ...lines] : []),
   ].join('\n')
 }
 

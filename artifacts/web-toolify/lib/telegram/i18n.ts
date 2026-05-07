@@ -23,8 +23,8 @@ const STRINGS = {
     // ── /stats ────────────────────────────────────────────────────────────
     stats_title:           '📈 *Global Statistics*',
     stats_no_data:         '📈 *Global Statistics*\n\nNo data yet — process some files first.',
-    stats_total_users:     '👥 Unique users:',
-    stats_active_24h:      '🟢 Active (24h):',
+    stats_online_now:      '🟢 Online now (60s):',
+    stats_total_users:     '👥 Unique users (all time):',
     stats_files_processed: '📁 Files processed:',
     stats_jobs_today:      '📦 Jobs today:',
     stats_success_rate:    '✅ Success rate:',
@@ -49,13 +49,16 @@ const STRINGS = {
     tools_row:     '• `{name}` → {count} uses | {rate}% success | {avg} avg',
 
     // ── /queue ────────────────────────────────────────────────────────────
-    queue_title:      '📦 *Queue Status*',
-    queue_waiting:    '⏳ Waiting:',
-    queue_active:     '⚡ Active:',
-    queue_completed:  '✅ Completed:',
-    queue_failed:     '❌ Failed:',
-    queue_delayed:    '🔄 Delayed:',
-    queue_by_worker:  '*By worker group:*',
+    queue_title:        '📦 *Activity & Queue Status*',
+    queue_live_jobs:    '⚡ Jobs processed (60s):',
+    queue_live_users:   '👥 Active users (60s):',
+    queue_async_header: '*Async queue (Redis):*',
+    queue_waiting:      '⏳ Waiting:',
+    queue_active:       '⚡ Active:',
+    queue_completed:    '✅ Completed:',
+    queue_failed:       '❌ Failed:',
+    queue_delayed:      '🔄 Delayed:',
+    queue_by_worker:    '*By worker group:*',
 
     // ── /users ────────────────────────────────────────────────────────────
     users_title:    '👤 *User Analytics*',
@@ -152,8 +155,8 @@ const STRINGS = {
     // ── /stats ────────────────────────────────────────────────────────────
     stats_title:           '📈 *إحصائيات المنصة*',
     stats_no_data:         '📈 *إحصائيات المنصة*\n\nلا توجد بيانات بعد — قم بمعالجة بعض الملفات أولاً.',
-    stats_total_users:     '👥 المستخدمون الفريدون:',
-    stats_active_24h:      '🟢 نشط (24 ساعة):',
+    stats_online_now:      '🟢 متصل الآن (60 ث):',
+    stats_total_users:     '👥 مستخدمون فريدون (الكل):',
     stats_files_processed: '📁 الملفات المعالجة:',
     stats_jobs_today:      '📦 مهام اليوم:',
     stats_success_rate:    '✅ معدل النجاح:',
@@ -178,13 +181,16 @@ const STRINGS = {
     tools_row:     '• `{name}` — {count} استخدام | {rate}% نجاح | متوسط {avg}',
 
     // ── /queue ────────────────────────────────────────────────────────────
-    queue_title:      '📦 *حالة قائمة الانتظار*',
-    queue_waiting:    '⏳ منتظرة:',
-    queue_active:     '⚡ نشطة:',
-    queue_completed:  '✅ مكتملة:',
-    queue_failed:     '❌ فاشلة:',
-    queue_delayed:    '🔄 مؤجلة:',
-    queue_by_worker:  '*حسب مجموعة العمال:*',
+    queue_title:        '📦 *النشاط وحالة قائمة الانتظار*',
+    queue_live_jobs:    '⚡ مهام منجزة (60 ث):',
+    queue_live_users:   '👥 مستخدمون نشطون (60 ث):',
+    queue_async_header: '*قائمة الانتظار (Redis):*',
+    queue_waiting:      '⏳ منتظرة:',
+    queue_active:       '⚡ نشطة:',
+    queue_completed:    '✅ مكتملة:',
+    queue_failed:       '❌ فاشلة:',
+    queue_delayed:      '🔄 مؤجلة:',
+    queue_by_worker:    '*حسب مجموعة العمال:*',
 
     // ── /users ────────────────────────────────────────────────────────────
     users_title:    '👤 *تحليلات المستخدمين*',
