@@ -52,8 +52,19 @@ else
   echo "[start-prod] Redis not found — queues will use in-memory fallback"
 fi
 
-# ── 3. Start Next.js (uses Railway PORT or defaults to 5000) ──────────────────
-export REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
+# ── 3. Only advertise REDIS_URL if Redis is actually reachable ────────────────
+# If REDIS_URL was already set in the environment (e.g. Railway Redis addon),
+# keep it as-is. Otherwise only set it to localhost if Redis responded to ping.
+if [ -z "$REDIS_URL" ]; then
+  if [ -n "$REDIS_CLI" ] && "$REDIS_CLI" ping >/dev/null 2>&1; then
+    export REDIS_URL="redis://localhost:6379"
+    echo "[start-prod] Redis confirmed — REDIS_URL set to redis://localhost:6379"
+  else
+    echo "[start-prod] Redis not reachable — REDIS_URL left unset (in-memory queue)"
+  fi
+fi
+
+# ── 4. Start Next.js (uses Railway PORT or defaults to 5000) ──────────────────
 export PORT="${PORT:-5000}"
 
 echo "[start-prod] Starting Next.js on port $PORT (app dir: $APP_DIR)..."
