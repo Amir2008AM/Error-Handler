@@ -1,2 +1,17 @@
 [phases.setup]
-nixPkgs = ['...', 'qpdf', 'ghostscript']
+nixPkgs = [
+  'redis',
+  'qpdf',
+  'ghostscript',
+  'tesseract5',
+  'wkhtmltopdf',
+  'libreoffice-fresh',
+  'pixman',
+  'librsvg',
+  'giflib',
+  'libjpeg',
+  'pango',
+  'cairo',
+  'pkg-config',
+  'libuuid'
+]
