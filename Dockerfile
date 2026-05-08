@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librsvg2-dev \
     build-essential \
     python3 \
+    python3-pip \
     # tesseract OCR
     tesseract-ocr \
     libtesseract-dev \
@@ -24,6 +25,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation \
     fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages required by the Excel → PDF engine
+COPY requirements.txt ./
+RUN pip3 install --break-system-packages -r requirements.txt
+
+# Validate Python engine dependencies are present
+RUN python3 -c "import arabic_reshaper, bidi, reportlab, openpyxl; print('Python Excel engine OK')"
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10 --activate

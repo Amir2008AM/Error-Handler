@@ -288,13 +288,30 @@ export class DocumentConverter {
 
     // 1. Python engine — best Arabic quality (matches ilovepdf.com output)
     if (isXlsx) {
-      try {
-        return await this.pythonArabicExcelToPdf(xlsxBuffer, options)
-      } catch (err) {
+      // Quick dependency check before committing to the Python path.
+      // If any package is missing (e.g. fresh Railway deploy without pip install),
+      // we log a clear warning and skip straight to LibreOffice rather than
+      // letting the Python subprocess fail with an unhelpful ImportError.
+      const pythonCheck = await runCli(
+        'python3',
+        ['-c', 'import arabic_reshaper, bidi, reportlab, openpyxl; print("ok")'],
+        { timeoutMs: 5_000 }
+      ).catch(() => null)
+
+      if (!pythonCheck || pythonCheck.code !== 0 || !pythonCheck.stdout.includes('ok')) {
         console.warn(
-          '[DocumentConverter] Python Arabic Excel→PDF failed, trying LibreOffice:',
-          err instanceof Error ? err.message : String(err)
+          '[DocumentConverter] Python Excel engine unavailable - missing dependencies:',
+          pythonCheck?.stderr?.trim() ?? 'python3 not found'
         )
+      } else {
+        try {
+          return await this.pythonArabicExcelToPdf(xlsxBuffer, options)
+        } catch (err) {
+          console.warn(
+            '[DocumentConverter] Python Arabic Excel→PDF failed, trying LibreOffice:',
+            err instanceof Error ? err.message : String(err)
+          )
+        }
       }
     }
 
