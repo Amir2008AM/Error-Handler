@@ -67,8 +67,12 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          ...(isProd
+            ? [
+                { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+                { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+              ]
+            : []),
           ...(isProd
             ? [
                 {
