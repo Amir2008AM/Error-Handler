@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
         'X-Page-Count': result.pageCount.toString(),
+        'X-Engine-Used': result.engine ?? 'unknown',
         'Cache-Control': 'no-store',
       },
     })
