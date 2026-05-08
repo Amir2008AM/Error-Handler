@@ -82,6 +82,32 @@ _CHAR_PT_FACTOR       = 6.0    # Excel char unit → PDF points (empirical)
 _MIN_COL_W_PT         = 20.0   # minimum column width in points
 _MAX_COL_W_PT         = 300.0  # maximum column width in points
 
+# ── Arabic typography calibration ────────────────────────────────────────────
+#
+# Root cause: Amiri font metrics are unusual.
+#   unitsPerEm = 1000, ascent = 1124, descent = -634
+#   Total metric span = 1758 units = 1.758 × em
+#
+# Effect: At a nominal font size S, Amiri's glyphs occupy a vertical box of
+#   (1124 + 634) / 1000 × S = 1.758 × S points.
+# At 9pt that's 15.83pt — far larger than the 11.25pt leading used by Latin.
+# This causes Arabic rows to expand, making text appear inflated.
+#
+# Fix: apply a visual calibration factor so Amiri at scale×S occupies the
+# same visual height as a standard Latin font at S.
+#   AMIRI_SIZE_SCALE = em / metric_span × correction
+#                    = 1000 / 1758 × 1.0  ≈ 0.569  (pure normalisation)
+# In practice we use 0.82 — this preserves readability while eliminating the
+# inflation, and has been calibrated against iLovePDF / Adobe Acrobat output.
+#
+AMIRI_SIZE_SCALE    = 0.82   # applied to font_size when rendering in Amiri
+AMIRI_LEADING_SCALE = 1.10   # leading factor for Arabic (tighter than Latin)
+LATIN_LEADING_SCALE = 1.15   # leading factor for Latin / mixed text
+#
+# Cell padding (points) — kept tight to match Excel's visual density.
+_CELL_PAD_V = 2   # top / bottom  (was 3 — reduced to prevent row expansion)
+_CELL_PAD_H = 4   # left / right
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1.  Font registry
@@ -477,14 +503,17 @@ def analyze_workbook(wb: openpyxl.Workbook) -> list[SheetLayout]:
                 cells[(ri1 - 1, ci1 - 1)] = info
 
         # ── Row heights (Excel points → PDF points 1:1) ───────────────────
+        # Use Excel row height directly — no artificial inflation.
+        # ReportLab will still expand a row if content overflows, but we
+        # avoid pre-inflating rows which compounds the Arabic glyph issue.
         row_heights = []
         for ri1 in range(1, max_row + 1):
             if ri1 in hidden_rows:
                 continue
             rd = ws.row_dimensions.get(ri1)
             h  = float(rd.height) if rd and rd.height else _EXCEL_DEFAULT_ROW_H
-            # Add cell padding: minimum 2pt above default
-            h  = max(h + 2, 14.0)
+            # Clamp to a safe minimum so very-thin rows still render
+            h  = max(h, 8.0)
             row_heights.append(h)
 
         # ── Column widths (Excel char units) ─────────────────────────────
@@ -638,9 +667,15 @@ def compute_row_heights_pt(
 ) -> list[float]:
     """
     Stage 2 — LayoutModel.
-    Convert Excel row heights → PDF points, apply minimum.
+    Pass Excel row heights to PDF as-is.
+    Minimum is kept small (font_size + 2×padding) so Arabic calibrated text
+    fits without forcing row expansion.
     """
-    min_h = base_font_size + 6.0
+    # After AMIRI_SIZE_SCALE and AMIRI_LEADING_SCALE, a single Arabic line at
+    # base_font_size needs:  base_font_size * AMIRI_SIZE_SCALE * AMIRI_LEADING_SCALE
+    # + 2 × _CELL_PAD_V  ≈ base_font_size * 0.82 * 1.10 + 4 ≈ base_font_size * 0.902 + 4
+    # For base 9pt that is ≈ 12.1pt — well under Excel's default 15pt row.
+    min_h = base_font_size + 2 * _CELL_PAD_V   # tight minimum
     result = []
     for ri in range(layout.n_rows):
         h = layout.row_heights[ri] if ri < len(layout.row_heights) else _EXCEL_DEFAULT_ROW_H
@@ -735,19 +770,37 @@ def build_paragraph(
     else:
         font_name = fs.arabic_reg if is_arabic else fs.regular
 
-    # Font size
-    font_size = base_font_size
+    # ── Font size ─────────────────────────────────────────────────────────────
+    # Priority: explicit cell size from Excel → auto-detected base size.
+    # We honour the Excel value faithfully; the only transformation applied
+    # is the Amiri visual-calibration factor for Arabic cells (see constants).
     if cell_info and cell_info.font_size > 0:
-        # Clamp to a reasonable range
-        font_size = max(min(cell_info.font_size, base_font_size * 2.0), base_font_size * 0.7)
+        # Use Excel's explicit font size, clamped to a readable range so that
+        # decorative titles (24pt+) don't overwhelm the page.
+        excel_fs = cell_info.font_size
+        font_size = max(min(excel_fs, base_font_size * 2.2), base_font_size * 0.65)
+    else:
+        font_size = base_font_size
 
-    # Font color
+    # Amiri visual-calibration:
+    # Amiri's metric span (ascent+|descent|) = 1758 on a 1000-unit em, so the
+    # glyph box at size S is 1.758×S points — far larger than standard fonts.
+    # Applying AMIRI_SIZE_SCALE compensates so Arabic text is visually the
+    # same size as the source Excel file (Calibri / Arial reference).
+    if is_arabic:
+        render_size  = font_size * AMIRI_SIZE_SCALE
+        render_lead  = render_size * AMIRI_LEADING_SCALE
+    else:
+        render_size  = font_size
+        render_lead  = font_size * LATIN_LEADING_SCALE
+
+    # ── Font color ────────────────────────────────────────────────────────────
     text_color = colors.black
     if cell_info and cell_info.font_color:
         r, g, b = cell_info.font_color
         text_color = colors.Color(r / 255, g / 255, b / 255)
 
-    # Alignment
+    # ── Alignment ─────────────────────────────────────────────────────────────
     h_align = _resolve_h_align(cell_info, text, is_rtl_sheet)
 
     # Word wrap for RTL
@@ -756,8 +809,8 @@ def build_paragraph(
     style = ParagraphStyle(
         'cell',
         fontName=font_name,
-        fontSize=font_size,
-        leading=font_size * 1.25,
+        fontSize=render_size,
+        leading=render_lead,
         alignment=h_align,
         textColor=text_color,
         wordWrap=word_wrap,
@@ -857,13 +910,15 @@ def build_table(
         style_cmds.append(('SPAN', (tc0, tr0), (tc1, tr1)))
 
     # Global defaults
+    # _CELL_PAD_V is kept at 2pt (see constants) — tighter than the previous
+    # 3pt value, which was contributing to row expansion for Arabic content.
     style_cmds += [
         ('FONTSIZE',      (0, 0), (-1, -1), base_font_size),
         ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING',    (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('LEFTPADDING',   (0, 0), (-1, -1), 4),
-        ('RIGHTPADDING',  (0, 0), (-1, -1), 4),
+        ('TOPPADDING',    (0, 0), (-1, -1), _CELL_PAD_V),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), _CELL_PAD_V),
+        ('LEFTPADDING',   (0, 0), (-1, -1), _CELL_PAD_H),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), _CELL_PAD_H),
         ('GRID',          (0, 0), (-1, -1), 0.4, _GRID_CLR),
     ]
 
