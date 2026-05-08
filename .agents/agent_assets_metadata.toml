@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "aFyqjRZkL-6uoykXUTnzk"
+uri = "file://test_arabic_output.pdf"
+type = "pdf"
+title = "نتيجة تحويل Excel إلى PDF - enterprise-hybrid-v2"
