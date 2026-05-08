@@ -33,17 +33,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python packages required by the Excel → PDF engine
 COPY requirements.txt ./
 RUN pip3 install --break-system-packages \
-    "arabic-reshaper==3.0.0" \
-    "python-bidi==0.4.2" \
+    arabic-reshaper==3.0.0 \
+    python-bidi==0.4.2 \
     "reportlab>=4.0.0" \
     "openpyxl>=3.1.0" \
-    "Pillow>=10.0.0"
-
-# Validate Python engine dependencies are present
-RUN python3 -c "import arabic_reshaper, bidi, reportlab, openpyxl, PIL; print('ALL PYTHON PACKAGES OK')"
-
-# Show Python and pip versions for build-time confirmation
-RUN python3 --version && pip3 --version && python3 -c "import reportlab; print('reportlab', reportlab.Version)"
+    "Pillow>=10.0.0" \
+  && python3 -c "import arabic_reshaper, bidi, reportlab, openpyxl; \
+     print('PYTHON PACKAGES VERIFIED OK')"
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10 --activate
