@@ -18,9 +18,8 @@ import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import { spawn } from 'node:child_process'
 import { mkdtemp, writeFile, readFile as fsReadFile, rm } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, basename, dirname } from 'node:path'
+import { join, basename } from 'node:path'
 
 // ── CLI helpers ────────────────────────────────────────────────────────────
 
@@ -287,43 +286,8 @@ export class DocumentConverter {
     const isXls  = xlsxBuffer[0] === 0xd0 && xlsxBuffer[1] === 0xcf
     const inputExt = isXlsx ? '.xlsx' : isXls ? '.xls' : '.csv'
 
-    // 1. Python engine — best Arabic quality (matches ilovepdf.com output)
-    if (isXlsx) {
-      // Quick dependency check before committing to the Python path.
-      // If any package is missing (e.g. fresh Railway deploy without pip install),
-      // we log a clear warning and skip straight to LibreOffice rather than
-      // letting the Python subprocess fail with an unhelpful ImportError.
-      console.log('[EXCEL-ENGINE] Starting Python engine check...')
-
-      const whichPython = await runCli('which', ['python3'], { timeoutMs: 3_000 }).catch(() => null)
-      console.log('[EXCEL-ENGINE] Python path:', whichPython?.stdout?.trim() ?? 'NOT FOUND')
-
-      const pythonCheck = await runCli(
-        'python3',
-        ['-c', 'import arabic_reshaper, bidi, reportlab, openpyxl; print("ok")'],
-        { timeoutMs: 5_000 }
-      ).catch(() => null)
-
-      console.log('[EXCEL-ENGINE] Python dep check — code:', pythonCheck?.code, 'stdout:', pythonCheck?.stdout?.trim(), 'stderr:', pythonCheck?.stderr?.trim().slice(0, 200))
-
-      if (!pythonCheck || pythonCheck.code !== 0 || !pythonCheck.stdout.includes('ok')) {
-        console.warn(
-          '[DocumentConverter] Python Excel engine unavailable - missing dependencies:',
-          pythonCheck?.stderr?.trim() ?? 'python3 not found'
-        )
-      } else {
-        try {
-          return await this.pythonArabicExcelToPdf(xlsxBuffer, options)
-        } catch (err) {
-          console.warn(
-            '[DocumentConverter] Python Arabic Excel→PDF failed, trying LibreOffice:',
-            err instanceof Error ? err.message : String(err)
-          )
-        }
-      }
-    }
-
-    // 2. LibreOffice headless (handles .xls, .csv, and complex Excel formatting)
+    // 1. LibreOffice headless — primary engine (handles .xlsx, .xls, .csv,
+    //    charts, images, merged cells, colours, and all languages including Arabic)
     if (await binaryExists('soffice')) {
       try {
         return await this.libreOfficeConvert(xlsxBuffer, inputExt, inputExt.slice(1))
@@ -335,137 +299,8 @@ export class DocumentConverter {
       }
     }
 
-    // 3. pdf-lib last resort
+    // 2. pdf-lib last resort
     return this.excelToPdfFallback(xlsxBuffer, options)
-  }
-
-  /**
-   * Primary Excel→PDF engine — Enterprise Hybrid Pipeline v2.
-   *
-   * Pipeline stages:
-   *   1. WorkbookAnalyzer  — full cell metadata (value, style, merge topology,
-   *                          row/col dimensions, hidden rows/cols, sheet direction)
-   *   2. LayoutModel       — column widths, row heights, page geometry, RTL flag
-   *   3. MergedCellResolver — SPAN commands + anchor/slave classification
-   *   4. BidiTextEngine    — Arabic reshaping + bidi visual ordering
-   *   5. TypographyEngine  — per-cell ParagraphStyle (font, size, color, align)
-   *   6. TableBuilder      — ReportLab Table with SPAN, BACKGROUND, GRID
-   *   7. PaginationEngine  — smart row grouping, header repetition
-   *   8. VisualNormalizer  — auto font size, spacing, density
-   *   9. ValidationSystem  — confidence scoring and warnings
-   *   10. PDF Renderer     — selectable text, embedded fonts, page numbers
-   *
-   * Features:
-   *   - Real merged cell SPAN commands (not just value propagation)
-   *   - Per-cell bold/italic/size/color extracted from Excel styles
-   *   - Cell fill colors from Excel applied to PDF
-   *   - Auto RTL detection from sheet_view.rightToLeft or content heuristic
-   *   - Arabic (Amiri) + Latin (DejaVu Sans) dual-font system
-   *   - Auto font size scaling based on column count and content density
-   *   - Row heights and column widths faithfully from Excel dimensions
-   */
-  private async pythonArabicExcelToPdf(
-    xlsxBuffer: Buffer,
-    options: ConversionOptions
-  ): Promise<ConversionResult> {
-    return withTempDir('py-excel-', async (dir) => {
-      const inFile  = join(dir, 'input.xlsx')
-      const outFile = join(dir, 'output.pdf')
-      await writeFile(inFile, xlsxBuffer)
-
-      // Resolve the script path — try multiple locations so this works in
-      // development (Replit), Railway Docker (/app/...), and any other layout.
-      const cwd = process.cwd()
-      const possibleScriptPaths = [
-        join(cwd, 'lib', 'processing', 'excel_to_pdf.py'),
-        join(dirname(dirname(dirname(__dirname))), 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf.py'),
-        '/app/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
-        '/app/lib/processing/excel_to_pdf.py',
-        join(__dirname, '..', '..', 'lib', 'processing', 'excel_to_pdf.py'),
-      ]
-
-      console.log('[EXCEL-ENGINE] cwd:', cwd)
-      console.log('[EXCEL-ENGINE] __dirname:', __dirname)
-      for (const p of possibleScriptPaths) {
-        console.log(`[EXCEL-ENGINE] Checking path: ${p} — exists: ${existsSync(p)}`)
-      }
-
-      const scriptPath = possibleScriptPaths.find(p => existsSync(p))
-      if (!scriptPath) {
-        console.error('[EXCEL-ENGINE] excel_to_pdf.py not found in any candidate path:', possibleScriptPaths)
-        throw new Error(`excel_to_pdf.py not found. Checked: ${possibleScriptPaths.join(', ')}`)
-      }
-      console.log('[EXCEL-ENGINE] Using script:', scriptPath)
-
-      const pageSize   = options.pageSize    ?? 'a4'
-      const orient     = options.orientation ?? 'landscape'
-      // 0 = auto-detect font size per sheet (recommended)
-      // Only override if caller explicitly sets a non-zero fontSize
-      const fontSize   = String(options.fontSize && options.fontSize > 0 ? options.fontSize : 0)
-
-      const result = await runCli(
-        'python3',
-        [
-          scriptPath,
-          inFile,
-          outFile,
-          '--page-size',   pageSize,
-          '--orientation', orient,
-          '--font-size',   fontSize,
-        ],
-        { timeoutMs: 120_000 }
-      )
-
-      // Parse JSON result from stdout
-      let parsed: {
-        success: boolean
-        pageCount?: number
-        engine?:   string
-        fonts?:    { regular: string; arabic: string }
-        warnings?: string[]
-        error?:    string
-        traceback?: string
-      } = { success: false }
-
-      console.log('[EXCEL-ENGINE] Script exit code:', result.code)
-      console.log('[EXCEL-ENGINE] Script stdout:', result.stdout.trim().slice(0, 500))
-      if (result.stderr.trim()) {
-        console.warn('[EXCEL-ENGINE] Script stderr:', result.stderr.trim().slice(0, 500))
-      }
-
-      try { parsed = JSON.parse(result.stdout.trim()) } catch { /* ignore */ }
-
-      if (!parsed.success || result.code !== 0) {
-        const detail = parsed.error ?? parsed.traceback?.slice(0, 400) ?? result.stderr.trim().slice(0, 400)
-        console.error('[EXCEL-ENGINE] Python script failed — detail:', detail)
-        throw new Error(`Python Excel→PDF failed: ${detail}`)
-      }
-      console.log('[EXCEL-ENGINE] Success — engine:', parsed.engine, 'pages:', parsed.pageCount)
-
-      if (parsed.warnings?.length) {
-        for (const w of parsed.warnings) {
-          console.warn(`[ExcelToPdf] ${w}`)
-        }
-      }
-
-      const pdfBuffer = await fsReadFile(outFile)
-      if (!isPdf(pdfBuffer)) {
-        throw new Error('Python script produced an invalid PDF')
-      }
-
-      let pageCount = parsed.pageCount ?? 1
-      try {
-        const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
-        pageCount = pdfDoc.getPageCount()
-      } catch { /* best-effort */ }
-
-      return {
-        buffer:         pdfBuffer,
-        pageCount,
-        originalFormat: 'xlsx',
-        engine:         parsed.engine ?? 'enterprise-hybrid-v2',
-      }
-    })
   }
 
   /** Fallback: xlsx.js table parser + pdf-lib */
