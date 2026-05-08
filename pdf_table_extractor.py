@@ -324,6 +324,195 @@ def _ocr_page_to_df(image, lang: str = "eng") -> Optional[pd.DataFrame]:
     return pd.DataFrame(matrix)
 
 
+def _words_to_df(
+    words: list[dict],
+    x_key_l: str = "x0",
+    x_key_r: str = "x1",
+    y_key_t: str = "top",
+    y_key_b: str = "bottom",
+    text_key: str = "text",
+) -> Optional[pd.DataFrame]:
+    """
+    Convert a list of word dicts (pdfplumber format) to a table DataFrame using
+    the same bimodal gap-voting algorithm as _ocr_page_to_df, but calibrated for
+    PDF coordinate space (points at 72 pt/inch, NOT pixels at 300 DPI).
+
+    Works for any language including Arabic/RTL — clustering is purely spatial.
+    """
+    import numpy as np
+
+    if len(words) < 4:
+        return None
+
+    # Build (x0, x1, y_mid, text) tuples
+    data: list[tuple[int, int, float, str]] = []
+    heights: list[float] = []
+    for w in words:
+        try:
+            x0 = float(w[x_key_l])
+            x1 = float(w[x_key_r])
+            top = float(w[y_key_t])
+            bot = float(w[y_key_b])
+            text = str(w[text_key]).strip()
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not text:
+            continue
+        data.append((int(x0), int(x1), (top + bot) / 2.0, text))
+        heights.append(bot - top)
+
+    if len(data) < 4:
+        return None
+
+    median_h = float(np.median(heights)) if heights else 10.0
+    row_tol = max(3.0, median_h * 0.55)
+
+    data_sorted = sorted(data, key=lambda t: (t[2], t[0]))
+
+    rows_raw: list[list[tuple[int, int, str]]] = []
+    cur_row:  list[tuple[int, int, str]]       = []
+    cur_y = data_sorted[0][2]
+
+    for x0, x1, ym, text in data_sorted:
+        if abs(ym - cur_y) <= row_tol:
+            cur_row.append((x0, x1, text))
+        else:
+            if cur_row:
+                rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
+            cur_row = [(x0, x1, text)]
+            cur_y = ym
+    if cur_row:
+        rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
+
+    if len(rows_raw) < 2:
+        return None
+
+    # ── Collect all inter-word gaps ──────────────────────────────────────────
+    all_gap_records: list[tuple[int, int]] = []   # (size, centre_x)
+
+    for row in rows_raw:
+        if len(row) < 2:
+            continue
+        for i in range(len(row) - 1):
+            gap_l = row[i][1]
+            gap_r = row[i + 1][0]
+            size  = gap_r - gap_l
+            if size > 0:
+                all_gap_records.append((size, (gap_l + gap_r) // 2))
+
+    if not all_gap_records:
+        return None
+
+    sorted_sizes = sorted(s for s, _ in all_gap_records)
+    if len(sorted_sizes) < 2:
+        return None
+
+    biggest_jump_idx = int(np.argmax(np.diff(sorted_sizes)))
+    small_max = sorted_sizes[biggest_jump_idx]
+    large_min = sorted_sizes[biggest_jump_idx + 1]
+    col_gap_threshold = (small_max + large_min) // 2
+
+    # PDF points scale: 72 pt/inch vs 300 DPI pixels → threshold is ~6× smaller.
+    # Use 6 pt minimum gap difference (≈ 2 mm — clearly visible column separation).
+    if large_min - small_max < 6:
+        return None
+
+    col_gap_centres = [c for s, c in all_gap_records if s > col_gap_threshold]
+    if not col_gap_centres:
+        return None
+
+    x_max = max(x1 for _, x1, _ in [w for row in rows_raw for w in row]) + 1
+    bin_width = max(5, int(large_min * 0.10))
+    n_bins    = max(1, x_max // bin_width + 1)
+
+    hist = np.zeros(n_bins, dtype=np.int32)
+    for gx in col_gap_centres:
+        bi = min(gx // bin_width, n_bins - 1)
+        hist[bi] += 1
+
+    col_splits: list[int] = []
+    in_peak = False
+    peak_vals: list[int] = []
+
+    for bi in range(n_bins):
+        if hist[bi] > 0:
+            if not in_peak:
+                in_peak = True
+                peak_vals = []
+            peak_vals.extend([bi * bin_width] * int(hist[bi]))
+        else:
+            if in_peak:
+                col_splits.append(int(np.mean(peak_vals)))
+                in_peak = False
+                peak_vals = []
+    if in_peak and peak_vals:
+        col_splits.append(int(np.mean(peak_vals)))
+
+    col_splits.append(x_max)   # sentinel
+
+    if len(col_splits) < 2:
+        return None
+
+    ncols = len(col_splits)
+
+    def _col_of(left: int) -> int:
+        for ci, boundary in enumerate(col_splits):
+            if left < boundary:
+                return ci
+        return ncols - 1
+
+    matrix: list[list[str]] = []
+    for row in rows_raw:
+        cells = [""] * ncols
+        for left, _right, text in row:
+            ci = _col_of(left)
+            cells[ci] = (cells[ci] + " " + text).strip() if cells[ci] else text
+        matrix.append(cells)
+
+    if not matrix:
+        return None
+
+    return pd.DataFrame(matrix)
+
+
+def _extract_pdfplumber_words(pdf_path: str) -> list[pd.DataFrame]:
+    """
+    Word-position spatial clustering extraction — the deepest text-based fallback.
+
+    Unlike pdfplumber's extract_tables() (which needs visible borders) or Camelot,
+    this method uses the raw per-word bounding boxes from the PDF's text layer.
+    It then clusters words by Y position (rows) and detects column splits with the
+    same bimodal gap-voting algorithm used by the OCR path.
+
+    Works for any language including Arabic/RTL because it reasons only about
+    pixel positions, not text direction.  Requires the PDF to have embedded text.
+    """
+    import pdfplumber
+
+    log.info("pdfplumber-words spatial clustering from %s", pdf_path)
+    dfs: list[pd.DataFrame] = []
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num, page in enumerate(pdf.pages, start=1):
+            words = page.extract_words(
+                x_tolerance=3,
+                y_tolerance=3,
+                keep_blank_chars=False,
+                use_text_flow=False,
+            )
+            if not words:
+                log.debug("pdfplumber-words: page %d — no words extracted", page_num)
+                continue
+            df = _words_to_df(words)
+            if df is not None and not df.empty:
+                dfs.append(df)
+            else:
+                log.debug("pdfplumber-words: page %d — no table structure detected", page_num)
+
+    log.info("pdfplumber-words found %d raw table(s)", len(dfs))
+    return dfs
+
+
 def _extract_ocr(pdf_path: str, lang: str = "eng") -> list[pd.DataFrame]:
     """
     Convert each PDF page to an image and extract tables via Tesseract OCR.
@@ -412,19 +601,33 @@ def extract_tables(pdf_path: str, flavor: str, lang: str = "eng") -> tuple[list[
     Returns (list_of_dataframes, engine_used).
     """
     try:
-        return _extract_camelot(pdf_path, flavor), f"camelot/{flavor}"
+        dfs = _extract_camelot(pdf_path, flavor)
+        if dfs:
+            return dfs, f"camelot/{flavor}"
+        log.info("Camelot returned 0 tables — falling back to pdfplumber")
     except Exception as exc:
         log.warning("Camelot failed (%s) — falling back to pdfplumber", exc)
 
     try:
-        return _extract_pdfplumber(pdf_path), "pdfplumber"
+        dfs = _extract_pdfplumber(pdf_path)
+        if dfs:
+            return dfs, "pdfplumber"
+        log.info("pdfplumber extract_tables returned 0 — trying word-level clustering")
     except Exception as exc2:
-        log.warning("pdfplumber failed (%s) — falling back to OCR", exc2)
+        log.warning("pdfplumber failed (%s) — trying word-level clustering", exc2)
+
+    try:
+        dfs = _extract_pdfplumber_words(pdf_path)
+        if dfs:
+            return dfs, "pdfplumber-words"
+        log.info("pdfplumber-words returned 0 — falling back to OCR")
+    except Exception as exc3:
+        log.warning("pdfplumber-words failed (%s) — falling back to OCR", exc3)
 
     try:
         return _extract_ocr(pdf_path, lang=lang), "tesseract-ocr"
-    except Exception as exc3:
-        raise RuntimeError(f"All extractors failed: {exc3}") from exc3
+    except Exception as exc4:
+        raise RuntimeError(f"All extractors failed: {exc4}") from exc4
 
 
 # ---------------------------------------------------------------------------
@@ -696,11 +899,11 @@ def process_pdf(pdf_path: str, output_path: Optional[str] = None, lang: Optional
     # ── Step 3: clean ────────────────────────────────────────────────────────
     clean = _clean_batch(raw_dfs)
 
-    # ── Step 3b: OCR fallback if text-based extraction returned 0 tables ─────
+    # ── Step 3b: deeper fallbacks when text-based path returns 0 clean tables ─
     if not clean and not scanned:
         log.info(
-            "Text-based engines found 0 tables — attempting OCR fallback "
-            "(PDF may mix text and image content, lang=%s)", ocr_lang
+            "Text-based engines found 0 clean tables — trying OCR fallback "
+            "(lang=%s)", ocr_lang
         )
         try:
             ocr_raw = _extract_ocr(pdf_path, lang=ocr_lang)

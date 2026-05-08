@@ -82,10 +82,11 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - start,
       errorMsg: error instanceof Error ? error.message : 'unknown',
     })
-    const msg = error instanceof Error ? error.message : 'Failed to extract tables from PDF'
-    const userMsg = msg.includes('No usable tables found')
-      ? msg
-      : 'Could not extract tables from this PDF. Make sure the file contains actual table data.'
+    const rawMsg = error instanceof Error ? error.message : 'Failed to extract tables from PDF'
+    // Pass the Python script's own message through — it includes engine-specific details
+    const userMsg = rawMsg.includes('No usable tables found') || rawMsg.includes('extraction failed')
+      ? rawMsg.split('\n')[0]   // first line only — strip any traceback
+      : 'Could not extract tables from this PDF. The file may not contain detectable table data.'
     return NextResponse.json({ error: userMsg }, { status: 500 })
   } finally {
     await cleanup()
