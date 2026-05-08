@@ -4,7 +4,10 @@ import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Upload, Download, Loader2, FileSpreadsheet, ScanSearch, FileText, CheckCircle2 } from 'lucide-react'
+import {
+  Upload, Download, Loader2, FileSpreadsheet, ScanSearch,
+  FileText, CheckCircle2, Layers, AlignCenter, Globe, Shield,
+} from 'lucide-react'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 import { BackButton } from '@/components/back-button'
@@ -17,11 +20,44 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
+const PIPELINE_STEPS = [
+  {
+    icon: FileText,
+    label: 'Document classification',
+    desc: 'Detects text-based, scanned, or hybrid PDFs and Arabic / LTR direction',
+  },
+  {
+    icon: AlignCenter,
+    label: 'Global column stabilization',
+    desc: 'Builds a single column schema from all pages — no shifting columns across pages',
+  },
+  {
+    icon: Layers,
+    label: 'Multi-page table reconstruction',
+    desc: 'Merges fragmented tables across pages and removes repeated headers automatically',
+  },
+  {
+    icon: ScanSearch,
+    label: 'Smart engine routing',
+    desc: 'Camelot → pdfplumber → spatial clustering → Tesseract OCR with automatic fallback',
+  },
+  {
+    icon: Globe,
+    label: 'Arabic & RTL support',
+    desc: 'Full reshaping and bidi correction — Arabic tables appear right-to-left in Excel',
+  },
+  {
+    icon: Shield,
+    label: 'Validation & repair',
+    desc: 'Drops ghost columns, repairs broken rows, validates structure before export',
+  },
+]
+
 export function PdfToExcelClient() {
-  const [file, setFile] = useState<File | null>(null)
+  const [file, setFile]           = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+  const [done, setDone]           = useState(false)
   const { startLoading, stopLoading } = useLoadingBar()
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,9 +107,9 @@ export function PdfToExcelClient() {
       }
 
       const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
       a.download = file.name.replace(/\.pdf$/i, '.xlsx')
       a.click()
       URL.revokeObjectURL(url)
@@ -114,11 +150,22 @@ export function PdfToExcelClient() {
                     Drag &amp; drop or click to browse — up to 100 MB
                   </p>
                 </div>
+                <div className="flex flex-wrap justify-center gap-2 mt-1">
+                  {['Text PDF', 'Scanned PDF', 'Arabic / RTL', 'Multi-page tables'].map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 py-0.5"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             </Card>
           </label>
         ) : (
           <div className="space-y-4">
+            {/* File card */}
             <Card className="p-5">
               <div className="flex items-center gap-4">
                 <div className="w-11 h-11 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
@@ -128,24 +175,30 @@ export function PdfToExcelClient() {
                   <p className="font-medium truncate">{file.name}</p>
                   <p className="text-sm text-muted-foreground">{formatSize(file.size)}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => { setFile(null); setDone(false); setError(null) }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setFile(null); setDone(false); setError(null) }}
+                >
                   Change
                 </Button>
               </div>
             </Card>
 
+            {/* Pipeline overview */}
             <Card className="p-5 bg-muted/40">
-              <p className="text-sm font-medium text-foreground mb-3">How it works</p>
-              <div className="space-y-2">
-                {[
-                  { icon: FileText, label: 'Checks for embedded text (text-based PDF)' },
-                  { icon: ScanSearch, label: 'Falls back to Tesseract OCR for scanned pages' },
-                  { icon: FileSpreadsheet, label: 'Each table becomes a separate Excel sheet' },
-                  { icon: FileText, label: 'Arabic & RTL PDFs detected and handled automatically' },
-                ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Icon className="w-4 h-4 shrink-0 text-emerald-600" />
-                    <span>{label}</span>
+              <p className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                10-Phase Reconstruction Pipeline
+              </p>
+              <div className="grid grid-cols-1 gap-2.5">
+                {PIPELINE_STEPS.map(({ icon: Icon, label, desc }) => (
+                  <div key={label} className="flex items-start gap-2.5">
+                    <Icon className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground leading-tight">{label}</p>
+                      <p className="text-xs text-muted-foreground leading-snug">{desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -169,12 +222,12 @@ export function PdfToExcelClient() {
                 size="lg"
                 onClick={handleExtract}
                 disabled={processing}
-                className="min-w-[200px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="min-w-[220px] bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 {processing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Extracting tables…
+                    Reconstructing…
                   </>
                 ) : done ? (
                   <>
@@ -184,14 +237,14 @@ export function PdfToExcelClient() {
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Extract to Excel
+                    Convert to Excel
                   </>
                 )}
               </Button>
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
-              Supports text-based and scanned PDFs — Arabic and English detected automatically.
+              Produces professionally structured Excel files — stable columns, merged multi-page tables, Arabic RTL support.
             </p>
           </div>
         )}

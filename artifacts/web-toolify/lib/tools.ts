@@ -272,9 +272,9 @@ export const tools: Tool[] = [
   {
     id: 'pdf-to-excel',
     name: 'PDF to Excel',
-    description: 'Extract tables from PDF files and save them as Excel spreadsheets.',
+    description: 'Reconstruct tables from PDF files into professionally structured Excel spreadsheets.',
     longDescription:
-      'Automatically detect and extract tables from any PDF — text-based or scanned. Uses Camelot for text PDFs and Tesseract OCR for scanned documents. Each table is saved in a separate sheet in a clean .xlsx file.',
+      'Enterprise-grade PDF to Excel reconstruction. Automatically classifies your PDF (text, scanned, or hybrid), builds a global column schema across all pages for consistent layout, merges multi-page tables, removes repeated headers, and supports Arabic RTL documents. Powered by Camelot, pdfplumber, spatial clustering, and Tesseract OCR with intelligent fallback routing.',
     category: 'Converters',
     slug: 'pdf-to-excel',
     icon: 'Sheet',

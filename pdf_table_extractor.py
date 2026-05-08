@@ -1,33 +1,24 @@
 """
-pdf_table_extractor.py
-======================
-Production-ready PDF → Excel table extraction pipeline.
+pdf_table_extractor.py  — Enterprise PDF → Excel Reconstruction Pipeline
+=========================================================================
 
-Pipeline (fully automatic — works on ANY PDF including Arabic/RTL):
-  1. Detect whether PDF is text-based or scanned (image-only)
-  1b. Auto-detect script language from embedded text (Arabic → ara+eng)
-  2a. Text PDF  → Camelot lattice → Camelot stream → pdfplumber → OCR fallback
-  2b. Scanned PDF → OCR via Tesseract 5 + pdf2image → table reconstruction
-  3. Clean each DataFrame with vectorised pandas ops (pandas 2/3 compatible)
-  4. Write results to a single .xlsx file (one sheet per table + metadata)
+Architecture (10 phases):
+  Phase 1  — Document Classification (text/scanned/hybrid, Arabic/LTR, bordered)
+  Phase 2  — Layout Analysis (geometric, visual alignment, coordinate clustering)
+  Phase 3  — Smart Engine Routing (per-page: Camelot lattice/stream/pdfplumber/OCR)
+  Phase 4  — OCR Pipeline (pdf2image + Tesseract, coordinate-aware)
+  Phase 5  — Persistent Column Stabilization (global schema across ALL pages)
+  Phase 6  — Table Reconstruction Engine (merge fragments, repair rows)
+  Phase 7  — Header Intelligence (dedup repeated headers, multi-page continuation)
+  Phase 8  — Arabic RTL Support (reshaping, bidi correction, RTL Excel alignment)
+  Phase 9  — Excel Generation Engine (openpyxl, borders, merged cells, RTL sheets)
+  Phase 10 — Validation Layer (consistency, repair, empty-output detection)
 
 Usage:
   python pdf_table_extractor.py input.pdf [output.xlsx]
-  python pdf_table_extractor.py *.pdf               # batch mode
-  python pdf_table_extractor.py report.pdf -q       # quiet
-  python pdf_table_extractor.py report.pdf -v       # verbose
-  python pdf_table_extractor.py report.pdf --lang ara+eng   # force Arabic OCR
-
-Performance notes:
-  - Text/scan detection reads only the first page — never the whole PDF
-  - Camelot is invoked once per PDF, pages='all' — no per-page loops
-  - DataFrame cleaning uses vectorised str/mask operations — no apply()
-  - OCR runs page-by-page with Tesseract 5 (--psm 6 for tabular layouts)
-  - Logging is lazy-formatted (% style) — zero cost when level is OFF
-
-Requirements:
-  pip install camelot-py[cv] pdfplumber pandas openpyxl pytesseract pdf2image
-  System: tesseract >= 4 with ara + eng traineddata, poppler (pdftoppm)
+  python pdf_table_extractor.py report.pdf -q
+  python pdf_table_extractor.py report.pdf -v
+  python pdf_table_extractor.py report.pdf --lang ara+eng
 """
 
 from __future__ import annotations
@@ -38,18 +29,22 @@ import os
 import re
 import sys
 import time
+import unicodedata
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.styles import (
+    Alignment, Border, Font, PatternFill, Side
+)
 from openpyxl.utils import get_column_letter
 
-# ---------------------------------------------------------------------------
-# Logging — minimal overhead (lazy % formatting, configurable level)
-# ---------------------------------------------------------------------------
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Logging
+# ─────────────────────────────────────────────────────────────────────────────
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
@@ -58,134 +53,496 @@ logging.basicConfig(
 )
 log = logging.getLogger("pdf_extractor")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Arabic Unicode ranges
+# ─────────────────────────────────────────────────────────────────────────────
+_ARABIC_RE = re.compile(
+    r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]'
+)
+_ARABIC_THRESHOLD = 0.05  # >5% Arabic chars → Arabic document
 
-# ---------------------------------------------------------------------------
-# Fast lattice/stream auto-detection
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 1 — DOCUMENT CLASSIFICATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DocumentProfile:
+    """Complete classification result for a PDF file."""
+    __slots__ = (
+        "is_scanned", "is_hybrid", "is_arabic", "has_borders",
+        "page_count", "lang", "avg_chars_per_page",
+        "text_page_indices", "scanned_page_indices",
+    )
+
+    def __init__(self):
+        self.is_scanned          = False
+        self.is_hybrid           = False
+        self.is_arabic           = False
+        self.has_borders         = False
+        self.page_count          = 0
+        self.lang                = "eng"
+        self.avg_chars_per_page  = 0.0
+        self.text_page_indices:   list[int] = []
+        self.scanned_page_indices: list[int] = []
+
 
 _LATTICE_SIGNALS = re.compile(
     rb"(?:RectangularPath|moveto|lineto|stroke|closepath|"
     rb"/Type\s*/Page|Rect\s*\[|/Border|/BS\s*/S)",
     re.IGNORECASE,
 )
-_SCAN_BYTES = 131_072  # 128 KB — enough to detect border markers
+_MIN_CHARS_TEXT = 40  # chars per page below which → likely scanned
 
 
-def detect_flavor(pdf_path: str) -> str:
-    """Return 'lattice' or 'stream' by scanning the first 128 KB of the PDF."""
+def classify_document(pdf_path: str) -> DocumentProfile:
+    """
+    Phase 1: Classify the PDF before any extraction begins.
+    Reads only text layer + first 128 KB for border signals.
+    """
+    profile = DocumentProfile()
+
+    # ── Border detection (128 KB scan) ───────────────────────────────────────
     try:
         with open(pdf_path, "rb") as fh:
-            sample = fh.read(_SCAN_BYTES)
+            sample = fh.read(131_072)
         hits = len(_LATTICE_SIGNALS.findall(sample))
-        flavor = "lattice" if hits >= 3 else "stream"
-        log.info("Auto-detected flavor=%s (%d border signals)", flavor, hits)
-        return flavor
+        profile.has_borders = hits >= 3
+        log.info("Border signals: %d → has_borders=%s", hits, profile.has_borders)
     except OSError:
-        log.warning("Could not scan %s for flavor — defaulting to stream", pdf_path)
-        return "stream"
+        log.warning("Could not scan for border signals")
 
-
-# ---------------------------------------------------------------------------
-# Scan detection — is the PDF image-only (no embedded text)?
-# ---------------------------------------------------------------------------
-
-_MIN_CHARS_PER_PAGE = 40  # fewer than this → treat as scanned
-
-# Arabic + Arabic Extended Unicode ranges
-_ARABIC_RE = re.compile(
-    r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]'
-)
-
-
-def is_scanned_pdf(pdf_path: str) -> bool:
-    """
-    Return True when the PDF appears to have no meaningful embedded text.
-    Uses pdfplumber to extract text from up to the first 3 pages.
-    Cost: opens the file once, reads only text layer — no rendering.
-    """
+    # ── Text layer analysis (pdfplumber) ─────────────────────────────────────
     try:
         import pdfplumber
         with pdfplumber.open(pdf_path) as pdf:
-            sample_pages = pdf.pages[:3]
-            total_chars = sum(
-                len((p.extract_text() or "").strip())
-                for p in sample_pages
-            )
-            pages_checked = len(sample_pages)
-        avg = total_chars / max(pages_checked, 1)
-        result = avg < _MIN_CHARS_PER_PAGE
-        log.info(
-            "Scan detection: avg %.0f chars/page (threshold %d) → %s",
-            avg, _MIN_CHARS_PER_PAGE, "SCANNED" if result else "text-based",
+            profile.page_count = len(pdf.pages)
+            all_text = []
+            page_char_counts = []
+
+            for i, page in enumerate(pdf.pages):
+                text = (page.extract_text() or "").strip()
+                page_char_counts.append(len(text))
+                all_text.append(text)
+
+                if len(text) >= _MIN_CHARS_TEXT:
+                    profile.text_page_indices.append(i)
+                else:
+                    profile.scanned_page_indices.append(i)
+
+        # Classify overall type
+        full_text = " ".join(all_text)
+        total_chars = len(full_text.strip())
+        profile.avg_chars_per_page = (
+            total_chars / max(profile.page_count, 1)
         )
-        return result
+
+        text_pages   = len(profile.text_page_indices)
+        scanned_pages = len(profile.scanned_page_indices)
+
+        if scanned_pages == 0:
+            profile.is_scanned = False
+            profile.is_hybrid  = False
+        elif text_pages == 0:
+            profile.is_scanned = True
+            profile.is_hybrid  = False
+        else:
+            profile.is_scanned = False
+            profile.is_hybrid  = True
+
+        # Arabic detection
+        if total_chars > 0:
+            arabic_chars = len(_ARABIC_RE.findall(full_text))
+            ratio = arabic_chars / total_chars
+            if ratio > _ARABIC_THRESHOLD:
+                profile.is_arabic = True
+                profile.lang = "ara+eng"
+                log.info("Arabic detected (%.1f%%) → lang=ara+eng", ratio * 100)
+            else:
+                profile.lang = "eng"
+        else:
+            profile.lang = "ara+eng"  # scanned → safe default
+
     except Exception as exc:
-        log.warning("Scan detection failed (%s) — assuming text-based", exc)
-        return False
+        log.warning("Classification failed (%s) — using defaults", exc)
+        profile.is_scanned = False
+        profile.lang = "eng"
+
+    log.info(
+        "Profile: pages=%d scanned=%s hybrid=%s arabic=%s borders=%s",
+        profile.page_count, profile.is_scanned,
+        profile.is_hybrid, profile.is_arabic, profile.has_borders,
+    )
+    return profile
 
 
-def detect_language(pdf_path: str) -> str:
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 2 — LAYOUT ANALYSIS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PageLayout:
+    """Layout analysis result for a single page."""
+    __slots__ = ("page_idx", "words", "has_table", "page_width", "page_height")
+
+    def __init__(self, page_idx: int):
+        self.page_idx   = page_idx
+        self.words: list[dict] = []      # [{x0,x1,top,bottom,text}]
+        self.has_table  = False
+        self.page_width = 0.0
+        self.page_height = 0.0
+
+
+def _extract_page_words(pdf_path: str) -> list[PageLayout]:
     """
-    Detect the primary script in a text-based PDF by sampling up to 3 pages.
-
-    Returns a Tesseract lang string:
-      - 'ara+eng'  when > 5 % of sampled characters are Arabic-script
-      - 'eng'      otherwise
-
-    For scanned PDFs (no embedded text) the caller should pass 'ara+eng'
-    as a safe default so both scripts are recognised in one pass.
+    Phase 2: Extract word-level bounding boxes from all text pages.
+    Returns per-page layout objects for Phase 5 column analysis.
     """
-    try:
-        import pdfplumber
-        with pdfplumber.open(pdf_path) as pdf:
-            text = " ".join((p.extract_text() or "") for p in pdf.pages[:3])
-        total = len(text.strip())
-        if total == 0:
-            return "ara+eng"   # no text → scanned → safe default covers both
-        arabic = len(_ARABIC_RE.findall(text))
-        ratio = arabic / total
-        if ratio > 0.05:
-            log.info(
-                "Language: Arabic script detected (%.0f%% of chars) → lang=ara+eng",
-                ratio * 100,
+    import pdfplumber
+
+    layouts: list[PageLayout] = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for i, page in enumerate(pdf.pages):
+            layout = PageLayout(i)
+            layout.page_width  = float(page.width or 595)
+            layout.page_height = float(page.height or 842)
+
+            words = page.extract_words(
+                x_tolerance=3,
+                y_tolerance=3,
+                keep_blank_chars=False,
+                use_text_flow=False,
             )
-            return "ara+eng"
-        return "eng"
-    except Exception as exc:
-        log.warning("Language detection failed (%s) — defaulting to eng", exc)
-        return "eng"
+            if words:
+                layout.words = words
+                # A page "has table structure" if it has ≥4 words
+                layout.has_table = len(words) >= 4
+            layouts.append(layout)
+
+    return layouts
 
 
-# ---------------------------------------------------------------------------
-# OCR extraction — for scanned / image-only PDFs
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 5 — PERSISTENT COLUMN STABILIZATION
+# ─────────────────────────────────────────────────────────────────────────────
 
-def _ocr_page_to_df(image, lang: str = "eng") -> Optional[pd.DataFrame]:
+class GlobalColumnSchema:
     """
-    Run Tesseract on a single PIL image and reconstruct a table DataFrame.
+    The global column anchor system.
 
-    Algorithm (gap-voting — robust to wide title rows):
-      1. Get per-word bounding boxes from Tesseract (TSV output)
-      2. Filter low-confidence / empty tokens
-      3. Cluster words into rows by Y midpoint (55 % of median line height tolerance)
-      4. For EACH ROW find the large horizontal gaps between consecutive words
-         (gap = next_word.left − cur_word.right; large = > 1.5× median inter-word gap)
-      5. Collect all "gap centre-X" positions and build a histogram;
-         peaks with enough votes across rows become column split points
-      6. Assign each word to a column region; concatenate multi-word cells
-      7. Return a DataFrame (rows × cols)
+    Instead of discovering columns independently on each page, we:
+    1. Collect ALL inter-word gaps from ALL pages into one global pool
+    2. Build a global gap histogram
+    3. Find stable column boundaries that appear consistently
+    4. Apply those same boundaries to every page → consistent column count
+    """
+
+    def __init__(self):
+        self.splits: list[int] = []        # sorted column split X positions
+        self.n_cols: int = 0
+        self.page_width: float = 595.0     # default A4
+
+    def fit(self, layouts: list[PageLayout]) -> None:
+        """Build the global column schema from all page layouts."""
+        if not layouts:
+            return
+
+        self.page_width = max(
+            (l.page_width for l in layouts if l.page_width > 0),
+            default=595.0,
+        )
+
+        # ── Collect ALL gap records from ALL pages ────────────────────────────
+        all_gap_records: list[tuple[int, int]] = []   # (size, centre_x)
+        all_heights: list[float] = []
+
+        for layout in layouts:
+            if not layout.words:
+                continue
+
+            heights = [
+                float(w.get("bottom", 0)) - float(w.get("top", 0))
+                for w in layout.words
+                if w.get("bottom") and w.get("top")
+            ]
+            all_heights.extend(heights)
+
+            # Sort words by row then X
+            sorted_words = sorted(
+                layout.words,
+                key=lambda w: (
+                    round(float(w.get("top", 0)) / 5) * 5,
+                    float(w.get("x0", 0)),
+                ),
+            )
+
+            # Cluster into rows
+            rows = _cluster_words_into_rows(sorted_words)
+
+            # Collect gaps per row
+            for row in rows:
+                if len(row) < 2:
+                    continue
+                for i in range(len(row) - 1):
+                    gap_l = float(row[i].get("x1", 0))
+                    gap_r = float(row[i + 1].get("x0", 0))
+                    size = gap_r - gap_l
+                    if size > 0:
+                        centre = int((gap_l + gap_r) / 2)
+                        all_gap_records.append((int(size), centre))
+
+        if not all_gap_records or len(all_gap_records) < 4:
+            log.info("GlobalColumnSchema: insufficient gap data — single-column mode")
+            self.splits = [int(self.page_width) + 1]
+            self.n_cols = 1
+            return
+
+        # ── Find bimodal threshold (intra-cell vs inter-column gaps) ─────────
+        sorted_sizes = sorted(s for s, _ in all_gap_records)
+
+        if len(sorted_sizes) < 2:
+            self.splits = [int(self.page_width) + 1]
+            self.n_cols = 1
+            return
+
+        diffs = np.diff(sorted_sizes)
+        biggest_jump_idx = int(np.argmax(diffs))
+        small_max  = sorted_sizes[biggest_jump_idx]
+        large_min  = sorted_sizes[biggest_jump_idx + 1]
+        threshold  = (small_max + large_min) // 2
+
+        # PDF points: minimum 6 pt gap difference (≈ 2 mm)
+        if large_min - small_max < 6:
+            log.info("GlobalColumnSchema: no bimodal gap structure → single-column")
+            self.splits = [int(self.page_width) + 1]
+            self.n_cols = 1
+            return
+
+        # ── Build histogram of column-gap centre-X positions ─────────────────
+        col_gap_centres = [c for s, c in all_gap_records if s > threshold]
+
+        if not col_gap_centres:
+            self.splits = [int(self.page_width) + 1]
+            self.n_cols = 1
+            return
+
+        x_max     = int(self.page_width) + 1
+        bin_width = max(8, int(large_min * 0.12))
+        n_bins    = max(1, x_max // bin_width + 1)
+
+        hist = np.zeros(n_bins, dtype=np.int32)
+        for gx in col_gap_centres:
+            bi = min(int(gx) // bin_width, n_bins - 1)
+            hist[bi] += 1
+
+        # Total number of pages that contributed gaps
+        contributing_pages = sum(1 for l in layouts if l.words)
+        # A split is "stable" if it appears in ≥25% of contributing pages
+        # (or at least once, for small documents)
+        min_votes = max(1, contributing_pages // 4)
+
+        col_splits: list[int] = []
+        in_peak  = False
+        peak_xs: list[int] = []
+
+        for bi in range(n_bins):
+            if hist[bi] >= min_votes:
+                if not in_peak:
+                    in_peak  = True
+                    peak_xs  = []
+                peak_xs.extend([bi * bin_width] * int(hist[bi]))
+            else:
+                if in_peak:
+                    col_splits.append(int(np.mean(peak_xs)))
+                    in_peak  = False
+                    peak_xs  = []
+        if in_peak and peak_xs:
+            col_splits.append(int(np.mean(peak_xs)))
+
+        col_splits.append(x_max)  # sentinel
+
+        if len(col_splits) < 2:
+            col_splits = [x_max]
+
+        self.splits = col_splits
+        self.n_cols = len(col_splits)
+        log.info(
+            "GlobalColumnSchema: %d columns, split points=%s",
+            self.n_cols, col_splits[:-1],
+        )
+
+    def assign_column(self, x: float) -> int:
+        """Assign an X coordinate to a column index using the global schema."""
+        xi = int(x)
+        for ci, boundary in enumerate(self.splits):
+            if xi < boundary:
+                return ci
+        return self.n_cols - 1
+
+
+def _cluster_words_into_rows(
+    sorted_words: list[dict],
+    tol_factor: float = 0.55,
+) -> list[list[dict]]:
+    """Cluster words into rows by Y midpoint proximity."""
+    if not sorted_words:
+        return []
+
+    heights = []
+    for w in sorted_words:
+        try:
+            h = float(w.get("bottom", 0)) - float(w.get("top", 0))
+            if h > 0:
+                heights.append(h)
+        except (TypeError, ValueError):
+            pass
+
+    median_h = float(np.median(heights)) if heights else 10.0
+    row_tol  = max(3.0, median_h * tol_factor)
+
+    rows: list[list[dict]]  = []
+    cur_row: list[dict]     = []
+    cur_y = (
+        float(sorted_words[0].get("top", 0)) +
+        float(sorted_words[0].get("bottom", 0))
+    ) / 2.0
+
+    for w in sorted_words:
+        try:
+            ym = (float(w.get("top", 0)) + float(w.get("bottom", 0))) / 2.0
+        except (TypeError, ValueError):
+            ym = cur_y
+
+        if abs(ym - cur_y) <= row_tol:
+            cur_row.append(w)
+        else:
+            if cur_row:
+                rows.append(sorted(cur_row, key=lambda ww: float(ww.get("x0", 0))))
+            cur_row = [w]
+            cur_y   = ym
+
+    if cur_row:
+        rows.append(sorted(cur_row, key=lambda ww: float(ww.get("x0", 0))))
+
+    return rows
+
+
+def layout_to_dataframe(
+    layout: PageLayout,
+    schema: GlobalColumnSchema,
+) -> Optional[pd.DataFrame]:
+    """
+    Convert a PageLayout to a DataFrame using the global column schema.
+    This is the core of Phase 5 — every page uses the SAME column boundaries.
+    """
+    if not layout.words:
+        return None
+
+    sorted_words = sorted(
+        layout.words,
+        key=lambda w: (
+            round(float(w.get("top", 0)) / 5) * 5,
+            float(w.get("x0", 0)),
+        ),
+    )
+
+    rows = _cluster_words_into_rows(sorted_words)
+    if len(rows) < 2:
+        return None
+
+    ncols  = schema.n_cols
+    matrix: list[list[str]] = []
+
+    for row in rows:
+        cells = [""] * ncols
+        for w in row:
+            x0   = float(w.get("x0", 0))
+            text = str(w.get("text", "")).strip()
+            if not text:
+                continue
+            ci = schema.assign_column(x0)
+            cells[ci] = (cells[ci] + " " + text).strip() if cells[ci] else text
+        if any(cells):
+            matrix.append(cells)
+
+    if not matrix:
+        return None
+
+    return pd.DataFrame(matrix)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 3 — SMART ENGINE ROUTING
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _extract_camelot(pdf_path: str, flavor: str) -> list[pd.DataFrame]:
+    """Extract tables via Camelot with auto-fallback to opposite flavor."""
+    import camelot
+
+    log.info("Camelot [%s] extracting from %s", flavor, pdf_path)
+    try:
+        tables = camelot.read_pdf(
+            pdf_path, pages="all", flavor=flavor, suppress_stdout=True
+        )
+        log.info("Camelot [%s] found %d table(s)", flavor, len(tables))
+
+        if len(tables) == 0:
+            alt = "stream" if flavor == "lattice" else "lattice"
+            log.info("Retrying with Camelot [%s]", alt)
+            try:
+                alt_tables = camelot.read_pdf(
+                    pdf_path, pages="all", flavor=alt, suppress_stdout=True
+                )
+                if len(alt_tables) > 0:
+                    return [t.df for t in alt_tables]
+            except Exception as exc:
+                log.debug("Camelot [%s] also failed: %s", alt, exc)
+
+        return [t.df for t in tables]
+
+    except Exception as exc:
+        log.warning("Camelot [%s] failed: %s", flavor, exc)
+        return []
+
+
+def _extract_pdfplumber_tables(pdf_path: str) -> list[pd.DataFrame]:
+    """Fallback: pdfplumber explicit table detection."""
+    import pdfplumber
+
+    log.info("pdfplumber table extraction from %s", pdf_path)
+    dfs: list[pd.DataFrame] = []
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                for tbl in (page.extract_tables() or []):
+                    if tbl:
+                        dfs.append(pd.DataFrame(tbl))
+    except Exception as exc:
+        log.warning("pdfplumber failed: %s", exc)
+    log.info("pdfplumber found %d table(s)", len(dfs))
+    return dfs
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 4 — OCR PIPELINE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _ocr_page_to_df(
+    image,
+    lang: str = "eng",
+    schema: Optional[GlobalColumnSchema] = None,
+) -> Optional[pd.DataFrame]:
+    """
+    Run Tesseract on a PIL image, extract word bounding boxes,
+    cluster into rows, and assign to columns using the global schema (if any).
+    Falls back to local bimodal gap voting if no global schema.
     """
     import pytesseract
-    import numpy as np
 
     data = pytesseract.image_to_data(
         image,
         output_type=pytesseract.Output.DATAFRAME,
         lang=lang,
-        config="--psm 6",
+        config="--psm 6 --oem 1",
     )
 
-    # Keep only confident, non-empty words
     data = data[
         (data["conf"] >= 30) &
         (data["text"].astype(str).str.strip() != "") &
@@ -195,447 +552,296 @@ def _ocr_page_to_df(image, lang: str = "eng") -> Optional[pd.DataFrame]:
     if len(data) < 4:
         return None
 
-    data = data.copy()
-    data["left"]    = data["left"].astype(int)
-    data["width"]   = data["width"].astype(int)
-    data["top"]     = data["top"].astype(int)
-    data["height"]  = data["height"].astype(int)
-    data["x_right"] = data["left"] + data["width"]
-    data["y_mid"]   = data["top"]  + data["height"] / 2.0
+    data["x_right"] = data["left"].astype(int) + data["width"].astype(int)
+    data["y_mid"]   = data["top"].astype(int)  + data["height"].astype(int) / 2.0
 
-    # ── Step 1: cluster words into rows ──────────────────────────────────────
-    median_h = float(data["height"].median())
-    row_tol  = max(8.0, median_h * 0.55)
+    # Convert to word-dict format compatible with layout clustering
+    words = []
+    for _, row in data.iterrows():
+        words.append({
+            "x0":    float(row["left"]),
+            "x1":    float(row["x_right"]),
+            "top":   float(row["top"]),
+            "bottom": float(row["top"]) + float(row["height"]),
+            "text":  str(row["text"]).strip(),
+        })
 
-    data = data.sort_values(["y_mid", "left"]).reset_index(drop=True)
+    sorted_words = sorted(words, key=lambda w: (
+        round(float(w["top"]) / 5) * 5, float(w["x0"])
+    ))
+    rows = _cluster_words_into_rows(sorted_words)
 
-    rows_raw: list[list[tuple[int, int, str]]] = []
-    cur_row:  list[tuple[int, int, str]] = []
-    cur_y = float(data.iloc[0]["y_mid"])
-
-    for _, w in data.iterrows():
-        ym = float(w["y_mid"])
-        if abs(ym - cur_y) <= row_tol:
-            cur_row.append((int(w["left"]), int(w["x_right"]), str(w["text"]).strip()))
-        else:
-            if cur_row:
-                rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
-            cur_row = [(int(w["left"]), int(w["x_right"]), str(w["text"]).strip())]
-            cur_y = ym
-    if cur_row:
-        rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
-
-    if len(rows_raw) < 2:
+    if len(rows) < 2:
         return None
 
-    # ── Step 2: collect ALL inter-word gaps from every multi-word row ────────
-    all_gap_records: list[tuple[int, int]] = []   # (size, centre_x)
+    # Use global schema if available, else do local gap voting
+    if schema is not None and schema.n_cols > 1:
+        ncols  = schema.n_cols
+        matrix: list[list[str]] = []
+        for row in rows:
+            cells = [""] * ncols
+            for w in row:
+                ci = schema.assign_column(float(w["x0"]))
+                t  = w["text"]
+                cells[ci] = (cells[ci] + " " + t).strip() if cells[ci] else t
+            if any(cells):
+                matrix.append(cells)
+        if not matrix:
+            return None
+        return pd.DataFrame(matrix)
 
-    for row in rows_raw:
+    # ── Local bimodal gap voting ──────────────────────────────────────────────
+    all_gap_records: list[tuple[int, int]] = []
+    for row in rows:
         if len(row) < 2:
             continue
         for i in range(len(row) - 1):
-            gap_left  = row[i][1]      # right edge of word i
-            gap_right = row[i + 1][0]  # left  edge of word i+1
-            size = gap_right - gap_left
+            gap_l = row[i]["x1"]
+            gap_r = row[i + 1]["x0"]
+            size  = gap_r - gap_l
             if size > 0:
-                all_gap_records.append((size, (gap_left + gap_right) // 2))
+                all_gap_records.append((int(size), int((gap_l + gap_r) / 2)))
 
     if not all_gap_records:
         return None
 
-    # ── Step 3: bimodal threshold — find natural split between small (intra-cell)
-    #   and large (inter-column) gaps using the biggest jump in sorted sizes ────
     sorted_sizes = sorted(s for s, _ in all_gap_records)
-
     if len(sorted_sizes) < 2:
         return None
 
-    # Find the largest jump between consecutive sorted gap sizes
-    biggest_jump_idx = int(np.argmax(np.diff(sorted_sizes)))
-    small_max = sorted_sizes[biggest_jump_idx]
-    large_min = sorted_sizes[biggest_jump_idx + 1]
-    col_gap_threshold = (small_max + large_min) // 2
+    diffs = np.diff(sorted_sizes)
+    jump_idx  = int(np.argmax(diffs))
+    small_max = sorted_sizes[jump_idx]
+    large_min = sorted_sizes[jump_idx + 1]
 
-    # If there is no bimodal structure (all gaps similar), bail out
     if large_min - small_max < 50:
         return None
 
-    # ── Step 4: cluster column-gap centre-X positions → split points ─────────
-    col_gap_centres = [c for s, c in all_gap_records if s > col_gap_threshold]
+    threshold = (small_max + large_min) // 2
+    col_gap_centres = [c for s, c in all_gap_records if s > threshold]
 
     if not col_gap_centres:
         return None
 
-    x_max = int(data["x_right"].max()) + 1
-    # Bin width = ~5 % of the large-gap size for fine grouping
+    x_max     = int(max(w["x1"] for row in rows for w in row)) + 1
     bin_width = max(20, int(large_min * 0.10))
     n_bins    = max(1, x_max // bin_width + 1)
 
     hist = np.zeros(n_bins, dtype=np.int32)
     for gx in col_gap_centres:
-        bi = min(gx // bin_width, n_bins - 1)
+        bi = min(int(gx) // bin_width, n_bins - 1)
         hist[bi] += 1
 
-    # Treat a bin as a column split if it received any votes
     col_splits: list[int] = []
     in_peak   = False
-    peak_vals: list[int] = []
+    peak_xs:  list[int]  = []
 
     for bi in range(n_bins):
         if hist[bi] > 0:
             if not in_peak:
-                in_peak   = True
-                peak_vals = []
-            peak_vals.extend([bi * bin_width] * int(hist[bi]))
+                in_peak  = True
+                peak_xs  = []
+            peak_xs.extend([bi * bin_width] * int(hist[bi]))
         else:
             if in_peak:
-                col_splits.append(int(np.mean(peak_vals)))
-                in_peak   = False
-                peak_vals = []
-    if in_peak and peak_vals:
-        col_splits.append(int(np.mean(peak_vals)))
+                col_splits.append(int(np.mean(peak_xs)))
+                in_peak  = False
+                peak_xs  = []
+    if in_peak and peak_xs:
+        col_splits.append(int(np.mean(peak_xs)))
 
-    col_splits.append(x_max)   # sentinel at right edge
+    col_splits.append(x_max)
 
     if len(col_splits) < 2:
         return None
 
     ncols = len(col_splits)
 
-    def _col_of(left: int) -> int:
-        for ci, boundary in enumerate(col_splits):
-            if left < boundary:
+    def _col_of(x: float) -> int:
+        for ci, b in enumerate(col_splits):
+            if int(x) < b:
                 return ci
         return ncols - 1
 
-    # ── Step 4: build cell matrix ─────────────────────────────────────────────
-    matrix: list[list[str]] = []
-    for row in rows_raw:
-        cells: list[str] = [""] * ncols
-        for left, _right, text in row:
-            ci = _col_of(left)
-            cells[ci] = (cells[ci] + " " + text).strip() if cells[ci] else text
-        matrix.append(cells)
-
-    if not matrix:
-        return None
-
-    return pd.DataFrame(matrix)
-
-
-def _words_to_df(
-    words: list[dict],
-    x_key_l: str = "x0",
-    x_key_r: str = "x1",
-    y_key_t: str = "top",
-    y_key_b: str = "bottom",
-    text_key: str = "text",
-) -> Optional[pd.DataFrame]:
-    """
-    Convert a list of word dicts (pdfplumber format) to a table DataFrame using
-    the same bimodal gap-voting algorithm as _ocr_page_to_df, but calibrated for
-    PDF coordinate space (points at 72 pt/inch, NOT pixels at 300 DPI).
-
-    Works for any language including Arabic/RTL — clustering is purely spatial.
-    """
-    import numpy as np
-
-    if len(words) < 4:
-        return None
-
-    # Build (x0, x1, y_mid, text) tuples
-    data: list[tuple[int, int, float, str]] = []
-    heights: list[float] = []
-    for w in words:
-        try:
-            x0 = float(w[x_key_l])
-            x1 = float(w[x_key_r])
-            top = float(w[y_key_t])
-            bot = float(w[y_key_b])
-            text = str(w[text_key]).strip()
-        except (KeyError, TypeError, ValueError):
-            continue
-        if not text:
-            continue
-        data.append((int(x0), int(x1), (top + bot) / 2.0, text))
-        heights.append(bot - top)
-
-    if len(data) < 4:
-        return None
-
-    median_h = float(np.median(heights)) if heights else 10.0
-    row_tol = max(3.0, median_h * 0.55)
-
-    data_sorted = sorted(data, key=lambda t: (t[2], t[0]))
-
-    rows_raw: list[list[tuple[int, int, str]]] = []
-    cur_row:  list[tuple[int, int, str]]       = []
-    cur_y = data_sorted[0][2]
-
-    for x0, x1, ym, text in data_sorted:
-        if abs(ym - cur_y) <= row_tol:
-            cur_row.append((x0, x1, text))
-        else:
-            if cur_row:
-                rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
-            cur_row = [(x0, x1, text)]
-            cur_y = ym
-    if cur_row:
-        rows_raw.append(sorted(cur_row, key=lambda t: t[0]))
-
-    if len(rows_raw) < 2:
-        return None
-
-    # ── Collect all inter-word gaps ──────────────────────────────────────────
-    all_gap_records: list[tuple[int, int]] = []   # (size, centre_x)
-
-    for row in rows_raw:
-        if len(row) < 2:
-            continue
-        for i in range(len(row) - 1):
-            gap_l = row[i][1]
-            gap_r = row[i + 1][0]
-            size  = gap_r - gap_l
-            if size > 0:
-                all_gap_records.append((size, (gap_l + gap_r) // 2))
-
-    if not all_gap_records:
-        return None
-
-    sorted_sizes = sorted(s for s, _ in all_gap_records)
-    if len(sorted_sizes) < 2:
-        return None
-
-    biggest_jump_idx = int(np.argmax(np.diff(sorted_sizes)))
-    small_max = sorted_sizes[biggest_jump_idx]
-    large_min = sorted_sizes[biggest_jump_idx + 1]
-    col_gap_threshold = (small_max + large_min) // 2
-
-    # PDF points scale: 72 pt/inch vs 300 DPI pixels → threshold is ~6× smaller.
-    # Use 6 pt minimum gap difference (≈ 2 mm — clearly visible column separation).
-    if large_min - small_max < 6:
-        return None
-
-    col_gap_centres = [c for s, c in all_gap_records if s > col_gap_threshold]
-    if not col_gap_centres:
-        return None
-
-    x_max = max(x1 for _, x1, _ in [w for row in rows_raw for w in row]) + 1
-    bin_width = max(5, int(large_min * 0.10))
-    n_bins    = max(1, x_max // bin_width + 1)
-
-    hist = np.zeros(n_bins, dtype=np.int32)
-    for gx in col_gap_centres:
-        bi = min(gx // bin_width, n_bins - 1)
-        hist[bi] += 1
-
-    col_splits: list[int] = []
-    in_peak = False
-    peak_vals: list[int] = []
-
-    for bi in range(n_bins):
-        if hist[bi] > 0:
-            if not in_peak:
-                in_peak = True
-                peak_vals = []
-            peak_vals.extend([bi * bin_width] * int(hist[bi]))
-        else:
-            if in_peak:
-                col_splits.append(int(np.mean(peak_vals)))
-                in_peak = False
-                peak_vals = []
-    if in_peak and peak_vals:
-        col_splits.append(int(np.mean(peak_vals)))
-
-    col_splits.append(x_max)   # sentinel
-
-    if len(col_splits) < 2:
-        return None
-
-    ncols = len(col_splits)
-
-    def _col_of(left: int) -> int:
-        for ci, boundary in enumerate(col_splits):
-            if left < boundary:
-                return ci
-        return ncols - 1
-
-    matrix: list[list[str]] = []
-    for row in rows_raw:
+    matrix2: list[list[str]] = []
+    for row in rows:
         cells = [""] * ncols
-        for left, _right, text in row:
-            ci = _col_of(left)
-            cells[ci] = (cells[ci] + " " + text).strip() if cells[ci] else text
-        matrix.append(cells)
+        for w in row:
+            ci = _col_of(w["x0"])
+            t  = w["text"]
+            cells[ci] = (cells[ci] + " " + t).strip() if cells[ci] else t
+        if any(cells):
+            matrix2.append(cells)
 
-    if not matrix:
+    if not matrix2:
         return None
 
-    return pd.DataFrame(matrix)
+    return pd.DataFrame(matrix2)
 
 
-def _extract_pdfplumber_words(pdf_path: str) -> list[pd.DataFrame]:
-    """
-    Word-position spatial clustering extraction — the deepest text-based fallback.
-
-    Unlike pdfplumber's extract_tables() (which needs visible borders) or Camelot,
-    this method uses the raw per-word bounding boxes from the PDF's text layer.
-    It then clusters words by Y position (rows) and detects column splits with the
-    same bimodal gap-voting algorithm used by the OCR path.
-
-    Works for any language including Arabic/RTL because it reasons only about
-    pixel positions, not text direction.  Requires the PDF to have embedded text.
-    """
-    import pdfplumber
-
-    log.info("pdfplumber-words spatial clustering from %s", pdf_path)
-    dfs: list[pd.DataFrame] = []
-
-    with pdfplumber.open(pdf_path) as pdf:
-        for page_num, page in enumerate(pdf.pages, start=1):
-            words = page.extract_words(
-                x_tolerance=3,
-                y_tolerance=3,
-                keep_blank_chars=False,
-                use_text_flow=False,
-            )
-            if not words:
-                log.debug("pdfplumber-words: page %d — no words extracted", page_num)
-                continue
-            df = _words_to_df(words)
-            if df is not None and not df.empty:
-                dfs.append(df)
-            else:
-                log.debug("pdfplumber-words: page %d — no table structure detected", page_num)
-
-    log.info("pdfplumber-words found %d raw table(s)", len(dfs))
-    return dfs
-
-
-def _extract_ocr(pdf_path: str, lang: str = "eng") -> list[pd.DataFrame]:
-    """
-    Convert each PDF page to an image and extract tables via Tesseract OCR.
-    Returns a list of DataFrames (one per page that contains a recognisable table).
-    `lang` is passed directly to Tesseract (e.g. 'ara+eng' for Arabic PDFs).
-    """
+def _extract_ocr(
+    pdf_path: str,
+    lang: str = "eng",
+    schema: Optional[GlobalColumnSchema] = None,
+) -> list[pd.DataFrame]:
+    """Phase 4: Convert each PDF page to image and OCR it."""
     from pdf2image import convert_from_path
 
-    log.info("OCR extraction starting (lang=%s): converting pages to images …", lang)
+    log.info("OCR pipeline: lang=%s", lang)
     images = convert_from_path(pdf_path, dpi=300)
-    log.info("OCR: %d page(s) to process", len(images))
+    log.info("OCR: %d page(s)", len(images))
 
     dfs: list[pd.DataFrame] = []
     for i, img in enumerate(images, start=1):
-        log.debug("OCR: processing page %d/%d", i, len(images))
-        df = _ocr_page_to_df(img, lang=lang)
+        log.debug("OCR page %d/%d", i, len(images))
+        df = _ocr_page_to_df(img, lang=lang, schema=schema)
         if df is not None and not df.empty:
             dfs.append(df)
         else:
-            log.debug("OCR: page %d — no table detected", i)
+            log.debug("OCR page %d — no table detected", i)
 
     log.info("OCR found %d raw table(s)", len(dfs))
     return dfs
 
 
-# ---------------------------------------------------------------------------
-# Extraction helpers
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 6 — TABLE RECONSTRUCTION ENGINE
+# ─────────────────────────────────────────────────────────────────────────────
 
-def _extract_camelot(pdf_path: str, flavor: str) -> list[pd.DataFrame]:
+def _normalize_header_row(row: pd.Series) -> tuple:
+    """Produce a hashable fingerprint of a header row for deduplication."""
+    vals = []
+    for v in row:
+        s = str(v).strip().lower()
+        s = re.sub(r'\s+', ' ', s)
+        s = unicodedata.normalize("NFKC", s)
+        vals.append(s)
+    return tuple(vals)
+
+
+def _schemas_compatible(a: pd.DataFrame, b: pd.DataFrame) -> bool:
     """
-    Extract all tables via Camelot with the given flavor.
-    If the primary flavor yields 0 tables, automatically retries with the
-    alternate flavor (lattice ↔ stream) before returning.
-    Returns list of DataFrames.
+    Two tables are compatible for merging when they have the same column count,
+    OR when one has only 1 row (it's a fragment).
     """
-    import camelot  # local import — not penalised if fallback is used instead
-
-    log.info("Camelot extracting [%s] from %s", flavor, pdf_path)
-    tables = camelot.read_pdf(
-        pdf_path,
-        pages="all",
-        flavor=flavor,
-        suppress_stdout=True,
-    )
-    log.info("Camelot [%s] found %d raw table(s)", flavor, len(tables))
-
-    if len(tables) == 0:
-        alt = "stream" if flavor == "lattice" else "lattice"
-        log.info("Camelot [%s] returned 0 tables — retrying with [%s]", flavor, alt)
-        try:
-            alt_tables = camelot.read_pdf(
-                pdf_path,
-                pages="all",
-                flavor=alt,
-                suppress_stdout=True,
-            )
-            log.info("Camelot [%s] found %d raw table(s)", alt, len(alt_tables))
-            if len(alt_tables) > 0:
-                return [t.df for t in alt_tables]
-        except Exception as exc:
-            log.debug("Camelot [%s] also failed: %s", alt, exc)
-
-    return [t.df for t in tables]
+    if a.shape[1] == b.shape[1]:
+        return True
+    # Allow ±1 column difference for reconstruction tolerance
+    if abs(a.shape[1] - b.shape[1]) <= 1 and min(a.shape[1], b.shape[1]) >= 2:
+        return True
+    return False
 
 
-def _extract_pdfplumber(pdf_path: str) -> list[pd.DataFrame]:
-    """Fallback: extract tables via pdfplumber (pure-Python, no OpenCV dep)."""
-    import pdfplumber  # local import
-
-    log.info("pdfplumber fallback extracting from %s", pdf_path)
-    dfs: list[pd.DataFrame] = []
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            for tbl in page.extract_tables() or []:
-                if tbl:
-                    dfs.append(pd.DataFrame(tbl))
-    log.info("pdfplumber found %d raw table(s)", len(dfs))
-    return dfs
+def _pad_to_width(df: pd.DataFrame, target_cols: int) -> pd.DataFrame:
+    """Pad a DataFrame with empty columns on the right to reach target_cols."""
+    while df.shape[1] < target_cols:
+        df[f"_pad_{df.shape[1]}"] = ""
+    return df
 
 
-def extract_tables(pdf_path: str, flavor: str, lang: str = "eng") -> tuple[list[pd.DataFrame], str]:
+def reconstruct_tables(raw_dfs: list[pd.DataFrame]) -> list[pd.DataFrame]:
     """
-    Try Camelot first (with automatic alternate-flavor retry); fall back to
-    pdfplumber; fall back to OCR using the detected `lang`.
-    Returns (list_of_dataframes, engine_used).
+    Phase 6 + Phase 7: Merge compatible adjacent tables and remove duplicate headers.
+
+    Algorithm:
+      1. Start with the first table
+      2. For each subsequent table, check if it's schema-compatible with the current group
+      3. If yes → append rows (after deduplicating the header)
+      4. If no  → finalize the current group, start a new one
     """
+    if not raw_dfs:
+        return []
+
+    cleaned = []
+    for df in raw_dfs:
+        c = _clean_dataframe(df)
+        if c is not None:
+            cleaned.append(c)
+
+    if not cleaned:
+        return []
+
+    groups: list[pd.DataFrame] = [cleaned[0]]
+    seen_headers: set[tuple] = set()
+
+    if len(cleaned[0]) > 0:
+        seen_headers.add(_normalize_header_row(cleaned[0].iloc[0]))
+
+    for df in cleaned[1:]:
+        current = groups[-1]
+
+        if _schemas_compatible(current, df):
+            # Align column counts
+            target = max(current.shape[1], df.shape[1])
+            if current.shape[1] < target:
+                current = _pad_to_width(current.copy(), target)
+                groups[-1] = current
+            if df.shape[1] < target:
+                df = _pad_to_width(df.copy(), target)
+
+            # Normalize column names to match
+            df.columns = current.columns[:df.shape[1]]
+
+            # Drop rows matching seen headers (Phase 7: header deduplication)
+            rows_to_keep = []
+            for i, row in df.iterrows():
+                fp = _normalize_header_row(row)
+                if fp not in seen_headers:
+                    rows_to_keep.append(i)
+
+            if rows_to_keep:
+                df_filtered = df.loc[rows_to_keep].copy()
+                # Track new headers from this page
+                if len(df_filtered) > 0:
+                    seen_headers.add(_normalize_header_row(df_filtered.iloc[0]))
+
+                merged = pd.concat(
+                    [current, df_filtered], ignore_index=True
+                )
+                groups[-1] = merged
+            # else: entire df was repeated header → skip it
+
+        else:
+            # Start a new group
+            if len(df) > 0:
+                seen_headers.add(_normalize_header_row(df.iloc[0]))
+            groups.append(df)
+
+    # Final cleanup
+    result = []
+    for g in groups:
+        g = g.reset_index(drop=True)
+        # Remove entirely empty rows/cols
+        g.replace("", pd.NA, inplace=True)
+        g.dropna(how="all", inplace=True)
+        g.dropna(axis=1, how="all", inplace=True)
+        g.fillna("", inplace=True)
+        g.reset_index(drop=True, inplace=True)
+        if g.shape[0] >= 1 and g.shape[1] >= 1:
+            result.append(g)
+
+    log.info("Reconstruction: %d raw → %d merged table(s)", len(raw_dfs), len(result))
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA CLEANING (shared utility)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_BLANK_VALS = {"", "nan", "none", "n/a", "-", "<na>", "na"}
+
+
+def _to_str(v: object) -> str:
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
     try:
-        dfs = _extract_camelot(pdf_path, flavor)
-        if dfs:
-            return dfs, f"camelot/{flavor}"
-        log.info("Camelot returned 0 tables — falling back to pdfplumber")
-    except Exception as exc:
-        log.warning("Camelot failed (%s) — falling back to pdfplumber", exc)
+        s = str(v).strip()
+        return "" if s.lower() in _BLANK_VALS else s
+    except Exception:
+        return ""
 
-    try:
-        dfs = _extract_pdfplumber(pdf_path)
-        if dfs:
-            return dfs, "pdfplumber"
-        log.info("pdfplumber extract_tables returned 0 — trying word-level clustering")
-    except Exception as exc2:
-        log.warning("pdfplumber failed (%s) — trying word-level clustering", exc2)
-
-    try:
-        dfs = _extract_pdfplumber_words(pdf_path)
-        if dfs:
-            return dfs, "pdfplumber-words"
-        log.info("pdfplumber-words returned 0 — falling back to OCR")
-    except Exception as exc3:
-        log.warning("pdfplumber-words failed (%s) — falling back to OCR", exc3)
-
-    try:
-        return _extract_ocr(pdf_path, lang=lang), "tesseract-ocr"
-    except Exception as exc4:
-        raise RuntimeError(f"All extractors failed: {exc4}") from exc4
-
-
-# ---------------------------------------------------------------------------
-# Data cleaning (fully vectorised)
-# ---------------------------------------------------------------------------
 
 def _dedup_columns(names: list[str]) -> list[str]:
-    """Make column names unique: blank → Col_N, duplicates → name_1, name_2 …"""
     seen: dict[str, int] = {}
     result: list[str] = []
     for i, name in enumerate(names):
@@ -649,68 +855,42 @@ def _dedup_columns(names: list[str]) -> list[str]:
     return result
 
 
-def _is_title_row(row: pd.Series, ncols: int) -> bool:
-    """True when a row looks like a merged title (≥ 50 % of cells are empty)."""
-    non_empty = row.astype(str).str.strip().replace({"": pd.NA, "nan": pd.NA}).notna().sum()
-    return non_empty <= max(1, ncols // 2)
-
-
-def _to_str(v: object) -> str:
-    """Safely coerce any scalar to a stripped string; NaN/None → ''."""
-    if v is None or (isinstance(v, float) and pd.isna(v)):
-        return ""
-    try:
-        return str(v).strip()
-    except Exception:
-        return ""
-
-
-def clean_dataframe(raw: pd.DataFrame) -> Optional[pd.DataFrame]:
+def _clean_dataframe(raw: pd.DataFrame) -> Optional[pd.DataFrame]:
     """
-    Vectorised cleaning pipeline (pandas 2/3 compatible):
-      0. Convert to plain object dtype so StringDtype NaN floats don't leak
-      1. Normalise blank/nan strings → None
-      2. Drop all-None rows and columns
-      3. Skip leading title/merged rows; promote first content-rich row → header
-      4. Deduplicate column names (blank, duplicates)
-      5. NFKC-normalise remaining string cells
-      6. Return None if the cleaned table is trivially empty
+    Vectorised cleaning:
+    1. Convert to object dtype
+    2. Blank/NaN strings → ""
+    3. Drop all-empty rows and columns
+    4. Promote header if columns are integer indices
+    5. NFKC-normalise strings
     """
-    import unicodedata
-
-    if raw.empty:
+    if raw is None or raw.empty:
         return None
 
-    # ── Step 0: force object dtype — prevents pandas 3 StringDtype leaking NaN floats
-    df = raw.copy()
-    df = df.astype(object)
+    df = raw.copy().astype(object)
 
-    _BLANK = {"", "nan", "none", "nan", "<na>", "n/a", "-"}
-
-    # ── Step 1: blank strings → None (object dtype safe, purely vectorised) ──
+    # Blank → ""
     for col in df.columns:
-        # Map each cell: strip → if blank or NaN → None else keep as str
-        df[col] = df[col].map(_to_str).replace(_BLANK, None)
+        df[col] = df[col].map(_to_str)
 
-    # ── Step 2: drop all-None rows / columns ─────────────────────────────────
-    df.replace({None: pd.NA}, inplace=True)
+    df.replace("", pd.NA, inplace=True)
     df.dropna(how="all", inplace=True)
     df.dropna(axis=1, how="all", inplace=True)
-    df = df.where(df.notna(), other="")  # None → "" for safe string ops
+    df.fillna("", inplace=True)
     df.reset_index(drop=True, inplace=True)
 
-    if df.empty or df.shape[0] < 2 or df.shape[1] < 2:
+    if df.empty or df.shape[1] < 1:
         return None
 
-    # ── Step 3: header promotion (only when Camelot gives integer columns) ───
-    if all(isinstance(c, int) or (isinstance(c, str) and c.isdigit())
-           for c in df.columns):
+    # Header promotion for integer-indexed columns
+    if all(
+        isinstance(c, int) or (isinstance(c, str) and c.isdigit())
+        for c in df.columns
+    ):
         ncols = df.shape[1]
-
-        # Skip leading title rows (merged cells — one non-empty out of N cols)
         header_idx = 0
         while header_idx < len(df):
-            row_vals = [_to_str(v) for v in df.iloc[header_idx]]
+            row_vals  = [_to_str(v) for v in df.iloc[header_idx]]
             non_empty = sum(1 for v in row_vals if v)
             if non_empty > max(1, ncols // 2):
                 break
@@ -723,145 +903,322 @@ def clean_dataframe(raw: pd.DataFrame) -> Optional[pd.DataFrame]:
         df = df.iloc[header_idx + 1:].copy()
         df.columns = _dedup_columns(new_header)
         df.reset_index(drop=True, inplace=True)
-
     else:
         df.columns = _dedup_columns([str(c) for c in df.columns])
 
-    # ── Step 4: NFKC normalisation — one pass per column, no apply overhead ──
-    def _norm_col(s: pd.Series) -> pd.Series:
-        def _fix(v: object) -> str:
-            text = _to_str(v)
-            if not text or text.lower() in _BLANK:
-                return ""
-            return unicodedata.normalize("NFKC", text)
-        return s.map(_fix)
-
+    # NFKC normalisation
     for col in df.columns:
-        df[col] = _norm_col(df[col])
+        df[col] = df[col].map(
+            lambda v: unicodedata.normalize("NFKC", _to_str(v))
+        )
 
-    # Drop rows that are entirely empty after normalisation
-    non_empty_rows = df.apply(lambda row: row.astype(str).str.strip().ne("").any(), axis=1)
-    df = df[non_empty_rows].reset_index(drop=True)
+    # Drop all-empty rows post-normalisation
+    mask = df.apply(
+        lambda row: row.astype(str).str.strip().ne("").any(), axis=1
+    )
+    df = df[mask].reset_index(drop=True)
 
-    # ── Final guard ──────────────────────────────────────────────────────────
-    if df.shape[0] < 1 or df.shape[1] < 2:
+    if df.shape[0] < 1 or df.shape[1] < 1:
         return None
 
     return df
 
 
-# ---------------------------------------------------------------------------
-# Excel writing
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 8 — ARABIC RTL SUPPORT
+# ─────────────────────────────────────────────────────────────────────────────
 
-_HEADER_FILL  = PatternFill("solid", fgColor="2563EB")   # Tailwind blue-600
-_HEADER_FONT  = Font(bold=True, color="FFFFFF", name="Calibri", size=10)
-_META_FILL    = PatternFill("solid", fgColor="F3F4F6")
-_ALIGN_CENTER = Alignment(horizontal="center", vertical="center")
-_ALIGN_LEFT   = Alignment(horizontal="left",   vertical="top", wrap_text=True)
+_arabic_reshaper_instance = None
+_bidi_available           = False
+
+
+def _init_arabic_tools():
+    global _arabic_reshaper_instance, _bidi_available
+    if _arabic_reshaper_instance is not None:
+        return
+    try:
+        import arabic_reshaper
+        _arabic_reshaper_instance = arabic_reshaper
+        log.info("arabic_reshaper loaded")
+    except ImportError:
+        log.warning("arabic_reshaper not available — Arabic text may display incorrectly")
+        _arabic_reshaper_instance = False
+
+    try:
+        from bidi.algorithm import get_display  # noqa: F401
+        _bidi_available = True
+        log.info("python-bidi loaded")
+    except ImportError:
+        log.warning("python-bidi not available")
+        _bidi_available = False
+
+
+def _reshape_arabic_text(text: str) -> str:
+    """Apply arabic reshaping + bidi correction to a string."""
+    if not text or not _ARABIC_RE.search(text):
+        return text
+
+    _init_arabic_tools()
+
+    if _arabic_reshaper_instance:
+        try:
+            text = _arabic_reshaper_instance.reshape(text)
+        except Exception:
+            pass
+
+    if _bidi_available:
+        try:
+            from bidi.algorithm import get_display
+            text = get_display(text)
+        except Exception:
+            pass
+
+    return text
+
+
+def apply_arabic_reshaping(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply Arabic reshaping to all cells that contain Arabic text."""
+    _init_arabic_tools()
+    if not _arabic_reshaper_instance and not _bidi_available:
+        return df
+
+    out = df.copy()
+    for col in out.columns:
+        out[col] = out[col].map(
+            lambda v: _reshape_arabic_text(_to_str(v))
+        )
+
+    # Also reshape column names
+    new_cols = [_reshape_arabic_text(str(c)) for c in out.columns]
+    out.columns = new_cols
+    return out
+
+
+def _is_rtl_table(df: pd.DataFrame) -> bool:
+    """Detect whether a table's content is primarily Arabic/RTL."""
+    sample_text = " ".join(
+        str(v)
+        for row in df.values[:10]
+        for v in row
+    )
+    total = len(sample_text.strip())
+    if total == 0:
+        return False
+    arabic_chars = len(_ARABIC_RE.findall(sample_text))
+    return arabic_chars / total > _ARABIC_THRESHOLD
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 9 — EXCEL GENERATION ENGINE
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Styles
+_HDR_FILL     = PatternFill("solid", fgColor="1E40AF")   # deep blue
+_HDR_FONT     = Font(bold=True, color="FFFFFF", name="Calibri", size=10)
+_HDR_BORDER   = Border(
+    bottom=Side(style="medium", color="FFFFFF"),
+)
+_CELL_FONT    = Font(name="Calibri", size=10)
+_ALT_FILL     = PatternFill("solid", fgColor="EFF6FF")   # very light blue
+_META_FILL    = PatternFill("solid", fgColor="F1F5F9")
+_THIN_SIDE    = Side(style="thin", color="CBD5E1")
+_THIN_BORDER  = Border(
+    left=_THIN_SIDE, right=_THIN_SIDE,
+    top=_THIN_SIDE,  bottom=_THIN_SIDE,
+)
+
+_ALIGN_CENTER    = Alignment(horizontal="center", vertical="center", wrap_text=False)
+_ALIGN_LEFT_WRAP = Alignment(horizontal="left",   vertical="top",    wrap_text=True)
+_ALIGN_RIGHT_RTL = Alignment(horizontal="right",  vertical="top",    wrap_text=True, readingOrder=2)
 
 
 def _auto_col_width(ws, df: pd.DataFrame) -> None:
-    """Set column widths based on max content length (capped at 60)."""
+    """Set column widths based on content (capped 8–60)."""
     for idx, col in enumerate(df.columns, start=1):
         header_len = len(str(col))
         try:
-            max_data_len = df.iloc[:, idx - 1].astype(str).str.len().max()
+            max_data_len = int(
+                df.iloc[:, idx - 1].astype(str).str.len().max()
+            )
         except Exception:
             max_data_len = 0
-        width = min(max(header_len, max_data_len or 0) + 4, 60)
+        width = max(8, min(header_len + 4, max_data_len + 4, 60))
         ws.column_dimensions[get_column_letter(idx)].width = width
+
+
+def _write_table_sheet(
+    wb: Workbook,
+    df: pd.DataFrame,
+    sheet_name: str,
+    is_rtl: bool,
+    table_num: int,
+) -> None:
+    """Write one DataFrame to a named sheet with full professional formatting."""
+    ws = wb.create_sheet(sheet_name)
+
+    if is_rtl:
+        ws.sheet_view.rightToLeft = True
+
+    cell_align = _ALIGN_RIGHT_RTL if is_rtl else _ALIGN_LEFT_WRAP
+
+    # ── Header row ────────────────────────────────────────────────────────────
+    for col_idx, header in enumerate(df.columns, start=1):
+        cell = ws.cell(1, col_idx, str(header))
+        cell.font      = _HDR_FONT
+        cell.fill      = _HDR_FILL
+        cell.alignment = _ALIGN_CENTER if not is_rtl else Alignment(
+            horizontal="center", vertical="center",
+            readingOrder=2, wrap_text=False,
+        )
+        cell.border    = _HDR_BORDER
+
+    # ── Data rows ─────────────────────────────────────────────────────────────
+    for row_idx, row in enumerate(df.itertuples(index=False), start=2):
+        fill = _ALT_FILL if row_idx % 2 == 0 else None
+        for col_idx, val in enumerate(row, start=1):
+            cell       = ws.cell(row_idx, col_idx, "" if pd.isna(val) else str(val))
+            cell.font  = _CELL_FONT
+            cell.alignment = cell_align
+            cell.border    = _THIN_BORDER
+            if fill:
+                cell.fill = fill
+
+    ws.freeze_panes = "A2"
+    _auto_col_width(ws, df)
+    log.info("Sheet '%s': %d rows × %d cols (RTL=%s)", sheet_name, *df.shape, is_rtl)
 
 
 def write_excel(
     tables: list[pd.DataFrame],
     output_path: str,
     source_pdf: str,
-    flavor: str,
+    engine: str,
+    is_arabic: bool = False,
 ) -> None:
-    """Write cleaned tables to .xlsx with a metadata sheet."""
+    """Phase 9: Write all tables to a production-quality .xlsx file."""
     wb = Workbook()
-    wb.remove(wb.active)  # remove default empty sheet
+    wb.remove(wb.active)
 
-    # ── Metadata sheet ──────────────────────────────────────────────────────
+    # ── Metadata sheet ────────────────────────────────────────────────────────
     ws_meta = wb.create_sheet("Metadata", 0)
     meta_rows = [
-        ("Source PDF",           os.path.basename(source_pdf)),
-        ("Extraction engine",    flavor),
-        ("Tables extracted",     str(len(tables))),
-        ("Generated at",         time.strftime("%Y-%m-%d %H:%M:%S")),
+        ("Source PDF",        os.path.basename(source_pdf)),
+        ("Extraction engine", engine),
+        ("Tables extracted",  str(len(tables))),
+        ("Document language", "Arabic / RTL" if is_arabic else "English / LTR"),
+        ("Generated at",      time.strftime("%Y-%m-%d %H:%M:%S")),
+        ("Generator",         "Toolify PDF Reconstruction Engine v2"),
     ]
     for r, (key, val) in enumerate(meta_rows, start=1):
-        cell_k = ws_meta.cell(r, 1, key)
-        cell_v = ws_meta.cell(r, 2, val)
-        cell_k.font  = Font(bold=True, name="Calibri", size=10)
-        cell_k.fill  = _META_FILL
-        cell_v.font  = Font(name="Calibri", size=10)
-        cell_k.alignment = _ALIGN_LEFT
-        cell_v.alignment = _ALIGN_LEFT
-    ws_meta.column_dimensions["A"].width = 22
-    ws_meta.column_dimensions["B"].width = 48
+        ck = ws_meta.cell(r, 1, key)
+        cv = ws_meta.cell(r, 2, val)
+        ck.font      = Font(bold=True, name="Calibri", size=10)
+        ck.fill      = _META_FILL
+        ck.alignment = _ALIGN_LEFT_WRAP
+        cv.font      = Font(name="Calibri", size=10)
+        cv.alignment = _ALIGN_LEFT_WRAP
+    ws_meta.column_dimensions["A"].width = 24
+    ws_meta.column_dimensions["B"].width = 50
 
-    # ── Table sheets ────────────────────────────────────────────────────────
+    # ── Table sheets ──────────────────────────────────────────────────────────
     for i, df in enumerate(tables, start=1):
+        is_rtl = is_arabic or _is_rtl_table(df)
+
+        # Apply Arabic reshaping if needed
+        if is_rtl:
+            df = apply_arabic_reshaping(df)
+
         sheet_name = f"Table_{i}"
-        ws = wb.create_sheet(sheet_name)
-
-        # Header row
-        for col_idx, header in enumerate(df.columns, start=1):
-            cell = ws.cell(1, col_idx, str(header))
-            cell.font      = _HEADER_FONT
-            cell.fill      = _HEADER_FILL
-            cell.alignment = _ALIGN_CENTER
-
-        # Data rows (batch write — no cell-by-cell loops where avoidable)
-        for row_idx, row in enumerate(df.itertuples(index=False), start=2):
-            for col_idx, val in enumerate(row, start=1):
-                cell = ws.cell(row_idx, col_idx, "" if pd.isna(val) else val)  # type: ignore[arg-type]
-                cell.alignment = _ALIGN_LEFT
-
-        # Freeze header row + auto-width
-        ws.freeze_panes = "A2"
-        _auto_col_width(ws, df)
-
-        log.info("Sheet '%s': %d rows × %d cols", sheet_name, *df.shape)
+        _write_table_sheet(wb, df, sheet_name, is_rtl, i)
 
     wb.save(output_path)
     log.info("Saved → %s", output_path)
 
 
-# ---------------------------------------------------------------------------
-# Per-file orchestrator
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 10 — VALIDATION LAYER
+# ─────────────────────────────────────────────────────────────────────────────
 
-def _clean_batch(raw_dfs: list[pd.DataFrame]) -> list[pd.DataFrame]:
-    """Run clean_dataframe on a list; skip empty/failed tables. Returns cleaned list."""
-    clean: list[pd.DataFrame] = []
-    for idx, raw in enumerate(raw_dfs):
-        try:
-            df = clean_dataframe(raw)
-            if df is not None:
-                clean.append(df)
-            else:
-                log.debug("Table %d skipped (empty after cleaning)", idx + 1)
-        except Exception as exc:
-            log.warning("Table %d cleaning error — skipping: %s", idx + 1, exc)
-    return clean
-
-
-def process_pdf(pdf_path: str, output_path: Optional[str] = None, lang: Optional[str] = None) -> str:
+def validate_and_repair(tables: list[pd.DataFrame]) -> list[pd.DataFrame]:
     """
-    Full pipeline for a single PDF — text-based or scanned, any language.
+    Phase 10: Validate column consistency, detect broken structures,
+    and repair where possible.
+    """
+    valid: list[pd.DataFrame] = []
 
-    Routing:
-      • Scanned PDF  → OCR (Tesseract) directly with auto/forced lang
-      • Text PDF     → Camelot (both flavors) → pdfplumber → OCR fallback
+    for i, df in enumerate(tables):
+        # Check minimum size
+        if df.shape[0] < 1 or df.shape[1] < 1:
+            log.warning("Validation: Table %d skipped (too small: %s)", i + 1, df.shape)
+            continue
 
-    `lang`: Tesseract language string (e.g. 'ara+eng', 'eng').
-            None = auto-detect from the PDF's embedded text.
+        # Check for completely empty table
+        all_empty = df.apply(
+            lambda col: col.astype(str).str.strip().eq("").all()
+        ).all()
+        if all_empty:
+            log.warning("Validation: Table %d skipped (all empty)", i + 1)
+            continue
 
-    Returns the path of the written .xlsx file.
-    Raises RuntimeError with a user-friendly message on failure.
+        # Repair: detect and drop columns that are >90% empty
+        col_empty_ratio = df.apply(
+            lambda col: col.astype(str).str.strip().eq("").mean()
+        )
+        mostly_empty_cols = col_empty_ratio[col_empty_ratio > 0.90].index.tolist()
+        if mostly_empty_cols and len(df.columns) - len(mostly_empty_cols) >= 1:
+            df = df.drop(columns=mostly_empty_cols)
+            log.info(
+                "Validation: Table %d — dropped %d empty columns",
+                i + 1, len(mostly_empty_cols),
+            )
+
+        # Repair: drop rows that are >90% empty
+        row_empty_ratio = df.apply(
+            lambda col: col.astype(str).str.strip().eq(""), axis=1
+        ).mean(axis=1)
+        mostly_empty_rows = row_empty_ratio[row_empty_ratio > 0.90].index
+        if len(mostly_empty_rows) > 0:
+            df = df.drop(index=mostly_empty_rows).reset_index(drop=True)
+
+        # Validate RTL formatting consistency
+        is_rtl = _is_rtl_table(df)
+        log.debug(
+            "Validation: Table %d — %d rows × %d cols — RTL=%s",
+            i + 1, df.shape[0], df.shape[1], is_rtl,
+        )
+
+        # Final size check after repair
+        if df.shape[0] >= 1 and df.shape[1] >= 1:
+            valid.append(df)
+        else:
+            log.warning("Validation: Table %d discarded after repair", i + 1)
+
+    log.info("Validation: %d/%d tables passed", len(valid), len(tables))
+    return valid
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FULL PIPELINE ORCHESTRATOR
+# ─────────────────────────────────────────────────────────────────────────────
+
+def process_pdf(
+    pdf_path: str,
+    output_path: Optional[str] = None,
+    lang: Optional[str] = None,
+) -> str:
+    """
+    Enterprise PDF → Excel reconstruction pipeline.
+
+    Phases:
+      1  Classify document
+      2  Extract layout (word bounding boxes)
+      5  Build global column schema
+      3  Route to best engine per-document type
+      6  Reconstruct + merge multi-page tables
+      7  Remove repeated headers
+      8  Apply Arabic reshaping
+      9  Generate Excel
+      10 Validate output
     """
     pdf_path = str(Path(pdf_path).resolve())
     if not os.path.isfile(pdf_path):
@@ -871,76 +1228,141 @@ def process_pdf(pdf_path: str, output_path: Optional[str] = None, lang: Optional
         output_path = str(Path(pdf_path).with_suffix(".xlsx"))
 
     t0 = time.perf_counter()
-    log.info("=== Processing: %s ===", pdf_path)
+    log.info("=== Toolify PDF Reconstruction: %s ===", pdf_path)
 
-    # ── Step 1: detect PDF type ──────────────────────────────────────────────
-    scanned = is_scanned_pdf(pdf_path)
+    # ── Phase 1: Document Classification ─────────────────────────────────────
+    profile = classify_document(pdf_path)
+    ocr_lang = lang or profile.lang
 
-    # ── Step 1b: detect language (auto unless caller overrides) ─────────────
-    if lang:
-        log.info("Language override: lang=%s", lang)
-        ocr_lang = lang
-    else:
-        ocr_lang = detect_language(pdf_path)
+    # ── Phase 2 + 5: Layout Analysis + Global Column Schema ──────────────────
+    schema = GlobalColumnSchema()
+    layouts: list[PageLayout] = []
 
-    # ── Step 2: extract ──────────────────────────────────────────────────────
-    if scanned:
-        log.info("Routing to OCR engine (scanned/image PDF detected, lang=%s)", ocr_lang)
+    if not profile.is_scanned:
         try:
-            raw_dfs, engine = _extract_ocr(pdf_path, lang=ocr_lang), "tesseract-ocr"
+            layouts = _extract_page_words(pdf_path)
+            text_layouts = [l for l in layouts if l.words]
+            if text_layouts:
+                schema.fit(text_layouts)
+                log.info(
+                    "Global schema: %d columns from %d text pages",
+                    schema.n_cols, len(text_layouts),
+                )
         except Exception as exc:
-            raise RuntimeError(
-                f"OCR extraction failed for '{os.path.basename(pdf_path)}': {exc}"
-            ) from exc
-    else:
-        flavor = detect_flavor(pdf_path)
-        raw_dfs, engine = extract_tables(pdf_path, flavor, lang=ocr_lang)
+            log.warning("Layout extraction failed (%s) — skipping global schema", exc)
 
-    # ── Step 3: clean ────────────────────────────────────────────────────────
-    clean = _clean_batch(raw_dfs)
+    # ── Phase 3: Smart Engine Routing ────────────────────────────────────────
+    raw_dfs: list[pd.DataFrame] = []
+    engine  = "unknown"
 
-    # ── Step 3b: deeper fallbacks when text-based path returns 0 clean tables ─
-    if not clean and not scanned:
-        log.info(
-            "Text-based engines found 0 clean tables — trying OCR fallback "
-            "(lang=%s)", ocr_lang
-        )
+    if profile.is_scanned:
+        # Fully scanned → OCR directly
+        log.info("Routing: fully scanned PDF → OCR")
         try:
-            ocr_raw = _extract_ocr(pdf_path, lang=ocr_lang)
-            ocr_clean = _clean_batch(ocr_raw)
-            if ocr_clean:
-                clean = ocr_clean
-                engine = "tesseract-ocr (fallback)"
+            raw_dfs = _extract_ocr(pdf_path, lang=ocr_lang, schema=schema if schema.n_cols > 1 else None)
+            engine  = "tesseract-ocr"
         except Exception as exc:
-            log.warning("OCR fallback also failed: %s", exc)
+            raise RuntimeError(f"OCR failed: {exc}") from exc
 
-    if not clean:
+    else:
+        # Text-based or hybrid → try Camelot first
+        flavor = "lattice" if profile.has_borders else "stream"
+
+        try:
+            raw_dfs = _extract_camelot(pdf_path, flavor)
+            if raw_dfs:
+                engine = f"camelot/{flavor}"
+        except Exception as exc:
+            log.warning("Camelot routing failed: %s", exc)
+
+        if not raw_dfs:
+            # Fallback 1: pdfplumber table detection
+            try:
+                raw_dfs = _extract_pdfplumber_tables(pdf_path)
+                if raw_dfs:
+                    engine = "pdfplumber"
+            except Exception as exc:
+                log.warning("pdfplumber fallback failed: %s", exc)
+
+        if not raw_dfs and layouts:
+            # Fallback 2: spatial word clustering with global schema
+            log.info("Routing: spatial clustering with global schema")
+            for layout in layouts:
+                if layout.words:
+                    df = layout_to_dataframe(layout, schema)
+                    if df is not None and not df.empty:
+                        raw_dfs.append(df)
+            if raw_dfs:
+                engine = "spatial-clustering"
+
+        if not raw_dfs:
+            # Fallback 3: OCR
+            log.info("Routing: all text engines failed → OCR")
+            try:
+                raw_dfs = _extract_ocr(pdf_path, lang=ocr_lang, schema=schema if schema.n_cols > 1 else None)
+                engine  = "tesseract-ocr (fallback)"
+            except Exception as exc:
+                raise RuntimeError(f"All extractors failed: {exc}") from exc
+
+        # For hybrid PDFs: also OCR the scanned pages and merge
+        if profile.is_hybrid and profile.scanned_page_indices:
+            log.info("Hybrid PDF: supplementing with OCR for scanned pages")
+            try:
+                from pdf2image import convert_from_path
+                images = convert_from_path(pdf_path, dpi=300)
+                for pi in profile.scanned_page_indices:
+                    if pi < len(images):
+                        df = _ocr_page_to_df(
+                            images[pi], lang=ocr_lang,
+                            schema=schema if schema.n_cols > 1 else None,
+                        )
+                        if df is not None and not df.empty:
+                            raw_dfs.append(df)
+                engine += "+ocr-hybrid"
+            except Exception as exc:
+                log.warning("Hybrid OCR supplement failed: %s", exc)
+
+    # ── Phase 6 + 7: Table Reconstruction + Header Intelligence ──────────────
+    tables = reconstruct_tables(raw_dfs)
+
+    if not tables:
         raise RuntimeError(
             f"No usable tables found in '{os.path.basename(pdf_path)}'. "
             "The PDF may contain no tables or only complex graphical content."
         )
 
-    log.info("%d usable table(s) after cleaning", len(clean))
+    # ── Phase 10: Validation ──────────────────────────────────────────────────
+    tables = validate_and_repair(tables)
 
-    # ── Step 4: write Excel ──────────────────────────────────────────────────
-    write_excel(clean, output_path, pdf_path, engine)
+    if not tables:
+        raise RuntimeError(
+            f"Tables were found but failed validation in '{os.path.basename(pdf_path)}'. "
+            "The content may be corrupted or too sparse."
+        )
+
+    # ── Phase 9: Excel Generation (includes Phase 8 Arabic reshaping) ─────────
+    write_excel(
+        tables, output_path, pdf_path, engine,
+        is_arabic=profile.is_arabic,
+    )
 
     elapsed = time.perf_counter() - t0
-    log.info("Done in %.2fs → %s", elapsed, output_path)
+    log.info(
+        "Done: %d table(s) → %s [engine=%s] in %.2fs",
+        len(tables), output_path, engine, elapsed,
+    )
     return output_path
 
 
-# ---------------------------------------------------------------------------
-# Batch processing
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
+# BATCH PROCESSING
+# ─────────────────────────────────────────────────────────────────────────────
 
-def process_batch(paths: list[str], lang: Optional[str] = None) -> dict[str, str | Exception]:
-    """
-    Process multiple PDFs.
-    `lang` is forwarded to process_pdf (None = auto-detect per file).
-    Returns a dict mapping input path → output path or Exception.
-    """
-    results: dict[str, str | Exception] = {}
+def process_batch(
+    paths: list[str],
+    lang: Optional[str] = None,
+) -> dict[str, "str | Exception"]:
+    results: dict[str, "str | Exception"] = {}
     for path in paths:
         try:
             results[path] = process_pdf(path, lang=lang)
@@ -950,36 +1372,31 @@ def process_batch(paths: list[str], lang: Optional[str] = None) -> dict[str, str
     return results
 
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
 # CLI
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="pdf_table_extractor",
-        description="Extract PDF tables → clean Excel file(s)",
+        description="Enterprise PDF → Excel reconstruction pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
             "  python pdf_table_extractor.py report.pdf\n"
             "  python pdf_table_extractor.py report.pdf output.xlsx\n"
-            "  python pdf_table_extractor.py *.pdf          # batch\n"
-            "  python pdf_table_extractor.py report.pdf -q  # quiet\n"
+            "  python pdf_table_extractor.py *.pdf\n"
+            "  python pdf_table_extractor.py report.pdf -q\n"
+            "  python pdf_table_extractor.py report.pdf --lang ara+eng\n"
         ),
     )
-    p.add_argument("inputs",        nargs="+",           help="PDF file(s) to process")
-    p.add_argument("output",        nargs="?",           help="Output .xlsx path (single-file mode only)")
-    p.add_argument("-q", "--quiet", action="store_true", help="Suppress info logs (errors only)")
-    p.add_argument("-v", "--verbose", action="store_true", help="Enable debug logs")
+    p.add_argument("inputs",            nargs="+",           help="PDF file(s) to process")
+    p.add_argument("output",            nargs="?",           help="Output .xlsx (single-file mode)")
+    p.add_argument("-q", "--quiet",     action="store_true", help="Errors only")
+    p.add_argument("-v", "--verbose",   action="store_true", help="Debug logs")
     p.add_argument(
-        "--lang",
-        default=None,
-        metavar="LANG",
-        help=(
-            "Tesseract OCR language(s) to use, e.g. 'ara+eng' for Arabic, "
-            "'eng' for English. Default: auto-detect from PDF content. "
-            "Run 'tesseract --list-langs' to see available languages."
-        ),
+        "--lang", default=None, metavar="LANG",
+        help="Tesseract language override, e.g. 'ara+eng' or 'eng'",
     )
     return p
 
@@ -993,18 +1410,21 @@ def main() -> None:
     elif args.verbose:
         log.setLevel(logging.DEBUG)
 
-    pdf_inputs = [p for p in args.inputs if p.lower().endswith(".pdf")]
-    non_pdfs   = [p for p in args.inputs if not p.lower().endswith(".pdf")]
+    pdf_inputs   = [p for p in args.inputs if p.lower().endswith(".pdf")]
+    non_pdfs     = [p for p in args.inputs if not p.lower().endswith(".pdf")]
+    explicit_out = None
 
     if non_pdfs:
-        # Support: script.py report.pdf output.xlsx
-        if len(non_pdfs) == 1 and non_pdfs[0].lower().endswith(".xlsx") and len(pdf_inputs) == 1:
-            explicit_output = non_pdfs[0]
+        if (
+            len(non_pdfs) == 1
+            and non_pdfs[0].lower().endswith(".xlsx")
+            and len(pdf_inputs) == 1
+        ):
+            explicit_out = non_pdfs[0]
         else:
             parser.error(f"Unrecognised input(s): {non_pdfs}")
-            return
-    else:
-        explicit_output = args.output
+
+    explicit_out = explicit_out or args.output
 
     if not pdf_inputs:
         parser.error("No PDF files specified.")
@@ -1012,8 +1432,8 @@ def main() -> None:
     forced_lang = args.lang or None
 
     if len(pdf_inputs) > 1:
-        if explicit_output:
-            parser.error("Output path can only be specified for a single PDF in batch mode.")
+        if explicit_out:
+            parser.error("Output path can only be used in single-file mode.")
         results = process_batch(pdf_inputs, lang=forced_lang)
         errors  = {k: v for k, v in results.items() if isinstance(v, Exception)}
         if errors:
@@ -1024,7 +1444,7 @@ def main() -> None:
             print(f"OK     {path} → {out}")
     else:
         try:
-            out = process_pdf(pdf_inputs[0], explicit_output, lang=forced_lang)
+            out = process_pdf(pdf_inputs[0], explicit_out, lang=forced_lang)
             print(f"OK     {pdf_inputs[0]} → {out}")
         except RuntimeError as exc:
             print(f"ERROR  {exc}", file=sys.stderr)
