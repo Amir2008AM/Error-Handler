@@ -3,18 +3,20 @@ pdf_table_extractor.py
 ======================
 Production-ready PDF → Excel table extraction pipeline.
 
-Pipeline (fully automatic — works on ANY PDF):
+Pipeline (fully automatic — works on ANY PDF including Arabic/RTL):
   1. Detect whether PDF is text-based or scanned (image-only)
-  2a. Text PDF  → Camelot (primary) or pdfplumber (fallback)
+  1b. Auto-detect script language from embedded text (Arabic → ara+eng)
+  2a. Text PDF  → Camelot lattice → Camelot stream → pdfplumber → OCR fallback
   2b. Scanned PDF → OCR via Tesseract 5 + pdf2image → table reconstruction
   3. Clean each DataFrame with vectorised pandas ops (pandas 2/3 compatible)
   4. Write results to a single .xlsx file (one sheet per table + metadata)
 
 Usage:
   python pdf_table_extractor.py input.pdf [output.xlsx]
-  python pdf_table_extractor.py *.pdf            # batch mode
-  python pdf_table_extractor.py report.pdf -q    # quiet
-  python pdf_table_extractor.py report.pdf -v    # verbose
+  python pdf_table_extractor.py *.pdf               # batch mode
+  python pdf_table_extractor.py report.pdf -q       # quiet
+  python pdf_table_extractor.py report.pdf -v       # verbose
+  python pdf_table_extractor.py report.pdf --lang ara+eng   # force Arabic OCR
 
 Performance notes:
   - Text/scan detection reads only the first page — never the whole PDF
@@ -25,7 +27,7 @@ Performance notes:
 
 Requirements:
   pip install camelot-py[cv] pdfplumber pandas openpyxl pytesseract pdf2image
-  System: tesseract >= 4, poppler (pdftoppm)
+  System: tesseract >= 4 with ara + eng traineddata, poppler (pdftoppm)
 """
 
 from __future__ import annotations
@@ -89,6 +91,11 @@ def detect_flavor(pdf_path: str) -> str:
 
 _MIN_CHARS_PER_PAGE = 40  # fewer than this → treat as scanned
 
+# Arabic + Arabic Extended Unicode ranges
+_ARABIC_RE = re.compile(
+    r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]'
+)
+
 
 def is_scanned_pdf(pdf_path: str) -> bool:
     """
@@ -117,11 +124,43 @@ def is_scanned_pdf(pdf_path: str) -> bool:
         return False
 
 
+def detect_language(pdf_path: str) -> str:
+    """
+    Detect the primary script in a text-based PDF by sampling up to 3 pages.
+
+    Returns a Tesseract lang string:
+      - 'ara+eng'  when > 5 % of sampled characters are Arabic-script
+      - 'eng'      otherwise
+
+    For scanned PDFs (no embedded text) the caller should pass 'ara+eng'
+    as a safe default so both scripts are recognised in one pass.
+    """
+    try:
+        import pdfplumber
+        with pdfplumber.open(pdf_path) as pdf:
+            text = " ".join((p.extract_text() or "") for p in pdf.pages[:3])
+        total = len(text.strip())
+        if total == 0:
+            return "ara+eng"   # no text → scanned → safe default covers both
+        arabic = len(_ARABIC_RE.findall(text))
+        ratio = arabic / total
+        if ratio > 0.05:
+            log.info(
+                "Language: Arabic script detected (%.0f%% of chars) → lang=ara+eng",
+                ratio * 100,
+            )
+            return "ara+eng"
+        return "eng"
+    except Exception as exc:
+        log.warning("Language detection failed (%s) — defaulting to eng", exc)
+        return "eng"
+
+
 # ---------------------------------------------------------------------------
 # OCR extraction — for scanned / image-only PDFs
 # ---------------------------------------------------------------------------
 
-def _ocr_page_to_df(image) -> Optional[pd.DataFrame]:
+def _ocr_page_to_df(image, lang: str = "eng") -> Optional[pd.DataFrame]:
     """
     Run Tesseract on a single PIL image and reconstruct a table DataFrame.
 
@@ -142,6 +181,7 @@ def _ocr_page_to_df(image) -> Optional[pd.DataFrame]:
     data = pytesseract.image_to_data(
         image,
         output_type=pytesseract.Output.DATAFRAME,
+        lang=lang,
         config="--psm 6",
     )
 
@@ -284,21 +324,22 @@ def _ocr_page_to_df(image) -> Optional[pd.DataFrame]:
     return pd.DataFrame(matrix)
 
 
-def _extract_ocr(pdf_path: str) -> list[pd.DataFrame]:
+def _extract_ocr(pdf_path: str, lang: str = "eng") -> list[pd.DataFrame]:
     """
     Convert each PDF page to an image and extract tables via Tesseract OCR.
     Returns a list of DataFrames (one per page that contains a recognisable table).
+    `lang` is passed directly to Tesseract (e.g. 'ara+eng' for Arabic PDFs).
     """
     from pdf2image import convert_from_path
 
-    log.info("OCR extraction starting: converting pages to images …")
+    log.info("OCR extraction starting (lang=%s): converting pages to images …", lang)
     images = convert_from_path(pdf_path, dpi=300)
     log.info("OCR: %d page(s) to process", len(images))
 
     dfs: list[pd.DataFrame] = []
     for i, img in enumerate(images, start=1):
         log.debug("OCR: processing page %d/%d", i, len(images))
-        df = _ocr_page_to_df(img)
+        df = _ocr_page_to_df(img, lang=lang)
         if df is not None and not df.empty:
             dfs.append(df)
         else:
@@ -313,7 +354,12 @@ def _extract_ocr(pdf_path: str) -> list[pd.DataFrame]:
 # ---------------------------------------------------------------------------
 
 def _extract_camelot(pdf_path: str, flavor: str) -> list[pd.DataFrame]:
-    """Extract all tables via Camelot. Returns list of DataFrames."""
+    """
+    Extract all tables via Camelot with the given flavor.
+    If the primary flavor yields 0 tables, automatically retries with the
+    alternate flavor (lattice ↔ stream) before returning.
+    Returns list of DataFrames.
+    """
     import camelot  # local import — not penalised if fallback is used instead
 
     log.info("Camelot extracting [%s] from %s", flavor, pdf_path)
@@ -323,7 +369,24 @@ def _extract_camelot(pdf_path: str, flavor: str) -> list[pd.DataFrame]:
         flavor=flavor,
         suppress_stdout=True,
     )
-    log.info("Camelot found %d raw table(s)", len(tables))
+    log.info("Camelot [%s] found %d raw table(s)", flavor, len(tables))
+
+    if len(tables) == 0:
+        alt = "stream" if flavor == "lattice" else "lattice"
+        log.info("Camelot [%s] returned 0 tables — retrying with [%s]", flavor, alt)
+        try:
+            alt_tables = camelot.read_pdf(
+                pdf_path,
+                pages="all",
+                flavor=alt,
+                suppress_stdout=True,
+            )
+            log.info("Camelot [%s] found %d raw table(s)", alt, len(alt_tables))
+            if len(alt_tables) > 0:
+                return [t.df for t in alt_tables]
+        except Exception as exc:
+            log.debug("Camelot [%s] also failed: %s", alt, exc)
+
     return [t.df for t in tables]
 
 
@@ -342,9 +405,10 @@ def _extract_pdfplumber(pdf_path: str) -> list[pd.DataFrame]:
     return dfs
 
 
-def extract_tables(pdf_path: str, flavor: str) -> tuple[list[pd.DataFrame], str]:
+def extract_tables(pdf_path: str, flavor: str, lang: str = "eng") -> tuple[list[pd.DataFrame], str]:
     """
-    Try Camelot first; fall back to pdfplumber; fall back to OCR.
+    Try Camelot first (with automatic alternate-flavor retry); fall back to
+    pdfplumber; fall back to OCR using the detected `lang`.
     Returns (list_of_dataframes, engine_used).
     """
     try:
@@ -358,7 +422,7 @@ def extract_tables(pdf_path: str, flavor: str) -> tuple[list[pd.DataFrame], str]
         log.warning("pdfplumber failed (%s) — falling back to OCR", exc2)
 
     try:
-        return _extract_ocr(pdf_path), "tesseract-ocr"
+        return _extract_ocr(pdf_path, lang=lang), "tesseract-ocr"
     except Exception as exc3:
         raise RuntimeError(f"All extractors failed: {exc3}") from exc3
 
@@ -582,13 +646,16 @@ def _clean_batch(raw_dfs: list[pd.DataFrame]) -> list[pd.DataFrame]:
     return clean
 
 
-def process_pdf(pdf_path: str, output_path: Optional[str] = None) -> str:
+def process_pdf(pdf_path: str, output_path: Optional[str] = None, lang: Optional[str] = None) -> str:
     """
-    Full pipeline for a single PDF — text-based or scanned.
+    Full pipeline for a single PDF — text-based or scanned, any language.
 
     Routing:
-      • Scanned PDF  → OCR (Tesseract) directly
-      • Text PDF     → Camelot → pdfplumber → OCR (if previous yield 0 tables)
+      • Scanned PDF  → OCR (Tesseract) directly with auto/forced lang
+      • Text PDF     → Camelot (both flavors) → pdfplumber → OCR fallback
+
+    `lang`: Tesseract language string (e.g. 'ara+eng', 'eng').
+            None = auto-detect from the PDF's embedded text.
 
     Returns the path of the written .xlsx file.
     Raises RuntimeError with a user-friendly message on failure.
@@ -606,18 +673,25 @@ def process_pdf(pdf_path: str, output_path: Optional[str] = None) -> str:
     # ── Step 1: detect PDF type ──────────────────────────────────────────────
     scanned = is_scanned_pdf(pdf_path)
 
+    # ── Step 1b: detect language (auto unless caller overrides) ─────────────
+    if lang:
+        log.info("Language override: lang=%s", lang)
+        ocr_lang = lang
+    else:
+        ocr_lang = detect_language(pdf_path)
+
     # ── Step 2: extract ──────────────────────────────────────────────────────
     if scanned:
-        log.info("Routing to OCR engine (scanned/image PDF detected)")
+        log.info("Routing to OCR engine (scanned/image PDF detected, lang=%s)", ocr_lang)
         try:
-            raw_dfs, engine = _extract_ocr(pdf_path), "tesseract-ocr"
+            raw_dfs, engine = _extract_ocr(pdf_path, lang=ocr_lang), "tesseract-ocr"
         except Exception as exc:
             raise RuntimeError(
                 f"OCR extraction failed for '{os.path.basename(pdf_path)}': {exc}"
             ) from exc
     else:
         flavor = detect_flavor(pdf_path)
-        raw_dfs, engine = extract_tables(pdf_path, flavor)
+        raw_dfs, engine = extract_tables(pdf_path, flavor, lang=ocr_lang)
 
     # ── Step 3: clean ────────────────────────────────────────────────────────
     clean = _clean_batch(raw_dfs)
@@ -626,10 +700,10 @@ def process_pdf(pdf_path: str, output_path: Optional[str] = None) -> str:
     if not clean and not scanned:
         log.info(
             "Text-based engines found 0 tables — attempting OCR fallback "
-            "(PDF may mix text and image content)"
+            "(PDF may mix text and image content, lang=%s)", ocr_lang
         )
         try:
-            ocr_raw = _extract_ocr(pdf_path)
+            ocr_raw = _extract_ocr(pdf_path, lang=ocr_lang)
             ocr_clean = _clean_batch(ocr_raw)
             if ocr_clean:
                 clean = ocr_clean
@@ -657,15 +731,16 @@ def process_pdf(pdf_path: str, output_path: Optional[str] = None) -> str:
 # Batch processing
 # ---------------------------------------------------------------------------
 
-def process_batch(paths: list[str]) -> dict[str, str | Exception]:
+def process_batch(paths: list[str], lang: Optional[str] = None) -> dict[str, str | Exception]:
     """
     Process multiple PDFs.
+    `lang` is forwarded to process_pdf (None = auto-detect per file).
     Returns a dict mapping input path → output path or Exception.
     """
     results: dict[str, str | Exception] = {}
     for path in paths:
         try:
-            results[path] = process_pdf(path)
+            results[path] = process_pdf(path, lang=lang)
         except Exception as exc:
             log.error("FAILED %s: %s", path, exc)
             results[path] = exc
@@ -689,10 +764,20 @@ def _build_parser() -> argparse.ArgumentParser:
             "  python pdf_table_extractor.py report.pdf -q  # quiet\n"
         ),
     )
-    p.add_argument("inputs",       nargs="+",          help="PDF file(s) to process")
-    p.add_argument("output",       nargs="?",           help="Output .xlsx path (single-file mode only)")
+    p.add_argument("inputs",        nargs="+",           help="PDF file(s) to process")
+    p.add_argument("output",        nargs="?",           help="Output .xlsx path (single-file mode only)")
     p.add_argument("-q", "--quiet", action="store_true", help="Suppress info logs (errors only)")
     p.add_argument("-v", "--verbose", action="store_true", help="Enable debug logs")
+    p.add_argument(
+        "--lang",
+        default=None,
+        metavar="LANG",
+        help=(
+            "Tesseract OCR language(s) to use, e.g. 'ara+eng' for Arabic, "
+            "'eng' for English. Default: auto-detect from PDF content. "
+            "Run 'tesseract --list-langs' to see available languages."
+        ),
+    )
     return p
 
 
@@ -721,10 +806,12 @@ def main() -> None:
     if not pdf_inputs:
         parser.error("No PDF files specified.")
 
+    forced_lang = args.lang or None
+
     if len(pdf_inputs) > 1:
         if explicit_output:
             parser.error("Output path can only be specified for a single PDF in batch mode.")
-        results = process_batch(pdf_inputs)
+        results = process_batch(pdf_inputs, lang=forced_lang)
         errors  = {k: v for k, v in results.items() if isinstance(v, Exception)}
         if errors:
             for path, exc in errors.items():
@@ -734,7 +821,7 @@ def main() -> None:
             print(f"OK     {path} → {out}")
     else:
         try:
-            out = process_pdf(pdf_inputs[0], explicit_output)
+            out = process_pdf(pdf_inputs[0], explicit_output, lang=forced_lang)
             print(f"OK     {pdf_inputs[0]} → {out}")
         except RuntimeError as exc:
             print(f"ERROR  {exc}", file=sys.stderr)

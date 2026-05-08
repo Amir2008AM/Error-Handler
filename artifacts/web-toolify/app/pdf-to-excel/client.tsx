@@ -141,6 +141,7 @@ export function PdfToExcelClient() {
                   { icon: FileText, label: 'Checks for embedded text (text-based PDF)' },
                   { icon: ScanSearch, label: 'Falls back to Tesseract OCR for scanned pages' },
                   { icon: FileSpreadsheet, label: 'Each table becomes a separate Excel sheet' },
+                  { icon: FileText, label: 'Arabic & RTL PDFs detected and handled automatically' },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Icon className="w-4 h-4 shrink-0 text-emerald-600" />
@@ -190,7 +191,7 @@ export function PdfToExcelClient() {
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
-              Scanned PDFs are processed with OCR — results may vary based on scan quality.
+              Supports text-based and scanned PDFs — Arabic and English detected automatically.
             </p>
           </div>
         )}
