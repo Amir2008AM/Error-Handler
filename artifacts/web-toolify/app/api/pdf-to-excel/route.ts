@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'node:child_process'
-import { readFile, rm, mkdtemp } from 'node:fs/promises'
+import { readFile, rm, mkdtemp, copyFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
@@ -14,7 +14,7 @@ const PYTHON_SCRIPT = join(process.cwd(), '../../pdf_table_extractor.py')
 
 function runExtractor(pdfPath: string, xlsxPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const py = spawn('python3', [PYTHON_SCRIPT, pdfPath, xlsxPath, '-q'], {
+    const py = spawn('python3', [PYTHON_SCRIPT, '-q', pdfPath, xlsxPath], {
       timeout: 150_000,
     })
 
@@ -50,9 +50,15 @@ export async function POST(request: NextRequest) {
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
     outDir = await mkdtemp(join(tmpdir(), 'pdf2xl-'))
+
+    // The Python script validates inputs by .pdf extension — copy the upload
+    // (which has a .tmp extension) to a proper .pdf path inside outDir.
+    const pdfPath = join(outDir, 'input.pdf')
+    await copyFile(file.path, pdfPath)
+
     const xlsxPath = join(outDir, 'output.xlsx')
 
-    await runExtractor(file.path, xlsxPath)
+    await runExtractor(pdfPath, xlsxPath)
 
     const buffer = await readFile(xlsxPath)
     const baseName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
@@ -83,9 +89,8 @@ export async function POST(request: NextRequest) {
       errorMsg: error instanceof Error ? error.message : 'unknown',
     })
     const rawMsg = error instanceof Error ? error.message : 'Failed to extract tables from PDF'
-    // Pass the Python script's own message through — it includes engine-specific details
     const userMsg = rawMsg.includes('No usable tables found') || rawMsg.includes('extraction failed')
-      ? rawMsg.split('\n')[0]   // first line only — strip any traceback
+      ? rawMsg.split('\n')[0]
       : 'Could not extract tables from this PDF. The file may not contain detectable table data.'
     return NextResponse.json({ error: userMsg }, { status: 500 })
   } finally {
