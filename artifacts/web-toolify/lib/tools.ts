@@ -269,6 +269,20 @@ export const tools: Tool[] = [
     tags: ['pdf', 'powerpoint', 'pptx', 'convert', 'presentation', 'slides'],
     isNew: true,
   },
+  {
+    id: 'pdf-to-excel',
+    name: 'PDF to Excel',
+    description: 'Extract tables from PDF files and save them as Excel spreadsheets.',
+    longDescription:
+      'Automatically detect and extract tables from any PDF — text-based or scanned. Uses Camelot for text PDFs and Tesseract OCR for scanned documents. Each table is saved in a separate sheet in a clean .xlsx file.',
+    category: 'Converters',
+    slug: 'pdf-to-excel',
+    icon: 'Sheet',
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    tags: ['pdf', 'excel', 'xlsx', 'convert', 'table', 'extract', 'spreadsheet', 'ocr', 'scanned'],
+    isNew: true,
+  },
   
   // OCR Tools
   {
