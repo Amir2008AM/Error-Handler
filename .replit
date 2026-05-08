@@ -29,7 +29,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "redis-server --daemonize yes --loglevel warning 2>/dev/null; cd artifacts/web-toolify && PORT=5000 REDIS_URL=redis://localhost:6379 pnpm run dev"
+args = "pip install -q -r requirements.txt 2>/dev/null; redis-server --daemonize yes --loglevel warning 2>/dev/null; cd artifacts/web-toolify && PORT=5000 REDIS_URL=redis://localhost:6379 pnpm run dev"
 waitForPort = 5000
 
 [agent]
@@ -47,10 +47,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 6379
-externalPort = 3001
 
 [[ports]]
 localPort = 8080
