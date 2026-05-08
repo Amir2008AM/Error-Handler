@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
 
     const pageSize    = (fields['pageSize']    as 'a4' | 'letter' | 'legal') ?? 'a4'
     const orientation = (fields['orientation'] as 'portrait' | 'landscape')  ?? 'landscape'
-    const fontSize    = parseInt(fields['fontSize'] ?? '10') || 10
+    // fontSize=0 triggers auto-detection in the enterprise pipeline
+    const fontSizeRaw = parseInt(fields['fontSize'] ?? '0') || 0
+    const fontSize    = fontSizeRaw > 0 ? fontSizeRaw : 0
 
     const buffer = await readFile(file.path)
 

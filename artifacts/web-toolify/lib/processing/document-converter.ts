@@ -315,12 +315,29 @@ export class DocumentConverter {
   }
 
   /**
-   * Primary Excel→PDF engine using Python + arabic_reshaper + Amiri font.
-   * Produces output matching ilovepdf.com quality:
-   *   - Arabic text converted to Presentation Forms (shaped glyphs)
-   *   - Amiri font embedded (equivalent to TimesNewRomanPS Arabic)
-   *   - RTL layout with correct word and column ordering
-   *   - 10–15% smaller file size vs LibreOffice output
+   * Primary Excel→PDF engine — Enterprise Hybrid Pipeline v2.
+   *
+   * Pipeline stages:
+   *   1. WorkbookAnalyzer  — full cell metadata (value, style, merge topology,
+   *                          row/col dimensions, hidden rows/cols, sheet direction)
+   *   2. LayoutModel       — column widths, row heights, page geometry, RTL flag
+   *   3. MergedCellResolver — SPAN commands + anchor/slave classification
+   *   4. BidiTextEngine    — Arabic reshaping + bidi visual ordering
+   *   5. TypographyEngine  — per-cell ParagraphStyle (font, size, color, align)
+   *   6. TableBuilder      — ReportLab Table with SPAN, BACKGROUND, GRID
+   *   7. PaginationEngine  — smart row grouping, header repetition
+   *   8. VisualNormalizer  — auto font size, spacing, density
+   *   9. ValidationSystem  — confidence scoring and warnings
+   *   10. PDF Renderer     — selectable text, embedded fonts, page numbers
+   *
+   * Features:
+   *   - Real merged cell SPAN commands (not just value propagation)
+   *   - Per-cell bold/italic/size/color extracted from Excel styles
+   *   - Cell fill colors from Excel applied to PDF
+   *   - Auto RTL detection from sheet_view.rightToLeft or content heuristic
+   *   - Arabic (Amiri) + Latin (DejaVu Sans) dual-font system
+   *   - Auto font size scaling based on column count and content density
+   *   - Row heights and column widths faithfully from Excel dimensions
    */
   private async pythonArabicExcelToPdf(
     xlsxBuffer: Buffer,
@@ -334,7 +351,9 @@ export class DocumentConverter {
       const scriptPath = join(process.cwd(), 'lib', 'processing', 'excel_to_pdf.py')
       const pageSize   = options.pageSize    ?? 'a4'
       const orient     = options.orientation ?? 'landscape'
-      const fontSize   = String(options.fontSize ?? 9)
+      // 0 = auto-detect font size per sheet (recommended)
+      // Only override if caller explicitly sets a non-zero fontSize
+      const fontSize   = String(options.fontSize && options.fontSize > 0 ? options.fontSize : 0)
 
       const result = await runCli(
         'python3',
@@ -350,12 +369,27 @@ export class DocumentConverter {
       )
 
       // Parse JSON result from stdout
-      let parsed: { success: boolean; pageCount?: number; engine?: string; error?: string; traceback?: string } = { success: false }
+      let parsed: {
+        success: boolean
+        pageCount?: number
+        engine?:   string
+        fonts?:    { regular: string; arabic: string }
+        warnings?: string[]
+        error?:    string
+        traceback?: string
+      } = { success: false }
+
       try { parsed = JSON.parse(result.stdout.trim()) } catch { /* ignore */ }
 
       if (!parsed.success || result.code !== 0) {
         const detail = parsed.error ?? result.stderr.trim().slice(0, 400)
         throw new Error(`Python Excel→PDF failed: ${detail}`)
+      }
+
+      if (parsed.warnings?.length) {
+        for (const w of parsed.warnings) {
+          console.warn(`[ExcelToPdf] ${w}`)
+        }
       }
 
       const pdfBuffer = await fsReadFile(outFile)
@@ -373,7 +407,7 @@ export class DocumentConverter {
         buffer:         pdfBuffer,
         pageCount,
         originalFormat: 'xlsx',
-        engine:         'python-arabic-reshaper',
+        engine:         parsed.engine ?? 'enterprise-hybrid-v2',
       }
     })
   }
