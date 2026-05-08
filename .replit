@@ -18,10 +18,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Web Toolify"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "Web Toolify"
+name = "Start application"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -47,10 +47,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 6379
-externalPort = 3001
 
 [[ports]]
 localPort = 8080
