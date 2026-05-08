@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3 \
     python3-pip \
+    python3-dev \
     # tesseract OCR
     tesseract-ocr \
     libtesseract-dev \
@@ -24,14 +25,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Fonts for accurate rendering of Office documents
     fonts-liberation \
     fonts-dejavu-core \
+    fontconfig \
+    curl \
+  && fc-cache -fv \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages required by the Excel → PDF engine
 COPY requirements.txt ./
-RUN pip3 install --break-system-packages -r requirements.txt
+RUN pip3 install --break-system-packages \
+    "arabic-reshaper==3.0.0" \
+    "python-bidi==0.4.2" \
+    "reportlab>=4.0.0" \
+    "openpyxl>=3.1.0" \
+    "Pillow>=10.0.0"
 
 # Validate Python engine dependencies are present
-RUN python3 -c "import arabic_reshaper, bidi, reportlab, openpyxl; print('Python Excel engine OK')"
+RUN python3 -c "import arabic_reshaper, bidi, reportlab, openpyxl, PIL; print('ALL PYTHON PACKAGES OK')"
+
+# Show Python and pip versions for build-time confirmation
+RUN python3 --version && pip3 --version && python3 -c "import reportlab; print('reportlab', reportlab.Version)"
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10 --activate
@@ -55,6 +67,11 @@ RUN pnpm install --frozen-lockfile
 
 # Copy the full source
 COPY . .
+
+# Confirm excel_to_pdf.py is present in the expected runtime location
+RUN test -f /app/artifacts/web-toolify/lib/processing/excel_to_pdf.py \
+    && echo "excel_to_pdf.py: OK at /app/artifacts/web-toolify/lib/processing/excel_to_pdf.py" \
+    || (echo "ERROR: excel_to_pdf.py missing!" && exit 1)
 
 # Build Next.js production bundle
 RUN pnpm --filter @workspace/web-toolify run build

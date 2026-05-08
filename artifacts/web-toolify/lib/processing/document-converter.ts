@@ -18,8 +18,9 @@ import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import { spawn } from 'node:child_process'
 import { mkdtemp, writeFile, readFile as fsReadFile, rm } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, basename } from 'node:path'
+import { join, basename, dirname } from 'node:path'
 
 // ── CLI helpers ────────────────────────────────────────────────────────────
 
@@ -292,11 +293,18 @@ export class DocumentConverter {
       // If any package is missing (e.g. fresh Railway deploy without pip install),
       // we log a clear warning and skip straight to LibreOffice rather than
       // letting the Python subprocess fail with an unhelpful ImportError.
+      console.log('[EXCEL-ENGINE] Starting Python engine check...')
+
+      const whichPython = await runCli('which', ['python3'], { timeoutMs: 3_000 }).catch(() => null)
+      console.log('[EXCEL-ENGINE] Python path:', whichPython?.stdout?.trim() ?? 'NOT FOUND')
+
       const pythonCheck = await runCli(
         'python3',
         ['-c', 'import arabic_reshaper, bidi, reportlab, openpyxl; print("ok")'],
         { timeoutMs: 5_000 }
       ).catch(() => null)
+
+      console.log('[EXCEL-ENGINE] Python dep check — code:', pythonCheck?.code, 'stdout:', pythonCheck?.stdout?.trim(), 'stderr:', pythonCheck?.stderr?.trim().slice(0, 200))
 
       if (!pythonCheck || pythonCheck.code !== 0 || !pythonCheck.stdout.includes('ok')) {
         console.warn(
@@ -365,7 +373,30 @@ export class DocumentConverter {
       const outFile = join(dir, 'output.pdf')
       await writeFile(inFile, xlsxBuffer)
 
-      const scriptPath = join(process.cwd(), 'lib', 'processing', 'excel_to_pdf.py')
+      // Resolve the script path — try multiple locations so this works in
+      // development (Replit), Railway Docker (/app/...), and any other layout.
+      const cwd = process.cwd()
+      const possibleScriptPaths = [
+        join(cwd, 'lib', 'processing', 'excel_to_pdf.py'),
+        join(dirname(dirname(dirname(__dirname))), 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf.py'),
+        '/app/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
+        '/app/lib/processing/excel_to_pdf.py',
+        join(__dirname, '..', '..', 'lib', 'processing', 'excel_to_pdf.py'),
+      ]
+
+      console.log('[EXCEL-ENGINE] cwd:', cwd)
+      console.log('[EXCEL-ENGINE] __dirname:', __dirname)
+      for (const p of possibleScriptPaths) {
+        console.log(`[EXCEL-ENGINE] Checking path: ${p} — exists: ${existsSync(p)}`)
+      }
+
+      const scriptPath = possibleScriptPaths.find(p => existsSync(p))
+      if (!scriptPath) {
+        console.error('[EXCEL-ENGINE] excel_to_pdf.py not found in any candidate path:', possibleScriptPaths)
+        throw new Error(`excel_to_pdf.py not found. Checked: ${possibleScriptPaths.join(', ')}`)
+      }
+      console.log('[EXCEL-ENGINE] Using script:', scriptPath)
+
       const pageSize   = options.pageSize    ?? 'a4'
       const orient     = options.orientation ?? 'landscape'
       // 0 = auto-detect font size per sheet (recommended)
@@ -396,12 +427,20 @@ export class DocumentConverter {
         traceback?: string
       } = { success: false }
 
+      console.log('[EXCEL-ENGINE] Script exit code:', result.code)
+      console.log('[EXCEL-ENGINE] Script stdout:', result.stdout.trim().slice(0, 500))
+      if (result.stderr.trim()) {
+        console.warn('[EXCEL-ENGINE] Script stderr:', result.stderr.trim().slice(0, 500))
+      }
+
       try { parsed = JSON.parse(result.stdout.trim()) } catch { /* ignore */ }
 
       if (!parsed.success || result.code !== 0) {
-        const detail = parsed.error ?? result.stderr.trim().slice(0, 400)
+        const detail = parsed.error ?? parsed.traceback?.slice(0, 400) ?? result.stderr.trim().slice(0, 400)
+        console.error('[EXCEL-ENGINE] Python script failed — detail:', detail)
         throw new Error(`Python Excel→PDF failed: ${detail}`)
       }
+      console.log('[EXCEL-ENGINE] Success — engine:', parsed.engine, 'pages:', parsed.pageCount)
 
       if (parsed.warnings?.length) {
         for (const w of parsed.warnings) {
