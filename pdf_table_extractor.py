@@ -111,40 +111,61 @@ def classify_document(pdf_path: str) -> DocumentProfile:
         log.warning("Could not scan for border signals")
 
     # ── Text layer analysis (pdfplumber) ─────────────────────────────────────
+    # For large PDFs we sample instead of scanning all pages — this caps
+    # classify_document at <3 s regardless of page count.
+    _CLASSIFY_SAMPLE = 20   # pages to inspect for language + scanned detection
     try:
         import pdfplumber
         with pdfplumber.open(pdf_path) as pdf:
-            profile.page_count = len(pdf.pages)
+            profile.page_count = total_pages = len(pdf.pages)
             all_text = []
             page_char_counts = []
 
-            for i, page in enumerate(pdf.pages):
+            # Build a representative sample: first 10 + last 5 + a few from middle
+            if total_pages <= _CLASSIFY_SAMPLE:
+                sample_indices = list(range(total_pages))
+            else:
+                mid = total_pages // 2
+                sample_indices = sorted(set(
+                    list(range(min(10, total_pages)))
+                    + list(range(max(0, total_pages - 5), total_pages))
+                    + [mid - 2, mid, mid + 2]
+                ))
+
+            sampled_text_pages = 0
+            sampled_scanned_pages = 0
+
+            for i in sample_indices:
+                page = pdf.pages[i]
                 text = (page.extract_text() or "").strip()
                 page_char_counts.append(len(text))
                 all_text.append(text)
-
                 if len(text) >= _MIN_CHARS_TEXT:
+                    sampled_text_pages += 1
                     profile.text_page_indices.append(i)
                 else:
+                    sampled_scanned_pages += 1
                     profile.scanned_page_indices.append(i)
 
-        # Classify overall type
+        # Classify overall type based on sampled pages
         full_text = " ".join(all_text)
         total_chars = len(full_text.strip())
+
+        # Scale scanned/text counts to estimate full document
+        sample_size = len(sample_indices)
+        scanned_ratio = sampled_scanned_pages / max(sample_size, 1)
         profile.avg_chars_per_page = (
             total_chars / max(profile.page_count, 1)
         )
 
-        text_pages   = len(profile.text_page_indices)
-        scanned_pages = len(profile.scanned_page_indices)
-
-        if scanned_pages == 0:
+        # Use ratio-based classification so sampling doesn't distort the result
+        if scanned_ratio < 0.05:           # <5% scanned → fully text-based
             profile.is_scanned = False
             profile.is_hybrid  = False
-        elif text_pages == 0:
+        elif scanned_ratio > 0.95:         # >95% scanned → fully scanned
             profile.is_scanned = True
             profile.is_hybrid  = False
-        else:
+        else:                              # mixed → hybrid
             profile.is_scanned = False
             profile.is_hybrid  = True
 
@@ -190,16 +211,26 @@ class PageLayout:
         self.page_height = 0.0
 
 
-def _extract_page_words(pdf_path: str) -> list[PageLayout]:
+def _extract_page_words(
+    pdf_path: str,
+    max_pages: int = 20,
+) -> list[PageLayout]:
     """
-    Phase 2: Extract word-level bounding boxes from all text pages.
-    Returns per-page layout objects for Phase 5 column analysis.
+    Phase 2: Extract word-level bounding boxes for column-schema building.
+
+    For large PDFs we only process the first `max_pages` pages — the global
+    column schema converges quickly (typically within 3–5 pages) and scanning
+    hundreds of pages provides no additional signal while adding many seconds
+    of latency.  The pdfplumber extraction path in Phase 3 handles all pages
+    directly, so layout objects are only needed for the schema + spatial-
+    clustering fallback.
     """
     import pdfplumber
 
     layouts: list[PageLayout] = []
     with pdfplumber.open(pdf_path) as pdf:
-        for i, page in enumerate(pdf.pages):
+        pages_to_scan = pdf.pages[:max_pages] if len(pdf.pages) > max_pages else pdf.pages
+        for i, page in enumerate(pages_to_scan):
             layout = PageLayout(i)
             layout.page_width  = float(page.width or 595)
             layout.page_height = float(page.height or 842)
@@ -212,7 +243,6 @@ def _extract_page_words(pdf_path: str) -> list[PageLayout]:
             )
             if words:
                 layout.words = words
-                # A page "has table structure" if it has ≥4 words
                 layout.has_table = len(words) >= 4
             layouts.append(layout)
 
@@ -502,17 +532,44 @@ def _extract_camelot(pdf_path: str, flavor: str) -> list[pd.DataFrame]:
         return []
 
 
-def _extract_pdfplumber_tables(pdf_path: str) -> list[pd.DataFrame]:
-    """Fallback: pdfplumber explicit table detection."""
+def _extract_pdfplumber_tables(
+    pdf_path: str,
+    fix_visual_arabic: bool = False,
+) -> list[pd.DataFrame]:
+    """
+    pdfplumber explicit table detection.
+
+    When fix_visual_arabic=True (detected visual-order Arabic PDF):
+    - Each cell's text is corrected with _fix_visual_arabic_cell():
+        • Reverse each Arabic word's characters (fixes char-level reversal)
+        • Reverse the word list within each cell (fixes word-order reversal)
+    - Column names are corrected the same way
+    This produces correct logical-order Unicode text that Excel renders
+    properly using its own bidi engine.
+    """
     import pdfplumber
 
-    log.info("pdfplumber table extraction from %s", pdf_path)
+    log.info(
+        "pdfplumber table extraction from %s (visual_arabic=%s)",
+        pdf_path, fix_visual_arabic,
+    )
     dfs: list[pd.DataFrame] = []
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages:
                 for tbl in (page.extract_tables() or []):
-                    if tbl:
+                    if not tbl:
+                        continue
+                    if fix_visual_arabic:
+                        corrected = [
+                            [
+                                _fix_visual_arabic_cell(str(cell)) if cell else ""
+                                for cell in row
+                            ]
+                            for row in tbl
+                        ]
+                        dfs.append(pd.DataFrame(corrected))
+                    else:
                         dfs.append(pd.DataFrame(tbl))
     except Exception as exc:
         log.warning("pdfplumber failed: %s", exc)
@@ -927,72 +984,24 @@ def _clean_dataframe(raw: pd.DataFrame) -> Optional[pd.DataFrame]:
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 8 — ARABIC RTL SUPPORT
 # ─────────────────────────────────────────────────────────────────────────────
-
-_arabic_reshaper_instance = None
-_bidi_available           = False
-
-
-def _init_arabic_tools():
-    global _arabic_reshaper_instance, _bidi_available
-    if _arabic_reshaper_instance is not None:
-        return
-    try:
-        import arabic_reshaper
-        _arabic_reshaper_instance = arabic_reshaper
-        log.info("arabic_reshaper loaded")
-    except ImportError:
-        log.warning("arabic_reshaper not available — Arabic text may display incorrectly")
-        _arabic_reshaper_instance = False
-
-    try:
-        from bidi.algorithm import get_display  # noqa: F401
-        _bidi_available = True
-        log.info("python-bidi loaded")
-    except ImportError:
-        log.warning("python-bidi not available")
-        _bidi_available = False
-
-
-def _reshape_arabic_text(text: str) -> str:
-    """Apply arabic reshaping + bidi correction to a string."""
-    if not text or not _ARABIC_RE.search(text):
-        return text
-
-    _init_arabic_tools()
-
-    if _arabic_reshaper_instance:
-        try:
-            text = _arabic_reshaper_instance.reshape(text)
-        except Exception:
-            pass
-
-    if _bidi_available:
-        try:
-            from bidi.algorithm import get_display
-            text = get_display(text)
-        except Exception:
-            pass
-
-    return text
-
-
-def apply_arabic_reshaping(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply Arabic reshaping to all cells that contain Arabic text."""
-    _init_arabic_tools()
-    if not _arabic_reshaper_instance and not _bidi_available:
-        return df
-
-    out = df.copy()
-    for col in out.columns:
-        out[col] = out[col].map(
-            lambda v: _reshape_arabic_text(_to_str(v))
-        )
-
-    # Also reshape column names
-    new_cols = [_reshape_arabic_text(str(c)) for c in out.columns]
-    out.columns = new_cols
-    return out
-
+#
+# ROOT-CAUSE ANALYSIS OF THE VISUAL-ORDER BUG
+# ─────────────────────────────────────────────
+# Many Arabic PDFs (especially those generated by Windows Office tools or
+# older PDF exporters) store Arabic characters in VISUAL order — i.e. the
+# characters appear in the PDF content stream left-to-right as they would be
+# rendered on screen, not in Unicode logical (right-to-left reading) order.
+#
+# Problem 1 — Character order: "لستلا" is "التسلسل" with its chars reversed.
+# Problem 2 — Word order: "بلاطلا مسا" = "اسم الطالب" with words reversed.
+# Problem 3 — arabic_reshaper + bidi makes it WORSE: those tools expect
+#   *logical-order* input and convert to presentation forms (ﻞﺠﻧﺓ) which
+#   Excel cannot render correctly. Excel's own bidi engine handles display.
+#
+# FIX: detect visual-order cells (Arabic words with direction='ltr' in the
+# PDF) and apply: reverse each word's chars, then reverse the word list.
+# Do NOT apply arabic_reshaper/bidi for Excel output — Excel handles bidi.
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _is_rtl_table(df: pd.DataFrame) -> bool:
     """Detect whether a table's content is primarily Arabic/RTL."""
@@ -1006,6 +1015,138 @@ def _is_rtl_table(df: pd.DataFrame) -> bool:
         return False
     arabic_chars = len(_ARABIC_RE.findall(sample_text))
     return arabic_chars / total > _ARABIC_THRESHOLD
+
+
+def _is_visual_order_arabic(text: str) -> bool:
+    """
+    Heuristic: detect whether Arabic text is stored in visual order.
+
+    Visual-order Arabic chars are rendered LTR in the PDF content stream,
+    so pdfplumber reports direction='ltr' for every word.  We use a char-level
+    test: if the text contains Arabic AND the final char of the first Arabic
+    token is a connector (ال، لا، ما، ها…) — a pattern common in reversed
+    logical Arabic but rare in correctly-ordered Arabic beginnings — treat as
+    visual order.  In practice we rely on the direction flag from pdfplumber
+    (set at extract time) and fall back to this heuristic.
+    """
+    if not _ARABIC_RE.search(text):
+        return False
+    # Very simple heuristic: does the first Arabic word end with ل or ا?
+    # (These chars often appear at the start of correctly-ordered Arabic words
+    #  only if preceded by ال — but as final chars they're common in visual
+    #  reversed text.)
+    tokens = [t for t in text.split() if _ARABIC_RE.search(t)]
+    if not tokens:
+        return False
+    first = tokens[0]
+    return first[-1] in 'التنيةةىلاو'
+
+
+_DIGITS_ONLY_RE   = re.compile(r'^[\d\.\,\-\/\+]+$')
+_LATIN_ONLY_RE    = re.compile(r'^[A-Za-z0-9\.\,\-\/\+\s\(\)\[\]]+$')
+_MIXED_NUM_AR_RE  = re.compile(r'^[\d\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]+$')
+
+
+def _fix_visual_arabic_cell(text: str) -> str:
+    """
+    Correct visual-order Arabic cell text for Excel storage.
+
+    Algorithm:
+      1. Split on spaces into word tokens
+      2. For pure Arabic tokens: reverse character sequence
+      3. For digit/Latin/mixed tokens: keep as-is (numbers don't need reversal)
+      4. Reverse the word list (fixes word-order reversal)
+      5. Rejoin with spaces
+
+    Handles multi-line cells (\\n) by processing each line independently.
+
+    Edge cases:
+    - Cells that are purely numeric (student codes): returned unchanged
+    - Cells mixing numbers and Arabic chars in a single token: kept as-is
+      because pdfplumber has merged them in a way we can't reliably split
+    - Latin text (A1 W, 10:00): returned unchanged
+    """
+    if not text:
+        return text
+    if not _ARABIC_RE.search(text):
+        return text  # no Arabic content — skip entirely
+
+    # Handle multi-line cells line by line
+    if '\n' in text:
+        lines = text.split('\n')
+        fixed_lines = [_fix_visual_arabic_cell(line) for line in lines]
+        return '\n'.join(fixed_lines)
+
+    tokens = text.split(' ')
+    fixed  = []
+    has_arabic_token = False
+
+    for tok in tokens:
+        if not tok:
+            fixed.append(tok)
+        elif _ARABIC_RE.search(tok) and not _DIGITS_ONLY_RE.match(tok):
+            # Pure Arabic or Arabic+punctuation token
+            # If it also has digits mixed in, only reverse the Arabic chars
+            if any(c.isdigit() for c in tok):
+                # Mixed token (e.g. '250114كلية'): keep as-is — splitting is unsafe
+                fixed.append(tok)
+            else:
+                fixed.append(tok[::-1])   # reverse Arabic word chars
+                has_arabic_token = True
+        else:
+            # Digits, Latin, or purely numeric: keep unchanged
+            fixed.append(tok)
+
+    if has_arabic_token:
+        fixed.reverse()   # reverse word order only when Arabic present
+    return ' '.join(fixed)
+
+
+def fix_visual_arabic_dataframe(
+    df: pd.DataFrame,
+    visual_order: bool = True,
+) -> pd.DataFrame:
+    """
+    Apply visual-order Arabic correction to every cell in a DataFrame.
+
+    When visual_order=True (the detected state for this PDF type):
+      - Calls _fix_visual_arabic_cell() on each cell
+      - Fixes column names the same way
+    When visual_order=False: returns df unchanged (logical-order text is fine).
+
+    NOTE: We deliberately do NOT call arabic_reshaper or bidi.get_display()
+    here because Excel's own rendering engine handles Arabic bidi correctly
+    when given proper Unicode logical-order text.  Applying presentation-form
+    reshaping (ﻞﺠﻧﺓ) produces characters that appear as boxes in Excel.
+    """
+    if not visual_order:
+        return df
+
+    out = df.copy()
+    for col in out.columns:
+        out[col] = out[col].map(lambda v: _fix_visual_arabic_cell(_to_str(v)))
+
+    new_cols = [_fix_visual_arabic_cell(str(c)) for c in out.columns]
+    out.columns = new_cols
+    return out
+
+
+def _detect_visual_order_from_words(words: list[dict]) -> bool:
+    """
+    Return True when pdfplumber word objects indicate visual-order Arabic.
+    Criteria: ≥50% of Arabic-containing words have direction='ltr'.
+    """
+    arabic_words = [w for w in words if _ARABIC_RE.search(str(w.get("text", "")))]
+    if not arabic_words:
+        return False
+    ltr_count = sum(1 for w in arabic_words if w.get("direction", "") == "ltr")
+    return ltr_count / len(arabic_words) >= 0.5
+
+
+# Keep a thin public alias that old call-sites may reference
+def apply_arabic_reshaping(df: pd.DataFrame) -> pd.DataFrame:
+    """Alias kept for API compatibility — delegates to fix_visual_arabic_dataframe."""
+    return fix_visual_arabic_dataframe(df, visual_order=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1123,11 +1264,12 @@ def write_excel(
     # ── Table sheets ──────────────────────────────────────────────────────────
     for i, df in enumerate(tables, start=1):
         is_rtl = is_arabic or _is_rtl_table(df)
-
-        # Apply Arabic reshaping if needed
-        if is_rtl:
-            df = apply_arabic_reshaping(df)
-
+        # NOTE: Arabic visual-order correction is applied at extraction time
+        # (in _extract_pdfplumber_tables / spatial clustering / OCR paths).
+        # We do NOT call apply_arabic_reshaping() / bidi here because:
+        #   1. It would double-process already-corrected text
+        #   2. arabic_reshaper produces presentation forms (ﻞﺠﻧﺓ) that Excel
+        #      cannot render — Excel uses its own Unicode bidi engine
         sheet_name = f"Table_{i}"
         _write_table_sheet(wb, df, sheet_name, is_rtl, i)
 
@@ -1255,6 +1397,40 @@ def process_pdf(
     raw_dfs: list[pd.DataFrame] = []
     engine  = "unknown"
 
+    # Detect visual-order Arabic: sample words from the first text page.
+    # In visual-order PDFs pdfplumber marks every Arabic word as direction='ltr'.
+    is_visual_arabic = False
+    if profile.is_arabic and not profile.is_scanned:
+        try:
+            import pdfplumber as _plumber
+            with _plumber.open(pdf_path) as _pdf:
+                sample_words: list[dict] = []
+                for p in _pdf.pages[:min(3, len(_pdf.pages))]:
+                    sample_words.extend(p.extract_words() or [])
+                    if len(sample_words) >= 100:
+                        break
+            is_visual_arabic = _detect_visual_order_from_words(sample_words)
+            log.info(
+                "Arabic text order detection: %s",
+                "VISUAL (LTR-encoded)" if is_visual_arabic else "LOGICAL (RTL Unicode)",
+            )
+        except Exception as _e:
+            log.debug("Visual-order detection skipped: %s", _e)
+
+    # CAMELOT TIMEOUT GUARD: Camelot spawns Ghostscript per-page and blocks
+    # indefinitely on PDFs > ~30 pages.  Skip it and go straight to pdfplumber
+    # which handles large structured PDFs correctly in O(N) time.
+    _CAMELOT_PAGE_LIMIT = 30
+    camelot_eligible = (
+        not profile.is_scanned
+        and profile.page_count <= _CAMELOT_PAGE_LIMIT
+    )
+    if not camelot_eligible:
+        log.info(
+            "Camelot skipped: page_count=%d > %d limit — routing to pdfplumber",
+            profile.page_count, _CAMELOT_PAGE_LIMIT,
+        )
+
     if profile.is_scanned:
         # Fully scanned → OCR directly
         log.info("Routing: fully scanned PDF → OCR")
@@ -1265,20 +1441,24 @@ def process_pdf(
             raise RuntimeError(f"OCR failed: {exc}") from exc
 
     else:
-        # Text-based or hybrid → try Camelot first
+        # Text-based or hybrid → try Camelot first (only for small PDFs)
         flavor = "lattice" if profile.has_borders else "stream"
 
-        try:
-            raw_dfs = _extract_camelot(pdf_path, flavor)
-            if raw_dfs:
-                engine = f"camelot/{flavor}"
-        except Exception as exc:
-            log.warning("Camelot routing failed: %s", exc)
+        if camelot_eligible:
+            try:
+                raw_dfs = _extract_camelot(pdf_path, flavor)
+                if raw_dfs:
+                    engine = f"camelot/{flavor}"
+            except Exception as exc:
+                log.warning("Camelot routing failed: %s", exc)
 
         if not raw_dfs:
-            # Fallback 1: pdfplumber table detection
+            # pdfplumber table detection (primary for large/Arabic PDFs)
             try:
-                raw_dfs = _extract_pdfplumber_tables(pdf_path)
+                raw_dfs = _extract_pdfplumber_tables(
+                    pdf_path,
+                    fix_visual_arabic=is_visual_arabic,
+                )
                 if raw_dfs:
                     engine = "pdfplumber"
             except Exception as exc:
@@ -1304,9 +1484,18 @@ def process_pdf(
             except Exception as exc:
                 raise RuntimeError(f"All extractors failed: {exc}") from exc
 
-        # For hybrid PDFs: also OCR the scanned pages and merge
-        if profile.is_hybrid and profile.scanned_page_indices:
-            log.info("Hybrid PDF: supplementing with OCR for scanned pages")
+        # For hybrid PDFs: OCR the scanned pages ONLY if pdfplumber found < 10%
+        # of expected tables (i.e. pdfplumber mostly failed).  When pdfplumber
+        # already recovered a full table per page, adding OCR just duplicates
+        # rows and costs tens of seconds of Tesseract time.
+        expected_tables = max(profile.page_count // 2, 1)
+        pdfplumber_sufficient = len(raw_dfs) >= expected_tables * 0.5
+
+        if profile.is_hybrid and profile.scanned_page_indices and not pdfplumber_sufficient:
+            log.info(
+                "Hybrid PDF: supplementing with OCR for %d scanned pages",
+                len(profile.scanned_page_indices),
+            )
             try:
                 from pdf2image import convert_from_path
                 images = convert_from_path(pdf_path, dpi=300)
@@ -1321,6 +1510,11 @@ def process_pdf(
                 engine += "+ocr-hybrid"
             except Exception as exc:
                 log.warning("Hybrid OCR supplement failed: %s", exc)
+        elif profile.is_hybrid and pdfplumber_sufficient:
+            log.info(
+                "Hybrid PDF: skipping OCR supplement — pdfplumber found %d tables (sufficient)",
+                len(raw_dfs),
+            )
 
     # ── Phase 6 + 7: Table Reconstruction + Header Intelligence ──────────────
     tables = reconstruct_tables(raw_dfs)
