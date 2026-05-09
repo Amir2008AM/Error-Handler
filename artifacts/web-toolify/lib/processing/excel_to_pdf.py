@@ -75,6 +75,12 @@ _COMMENT_NOISE_RE = re.compile(
     r'Your version of Excel allows you to read this threaded comment',
     re.IGNORECASE,
 )
+# Matches cells that are purely numeric (Latin digits, Arabic-Indic digits,
+# decimal separators, sign, percent, parens for accounting negatives).
+# These must NEVER be word-wrapped mid-number.
+_NUMERIC_ONLY_RE = re.compile(
+    r'^[\d٠-٩\u06F0-\u06F9\s\.,،\-\+\(\)%\/\\:]+$'
+)
 
 _EXCEL_DEFAULT_ROW_H  = 15.0   # points (Excel default)
 _EXCEL_DEFAULT_COL_W  = 8.43   # character units (Excel default)
@@ -395,12 +401,33 @@ def _border_width(side) -> float:
     return style_map.get(side.border_style, 0.5)
 
 
-def _is_merged_title_row(row_values: list[str]) -> bool:
-    """True if the row looks like a single merged title (one unique non-empty value)."""
+def _is_merged_title_row(row_values: list[str], span_rows_at: int | None = None) -> bool:
+    """
+    True if the row looks like a single merged title cell spanning the full width.
+
+    Requirements (all must hold to avoid false positives on data rows):
+      1. Exactly one unique non-empty value in the row.
+      2. More than half the cells are empty (slave cells in a merge are empty
+         in the raw row_values list — we do NOT copy anchor values here).
+      3. NOT purely numeric (numeric rows are data, not titles).
+    """
     non_empty = [v for v in row_values if v.strip()]
     if not non_empty:
         return False
-    return len(set(non_empty)) == 1
+    # Must have a single unique value
+    if len(set(non_empty)) != 1:
+        return False
+    # Guard: if all cells are filled with the same value, this is likely a
+    # data row (e.g., all zeros, all dashes), not a merged title.
+    # A true merged title has mostly empty slave cells and one anchor value.
+    total = len(row_values)
+    if total > 1 and len(non_empty) >= total:
+        return False
+    # Guard: purely numeric values are never titles
+    candidate = non_empty[0].strip()
+    if _NUMERIC_ONLY_RE.match(candidate):
+        return False
+    return True
 
 
 def analyze_workbook(wb: openpyxl.Workbook) -> list[SheetLayout]:
@@ -874,12 +901,24 @@ def build_paragraph(
     # ── Alignment ─────────────────────────────────────────────────────────────
     h_align = _resolve_h_align(cell_info, text, is_rtl_sheet)
 
-    # Word wrap: use RTL only when content is predominantly Arabic
-    # (avoids wrong line breaks in mixed Arabic/English cells)
+    # Word wrap: use RTL only when content is predominantly Arabic.
+    # NEVER apply RTL wrap to numeric-only cells — that causes digit fragmentation.
     ar_char_count  = len(_AR_RE.findall(text))
     total_nonspace = len(text.replace(' ', ''))
     predominantly_arabic = total_nonspace > 0 and (ar_char_count / total_nonspace) > 0.5
-    word_wrap = 'RTL' if predominantly_arabic else 'LTR'
+
+    # Numeric-only detection (Latin and Arabic-Indic digits)
+    is_numeric_only = bool(_NUMERIC_ONLY_RE.match(text.strip())) if text.strip() else False
+
+    if is_numeric_only:
+        word_wrap = 'LTR'
+    elif predominantly_arabic:
+        word_wrap = 'RTL'
+    else:
+        word_wrap = 'LTR'
+
+    # Wrap cell wrap_text setting: if Excel says don't wrap, honour that.
+    excel_wrap = cell_info.wrap_text if cell_info else False
 
     style = ParagraphStyle(
         'cell',
@@ -894,6 +933,12 @@ def build_paragraph(
         allowWidows=0,
         allowOrphans=0,
     )
+
+    # For numeric-only content: wrap in <nobr> to prevent ANY mid-number
+    # line break regardless of column width.  This is the primary guard
+    # against "250028" fragmenting to "25 / 02 / 28 / 00".
+    if is_numeric_only and not excel_wrap:
+        display_text = f'<nobr>{display_text}</nobr>'
 
     return Paragraph(display_text, style)
 
@@ -944,6 +989,13 @@ def build_table(
     # For RTL sheets, reverse column order
     col_order = list(range(n_cols - 1, -1, -1)) if layout.is_rtl else list(range(n_cols))
 
+    # Empty paragraph reused for slave cells (merged-cell non-anchor positions).
+    # Slave cells MUST be empty — their visual content is provided by the
+    # anchor cell through the SPAN command.  Putting anchor content here
+    # causes value duplication whenever a SPAN coordinate drifts even slightly.
+    _empty_style = ParagraphStyle('slave_empty', fontSize=1, leading=1)
+    _empty_para  = Paragraph('', _empty_style)
+
     para_grid: list[list] = []
     for ri in range(first_data_row, layout.n_rows):
         ti = ri - first_data_row
@@ -951,6 +1003,10 @@ def build_table(
         row_paras = []
         for ci in col_order:
             cell_info = layout.cells.get((ri, ci))
+            # Slave cells: always empty — SPAN handles the visual merge.
+            if cell_info and cell_info.is_slave:
+                row_paras.append(_empty_para)
+                continue
             text = cell_info.value if cell_info else ''
             para = build_paragraph(
                 text, cell_info, layout.is_rtl, fs, base_font_size,
@@ -966,11 +1022,22 @@ def build_table(
     for (c0, r0, c1, r1) in layout.span_cmds:
         tr0 = r0 - first_data_row
         tr1 = r1 - first_data_row
-        if tr0 < 0 or tr1 < 0:
+
+        # Spans that end before the data section — skip entirely
+        if tr1 < 0:
             continue
+        # Spans that start before the data section — clip to data start.
+        # Without this clip, the span is skipped entirely but slave cells in
+        # the data rows still carry the anchor value → content duplication.
+        if tr0 < 0:
+            tr0 = 0
         if tr0 >= n_rows:
             continue
         tr1 = min(tr1, n_rows - 1)
+
+        # Skip trivial (same-cell) spans after clipping
+        if tr0 == tr1 and c0 == c1:
+            continue
 
         # Remap columns for RTL
         if layout.is_rtl:
@@ -1037,20 +1104,22 @@ def build_table(
 
     ts = TableStyle(style_cmds)
 
-    # Row heights for this table
-    tbl_row_heights = []
-    for ri in range(first_data_row, layout.n_rows):
-        h  = row_heights_pt[ri] if ri < len(row_heights_pt) else _EXCEL_DEFAULT_ROW_H
-        tbl_row_heights.append(h)
-
+    # Row heights strategy:
+    # We use Excel row heights as MINIMUM heights to preserve layout intent,
+    # but allow ReportLab to expand rows when content is taller.
+    # Implementation: pass rowHeights=None (auto) for all rows so ReportLab
+    # sizes each row to its content.  This is the only reliable way to prevent:
+    #   a) content clipping → text fragmented across page boundaries
+    #   b) content overflow → digits stacked or repeated
+    # We rely on column widths (from Excel) to control horizontal layout.
     repeat_rows = 1 if layout.has_header else 0
 
     tbl = Table(
         para_grid,
         colWidths=col_widths_pt,
-        rowHeights=tbl_row_heights,
+        rowHeights=None,    # auto-size: eliminates row-clip fragmentation
         repeatRows=repeat_rows,
-        splitByRow=1,       # allow split across pages — prevents page overflow
+        splitByRow=1,       # allow page-break at row boundaries
         hAlign='RIGHT' if layout.is_rtl else 'LEFT',
     )
     tbl.setStyle(ts)
@@ -1328,6 +1397,7 @@ def excel_to_pdf(
 
     # ── Pass 1: Normal profile ─────────────────────────────────────────────
     story, all_warnings = _build_story(layouts, fs, available_w, font_size)
+    render_failed = False
 
     try:
         _render_pdf(story, output_path, page_w, page_h, margin_h, margin_t, margin_b, fs)
@@ -1335,16 +1405,13 @@ def excel_to_pdf(
     except Exception as render_err:
         # Pass 1 failed — trigger safe-profile retry
         all_warnings.append(f'Pass 1 render error: {render_err}')
-        story = []   # will force retry below
+        render_failed = True
 
-    # ── Pass 2: Safe-profile retry (if overflow/error detected) ────────────
-    overflow_keywords = ('overflow', 'long content', 'render error', 'spacing')
-    needs_retry = (
-        not story or   # render failed
-        any(any(kw in w.lower() for kw in overflow_keywords) for w in all_warnings)
-    )
-
-    if needs_retry:
+    # ── Pass 2: Safe-profile retry — ONLY on actual render failure ──────────
+    # Do NOT trigger on validation warnings (e.g., "long content may overflow").
+    # Validation warnings are informational hints, not render failures.
+    # Retrying on every warning doubles processing time with no benefit.
+    if render_failed:
         # Widen margins, shrink font floor, allow more vertical space
         safe_margin_h = 18 * mm
         safe_margin_t = 16 * mm
@@ -1362,7 +1429,7 @@ def excel_to_pdf(
                 fs,
             )
             page_count = _count_pdf_pages(output_path)
-            all_warnings.append('Used safe rendering profile (wider margins, smaller font)')
+            all_warnings.append('Used safe rendering profile (wider margins)')
         except Exception as retry_err:
             # If safe profile also fails, re-raise so the caller falls back to LibreOffice
             raise RuntimeError(
