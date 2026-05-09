@@ -6,7 +6,7 @@
  * ENGINE PRIORITY
  * ───────────────
  * Word (.docx/.doc)  → LibreOffice headless → fallback: mammoth + pdf-lib
- * Excel (.xlsx/.xls) → LibreOffice headless → fallback: xlsx + pdf-lib
+ * Excel (.xlsx/.xls) → Python enterprise pipeline (Arabic RTL) → LibreOffice → xlsx + pdf-lib
  * HTML               → wkhtmltopdf          → fallback: HTML-strip + pdf-lib
  *
  * Every new engine wraps its call in a try/catch and falls back to the
@@ -18,6 +18,7 @@ import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import { spawn } from 'node:child_process'
 import { mkdtemp, writeFile, readFile as fsReadFile, rm } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename } from 'node:path'
 
@@ -272,11 +273,11 @@ export class DocumentConverter {
    * Convert an Excel spreadsheet (.xlsx / .xls / .csv) to PDF.
    *
    * ENGINE PRIORITY:
-   *   1. Python arabic-reshaper + Amiri font (primary — matches ilovepdf quality)
-   *      Produces 98%+ Arabic Presentation Forms, properly shaped glyphs,
-   *      RTL layout, and embedded Amiri font — identical quality to ilovepdf.
-   *   2. LibreOffice headless (fallback for complex formatting / .xls / .csv)
-   *   3. xlsx + pdf-lib table renderer (last resort)
+   *   1. Python enterprise pipeline — arabic-reshaper + Amiri + Noto Sans Arabic
+   *      Full RTL support, merged cells, font fidelity, Arabic reshaping.
+   *      Primary for .xlsx files with Arabic content.
+   *   2. LibreOffice headless — fallback for .xls / .csv, or if Python fails.
+   *   3. xlsx + pdf-lib table renderer — last resort.
    */
   async excelToPdf(
     xlsxBuffer: Buffer,
@@ -286,21 +287,104 @@ export class DocumentConverter {
     const isXls  = xlsxBuffer[0] === 0xd0 && xlsxBuffer[1] === 0xcf
     const inputExt = isXlsx ? '.xlsx' : isXls ? '.xls' : '.csv'
 
-    // 1. LibreOffice headless — primary engine (handles .xlsx, .xls, .csv,
-    //    charts, images, merged cells, colours, and all languages including Arabic)
+    // 1. Python enterprise pipeline — primary for .xlsx (best Arabic/RTL support)
+    if (isXlsx) {
+      const scriptPath = this.resolveExcelScript()
+      if (scriptPath) {
+        try {
+          return await this.pythonExcelToPdf(xlsxBuffer, options, scriptPath)
+        } catch (err) {
+          console.warn(
+            '[DocumentConverter] Python Excel→PDF failed, falling back to LibreOffice:',
+            err instanceof Error ? err.message : String(err)
+          )
+        }
+      } else {
+        console.warn('[DocumentConverter] excel_to_pdf.py not found, skipping Python engine')
+      }
+    }
+
+    // 2. LibreOffice headless — handles .xls, .csv, and .xlsx fallback
     if (await binaryExists('soffice')) {
       try {
         return await this.libreOfficeConvert(xlsxBuffer, inputExt, inputExt.slice(1))
       } catch (err) {
         console.warn(
-          '[DocumentConverter] LibreOffice Excel→PDF failed, using fallback:',
+          '[DocumentConverter] LibreOffice Excel→PDF failed, using pdf-lib fallback:',
           err instanceof Error ? err.message : String(err)
         )
       }
     }
 
-    // 2. pdf-lib last resort
+    // 3. pdf-lib last resort
     return this.excelToPdfFallback(xlsxBuffer, options)
+  }
+
+  /** Resolve the path to excel_to_pdf.py across deployment layouts */
+  private resolveExcelScript(): string | null {
+    const candidates = [
+      // Next.js running from artifacts/web-toolify
+      join(process.cwd(), 'lib', 'processing', 'excel_to_pdf.py'),
+      // Monorepo root running from workspace root
+      join(process.cwd(), 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf.py'),
+      // Absolute fallback
+      '/app/lib/processing/excel_to_pdf.py',
+      '/app/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
+    ]
+    return candidates.find(p => existsSync(p)) ?? null
+  }
+
+  /** Python enterprise pipeline — full Arabic RTL pipeline with Amiri / Noto Sans Arabic */
+  private async pythonExcelToPdf(
+    xlsxBuffer: Buffer,
+    options: ConversionOptions,
+    scriptPath: string,
+  ): Promise<ConversionResult> {
+    return withTempDir('py-excel-', async (dir) => {
+      const inFile  = join(dir, 'input.xlsx')
+      const outFile = join(dir, 'output.pdf')
+      await writeFile(inFile, xlsxBuffer)
+
+      const args: string[] = [
+        scriptPath,
+        inFile,
+        outFile,
+        '--page-size',   options.pageSize   ?? 'a4',
+        '--orientation', options.orientation ?? 'landscape',
+      ]
+      if (options.fontSize && options.fontSize > 0) {
+        args.push('--font-size', String(options.fontSize))
+      }
+
+      const result = await runCli('python3', args, {
+        timeoutMs: 120_000,
+        env: { PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
+      })
+
+      // The script emits a JSON line to stdout
+      let parsed: Record<string, unknown> = {}
+      try {
+        const jsonLine = result.stdout.trim().split('\n').pop() ?? '{}'
+        parsed = JSON.parse(jsonLine)
+      } catch { /* will throw below */ }
+
+      if (!parsed.success) {
+        const msg = (parsed.error as string | undefined) ?? `Python script exited ${result.code}`
+        throw new Error(msg)
+      }
+
+      const pdfBuffer = await fsReadFile(outFile)
+      if (!isPdf(pdfBuffer)) {
+        throw new Error('Python enterprise pipeline produced an invalid or empty PDF')
+      }
+
+      return {
+        buffer:         pdfBuffer,
+        pageCount:      (parsed.pageCount as number | undefined) ?? 1,
+        originalFormat: 'xlsx',
+        engine:         (parsed.engine as string | undefined) ?? 'python-enterprise-v2',
+      }
+    })
   }
 
   /** Fallback: xlsx.js table parser + pdf-lib */

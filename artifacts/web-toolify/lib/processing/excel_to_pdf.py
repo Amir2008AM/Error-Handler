@@ -97,16 +97,20 @@ _MAX_COL_W_PT         = 300.0  # maximum column width in points
 # same visual height as a standard Latin font at S.
 #   AMIRI_SIZE_SCALE = em / metric_span × correction
 #                    = 1000 / 1758 × 1.0  ≈ 0.569  (pure normalisation)
-# In practice we use 0.82 — this preserves readability while eliminating the
-# inflation, and has been calibrated against iLovePDF / Adobe Acrobat output.
+# In practice we use 0.75 — tighter than the previous 0.82 to prevent
+# inflation on dense Arabic sheets, calibrated against iLovePDF output.
 #
-AMIRI_SIZE_SCALE    = 0.82   # applied to font_size when rendering in Amiri
-AMIRI_LEADING_SCALE = 1.10   # leading factor for Arabic (tighter than Latin)
+AMIRI_SIZE_SCALE    = 0.75   # applied to font_size when rendering in Amiri
+AMIRI_LEADING_SCALE = 1.05   # leading factor for Arabic (tight to prevent row drift)
 LATIN_LEADING_SCALE = 1.15   # leading factor for Latin / mixed text
 #
+# Noto Sans Arabic scale — metrics are closer to standard so less correction needed
+NOTO_SIZE_SCALE    = 0.88
+NOTO_LEADING_SCALE = 1.08
+#
 # Cell padding (points) — kept tight to match Excel's visual density.
-_CELL_PAD_V = 2   # top / bottom  (was 3 — reduced to prevent row expansion)
-_CELL_PAD_H = 4   # left / right
+_CELL_PAD_V = 1   # top / bottom  (reduced from 2 to prevent row height drift)
+_CELL_PAD_H = 3   # left / right
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -115,15 +119,38 @@ _CELL_PAD_H = 4   # left / right
 
 @dataclass
 class FontSet:
-    regular:      str = 'Helvetica'
-    bold:         str = 'Helvetica-Bold'
-    arabic_reg:   str = 'Helvetica'
-    arabic_bold:  str = 'Helvetica-Bold'
-    has_unicode:  bool = False
-    has_arabic:   bool = False
+    regular:       str  = 'Helvetica'
+    bold:          str  = 'Helvetica-Bold'
+    arabic_reg:    str  = 'Helvetica'
+    arabic_bold:   str  = 'Helvetica-Bold'
+    has_unicode:   bool = False
+    has_arabic:    bool = False
+    arabic_engine: str  = 'none'   # 'amiri' | 'noto' | 'dejavu' | 'none'
 
 
 _font_set: Optional[FontSet] = None
+
+
+def _find_font_file(*names: str, search_dirs: list | None = None) -> Optional[Path]:
+    """Search for a font file by name in common system locations.
+    Does NOT search /nix/store by default (too slow for rglob).
+    """
+    dirs = search_dirs or []
+    system_dirs = [
+        Path('/usr/share/fonts'),
+        Path('/usr/local/share/fonts'),
+        Path('/home/runner/.fonts'),
+        Path('/usr/share/fonts/truetype'),
+        Path('/usr/share/fonts/opentype'),
+    ]
+    for d in dirs + system_dirs:
+        if not d.exists():
+            continue
+        for name in names:
+            hits = list(d.rglob(name))
+            if hits:
+                return hits[0]
+    return None
 
 
 def _register_fonts() -> FontSet:
@@ -137,40 +164,73 @@ def _register_fonts() -> FontSet:
     # ── DejaVu Sans (Latin / Unicode fallback) ────────────────────────────
     dv_reg  = Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf')
     dv_bold = Path('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf')
-    if dv_reg.exists() and dv_bold.exists():
+    # Also try nix store
+    if not dv_reg.exists():
+        found = _find_font_file('DejaVuSans.ttf')
+        if found:
+            dv_reg  = found
+            dv_bold = found.parent / 'DejaVuSans-Bold.ttf'
+
+    if dv_reg.exists():
         try:
             pdfmetrics.registerFont(TTFont('DejaVuSans',      str(dv_reg)))
-            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', str(dv_bold)))
             fs.regular     = 'DejaVuSans'
             fs.bold        = 'DejaVuSans-Bold'
+            fs.has_unicode = True
+            if dv_bold.exists():
+                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', str(dv_bold)))
+            # Use DejaVu as interim Arabic fallback (has partial Arabic coverage)
             fs.arabic_reg  = 'DejaVuSans'
             fs.arabic_bold = 'DejaVuSans-Bold'
-            fs.has_unicode = True
+            fs.arabic_engine = 'dejavu'
         except Exception:
             pass
 
-    # ── Amiri (Arabic — highest quality) ─────────────────────────────────
+    # ── Noto Sans Arabic (excellent quality, standard metrics) ────────────
+    noto_reg  = _find_font_file(
+        'NotoSansArabic-Regular.ttf', 'NotoSansArabic.ttf',
+        search_dirs=[fonts_dir],
+    )
+    noto_bold = _find_font_file(
+        'NotoSansArabic-Bold.ttf',
+        search_dirs=[fonts_dir] + ([noto_reg.parent] if noto_reg else []),
+    )
+    if noto_reg and noto_reg.exists():
+        try:
+            pdfmetrics.registerFont(TTFont('NotoSansArabic', str(noto_reg)))
+            fs.arabic_reg    = 'NotoSansArabic'
+            fs.has_arabic    = True
+            fs.arabic_engine = 'noto'
+            if noto_bold and noto_bold.exists():
+                pdfmetrics.registerFont(TTFont('NotoSansArabic-Bold', str(noto_bold)))
+                fs.arabic_bold = 'NotoSansArabic-Bold'
+            else:
+                fs.arabic_bold = 'NotoSansArabic'
+        except Exception:
+            pass
+
+    # ── Amiri (Arabic — highest quality, used if Noto not found) ─────────
     amiri_reg  = fonts_dir / 'Amiri-Regular.ttf'
     amiri_bold = fonts_dir / 'Amiri-Bold.ttf'
 
-    # Fallback search in nix store
+    # Fallback search in system dirs
     if not amiri_reg.exists():
-        for base in [Path('/usr/share/fonts'), Path('/nix/store')]:
-            if base.exists():
-                hits = list(base.rglob('Amiri-Regular.ttf'))
-                if hits:
-                    amiri_reg  = hits[0]
-                    amiri_bold = hits[0].parent / 'Amiri-Bold.ttf'
-                    break
+        found = _find_font_file('Amiri-Regular.ttf', search_dirs=[fonts_dir])
+        if found:
+            amiri_reg  = found
+            amiri_bold = found.parent / 'Amiri-Bold.ttf'
 
     if amiri_reg.exists():
         try:
-            pdfmetrics.registerFont(TTFont('Amiri',      str(amiri_reg)))
-            fs.arabic_reg = 'Amiri'
-            fs.has_arabic = True
+            pdfmetrics.registerFont(TTFont('Amiri', str(amiri_reg)))
             if amiri_bold.exists():
                 pdfmetrics.registerFont(TTFont('Amiri-Bold', str(amiri_bold)))
-                fs.arabic_bold = 'Amiri-Bold'
+            # Use Amiri as Arabic engine only if Noto was not found
+            if not fs.has_arabic:
+                fs.arabic_reg    = 'Amiri'
+                fs.arabic_bold   = 'Amiri-Bold' if amiri_bold.exists() else 'Amiri'
+                fs.has_arabic    = True
+                fs.arabic_engine = 'amiri'
         except Exception:
             pass
 
@@ -772,27 +832,38 @@ def build_paragraph(
 
     # ── Font size ─────────────────────────────────────────────────────────────
     # Priority: explicit cell size from Excel → auto-detected base size.
-    # We honour the Excel value faithfully; the only transformation applied
-    # is the Amiri visual-calibration factor for Arabic cells (see constants).
+    # We honour the Excel value as faithfully as possible, only capping
+    # extreme decorative sizes (>30pt) that would overwhelm narrow columns.
     if cell_info and cell_info.font_size > 0:
-        # Use Excel's explicit font size, clamped to a readable range so that
-        # decorative titles (24pt+) don't overwhelm the page.
         excel_fs = cell_info.font_size
-        font_size = max(min(excel_fs, base_font_size * 2.2), base_font_size * 0.65)
+        # Only cap very large decorative sizes; do NOT scale down normal text
+        if excel_fs > 30.0:
+            font_size = max(base_font_size * 1.8, 18.0)
+        else:
+            font_size = excel_fs
     else:
         font_size = base_font_size
 
-    # Amiri visual-calibration:
-    # Amiri's metric span (ascent+|descent|) = 1758 on a 1000-unit em, so the
-    # glyph box at size S is 1.758×S points — far larger than standard fonts.
-    # Applying AMIRI_SIZE_SCALE compensates so Arabic text is visually the
-    # same size as the source Excel file (Calibri / Arial reference).
+    # Arabic font visual-calibration:
+    # Different Arabic fonts have different metric spans. Apply per-engine scale
+    # factors so text visually matches the original Excel (Calibri/Arial) size.
     if is_arabic:
-        render_size  = font_size * AMIRI_SIZE_SCALE
-        render_lead  = render_size * AMIRI_LEADING_SCALE
+        fs_obj = _font_set or _register_fonts()
+        if fs_obj.arabic_engine == 'amiri':
+            # Amiri: metric span = 1758/1000 em — highest inflation, needs most correction
+            render_size = font_size * AMIRI_SIZE_SCALE
+            render_lead = render_size * AMIRI_LEADING_SCALE
+        elif fs_obj.arabic_engine == 'noto':
+            # Noto Sans Arabic: closer to standard metrics, less correction needed
+            render_size = font_size * NOTO_SIZE_SCALE
+            render_lead = render_size * NOTO_LEADING_SCALE
+        else:
+            # DejaVu or fallback: use Amiri correction as a safe default
+            render_size = font_size * AMIRI_SIZE_SCALE
+            render_lead = render_size * AMIRI_LEADING_SCALE
     else:
-        render_size  = font_size
-        render_lead  = font_size * LATIN_LEADING_SCALE
+        render_size = font_size
+        render_lead = font_size * LATIN_LEADING_SCALE
 
     # ── Font color ────────────────────────────────────────────────────────────
     text_color = colors.black
@@ -803,8 +874,12 @@ def build_paragraph(
     # ── Alignment ─────────────────────────────────────────────────────────────
     h_align = _resolve_h_align(cell_info, text, is_rtl_sheet)
 
-    # Word wrap for RTL
-    word_wrap = 'RTL' if is_arabic else 'LTR'
+    # Word wrap: use RTL only when content is predominantly Arabic
+    # (avoids wrong line breaks in mixed Arabic/English cells)
+    ar_char_count  = len(_AR_RE.findall(text))
+    total_nonspace = len(text.replace(' ', ''))
+    predominantly_arabic = total_nonspace > 0 and (ar_char_count / total_nonspace) > 0.5
+    word_wrap = 'RTL' if predominantly_arabic else 'LTR'
 
     style = ParagraphStyle(
         'cell',
@@ -816,6 +891,8 @@ def build_paragraph(
         wordWrap=word_wrap,
         spaceAfter=0,
         spaceBefore=0,
+        allowWidows=0,
+        allowOrphans=0,
     )
 
     return Paragraph(display_text, style)
@@ -958,15 +1035,11 @@ def build_table(
             if va != 'MIDDLE':
                 style_cmds.append(('VALIGN', (ci_idx, ti), (ci_idx, ti), va))
 
-    # NOSPLIT — keep each row on one page
-    style_cmds.append(('NOSPLIT', (0, 0), (-1, -1)))
-
     ts = TableStyle(style_cmds)
 
     # Row heights for this table
     tbl_row_heights = []
     for ri in range(first_data_row, layout.n_rows):
-        ti = ri - first_data_row
         h  = row_heights_pt[ri] if ri < len(row_heights_pt) else _EXCEL_DEFAULT_ROW_H
         tbl_row_heights.append(h)
 
@@ -977,7 +1050,8 @@ def build_table(
         colWidths=col_widths_pt,
         rowHeights=tbl_row_heights,
         repeatRows=repeat_rows,
-        splitByRow=0,           # never split a data row across pages
+        splitByRow=1,       # allow split across pages — prevents page overflow
+        hAlign='RIGHT' if layout.is_rtl else 'LEFT',
     )
     tbl.setStyle(ts)
     return tbl
@@ -1109,6 +1183,111 @@ class _NumberedCanvas(rl_canvas.Canvas):
 # 10.  Main conversion entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _build_story(
+    layouts: list,
+    fs: FontSet,
+    available_w: float,
+    font_size: int,
+    margin_scale: float = 1.0,
+) -> tuple[list, list]:
+    """
+    Build the ReportLab story (flowables) for all sheet layouts.
+    Returns (story, all_warnings).
+    margin_scale < 1.0 is used by the safe-profile retry to shrink margins.
+    """
+    story: list[Any] = []
+    all_warnings: list[str] = []
+    first_sheet = True
+
+    for layout in layouts:
+        # ── Stage 9: Validation ────────────────────────────────────────────
+        report = validate_layout(layout)
+        all_warnings.extend(report.warnings)
+        if report.overall_score == 0.0:
+            continue
+
+        if not first_sheet:
+            story.append(PageBreak())
+        first_sheet = False
+
+        # ── Auto font-size ─────────────────────────────────────────────────
+        base_fs = float(font_size) if font_size > 0 else _auto_font_size(layout, available_w)
+        # Apply margin_scale shrink for safe-profile retry
+        if margin_scale < 1.0:
+            base_fs = max(base_fs * margin_scale, 6.0)
+
+        # ── Stage 2: LayoutModel ───────────────────────────────────────────
+        col_widths_pt  = compute_col_widths_pt(layout, available_w, base_fs)
+        row_heights_pt = compute_row_heights_pt(layout, base_fs)
+
+        # ── Stage 7: Titles ────────────────────────────────────────────────
+        title_flowables = build_title_flowables(layout.title_texts, fs, base_fs)
+        story.extend(title_flowables)
+
+        # ── Stage 6: TableBuilder ──────────────────────────────────────────
+        first_data_row = len(layout.title_texts)
+        if first_data_row >= layout.n_rows:
+            continue
+
+        tbl = build_table(
+            layout, col_widths_pt, row_heights_pt,
+            fs, base_fs, first_data_row
+        )
+        story.append(tbl)
+
+    return story, all_warnings
+
+
+def _render_pdf(
+    story: list,
+    output_path: str,
+    page_w: float,
+    page_h: float,
+    margin_h: float,
+    margin_t: float,
+    margin_b: float,
+    fs: FontSet,
+) -> None:
+    """Render the story to a PDF file using BaseDocTemplate."""
+    frame = Frame(
+        margin_h, margin_b,
+        page_w - 2 * margin_h,
+        page_h - margin_t - margin_b,
+        id='main',
+        showBoundary=0,
+    )
+    page_template = PageTemplate(id='main', frames=[frame])
+    doc = BaseDocTemplate(
+        output_path,
+        pagesize=(page_w, page_h),
+        pageTemplates=[page_template],
+        leftMargin=margin_h,
+        rightMargin=margin_h,
+        topMargin=margin_t,
+        bottomMargin=margin_b,
+    )
+    doc.build(
+        story,
+        canvasmaker=lambda *a, **kw: _NumberedCanvas(
+            *a, font_regular=fs.regular, **kw
+        ),
+    )
+
+
+def _count_pdf_pages(output_path: str) -> int:
+    """Count pages in a PDF file by scanning for /Type/Page markers."""
+    try:
+        with open(output_path, 'rb') as f:
+            data = f.read()
+        return max(
+            data.count(b'/Type/Page'),
+            data.count(b'/Type /Page'),
+            1,
+        )
+    except Exception:
+        return 1
+
+
 def excel_to_pdf(
     input_path: str,
     output_path: str,
@@ -1119,6 +1298,11 @@ def excel_to_pdf(
     """
     Convert an Excel (.xlsx) file to PDF using the enterprise hybrid pipeline.
     Returns {'success': True, 'pageCount': N, 'engine': '...', 'warnings': [...]}.
+
+    Retry logic:
+      Pass 1 — normal profile (standard margins).
+      Pass 2 — if Pass 1 emits overflow/spacing warnings, retry with a
+               conservative profile (larger margins, smaller font floor).
     """
     # ── Stage 0: Font registration ─────────────────────────────────────────
     fs = _register_fonts()
@@ -1142,88 +1326,53 @@ def excel_to_pdf(
     if not layouts:
         raise ValueError('No data found in the Excel file')
 
-    # ── Build story ────────────────────────────────────────────────────────
-    story: list[Any] = []
-    all_warnings: list[str] = []
-    first_sheet = True
+    # ── Pass 1: Normal profile ─────────────────────────────────────────────
+    story, all_warnings = _build_story(layouts, fs, available_w, font_size)
 
-    for layout in layouts:
-        # ── Stage 9: Validation ────────────────────────────────────────────
-        report = validate_layout(layout)
-        all_warnings.extend(report.warnings)
-        if report.overall_score == 0.0:
-            continue
-
-        if not first_sheet:
-            story.append(PageBreak())
-        first_sheet = False
-
-        # ── Auto font-size ─────────────────────────────────────────────────
-        base_fs = float(font_size) if font_size > 0 else _auto_font_size(layout, available_w)
-
-        # ── Stage 2: LayoutModel ───────────────────────────────────────────
-        col_widths_pt  = compute_col_widths_pt(layout, available_w, base_fs)
-        row_heights_pt = compute_row_heights_pt(layout, base_fs)
-
-        # ── Stage 7: Titles ────────────────────────────────────────────────
-        title_flowables = build_title_flowables(layout.title_texts, fs, base_fs)
-        story.extend(title_flowables)
-
-        # ── Stage 6: TableBuilder ──────────────────────────────────────────
-        first_data_row = len(layout.title_texts)
-
-        if first_data_row >= layout.n_rows:
-            continue
-
-        tbl = build_table(
-            layout, col_widths_pt, row_heights_pt,
-            fs, base_fs, first_data_row
-        )
-        story.append(tbl)
-
-    # ── Stage 10: PDF Renderer ─────────────────────────────────────────────
-    frame = Frame(
-        margin_h, margin_b,
-        page_w - 2 * margin_h,
-        page_h - margin_t - margin_b,
-        id='main',
-        showBoundary=0,
-    )
-    page_template = PageTemplate(id='main', frames=[frame])
-    doc = BaseDocTemplate(
-        output_path,
-        pagesize=(page_w, page_h),
-        pageTemplates=[page_template],
-        leftMargin=margin_h,
-        rightMargin=margin_h,
-        topMargin=margin_t,
-        bottomMargin=margin_b,
-    )
-
-    doc.build(
-        story,
-        canvasmaker=lambda *a, **kw: _NumberedCanvas(
-            *a, font_regular=fs.regular, **kw
-        ),
-    )
-
-    # ── Count pages ────────────────────────────────────────────────────────
-    page_count = 1
     try:
-        with open(output_path, 'rb') as f:
-            data = f.read()
-        page_count = max(
-            data.count(b'/Type/Page'),
-            data.count(b'/Type /Page'),
-            1,
+        _render_pdf(story, output_path, page_w, page_h, margin_h, margin_t, margin_b, fs)
+        page_count = _count_pdf_pages(output_path)
+    except Exception as render_err:
+        # Pass 1 failed — trigger safe-profile retry
+        all_warnings.append(f'Pass 1 render error: {render_err}')
+        story = []   # will force retry below
+
+    # ── Pass 2: Safe-profile retry (if overflow/error detected) ────────────
+    overflow_keywords = ('overflow', 'long content', 'render error', 'spacing')
+    needs_retry = (
+        not story or   # render failed
+        any(any(kw in w.lower() for kw in overflow_keywords) for w in all_warnings)
+    )
+
+    if needs_retry:
+        # Widen margins, shrink font floor, allow more vertical space
+        safe_margin_h = 18 * mm
+        safe_margin_t = 16 * mm
+        safe_margin_b = 18 * mm
+        safe_avail_w  = page_w - 2 * safe_margin_h
+
+        story_safe, warnings_safe = _build_story(
+            layouts, fs, safe_avail_w, font_size, margin_scale=0.88
         )
-    except Exception:
-        pass
+        try:
+            _render_pdf(
+                story_safe, output_path,
+                page_w, page_h,
+                safe_margin_h, safe_margin_t, safe_margin_b,
+                fs,
+            )
+            page_count = _count_pdf_pages(output_path)
+            all_warnings.append('Used safe rendering profile (wider margins, smaller font)')
+        except Exception as retry_err:
+            # If safe profile also fails, re-raise so the caller falls back to LibreOffice
+            raise RuntimeError(
+                f'Both normal and safe profiles failed. Last error: {retry_err}'
+            ) from retry_err
 
     return {
         'success':    True,
         'pageCount':  page_count,
-        'engine':     'enterprise-hybrid-v2',
+        'engine':     f'enterprise-hybrid-v2/{fs.arabic_engine}',
         'fonts':      {'regular': fs.regular, 'arabic': fs.arabic_reg},
         'warnings':   all_warnings,
     }
