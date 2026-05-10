@@ -112,13 +112,17 @@ def classify_document(pdf_path: str) -> DocumentProfile:
     """
     profile = DocumentProfile()
 
-    # ── Border detection (128 KB scan) ───────────────────────────────────────
+    # ── Border detection (128 KB raw scan + pdfplumber geometric check) ───────
+    # NOTE: PDF content streams are zlib-compressed, so raw-byte PostScript
+    # command search only hits uncompressed header/trailer sections.
+    # We use this as a FIRST PASS and supplement with a pdfplumber geometric
+    # check (rect + line objects) which works on the decoded page objects.
     try:
         with open(pdf_path, "rb") as fh:
             sample = fh.read(131_072)
         hits = len(_LATTICE_SIGNALS.findall(sample))
         profile.has_borders = hits >= 3
-        log.info("Border signals: %d → has_borders=%s", hits, profile.has_borders)
+        log.info("Border signals (raw): %d → has_borders=%s", hits, profile.has_borders)
     except OSError:
         log.warning("Could not scan for border signals")
 
@@ -155,6 +159,25 @@ def classify_document(pdf_path: str) -> DocumentProfile:
                 else:
                     sampled_scanned_pages += 1
                     profile.scanned_page_indices.append(i)
+
+        # ── Geometric border check (works on decoded page objects) ───────────
+        # Check the first 3 pages for actual line/rect objects.  This catches
+        # bordered tables in compressed-stream PDFs that the raw scan misses.
+        if not profile.has_borders:
+            try:
+                geo_line_count = 0
+                for pi in range(min(3, total_pages)):
+                    p = pdf.pages[pi]
+                    geo_line_count += len(p.lines or [])
+                    geo_line_count += len(p.rects or [])
+                if geo_line_count >= 4:
+                    profile.has_borders = True
+                    log.info(
+                        "Border signals (geometric): %d lines/rects → has_borders=True",
+                        geo_line_count,
+                    )
+            except Exception as _geo_exc:
+                log.debug("Geometric border check failed: %s", _geo_exc)
 
         full_text = " ".join(all_text)
         total_chars = len(full_text.strip())
@@ -584,7 +607,6 @@ _TABLE_SETTINGS_LATTICE = {
     "edge_min_length":     3,
     "min_words_vertical":  1,
     "min_words_horizontal": 1,
-    "keep_blank_chars":    False,
     "text_x_tolerance":    2,
     "text_y_tolerance":    3,
 }
@@ -597,7 +619,6 @@ _TABLE_SETTINGS_STREAM = {
     "edge_min_length":     3,
     "min_words_vertical":  3,
     "min_words_horizontal": 1,
-    "keep_blank_chars":    False,
     "text_x_tolerance":    2,
     "text_y_tolerance":    3,
 }
@@ -610,7 +631,6 @@ _TABLE_SETTINGS_EXPLICIT = {
     "edge_min_length":     3,
     "min_words_vertical":  1,
     "min_words_horizontal": 1,
-    "keep_blank_chars":    False,
     "text_x_tolerance":    2,
     "text_y_tolerance":    3,
 }
@@ -753,7 +773,7 @@ def _extract_pdfplumber_words(
                 df = layout_to_dataframe(layout, local_schema)
                 if df is not None and not df.empty:
                     if fix_visual_arabic:
-                        df = df.applymap(
+                        df = df.map(
                             lambda v: _fix_visual_arabic_cell(_to_str(v))
                         )
                     dfs.append(df)
@@ -996,6 +1016,13 @@ def reconstruct_tables(raw_dfs: list[pd.DataFrame]) -> list[pd.DataFrame]:
     groups: list[pd.DataFrame] = [cleaned[0]]
     seen_headers: set[tuple] = set()
 
+    # Seed seen_headers with BOTH the column-name tuple (so any repeated header
+    # row that slipped past header-promotion is deduped) AND the first data row.
+    col_fp = tuple(
+        unicodedata.normalize("NFKC", re.sub(r"\s+", " ", str(c).strip().lower()))
+        for c in cleaned[0].columns
+    )
+    seen_headers.add(col_fp)
     if len(cleaned[0]) > 0:
         seen_headers.add(_normalize_header_row(cleaned[0].iloc[0]))
 
@@ -1239,6 +1266,10 @@ def _fix_visual_arabic_cell(text: str) -> str:
     Correct visual-order Arabic cell text for Excel storage — v3.
 
     Algorithm:
+      0. NFKC-normalize to convert Arabic Presentation Forms (U+FB50-UFDFF,
+         U+FE70-FEFF) to their basic Unicode equivalents — required so that
+         ligature/glyph-level characters like ﻢ (Arabic Meem Medial Form) are
+         first decoded to م before the reversal step.
       1. Handle multi-line cells line by line
       2. Tokenize into typed segments (Arabic / Latin / Digit / Space / Punct)
       3. Group by space-separated "words" (preserving token types)
@@ -1251,6 +1282,9 @@ def _fix_visual_arabic_cell(text: str) -> str:
     """
     if not text:
         return text
+    # NFKC normalization: converts Arabic Presentation Forms to basic Arabic
+    # script before reversal so ligature code-points don't corrupt the output.
+    text = unicodedata.normalize("NFKC", text)
     if not _ARABIC_RE.search(text):
         return text
 
@@ -1352,6 +1386,85 @@ def _detect_visual_order_from_words(words: list[dict]) -> bool:
 def apply_arabic_reshaping(df: pd.DataFrame) -> pd.DataFrame:
     """Alias kept for API compatibility — delegates to fix_visual_arabic_dataframe."""
     return fix_visual_arabic_dataframe(df, visual_order=True)
+
+
+# ── Bracket / parenthesis mirroring ──────────────────────────────────────────
+# In visual-order Arabic PDFs every bidirectional character (parentheses,
+# brackets, braces) is stored reversed throughout the ENTIRE row — including
+# inside purely-English cells like "Physiology IV )510(".
+# After we correct word order with fix_visual_arabic_dataframe we must
+# also mirror all such characters in the whole table.
+_BRACKET_MIRROR_TABLE = str.maketrans("()[]{}⟨⟩", ")(][}{⟩⟨")
+
+
+def _mirror_brackets_cell(text: str) -> str:
+    """Flip all bracket/paren/brace chars in a single cell string."""
+    if not text:
+        return text
+    return str(text).translate(_BRACKET_MIRROR_TABLE)
+
+
+def mirror_brackets_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply bracket mirroring to every cell in a DataFrame."""
+    out = df.copy()
+    for col in out.columns:
+        out[col] = out[col].map(lambda v: _mirror_brackets_cell(_to_str(v)))
+    new_cols = [_mirror_brackets_cell(str(c)) for c in out.columns]
+    out.columns = new_cols
+    return out
+
+
+# ── Row-fragment repair ───────────────────────────────────────────────────────
+# Camelot stream mode splits multi-line cells across separate rows because it
+# has no grid lines to anchor on.  Pattern: a "continuation" row has an empty
+# first column and carries content that belongs to the previous non-empty row.
+# We merge such rows upward by appending their non-empty cells.
+
+def _merge_fragmented_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge continuation rows (first column empty) into the preceding data row.
+
+    A row is treated as a continuation if:
+      - Its first column (index 0) is empty, AND
+      - At least one other column is non-empty, AND
+      - There is already a preceding data row to absorb it.
+
+    Merging: for each non-empty cell in the continuation row, append its text
+    to the corresponding cell in the preceding row with a newline separator.
+
+    This is a safety-net for the stream fallback.  Lattice mode reads actual
+    grid lines and should not need this.
+    """
+    if df.empty or df.shape[0] < 2:
+        return df
+
+    rows: list[list[str]] = [
+        [_to_str(v) for v in row] for row in df.values
+    ]
+    merged: list[list[str]] = []
+
+    for row in rows:
+        first_col = row[0].strip() if row else ""
+        rest_non_empty = any(c.strip() for c in row[1:])
+
+        if not first_col and rest_non_empty and merged:
+            # Continuation row — append to previous
+            prev = merged[-1]
+            for ci in range(1, len(row)):
+                fragment = row[ci].strip()
+                if not fragment:
+                    continue
+                existing = prev[ci].strip()
+                if existing:
+                    prev[ci] = existing + "\n" + fragment
+                else:
+                    prev[ci] = fragment
+        else:
+            merged.append(list(row))
+
+    result = pd.DataFrame(merged, columns=df.columns)
+    result.reset_index(drop=True, inplace=True)
+    return result
 
 
 def _reorder_rtl_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -1708,13 +1821,23 @@ def process_pdf(
             raise RuntimeError(f"OCR failed: {exc}") from exc
 
     else:
-        flavor = "lattice" if profile.has_borders else "stream"
+        # ── Lattice-first routing ─────────────────────────────────────────────
+        # Always try Camelot lattice first regardless of border-detection result.
+        # Reason: PDF content streams are zlib-compressed, so the raw-byte border
+        # scan is unreliable.  Camelot lattice uses Ghostscript to decode the
+        # streams and find actual grid lines — far more reliable.
+        # If lattice finds 0 tables, _extract_camelot() already falls back to
+        # stream internally; no extra logic needed here.
+        camelot_flavor = "lattice"
 
         if camelot_eligible:
             try:
-                raw_dfs = _extract_camelot(pdf_path, flavor)
+                raw_dfs = _extract_camelot(pdf_path, camelot_flavor)
                 if raw_dfs:
-                    engine = f"camelot/{flavor}"
+                    engine = f"camelot/{camelot_flavor}"
+                    log.info(
+                        "Camelot lattice succeeded with %d table(s)", len(raw_dfs)
+                    )
             except Exception as exc:
                 log.warning("Camelot routing failed: %s", exc)
 
@@ -1722,7 +1845,7 @@ def process_pdf(
             try:
                 raw_dfs = _extract_pdfplumber_tables(
                     pdf_path,
-                    fix_visual_arabic=is_visual_arabic,
+                    fix_visual_arabic=False,   # applied centrally below to all engines
                     has_borders=profile.has_borders,
                 )
                 if raw_dfs:
@@ -1736,10 +1859,6 @@ def process_pdf(
                 if layout.words:
                     df = layout_to_dataframe(layout, schema)
                     if df is not None and not df.empty:
-                        if is_visual_arabic:
-                            df = df.applymap(
-                                lambda v: _fix_visual_arabic_cell(_to_str(v))
-                            )
                         raw_dfs.append(df)
             if raw_dfs:
                 engine = "spatial-clustering"
@@ -1751,6 +1870,29 @@ def process_pdf(
                 engine  = "tesseract-ocr (fallback)"
             except Exception as exc:
                 raise RuntimeError(f"All extractors failed: {exc}") from exc
+
+        # ── Apply Arabic visual-order correction to ALL extraction paths ──────
+        # Previously this was only done in the spatial-clustering fallback.
+        # Camelot and pdfplumber return text exactly as stored in the PDF stream
+        # (visual order for Arabic documents), so we must correct here too.
+        if is_visual_arabic and raw_dfs:
+            log.info("Applying Arabic visual-order fix to %d table(s)", len(raw_dfs))
+            raw_dfs = [
+                fix_visual_arabic_dataframe(df, visual_order=True)
+                for df in raw_dfs
+            ]
+            # Also mirror parentheses/brackets — they are stored reversed in
+            # visual-order PDFs throughout the whole row, even in English cells.
+            raw_dfs = [mirror_brackets_dataframe(df) for df in raw_dfs]
+            log.info("Bracket mirroring applied to %d table(s)", len(raw_dfs))
+
+        # ── Row-fragment repair (stream-mode safety net) ──────────────────────
+        # When Camelot stream or pdfplumber stream was used, multi-line cells
+        # may have been split across separate rows.  Merge continuation rows
+        # (first column empty) back into the preceding data row.
+        if raw_dfs and "stream" in engine:
+            log.info("Applying row-fragment repair (stream engine detected)")
+            raw_dfs = [_merge_fragmented_rows(df) for df in raw_dfs]
 
         # Hybrid PDF: supplement with OCR for scanned pages if needed
         expected_tables = max(profile.page_count // 2, 1)
@@ -1798,6 +1940,26 @@ def process_pdf(
             f"Tables were found but failed validation in '{os.path.basename(pdf_path)}'. "
             "The content may be corrupted or too sparse."
         )
+
+    # ── Phase 10.5: Drop repeated-header data rows ────────────────────────────
+    # Must run AFTER validate_and_repair because that step may drop empty
+    # columns, changing a 0.75-similarity header-lookalike row into a 1.0
+    # exact match.  Removes any data row whose normalized content matches
+    # the column-name tuple (exact) or is ≥80% similar (robust to minor
+    # differences introduced by page-level header variations).
+    def _drop_repeated_header_rows(df: pd.DataFrame) -> pd.DataFrame:
+        col_fp = tuple(
+            unicodedata.normalize("NFKC", re.sub(r"\s+", " ", str(c).strip().lower()))
+            for c in df.columns
+        )
+        def _is_data_row(row: pd.Series) -> bool:
+            fp = _normalize_header_row(row)
+            return _header_similarity(fp, col_fp) < 0.80
+        mask = df.apply(_is_data_row, axis=1)
+        return df[mask].reset_index(drop=True)
+
+    tables = [_drop_repeated_header_rows(t) for t in tables]
+    tables = [t for t in tables if not t.empty]
 
     # ── Phase 9: Excel Generation ─────────────────────────────────────────────
     write_excel(
