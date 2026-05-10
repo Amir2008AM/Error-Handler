@@ -89,9 +89,26 @@ export async function POST(request: NextRequest) {
       errorMsg: error instanceof Error ? error.message : 'unknown',
     })
     const rawMsg = error instanceof Error ? error.message : 'Failed to extract tables from PDF'
-    const userMsg = rawMsg.includes('No usable tables found') || rawMsg.includes('extraction failed')
-      ? rawMsg.split('\n')[0]
-      : 'Could not extract tables from this PDF. The file may not contain detectable table data.'
+    let userMsg: string
+    if (
+      rawMsg.includes('No usable tables found') ||
+      rawMsg.includes('Tables were found but failed validation') ||
+      rawMsg.includes('All extractors failed') ||
+      rawMsg.includes('No usable')
+    ) {
+      userMsg = rawMsg.split('\n')[0]
+    } else if (
+      rawMsg.includes('ModuleNotFoundError') ||
+      rawMsg.includes('No module named')
+    ) {
+      userMsg = 'Server configuration error: a required Python package is missing. Please contact support.'
+    } else if (rawMsg.includes('OCR failed')) {
+      userMsg = 'OCR extraction failed. The PDF may contain unsupported image formats or encodings.'
+    } else if (rawMsg.includes('File not found')) {
+      userMsg = 'Uploaded file could not be processed. Please try again.'
+    } else {
+      userMsg = 'Could not extract tables from this PDF. The file may not contain detectable table data.'
+    }
     return NextResponse.json({ error: userMsg }, { status: 500 })
   } finally {
     await cleanup()

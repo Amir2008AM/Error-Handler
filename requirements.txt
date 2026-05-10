@@ -3,3 +3,10 @@ python-bidi==0.4.2
 reportlab==4.2.5
 openpyxl==3.1.5
 Pillow==10.4.0
+pdfplumber==0.11.9
+numpy==2.4.4
+pandas==3.0.2
+pdf2image==1.17.0
+pytesseract==0.3.13
+opencv-python-headless==4.13.0.92
+camelot-py[cv]==1.0.9

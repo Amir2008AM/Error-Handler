@@ -15,9 +15,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-dev \
-    # tesseract OCR
+    # tesseract OCR + Arabic language pack
     tesseract-ocr \
+    tesseract-ocr-ara \
+    tesseract-ocr-eng \
     libtesseract-dev \
+    # poppler-utils: pdftoppm needed by pdf2image for OCR path
+    poppler-utils \
+    # libgl for opencv-python-headless
+    libgl1 \
+    libglib2.0-0 \
     # LibreOffice headless for PPT/PPTX → PDF and Word/Excel → PDF
     libreoffice-impress \
     libreoffice-writer \
@@ -30,7 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && fc-cache -fv \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages required by the Excel → PDF engine
+# Install Python packages required by the Excel→PDF and PDF→Excel engines
 COPY requirements.txt ./
 RUN pip3 install --break-system-packages \
     arabic-reshaper==3.0.0 \
@@ -38,7 +45,15 @@ RUN pip3 install --break-system-packages \
     "reportlab>=4.0.0" \
     "openpyxl>=3.1.0" \
     "Pillow>=10.0.0" \
-  && python3 -c "import arabic_reshaper, bidi, reportlab, openpyxl; \
+    pdfplumber \
+    numpy \
+    pandas \
+    pdf2image \
+    pytesseract \
+    "opencv-python-headless>=4.8.0" \
+    "camelot-py[cv]" \
+  && python3 -c "import arabic_reshaper, bidi, reportlab, openpyxl, \
+     pdfplumber, numpy, pandas, pdf2image, pytesseract, cv2, camelot; \
      print('PYTHON PACKAGES VERIFIED OK')"
 
 # Install pnpm
@@ -64,10 +79,13 @@ RUN pnpm install --frozen-lockfile
 # Copy the full source
 COPY . .
 
-# Confirm excel_to_pdf.py is present in the expected runtime location
+# Confirm Python processing scripts are present in their expected runtime locations
 RUN test -f /app/artifacts/web-toolify/lib/processing/excel_to_pdf.py \
-    && echo "excel_to_pdf.py: OK at /app/artifacts/web-toolify/lib/processing/excel_to_pdf.py" \
+    && echo "excel_to_pdf.py: OK" \
     || (echo "ERROR: excel_to_pdf.py missing!" && exit 1)
+RUN test -f /app/pdf_table_extractor.py \
+    && echo "pdf_table_extractor.py: OK" \
+    || (echo "ERROR: pdf_table_extractor.py missing!" && exit 1)
 
 # Build Next.js production bundle
 RUN pnpm --filter @workspace/web-toolify run build
