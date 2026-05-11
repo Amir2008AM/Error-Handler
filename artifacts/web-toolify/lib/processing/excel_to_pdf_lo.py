@@ -180,84 +180,103 @@ def _fix_merged_cells(ws) -> int:
     return fixes
 
 
-def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) -> openpyxl.Workbook:
+def _stabilize_sheet(ws, paper_code: int, is_landscape: bool) -> None:
     """
-    Stage 2 — normalise the workbook IN PLACE so LibreOffice renders cleanly.
+    Apply all stabilisation fixes to a single worksheet.
+    Called per-sheet so that one bad sheet never crashes the whole conversion.
 
-    Normalises:
-    - Row heights: unset/zero → _EXCEL_DEFAULT_ROW_H, clamp to [_MIN_ROW_H, _MAX_ROW_H]
-    - Column widths: unset/zero/extreme → clamp to [_MIN_COL_W, _MAX_COL_W]
-    - Merged cells: remove invalid (zero-size / out-of-range) ranges
-    - Wrap text: enable on cells whose content > 40 chars — RTL readingOrder preserved
-    - Print settings: page size, orientation, fitToPage, margins, repeat-headers
-
-    CRITICAL: readingOrder (1=LTR, 2=RTL) is always preserved when touching
-    cell alignments so Arabic/RTL sheets are never broken.
+    Fixes applied
+    ─────────────
+    • Row heights   — iterate only rows that have *explicit* dimensions set in
+                      the xlsx (ws.row_dimensions).  Iterating range(1..max_row)
+                      creates a RowDimension object for every row accessed, which
+                      bloats huge sheets (2 000+ rows) and can OOM or timeout.
+    • Column widths — same approach via ws.column_dimensions.
+    • Merged cells  — remove invalid ranges that would confuse LibreOffice.
+    • Wrap text     — cap at MAX_WRAP_ROWS to prevent timeouts on huge sheets.
+    • Print setup   — ps._parent re-linked (openpyxl bug: None for most loaded
+                      workbooks).  All fields wrapped in individual try/except.
+    • Page margins  — wrapped in try/except.
+    • Print titles  — wrapped in try/except.
     """
-    paper_code = {'a4': 9, 'letter': 1, 'legal': 5}.get(page_size, 9)
-    is_landscape = orientation == 'landscape'
+    MAX_WRAP_ROWS = 10_000   # limit wrap-text scan on very large sheets
 
-    for ws in wb.worksheets:
-        if not ws.max_row:
-            continue
-
-        # ── Row heights ───────────────────────────────────────────────────
-        for ri in range(1, (ws.max_row or 0) + 1):
-            rd = ws.row_dimensions[ri]
+    # ── Row heights ───────────────────────────────────────────────────────
+    # Only touch rows that already have an explicit RowDimension entry.
+    # Accessing ws.row_dimensions[ri] for an arbitrary ri CREATES a new entry,
+    # so the old range(1..max_row) loop was silently inflating every sheet.
+    try:
+        for rd in ws.row_dimensions.values():
             h = rd.height
             if h is None or h <= 0:
                 rd.height = _EXCEL_DEFAULT_ROW_H
             else:
                 rd.height = max(_MIN_ROW_H, min(float(h), _MAX_ROW_H))
+    except Exception:
+        pass   # never let row-height normalisation crash the sheet
 
-        # ── Column widths ─────────────────────────────────────────────────
-        for ci in range(1, (ws.max_column or 0) + 1):
-            col_letter = get_column_letter(ci)
-            cd = ws.column_dimensions[col_letter]
+    # ── Column widths ─────────────────────────────────────────────────────
+    # Same principle: only iterate columns that have explicit ColumnDimension.
+    try:
+        for cd in ws.column_dimensions.values():
             w = cd.width
             if w is None or w <= 0:
                 cd.width = _EXCEL_DEFAULT_COL_W
             else:
                 cd.width = max(_MIN_COL_W, min(float(w), _MAX_COL_W))
+    except Exception:
+        pass
 
-        # ── Merged cells ──────────────────────────────────────────────────
+    # ── Merged cells ──────────────────────────────────────────────────────
+    try:
         _fix_merged_cells(ws)
+    except Exception:
+        pass
 
-        # ── Wrap text on long cells — preserve readingOrder ───────────────
-        for row in ws.iter_rows():
+    # ── Wrap text on long cells — preserve readingOrder ───────────────────
+    # Cap at MAX_WRAP_ROWS: sheets with thousands of rows would otherwise scan
+    # millions of cells just to enable wrap-text (which LO would do anyway).
+    try:
+        actual_max = min(ws.max_row or 0, MAX_WRAP_ROWS)
+        for row in ws.iter_rows(max_row=actual_max):
             for cell in row:
-                if cell.value and isinstance(cell.value, str) and len(cell.value) > 40:
-                    aln = cell.alignment
-                    if not aln.wrap_text:
-                        # CRITICAL: copy readingOrder so RTL cells stay RTL
-                        cell.alignment = Alignment(
-                            horizontal=aln.horizontal,
-                            vertical=aln.vertical,
-                            wrap_text=True,
-                            text_rotation=aln.text_rotation,
-                            shrink_to_fit=aln.shrink_to_fit,
-                            indent=aln.indent,
-                            readingOrder=aln.readingOrder,  # preserve RTL=2 / LTR=1
-                        )
+                try:
+                    if cell.value and isinstance(cell.value, str) and len(cell.value) > 40:
+                        aln = cell.alignment
+                        if not aln.wrap_text:
+                            cell.alignment = Alignment(
+                                horizontal=aln.horizontal,
+                                vertical=aln.vertical,
+                                wrap_text=True,
+                                text_rotation=aln.text_rotation,
+                                shrink_to_fit=aln.shrink_to_fit,
+                                indent=aln.indent,
+                                readingOrder=aln.readingOrder,
+                            )
+                except Exception:
+                    pass   # never crash on a single cell
+    except Exception:
+        pass
 
-        # ── Print settings ────────────────────────────────────────────────
+    # ── Print settings ────────────────────────────────────────────────────
+    try:
         ps = ws.page_setup
-
-        # openpyxl bug: when loading xlsx files that were saved by certain
-        # applications, PageSetup._parent is left as None instead of being
-        # linked to the parent worksheet.  ps.fitToPage uses _parent to
-        # reach ws.sheet_properties and crashes with:
-        #   AttributeError: 'NoneType' object has no attribute 'sheet_properties'
-        # Fix: re-link the PageSetup to its worksheet before any property access.
+        # openpyxl bug: PageSetup._parent is left as None for most worksheets
+        # loaded from file.  ps.fitToPage internally calls
+        #   self._parent.sheet_properties.pageSetUpPr
+        # and crashes with AttributeError when _parent is None.
         if getattr(ps, '_parent', None) is None:
             ps._parent = ws
-
         ps.paperSize   = paper_code
         ps.orientation = 'landscape' if is_landscape else 'portrait'
         ps.fitToPage   = True
         ps.fitToWidth  = 1
-        ps.fitToHeight = 0   # as many pages tall as needed
+        ps.fitToHeight = 0
+    except Exception:
+        pass
 
+    # ── Page margins ──────────────────────────────────────────────────────
+    try:
         pm = ws.page_margins
         pm.left   = 0.5
         pm.right  = 0.5
@@ -265,10 +284,32 @@ def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) 
         pm.bottom = 0.75
         pm.header = 0.3
         pm.footer = 0.3
+    except Exception:
+        pass
 
-        # Repeat the first row (likely header) on every page
+    # ── Repeat header row on every page ───────────────────────────────────
+    try:
         if ws.max_row and ws.max_row > 1:
             ws.print_title_rows = '1:1'
+    except Exception:
+        pass
+
+
+def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) -> openpyxl.Workbook:
+    """
+    Stage 2 — normalise the workbook IN PLACE so LibreOffice renders cleanly.
+    Each sheet is stabilised independently; a bad sheet never aborts the others.
+    """
+    paper_code = {'a4': 9, 'letter': 1, 'legal': 5}.get(page_size, 9)
+    is_landscape = orientation == 'landscape'
+
+    for ws in wb.worksheets:
+        if not ws.max_row:
+            continue
+        try:
+            _stabilize_sheet(ws, paper_code, is_landscape)
+        except Exception:
+            pass   # one corrupted sheet must not kill the whole workbook
 
     return wb
 
@@ -319,14 +360,23 @@ def normalize_fonts(wb: openpyxl.Workbook) -> list[str]:
        theme/indexed colours are dropped to prevent openpyxl from crashing
        when it cannot serialise an unusual Color object.
     3. The `strikethrough` attribute is used (openpyxl ≥ 3.x spelling).
+    4. Iteration is capped at MAX_ROWS per sheet so very large sheets (5 000+
+       rows) do not cause timeouts — font remapping only affects visual fidelity
+       and LibreOffice does its own substitution for uncapped rows anyway.
 
     Returns a list of substitution messages for the warnings log.
     """
+    MAX_ROWS = 10_000
     substitutions: list[str] = []
     seen: dict[str, str] = {}   # original name → replacement (or same if kept)
 
     for ws in wb.worksheets:
-        for row in ws.iter_rows():
+        try:
+            row_limit = min(ws.max_row or 0, MAX_ROWS)
+            rows = ws.iter_rows(max_row=row_limit) if row_limit else []
+        except Exception:
+            continue
+        for row in rows:
             for cell in row:
                 # ── Guard: no font object ──────────────────────────────────
                 fnt = cell.font
@@ -588,6 +638,20 @@ def _count_pages(pdf_path: str) -> int:
 # Top-level orchestrator
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _run_lo_direct(input_path: str, output_path: str, tmp: str, label: str) -> tuple[str, int]:
+    """
+    Run LibreOffice directly on *input_path* (any format LO can open).
+    Returns (engine_label, page_count).  Raises on failure.
+    """
+    lo_home = os.path.join(tmp, f'lo_home_{label}')
+    lo_out  = os.path.join(tmp, f'lo_out_{label}')
+    os.makedirs(lo_home, exist_ok=True)
+    os.makedirs(lo_out,  exist_ok=True)
+    pdf = run_libreoffice(input_path, lo_out, lo_home)
+    shutil.copy2(pdf, output_path)
+    return _count_pages(output_path)
+
+
 def excel_to_pdf_lo(
     input_path: str,
     output_path: str,
@@ -595,35 +659,81 @@ def excel_to_pdf_lo(
     orientation: str = 'landscape',
 ) -> dict:
     """
-    Full LibreOffice-primary pipeline (stages 1–7).
+    Full LibreOffice-primary pipeline.
+
+    .xls  → LibreOffice directly (openpyxl cannot read legacy binary format)
+    .xlsx → openpyxl preflight (stages 1–3) → LibreOffice (stage 4) → validate/retry
+
     Returns a dict suitable for JSON serialisation.
-    Raises on total failure so the caller can use the pdf-lib fallback.
+    Raises on total failure so the caller can fall back to pdf-lib.
     """
     all_warnings: list[str] = []
 
-    # ── Stage 1: Light Validation ─────────────────────────────────────────
-    wb = validate_input(input_path)
+    # Detect format from magic bytes — do NOT rely on file extension alone
+    with open(input_path, 'rb') as fh:
+        magic = fh.read(4)
+    is_xls = magic[:2] == b'\xd0\xcf'   # OLE2 compound document = legacy .xls
 
     with tempfile.TemporaryDirectory(prefix='xlsx-lo-') as tmp:
 
-        # ── Stage 2: Preflight Stabilization ─────────────────────────────
+        # ── .XLS FAST PATH ────────────────────────────────────────────────
+        # openpyxl cannot open the old binary .xls format.  Skip preflight
+        # and hand the file straight to LibreOffice, which handles .xls natively.
+        if is_xls:
+            all_warnings.append('Legacy .xls format detected — using direct LibreOffice conversion (openpyxl skipped)')
+            xls_copy = os.path.join(tmp, 'input.xls')
+            shutil.copy2(input_path, xls_copy)
+            try:
+                page_count = _run_lo_direct(xls_copy, output_path, tmp, 'xls1')
+            except Exception as exc1:
+                # One retry with a fresh isolated LO profile
+                all_warnings.append(f'First attempt failed ({exc1}), retrying…')
+                try:
+                    page_count = _run_lo_direct(xls_copy, output_path, tmp, 'xls2')
+                except Exception as exc2:
+                    raise RuntimeError(
+                        f'LibreOffice could not convert .xls file. Last error: {exc2}'
+                    ) from exc2
+            return {
+                'success':    True,
+                'pageCount':  page_count,
+                'engine':     'libreoffice-xls-direct',
+                'confidence': 1.0,
+                'warnings':   all_warnings,
+            }
+
+        # ── .XLSX / .XLSM PIPELINE  (stages 1–7) ─────────────────────────
+
+        # Stage 1 — Light Validation
+        wb = validate_input(input_path)
+
+        # Stage 2 — Preflight Stabilization
         wb = stabilize_workbook(wb, page_size, orientation)
 
-        # ── Stage 3: Font Normalization ───────────────────────────────────
+        # Stage 3 — Font Normalization
         font_subs = normalize_fonts(wb)
         if font_subs:
-            all_warnings.append(f'Font substitutions ({len(font_subs)}): ' + ', '.join(font_subs[:5])
-                                 + (f' … and {len(font_subs)-5} more' if len(font_subs) > 5 else ''))
+            all_warnings.append(
+                f'Font substitutions ({len(font_subs)}): '
+                + ', '.join(font_subs[:5])
+                + (f' … and {len(font_subs)-5} more' if len(font_subs) > 5 else '')
+            )
 
         # Write stabilised copy
         stabilised = os.path.join(tmp, 'stabilised.xlsx')
-        wb.save(stabilised)
+        try:
+            wb.save(stabilised)
+        except Exception as save_exc:
+            # openpyxl save can fail on very unusual xlsx files; fall back to
+            # converting the original (un-stabilised) file directly.
+            all_warnings.append(f'openpyxl save failed ({save_exc}), using original file for LO')
+            stabilised = input_path
 
         # LO needs its own writable home directory
         lo_home_1 = os.path.join(tmp, 'lo_home_1')
         os.makedirs(lo_home_1, exist_ok=True)
 
-        # ── Stage 4: Primary Conversion ───────────────────────────────────
+        # Stage 4 — Primary Conversion
         lo_out_dir = os.path.join(tmp, 'out_1')
         os.makedirs(lo_out_dir, exist_ok=True)
         pdf_path: Optional[str] = None
@@ -634,13 +744,13 @@ def excel_to_pdf_lo(
             primary_failed = True
             all_warnings.append(f'Primary LibreOffice conversion failed: {exc}')
 
-        # ── Stage 5: Post-render Validation ──────────────────────────────
+        # Stage 5 — Post-render Validation
         confidence = 1.0
         if pdf_path and not primary_failed:
             confidence, val_warnings = validate_pdf(pdf_path)
             all_warnings.extend(val_warnings)
 
-        # ── Stage 6: Safe Retry ───────────────────────────────────────────
+        # Stage 6 — Safe Retry
         RETRY_THRESHOLD = 0.5
         if primary_failed or (pdf_path and confidence < RETRY_THRESHOLD):
             all_warnings.append('Triggering safe retry with isolated LO profile')
@@ -652,7 +762,7 @@ def excel_to_pdf_lo(
                 pdf_path_retry = safe_retry(stabilised, lo_out_dir_2, lo_home_2)
                 conf2, val2 = validate_pdf(pdf_path_retry)
                 if conf2 >= confidence or primary_failed:
-                    pdf_path  = pdf_path_retry
+                    pdf_path   = pdf_path_retry
                     confidence = conf2
                     all_warnings.extend(val2)
                     all_warnings.append('Using retry result')
@@ -667,7 +777,7 @@ def excel_to_pdf_lo(
         if not pdf_path:
             raise RuntimeError('LibreOffice pipeline produced no usable PDF')
 
-        # ── Stage 7: Return ───────────────────────────────────────────────
+        # Stage 7 — Return
         shutil.copy2(pdf_path, output_path)
         page_count = _count_pages(output_path)
 
