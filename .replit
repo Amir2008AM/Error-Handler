@@ -71,3 +71,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 REDIS_URL = "redis://localhost:6379"
+DEV_ADMIN_KEY = "31d4304ef1bddf13670300186292faf3a06ca9c69bb7e3f4a4ca7e68fd16d958"
