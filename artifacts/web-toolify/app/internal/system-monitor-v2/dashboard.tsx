@@ -495,7 +495,7 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string }> = [
   { id: 'errors',    label: 'Errors',           icon: '🔴' },
   { id: 'timeline',  label: 'Timeline',         icon: '🕐' },
   { id: 'tools',     label: 'Tool Analytics',   icon: '🔧' },
-  { id: 'notifs',    label: 'Notifications',    icon: '🔔' },
+  { id: 'notifications', label: 'Notifications', icon: '🔔' },
 ]
 
 // Notification log (in-memory for session)
