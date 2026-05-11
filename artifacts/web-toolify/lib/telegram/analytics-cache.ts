@@ -34,6 +34,7 @@ import { getLiveActivity } from './analytics'
 import { pingSupabase } from '../monitoring/queries'
 import { sendAlert } from './api'
 import { getAdminIds, ALERT_COOLDOWN_MS } from './config'
+import { pushSseEvent } from '../monitoring/sse-bus'
 
 const execFileAsync = promisify(execFile)
 
@@ -349,6 +350,11 @@ export function recordFailure(failure: FailureRecord): void {
   _failures.value.push(failure)
   if (_failures.value.length > MAX_FAILURES) _failures.value.shift()
 
+  // SSE push — instant dashboard update (fire-and-forget)
+  try {
+    pushSseEvent({ type: 'job_failed', ts: failure.ts, data: { tool: failure.tool, error: failure.error, severity: failure.severity, jobId: failure.jobId } })
+  } catch {}
+
   // Immediate Telegram alert (fire-and-forget)
   if (shouldSendFailureAlert(failure.tool)) {
     const ts      = new Date(failure.ts).toISOString().replace('T', ' ').slice(11, 19) + ' UTC'
@@ -401,12 +407,18 @@ async function sendAlertToAdmins(msg: string): Promise<void> {
 }
 
 async function checkSystemAlerts(cpu: number, heapPct: number): Promise<void> {
-  if (cpu >= 90)     await sendAlertThrottled('cpu',  `🔴 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\``)
+  if (cpu >= 90) {
+    await sendAlertThrottled('cpu', `🔴 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\``)
+    try { pushSseEvent({ type: 'cpu_alert', ts: Date.now(), data: { cpu } }) } catch {}
+  }
   if (heapPct >= 85) await sendAlertThrottled('heap', `🧠 *HIGH MEMORY*\nJS Heap: \`${heapPct}%\``)
 }
 
 async function checkQueueAlerts(waiting: number): Promise<void> {
-  if (waiting >= 50) await sendAlertThrottled('queue', `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${waiting}\``)
+  if (waiting >= 50) {
+    await sendAlertThrottled('queue', `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${waiting}\``)
+    try { pushSseEvent({ type: 'queue_overflow', ts: Date.now(), data: { waiting } }) } catch {}
+  }
   if (waiting === 0) alertCooldowns.delete('queue')  // reset when clear
 }
 

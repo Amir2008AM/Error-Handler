@@ -13,6 +13,7 @@
 import { dbWriteJob, dbWriteError, dbWriteFileStat } from './db'
 import { emitEvent, emitError } from '../monitoring/emitter'
 import { recordFailure } from './analytics-cache'
+import { pushSseEvent } from '../monitoring/sse-bus'
 
 export interface JobRecord {
   type:       string
@@ -69,7 +70,16 @@ export function recordJob(record: JobRecord): void {
     metadata:    { format: record.format, ...(record.jobId ? { jobId: record.jobId } : {}) },
   })
 
-  // 5. Failure fast-path — immediate Telegram alert (fire-and-forget)
+  // 5. SSE push — instant dashboard update (fire-and-forget)
+  try {
+    pushSseEvent({
+      type: record.success ? 'job_success' : 'job_failed',
+      ts:   record.ts,
+      data: { tool: record.type, durationMs: record.durationMs, format: record.format, jobId: record.jobId },
+    })
+  } catch {}
+
+  // 6. Failure fast-path — immediate Telegram alert (fire-and-forget)
   if (!record.success) {
     const severity =
       record.durationMs > 60_000          ? 'high'
