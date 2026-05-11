@@ -292,24 +292,58 @@ export class DocumentConverter {
   ): Promise<ConversionResult> {
     const isXlsx = xlsxBuffer[0] === 0x50 && xlsxBuffer[1] === 0x4b
     const isXls  = xlsxBuffer[0] === 0xd0 && xlsxBuffer[1] === 0xcf
+    const isCsv  = !isXlsx && !isXls   // CSV has no binary magic bytes
 
-    // ── Stages 1–7: LibreOffice primary pipeline ─────────────────────────
+    // ── Stages 1–7: LibreOffice primary pipeline (xlsx / xls) ────────────
+    // For CSV files we skip the Python preflight (openpyxl can't load CSV
+    // reliably) and go directly to the LO bare conversion below.
     const loScript = this.resolveLoExcelScript()
-    if (loScript && (isXlsx || isXls)) {
+    if (loScript && !isCsv) {
       try {
         return await this.loExcelToPdf(xlsxBuffer, options, loScript, isXlsx ? '.xlsx' : '.xls')
       } catch (err) {
         console.warn(
-          '[DocumentConverter] LibreOffice primary pipeline (excel_to_pdf_lo.py) failed — using pdf-lib fallback:',
+          '[DocumentConverter] LibreOffice primary pipeline failed:',
           err instanceof Error ? err.message : String(err)
         )
       }
-    } else if (!loScript) {
+    } else if (!loScript && !isCsv) {
       console.warn('[DocumentConverter] excel_to_pdf_lo.py not found — skipping LO pipeline')
     }
 
-    // ── Stage 8: xlsx + pdf-lib — FALLBACK ONLY if LibreOffice crashes ───
-    console.warn('[DocumentConverter] Using xlsx+pdf-lib fallback (LibreOffice crash path)')
+    // ── CSV path: direct LibreOffice conversion (no openpyxl preflight) ──
+    if (isCsv && await binaryExists('soffice')) {
+      try {
+        return await this.libreOfficeConvert(xlsxBuffer, '.csv', 'csv')
+      } catch (err) {
+        console.warn('[DocumentConverter] LibreOffice CSV→PDF failed:', err instanceof Error ? err.message : String(err))
+      }
+    }
+
+    // ── Stage 8a: Python ReportLab pipeline (Unicode-safe, Arabic RTL) ───
+    // MUST run before pdf-lib — ReportLab embeds real Unicode fonts and
+    // supports Arabic/RTL natively.  pdf-lib uses WinAnsi (Helvetica) which
+    // CANNOT encode Arabic and will throw "WinAnsi cannot encode".
+    if (isXlsx) {
+      const rlScript = this.resolveExcelScript()
+      if (rlScript) {
+        try {
+          return await this.pythonExcelToPdf(xlsxBuffer, options, rlScript)
+        } catch (err) {
+          console.warn(
+            '[DocumentConverter] Python ReportLab pipeline also failed:',
+            err instanceof Error ? err.message : String(err)
+          )
+        }
+      }
+    }
+
+    // ── Stage 8b: xlsx + pdf-lib — absolute last resort ──────────────────
+    // pdf-lib uses Helvetica (WinAnsi) which cannot encode Arabic/Unicode.
+    // excelToPdfFallback sanitises all cell text before drawText() so this
+    // path never throws "WinAnsi cannot encode" — Arabic chars are replaced
+    // with '[?]' placeholder rather than crashing.
+    console.warn('[DocumentConverter] Using pdf-lib last-resort fallback (WinAnsi-safe sanitisation applied)')
     return this.excelToPdfFallback(xlsxBuffer, options)
   }
 
@@ -448,7 +482,26 @@ export class DocumentConverter {
     })
   }
 
-  /** Fallback: xlsx.js table parser + pdf-lib */
+  /**
+   * Sanitise a string so it can safely be passed to pdf-lib's drawText()
+   * with a WinAnsi-encoded standard font (Helvetica/Times/Courier).
+   *
+   * WinAnsi covers only Latin-1 (code points 0x00–0xFF).  Any character
+   * outside that range — Arabic, CJK, Hebrew, emoji, … — causes pdf-lib to
+   * throw "WinAnsi cannot encode <char>".  We replace each non-encodable
+   * character with '?' so the fallback always completes without crashing.
+   *
+   * This is intentionally lossy: the correct fix is to use LibreOffice
+   * (which embeds real Unicode fonts).  This method is the absolute last
+   * resort when every other engine has already failed.
+   */
+  private sanitiseForWinAnsi(text: string): string {
+    // Keep only characters in the WinAnsi / Latin-1 range (U+0000–U+00FF)
+    // plus common printable ASCII.  Replace everything else with '?'.
+    return text.replace(/[^\u0000-\u00FF]/g, '?')
+  }
+
+  /** Fallback: xlsx.js table parser + pdf-lib (WinAnsi-safe via sanitisation) */
   private async excelToPdfFallback(
     xlsxBuffer: Buffer,
     options: ConversionOptions
@@ -486,7 +539,8 @@ export class DocumentConverter {
       let page = pdfDoc.addPage([width, height])
       let y    = height - margins.top
 
-      page.drawText(`Sheet: ${sheetName}`, {
+      // Sheet name may also contain non-Latin chars — sanitise it too
+      page.drawText(`Sheet: ${this.sanitiseForWinAnsi(sheetName)}`, {
         x: margins.left, y, size: headerFontSize, font: boldFont, color: rgb(0, 0, 0),
       })
       y -= headerFontSize + 10
@@ -499,13 +553,15 @@ export class DocumentConverter {
         }
         for (let colIndex = 0; colIndex < maxCols; colIndex++) {
           const cellValue = row[colIndex]
-          const cellText  = cellValue != null ? String(cellValue).substring(0, 30) : ''
-          const x         = margins.left + colIndex * colWidth
+          // CRITICAL: sanitise before drawText — WinAnsi cannot encode Arabic/Unicode
+          const rawText  = cellValue != null ? String(cellValue).substring(0, 30) : ''
+          const cellText = this.sanitiseForWinAnsi(rawText)
+          const x        = margins.left + colIndex * colWidth
           page.drawRectangle({
             x, y: y - rowHeight, width: colWidth, height: rowHeight,
             borderColor: rgb(0.8, 0.8, 0.8), borderWidth: 0.5,
           })
-          if (cellText) {
+          if (cellText && cellText.trim()) {
             page.drawText(cellText, {
               x: x + cellPadding,
               y: y - fontSize - cellPadding,

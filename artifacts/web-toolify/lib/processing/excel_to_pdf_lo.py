@@ -34,7 +34,6 @@ import sys
 import os
 import re
 import json
-import copy
 import shutil
 import argparse
 import tempfile
@@ -43,8 +42,14 @@ from pathlib import Path
 from typing import Optional
 
 import openpyxl
-from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Alignment
+
+# Arabic Unicode block detection regex
+_AR_RE = re.compile(
+    r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF'
+    r'\uFB50-\uFDFF\uFE70-\uFEFF]'
+)
 
 try:
     import pdfplumber
@@ -177,16 +182,18 @@ def _fix_merged_cells(ws) -> int:
 
 def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) -> openpyxl.Workbook:
     """
-    Stage 2 — create a stabilised copy of the workbook.
+    Stage 2 — normalise the workbook IN PLACE so LibreOffice renders cleanly.
 
     Normalises:
     - Row heights: unset/zero → _EXCEL_DEFAULT_ROW_H, clamp to [_MIN_ROW_H, _MAX_ROW_H]
     - Column widths: unset/zero/extreme → clamp to [_MIN_COL_W, _MAX_COL_W]
-    - Merged cells: remove invalid ranges
-    - Wrap text: enable on cells whose content length > 40 chars
+    - Merged cells: remove invalid (zero-size / out-of-range) ranges
+    - Wrap text: enable on cells whose content > 40 chars — RTL readingOrder preserved
     - Print settings: page size, orientation, fitToPage, margins, repeat-headers
+
+    CRITICAL: readingOrder (1=LTR, 2=RTL) is always preserved when touching
+    cell alignments so Arabic/RTL sheets are never broken.
     """
-    # Paper size codes (OOXML PageSetup.paperSize)
     paper_code = {'a4': 9, 'letter': 1, 'legal': 5}.get(page_size, 9)
     is_landscape = orientation == 'landscape'
 
@@ -216,12 +223,13 @@ def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) 
         # ── Merged cells ──────────────────────────────────────────────────
         _fix_merged_cells(ws)
 
-        # ── Wrap text on long cells ───────────────────────────────────────
+        # ── Wrap text on long cells — preserve readingOrder ───────────────
         for row in ws.iter_rows():
             for cell in row:
                 if cell.value and isinstance(cell.value, str) and len(cell.value) > 40:
                     aln = cell.alignment
                     if not aln.wrap_text:
+                        # CRITICAL: copy readingOrder so RTL cells stay RTL
                         cell.alignment = Alignment(
                             horizontal=aln.horizontal,
                             vertical=aln.vertical,
@@ -229,18 +237,18 @@ def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) 
                             text_rotation=aln.text_rotation,
                             shrink_to_fit=aln.shrink_to_fit,
                             indent=aln.indent,
+                            readingOrder=aln.readingOrder,  # preserve RTL=2 / LTR=1
                         )
 
         # ── Print settings ────────────────────────────────────────────────
         ps = ws.page_setup
-        ps.paperSize  = paper_code
+        ps.paperSize   = paper_code
         ps.orientation = 'landscape' if is_landscape else 'portrait'
-        ps.fitToPage  = True
-        ps.fitToWidth = 1
-        ps.fitToHeight = 0        # allow as many pages tall as needed
+        ps.fitToPage   = True
+        ps.fitToWidth  = 1
+        ps.fitToHeight = 0   # as many pages tall as needed
 
         pm = ws.page_margins
-        # Use tighter margins so content isn't clipped
         pm.left   = 0.5
         pm.right  = 0.5
         pm.top    = 0.75
@@ -248,7 +256,7 @@ def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) 
         pm.header = 0.3
         pm.footer = 0.3
 
-        # Repeat first row on every page if it looks like a header
+        # Repeat the first row (likely header) on every page
         if ws.max_row and ws.max_row > 1:
             ws.print_title_rows = '1:1'
 
@@ -259,63 +267,115 @@ def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) 
 # Stage 3 — Font Normalization
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _safe_font_color(font) -> Optional[str]:
+    """
+    Extract a colour string safe to pass to Font(color=...).
+    openpyxl Color objects can be 'rgb', 'theme', or 'indexed' types.
+    We only pass rgb hex strings; theme/indexed colours are left as None
+    so LibreOffice uses its own default (never crashes on unknown colours).
+    """
+    try:
+        clr = font.color
+        if clr is None:
+            return None
+        if clr.type == 'rgb' and clr.rgb:
+            return clr.rgb   # e.g. 'FF000000' — safe to pass directly
+    except Exception:
+        pass
+    return None   # theme / indexed / error → let LO choose
+
+
+def _cell_has_arabic(cell) -> bool:
+    """True if the cell's string value contains any Arabic Unicode character."""
+    try:
+        val = cell.value
+        if val and isinstance(val, str):
+            return bool(_AR_RE.search(val))
+    except Exception:
+        pass
+    return False
+
+
 def normalize_fonts(wb: openpyxl.Workbook) -> list[str]:
     """
-    Stage 3 — walk every cell and replace unknown Excel font names with the
-    nearest Liberation/DejaVu equivalent.  Returns list of substitution
-    messages for the warnings log.
+    Stage 3 — replace generic/unavailable Excel font names with the nearest
+    Liberation/DejaVu equivalent so LibreOffice never does a bad substitution.
+
+    CRITICAL RULES:
+    1. If a cell contains Arabic text, its font is NEVER remapped.  Arabic
+       fonts (Traditional Arabic, Amiri, Sakkal Majalla, …) must reach
+       LibreOffice unchanged so it can use its own Arabic shaping engine.
+    2. Font Color is extracted safely — only rgb hex values are forwarded;
+       theme/indexed colours are dropped to prevent openpyxl from crashing
+       when it cannot serialise an unusual Color object.
+    3. The `strikethrough` attribute is used (openpyxl ≥ 3.x spelling).
+
+    Returns a list of substitution messages for the warnings log.
     """
     substitutions: list[str] = []
-    seen: dict[str, str] = {}   # original → replacement (cache)
+    seen: dict[str, str] = {}   # original name → replacement (or same if kept)
 
     for ws in wb.worksheets:
         for row in ws.iter_rows():
             for cell in row:
-                if cell.font is None:
+                # ── Guard: no font object ──────────────────────────────────
+                fnt = cell.font
+                if fnt is None:
                     continue
-                name = (cell.font.name or '').strip()
+                name = (fnt.name or '').strip()
                 if not name:
                     continue
 
-                # Already known safe
+                # ── Guard: already a safe font → nothing to do ─────────────
                 if name in _SAFE_FONTS:
                     continue
 
-                # Cached
-                if name in seen:
-                    replacement = seen[name]
-                    if replacement != name:
-                        new_font = copy.copy(cell.font)
-                        new_font = Font(
-                            name=replacement,
-                            bold=cell.font.bold,
-                            italic=cell.font.italic,
-                            size=cell.font.size,
-                            color=cell.font.color,
-                            underline=cell.font.underline,
-                            strike=cell.font.strike,
-                        )
-                        cell.font = new_font
+                # ── Guard: cell has Arabic text → NEVER remap ─────────────
+                # Arabic-specific fonts (Traditional Arabic, Amiri, …) must
+                # stay as-is so LibreOffice's Arabic shaping engine is used.
+                if _cell_has_arabic(cell):
+                    seen[name] = name   # mark as "keep" in cache
                     continue
 
-                # Look up in substitution map
+                # ── Use cached decision ────────────────────────────────────
+                if name in seen:
+                    replacement = seen[name]
+                    if replacement == name:
+                        continue   # previously decided to keep
+                    # Apply cached replacement
+                    try:
+                        cell.font = Font(
+                            name=replacement,
+                            bold=fnt.bold,
+                            italic=fnt.italic,
+                            size=fnt.size,
+                            color=_safe_font_color(fnt),
+                            underline=fnt.underline,
+                            strike=fnt.strike,
+                        )
+                    except Exception:
+                        pass   # never crash — just leave original
+                    continue
+
+                # ── Look up substitution map ───────────────────────────────
                 replacement = _FONT_MAP.get(name.lower())
                 if replacement:
                     seen[name] = replacement
                     substitutions.append(f'{name!r} → {replacement!r}')
-                    new_font = Font(
-                        name=replacement,
-                        bold=cell.font.bold,
-                        italic=cell.font.italic,
-                        size=cell.font.size,
-                        color=cell.font.color,
-                        underline=cell.font.underline,
-                        strike=cell.font.strike,
-                    )
-                    cell.font = new_font
+                    try:
+                        cell.font = Font(
+                            name=replacement,
+                            bold=fnt.bold,
+                            italic=fnt.italic,
+                            size=fnt.size,
+                            color=_safe_font_color(fnt),
+                            underline=fnt.underline,
+                            strike=fnt.strike,
+                        )
+                    except Exception:
+                        pass   # never crash — leave original font on failure
                 else:
-                    # Not in map — leave as-is but record as seen
-                    seen[name] = name
+                    seen[name] = name   # not in map, keep as-is
 
     return substitutions
 
