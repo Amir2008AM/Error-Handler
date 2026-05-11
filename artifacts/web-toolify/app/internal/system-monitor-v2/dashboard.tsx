@@ -1196,7 +1196,7 @@ export default function SystemMonitorDashboard() {
         )}
 
         {/* ── Notification Center ── */}
-        {activeSection === 'notifs' && (
+        {activeSection === 'notifications' && (
           <SectionCard title="🔔 Notification Center" action={
             <button onClick={() => setNotifLog([])} style={{ background: 'none', border: '1px solid #242736', borderRadius: 6, color: '#4b5563', cursor: 'pointer', fontSize: 11, padding: '4px 10px' }}>Clear</button>
           }>
