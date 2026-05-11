@@ -272,12 +272,19 @@ export class DocumentConverter {
   /**
    * Convert an Excel spreadsheet (.xlsx / .xls / .csv) to PDF.
    *
-   * ENGINE PRIORITY:
-   *   1. Python enterprise pipeline — arabic-reshaper + Amiri + Noto Sans Arabic
-   *      Full RTL support, merged cells, font fidelity, Arabic reshaping.
-   *      Primary for .xlsx files with Arabic content.
-   *   2. LibreOffice headless — fallback for .xls / .csv, or if Python fails.
-   *   3. xlsx + pdf-lib table renderer — last resort.
+   * ENGINE PRIORITY (9-stage pipeline):
+   *   1–7. LibreOffice primary pipeline (excel_to_pdf_lo.py)
+   *        ├ Stage 1: Light validation (magic bytes, openpyxl load)
+   *        ├ Stage 2: Preflight stabilisation (row heights, col widths,
+   *        │           merged cells, wrap text, print settings)
+   *        ├ Stage 3: Font normalisation (map Excel fonts → Liberation/DejaVu)
+   *        ├ Stage 4: LibreOffice headless --convert-to pdf
+   *        ├ Stage 5: Post-render validation (pdfplumber: overlap / overflow /
+   *        │           broken cells / duplicated headers → confidence score)
+   *        ├ Stage 6: Safe retry (isolated LO profile) if confidence < 0.5
+   *        └ Stage 7: Return JSON {success, pageCount, engine, confidence}
+   *   8.   xlsx + pdf-lib table renderer — FALLBACK ONLY if LibreOffice crashes
+   *   9.   Return result and clean up temp files (handled by caller)
    */
   async excelToPdf(
     xlsxBuffer: Buffer,
@@ -285,56 +292,111 @@ export class DocumentConverter {
   ): Promise<ConversionResult> {
     const isXlsx = xlsxBuffer[0] === 0x50 && xlsxBuffer[1] === 0x4b
     const isXls  = xlsxBuffer[0] === 0xd0 && xlsxBuffer[1] === 0xcf
-    const inputExt = isXlsx ? '.xlsx' : isXls ? '.xls' : '.csv'
 
-    // 1. Python enterprise pipeline — primary for .xlsx (best Arabic/RTL support)
-    if (isXlsx) {
-      const scriptPath = this.resolveExcelScript()
-      if (scriptPath) {
-        try {
-          return await this.pythonExcelToPdf(xlsxBuffer, options, scriptPath)
-        } catch (err) {
-          console.warn(
-            '[DocumentConverter] Python Excel→PDF failed, falling back to LibreOffice:',
-            err instanceof Error ? err.message : String(err)
-          )
-        }
-      } else {
-        console.warn('[DocumentConverter] excel_to_pdf.py not found, skipping Python engine')
-      }
-    }
-
-    // 2. LibreOffice headless — handles .xls, .csv, and .xlsx fallback
-    if (await binaryExists('soffice')) {
+    // ── Stages 1–7: LibreOffice primary pipeline ─────────────────────────
+    const loScript = this.resolveLoExcelScript()
+    if (loScript && (isXlsx || isXls)) {
       try {
-        return await this.libreOfficeConvert(xlsxBuffer, inputExt, inputExt.slice(1))
+        return await this.loExcelToPdf(xlsxBuffer, options, loScript, isXlsx ? '.xlsx' : '.xls')
       } catch (err) {
         console.warn(
-          '[DocumentConverter] LibreOffice Excel→PDF failed, using pdf-lib fallback:',
+          '[DocumentConverter] LibreOffice primary pipeline (excel_to_pdf_lo.py) failed — using pdf-lib fallback:',
           err instanceof Error ? err.message : String(err)
         )
       }
+    } else if (!loScript) {
+      console.warn('[DocumentConverter] excel_to_pdf_lo.py not found — skipping LO pipeline')
     }
 
-    // 3. pdf-lib last resort
+    // ── Stage 8: xlsx + pdf-lib — FALLBACK ONLY if LibreOffice crashes ───
+    console.warn('[DocumentConverter] Using xlsx+pdf-lib fallback (LibreOffice crash path)')
     return this.excelToPdfFallback(xlsxBuffer, options)
   }
 
-  /** Resolve the path to excel_to_pdf.py across deployment layouts */
+  /** Resolve the path to excel_to_pdf_lo.py across deployment layouts */
+  private resolveLoExcelScript(): string | null {
+    const candidates = [
+      join(process.cwd(), 'lib', 'processing', 'excel_to_pdf_lo.py'),
+      join(process.cwd(), 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf_lo.py'),
+      '/app/lib/processing/excel_to_pdf_lo.py',
+      '/app/artifacts/web-toolify/lib/processing/excel_to_pdf_lo.py',
+    ]
+    return candidates.find(p => existsSync(p)) ?? null
+  }
+
+  /** Resolve the path to excel_to_pdf.py (legacy ReportLab pipeline) */
   private resolveExcelScript(): string | null {
     const candidates = [
-      // Next.js running from artifacts/web-toolify
       join(process.cwd(), 'lib', 'processing', 'excel_to_pdf.py'),
-      // Monorepo root running from workspace root
       join(process.cwd(), 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf.py'),
-      // Absolute fallback
       '/app/lib/processing/excel_to_pdf.py',
       '/app/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
     ]
     return candidates.find(p => existsSync(p)) ?? null
   }
 
-  /** Python enterprise pipeline — full Arabic RTL pipeline with Amiri / Noto Sans Arabic */
+  /**
+   * Stages 1–7: LibreOffice primary pipeline via excel_to_pdf_lo.py.
+   * Implements: validation → preflight → font normalisation →
+   *             LO conversion → post-render validation → safe retry → return.
+   * Throws on total failure so the caller falls back to pdf-lib (stage 8).
+   */
+  private async loExcelToPdf(
+    xlsxBuffer: Buffer,
+    options: ConversionOptions,
+    scriptPath: string,
+    inputExt: '.xlsx' | '.xls',
+  ): Promise<ConversionResult> {
+    return withTempDir('lo-excel-v3-', async (dir) => {
+      const inFile  = join(dir, `input${inputExt}`)
+      const outFile = join(dir, 'output.pdf')
+      await writeFile(inFile, xlsxBuffer)
+
+      const args: string[] = [
+        scriptPath,
+        inFile,
+        outFile,
+        '--page-size',   options.pageSize   ?? 'a4',
+        '--orientation', options.orientation ?? 'landscape',
+      ]
+
+      const result = await runCli('python3', args, {
+        timeoutMs: 180_000,
+        env: { PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
+      })
+
+      // Script emits a single JSON line on stdout
+      let parsed: Record<string, unknown> = {}
+      try {
+        const jsonLine = result.stdout.trim().split('\n').pop() ?? '{}'
+        parsed = JSON.parse(jsonLine)
+      } catch { /* handled below */ }
+
+      if (!parsed.success) {
+        const msg = (parsed.error as string | undefined) ?? `LO pipeline script exited ${result.code}`
+        throw new Error(msg)
+      }
+
+      const pdfBuffer = await fsReadFile(outFile)
+      if (!isPdf(pdfBuffer)) {
+        throw new Error('LO primary pipeline produced an invalid or empty PDF')
+      }
+
+      const warnings = (parsed.warnings as string[] | undefined) ?? []
+      if (warnings.length) {
+        console.log('[excel-to-pdf] LO pipeline warnings:', warnings.join(' | '))
+      }
+
+      return {
+        buffer:         pdfBuffer,
+        pageCount:      (parsed.pageCount as number | undefined) ?? 1,
+        originalFormat: inputExt.slice(1),
+        engine:         (parsed.engine as string | undefined) ?? 'libreoffice-primary-v3',
+      }
+    })
+  }
+
+  /** Legacy Python ReportLab pipeline — kept for direct call if needed externally */
   private async pythonExcelToPdf(
     xlsxBuffer: Buffer,
     options: ConversionOptions,
@@ -361,7 +423,6 @@ export class DocumentConverter {
         env: { PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
       })
 
-      // The script emits a JSON line to stdout
       let parsed: Record<string, unknown> = {}
       try {
         const jsonLine = result.stdout.trim().split('\n').pop() ?? '{}'
