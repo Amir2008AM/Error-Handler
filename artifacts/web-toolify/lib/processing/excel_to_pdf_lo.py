@@ -242,6 +242,16 @@ def stabilize_workbook(wb: openpyxl.Workbook, page_size: str, orientation: str) 
 
         # ── Print settings ────────────────────────────────────────────────
         ps = ws.page_setup
+
+        # openpyxl bug: when loading xlsx files that were saved by certain
+        # applications, PageSetup._parent is left as None instead of being
+        # linked to the parent worksheet.  ps.fitToPage uses _parent to
+        # reach ws.sheet_properties and crashes with:
+        #   AttributeError: 'NoneType' object has no attribute 'sheet_properties'
+        # Fix: re-link the PageSetup to its worksheet before any property access.
+        if getattr(ps, '_parent', None) is None:
+            ps._parent = ws
+
         ps.paperSize   = paper_code
         ps.orientation = 'landscape' if is_landscape else 'portrait'
         ps.fitToPage   = True
