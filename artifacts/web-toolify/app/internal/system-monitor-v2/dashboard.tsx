@@ -30,6 +30,15 @@ interface DetailedError {
 interface UserStats { total: number; newToday: number }
 interface Meta { nodeEnv: string; uptime: number; pid: number; sseClients: number }
 
+interface ActiveUserEntry {
+  id:       string
+  ip:       string
+  tool:     string
+  status:   'active' | 'idle' | 'processing'
+  since:    number
+  lastSeen: number
+}
+
 interface Snapshot {
   ts: number
   system: SystemSnap | null
@@ -45,6 +54,7 @@ interface Snapshot {
   detailedErrors: DetailedError[]
   userStats: UserStats | null
   insights: unknown
+  activeUsersList: ActiveUserEntry[]
   meta: Meta
 }
 
@@ -828,16 +838,76 @@ export default function SystemMonitorDashboard() {
 
         {/* ── Active Users ── */}
         {activeSection === 'users' && (
-          <SectionCard title="👥 Active Users">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-              <StatCard icon="🟢" label="Active Now" value={snap?.live?.activeUsers ?? '—'} color="#22c55e" />
-              <StatCard icon="👤" label="Total Users" value={snap?.userStats?.total ?? '—'} color="#818cf8" />
-              <StatCard icon="🆕" label="New Today" value={snap?.userStats?.newToday ?? '—'} color="#38bdf8" />
-              <StatCard icon="🔄" label="Jobs (10s)" value={snap?.live?.recentCount ?? 0} color="#f59e0b" sub="live window" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              <StatCard icon="🟢" label="Active Now"  value={Math.max(snap?.live?.activeUsers ?? 0, snap?.activeUsersList?.length ?? 0)} color="#22c55e" />
+              <StatCard icon="👤" label="Total Users"  value={snap?.userStats?.total ?? '—'}   color="#818cf8" />
+              <StatCard icon="🆕" label="New Today"    value={snap?.userStats?.newToday ?? '—'} color="#38bdf8" />
+              <StatCard icon="🔄" label="Jobs (10s)"   value={snap?.live?.recentCount ?? 0}     color="#f59e0b" sub="live window" />
             </div>
+
+            <SectionCard title="🔴 Live Session Table" action={
+              <span style={{ fontSize: 11, color: '#374151' }}>
+                {snap?.activeUsersList?.length ?? 0} session{(snap?.activeUsersList?.length ?? 0) !== 1 ? 's' : ''} · auto-prune 5m
+              </span>
+            }>
+              {(snap?.activeUsersList?.length ?? 0) === 0 ? (
+                <div style={{ textAlign: 'center', padding: '36px 0', color: '#374151' }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
+                  <div style={{ fontSize: 13 }}>No active sessions — users appear here when they use a tool</div>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Session', 'IP', 'Tool', 'Status', 'Active For', 'Last Seen'].map(h => (
+                          <th key={h} style={{
+                            textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#4b5563',
+                            textTransform: 'uppercase' as const, letterSpacing: '0.06em',
+                            padding: '8px 12px', borderBottom: '1px solid #1e2235',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {snap?.activeUsersList?.map(u => {
+                        const statusColor = u.status === 'processing' ? '#f59e0b' : u.status === 'active' ? '#22c55e' : '#4b5563'
+                        const activeFor   = Math.round((Date.now() - u.since) / 1000)
+                        return (
+                          <tr key={u.id} style={{ borderBottom: '1px solid #161920' }}>
+                            <td style={{ padding: '9px 12px' }}>
+                              <code style={{ fontSize: 11, color: '#818cf8', background: '#0f1117', borderRadius: 4, padding: '2px 7px', border: '1px solid #1e2235' }}>
+                                {u.id.slice(0, 8)}…
+                              </code>
+                            </td>
+                            <td style={{ padding: '9px 12px', fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{u.ip}</td>
+                            <td style={{ padding: '9px 12px' }}>
+                              <code style={{ fontSize: 12, color: '#38bdf8' }}>{u.tool || '—'}</code>
+                            </td>
+                            <td style={{ padding: '9px 12px' }}>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, color: statusColor,
+                                background: `${statusColor}22`, border: `1px solid ${statusColor}44`,
+                                borderRadius: 5, padding: '2px 8px', textTransform: 'uppercase' as const,
+                                letterSpacing: '0.05em',
+                              }}>{u.status}</span>
+                            </td>
+                            <td style={{ padding: '9px 12px', fontSize: 12, color: '#94a3b8' }}>
+                              {activeFor < 60 ? `${activeFor}s` : activeFor < 3600 ? `${Math.floor(activeFor / 60)}m` : `${Math.floor(activeFor / 3600)}h`}
+                            </td>
+                            <td style={{ padding: '9px 12px', fontSize: 12, color: '#4b5563' }}>{timeAgo(u.lastSeen)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SectionCard>
+
             {(snap?.live?.byTool?.length ?? 0) > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 12 }}>Active Tools (last 10s)</div>
+              <SectionCard title="Active Tools (last 10s)">
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {snap?.live?.byTool?.map(t => (
                     <div key={t.tool} style={{ background: '#161920', border: '1px solid #242736', borderRadius: 8, padding: '6px 14px', fontSize: 12 }}>
@@ -846,9 +916,9 @@ export default function SystemMonitorDashboard() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </SectionCard>
             )}
-          </SectionCard>
+          </div>
         )}
 
         {/* ── Live Feed ── */}

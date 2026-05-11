@@ -5,6 +5,10 @@
  * the Telegram bot's SQLite analytics pipeline AND the Supabase
  * monitoring layer.
  *
+ * Also maintains the live active-user map for the ops dashboard:
+ *  - On each tool invocation: upsertActiveUser (status = 'processing')
+ *  - On completion:           setUserIdle
+ *
  * Rules:
  *  - Fires asynchronously (setImmediate) — never blocks the HTTP response
  *  - Silent — errors are swallowed so a tracking bug can't crash a route
@@ -15,6 +19,7 @@ import { createHash } from 'node:crypto'
 import type { NextRequest } from 'next/server'
 import { recordJob, recordError } from '@/lib/telegram/analytics'
 import { emitEvent, upsertSession } from '@/lib/monitoring/emitter'
+import { upsertActiveUser, setUserIdle } from '@/lib/monitoring/active-users'
 
 export interface RouteTrackOptions {
   tool:        string
@@ -28,9 +33,12 @@ export interface RouteTrackOptions {
 
 /**
  * Derive a stable, anonymised client fingerprint from the HTTP request.
- * Uses SHA-256 of the client IP — no PII stored.
+ * Uses the toolify_sid cookie first, then falls back to a SHA-256 of the IP.
  */
 export function getClientId(request: NextRequest): string {
+  const sid = request.cookies.get('toolify_sid')?.value
+  if (sid) return sid
+
   const forwarded = request.headers.get('x-forwarded-for')
   const realIp    = request.headers.get('x-real-ip')
   const ip        = (forwarded?.split(',')[0] ?? realIp ?? '').trim()
@@ -39,23 +47,39 @@ export function getClientId(request: NextRequest): string {
 }
 
 /**
+ * Extract the raw client IP without hashing (used for active-user display).
+ */
+function getRawIp(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  const realIp    = request.headers.get('x-real-ip')
+  return (forwarded?.split(',')[0] ?? realIp ?? '').trim() || '0.0.0.0'
+}
+
+/**
  * Preferred call site — automatically derives a stable client ID from the
- * request IP so repeated calls by the same user are de-duplicated.
+ * request cookies / IP so repeated calls by the same user are de-duplicated.
  */
 export function trackRouteRequest(
   request: NextRequest,
   opts: Omit<RouteTrackOptions, 'requestId'>,
 ): void {
   const clientId = getClientId(request)
-  trackRoute({ ...opts, requestId: clientId })
+  const rawIp    = getRawIp(request)
+
+  // Mark user as processing immediately (before async hop)
+  try {
+    upsertActiveUser(clientId, rawIp, opts.tool, 'processing')
+  } catch {}
+
+  trackRoute({ ...opts, requestId: clientId }, rawIp)
 }
 
 /**
  * Fire-and-forget analytics event.
- * Writes to in-memory ring buffer + SQLite + Supabase.
+ * Writes to in-memory ring buffer + SQLite + Supabase + active-user map.
  * Always safe to call — never throws, never blocks.
  */
-export function trackRoute(opts: RouteTrackOptions): void {
+export function trackRoute(opts: RouteTrackOptions, rawIp = '0.0.0.0'): void {
   setImmediate(() => {
     try {
       const format   = (opts.format ?? 'unknown').toLowerCase().replace(/^\./, '')
@@ -78,17 +102,21 @@ export function trackRoute(opts: RouteTrackOptions): void {
 
       // 2. Supabase — emit upload_received event + upsert session
       emitEvent({
-        event_type:  'upload_received',
-        tool:        opts.tool,
-        status:      opts.success ? 'completed' : 'failed',
-        duration_ms: opts.durationMs,
-        file_size:   opts.fileSizeB ?? null,
-        session_id:  clientId,
+        event_type:    'upload_received',
+        tool:          opts.tool,
+        status:        opts.success ? 'completed' : 'failed',
+        duration_ms:   opts.durationMs,
+        file_size:     opts.fileSizeB ?? null,
+        session_id:    clientId,
         error_message: opts.success ? null : (opts.errorMsg?.slice(0, 500) ?? null),
-        metadata:    { format },
+        metadata:      { format },
       })
 
       upsertSession(clientId, opts.tool)
+
+      // 3. Active user map — mark idle after job finishes
+      upsertActiveUser(clientId, rawIp, opts.tool, opts.success ? 'idle' : 'idle')
+      setUserIdle(clientId)
     } catch {
       // Intentionally silent
     }

@@ -5,10 +5,16 @@
  * to connected ops dashboard clients.
  *
  * Protocol:
- *   event: snapshot  — full metrics snapshot every 3 s
+ *   event: snapshot  — full metrics snapshot every 1 s (global publisher, shared timer)
  *   event: ping      — keepalive every 25 s (prevents proxy timeouts)
  *   event: job_success | job_failed | error | queue_overflow | cpu_alert | mem_alert
- *            — pushed immediately when the event occurs
+ *            — pushed immediately when the event occurs via pushSseEvent()
+ *
+ * Architecture:
+ *   A single globalThis-based snapshot publisher fires once per second and
+ *   pushes to ALL connected clients via the SSE bus. Individual client handlers
+ *   only manage their own ping timer and cleanup — no per-client snapshot loops.
+ *   This avoids N×DB-reads/s when multiple dashboards are open simultaneously.
  *
  * Security: same auth as all /api/internal/* routes.
  */
@@ -16,12 +22,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyOpsV2Session } from '../auth/route'
 import { addSseClient, pushSseEvent, getSseClientCount } from '@/lib/monitoring/sse-bus'
+import { getActiveUsers, pruneStaleUsers } from '@/lib/monitoring/active-users'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const SNAPSHOT_INTERVAL_MS = 3_000
+const SNAPSHOT_INTERVAL_MS = 1_000
 const PING_INTERVAL_MS     = 25_000
+
+// ── Snapshot builder ──────────────────────────────────────────────────────────
 
 async function buildSnapshot() {
   const [
@@ -34,19 +43,22 @@ async function buildSnapshot() {
     import('@/lib/telegram/db'),
   ])
 
-  const system       = getSystemSnapshot()
-  const queue        = getQueueSnapshot()
-  const connectivity = getConnectivitySnapshot()
-  const dbSnap       = getDbSnapshot()
-  const failures     = getRecentFailures(50)
-  const failStats    = getFailureStats()
-  const live         = getLiveActivity()
-  const globalStats  = dbReadGlobalStats()
-  const toolStats    = dbReadToolStats()
-  const recentErrors = dbReadRecentErrors(30)
+  pruneStaleUsers()
+
+  const system         = getSystemSnapshot()
+  const queue          = getQueueSnapshot()
+  const connectivity   = getConnectivitySnapshot()
+  const dbSnap         = getDbSnapshot()
+  const failures       = getRecentFailures(50)
+  const failStats      = getFailureStats()
+  const live           = getLiveActivity()
+  const globalStats    = dbReadGlobalStats()
+  const toolStats      = dbReadToolStats()
+  const recentErrors   = dbReadRecentErrors(30)
   const detailedErrors = dbReadAllDetailedErrors(50)
-  const userStats    = dbReadUserStats()
-  const insights     = dbReadInsights()
+  const userStats      = dbReadUserStats()
+  const insights       = dbReadInsights()
+  const activeUsersList = getActiveUsers()
 
   return {
     ts: Date.now(),
@@ -82,11 +94,11 @@ async function buildSnapshot() {
       avgDurationMs: dbSnap.avgDurationMs,
       topTools:      dbSnap.topTools?.slice(0, 8) ?? [],
     } : null,
-    failures:      failures.slice(0, 30),
+    failures:        failures.slice(0, 30),
     failStats,
     live: {
       recentCount:  live.recentJobs,
-      activeUsers:  live.activeUsers,
+      activeUsers:  Math.max(live.activeUsers, activeUsersList.length),
       byTool:       live.byTool,
     },
     globalStats,
@@ -95,6 +107,7 @@ async function buildSnapshot() {
     detailedErrors,
     userStats,
     insights,
+    activeUsersList,
     meta: {
       nodeEnv:     process.env.NODE_ENV,
       uptime:      Math.round(process.uptime()),
@@ -104,14 +117,51 @@ async function buildSnapshot() {
   }
 }
 
+// ── Global snapshot publisher (one timer for all clients) ─────────────────────
+
+const KEY_PUB = Symbol.for('toolify.snapshot.publisher')
+
+interface Publisher {
+  started: boolean
+  timer?:  ReturnType<typeof setInterval>
+}
+
+type PubG = Record<symbol, Publisher>
+
+function getPub(): Publisher {
+  const g = globalThis as PubG
+  if (!g[KEY_PUB]) g[KEY_PUB] = { started: false }
+  return g[KEY_PUB]
+}
+
+function startSnapshotPublisher(): void {
+  const pub = getPub()
+  if (pub.started) return
+  pub.started = true
+
+  pub.timer = setInterval(async () => {
+    try {
+      const snap = await buildSnapshot()
+      pushSseEvent({ type: 'snapshot', ts: snap.ts, data: snap })
+    } catch {}
+  }, SNAPSHOT_INTERVAL_MS)
+
+  if (pub.timer && 'unref' in pub.timer) {
+    (pub.timer as NodeJS.Timeout).unref()
+  }
+}
+
+// ── SSE handler ───────────────────────────────────────────────────────────────
+
 export async function GET(request: NextRequest) {
   if (!verifyOpsV2Session(request)) {
     return new NextResponse(null, { status: 404 })
   }
 
-  let remove: (() => void) | null = null
-  let snapshotTimer: ReturnType<typeof setInterval> | null = null
-  let pingTimer:     ReturnType<typeof setInterval> | null = null
+  startSnapshotPublisher()
+
+  let remove:    (() => void) | null = null
+  let pingTimer: ReturnType<typeof setInterval> | null = null
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -122,7 +172,7 @@ export async function GET(request: NextRequest) {
         try { controller.enqueue(new TextEncoder().encode(line)) } catch {}
       }
 
-      // Send first snapshot immediately
+      // Send first snapshot immediately on connect
       try {
         const snap = await buildSnapshot()
         enc('snapshot', snap)
@@ -130,28 +180,19 @@ export async function GET(request: NextRequest) {
         enc('snapshot', { error: (err as Error).message })
       }
 
-      // Recurring snapshots
-      snapshotTimer = setInterval(async () => {
-        try {
-          const snap = await buildSnapshot()
-          enc('snapshot', snap)
-        } catch {}
-      }, SNAPSHOT_INTERVAL_MS)
-
-      // Keepalive pings
+      // Per-client keepalive (publisher handles snapshots)
       pingTimer = setInterval(() => {
         enc('ping', { ts: Date.now() })
       }, PING_INTERVAL_MS)
 
-      // Unref so intervals don't block Node exit
-      if (snapshotTimer && 'unref' in snapshotTimer) (snapshotTimer as NodeJS.Timeout).unref()
-      if (pingTimer     && 'unref' in pingTimer)     (pingTimer     as NodeJS.Timeout).unref()
+      if (pingTimer && 'unref' in pingTimer) {
+        (pingTimer as NodeJS.Timeout).unref()
+      }
     },
 
     cancel() {
-      if (snapshotTimer) clearInterval(snapshotTimer)
-      if (pingTimer)     clearInterval(pingTimer)
-      if (remove)        remove()
+      if (pingTimer) clearInterval(pingTimer)
+      if (remove)    remove()
     },
   })
 
