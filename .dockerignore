@@ -1,0 +1,16 @@
+.git
+.gitignore
+*.md
+.replit
+replit.nix
+replit.md
+.local
+dump.rdb
+analytics.db
+analytics.db-shm
+analytics.db-wal
+artifacts/web-toolify/.next
+artifacts/web-toolify/node_modules
+node_modules
+attached_assets
+test_*.pdf

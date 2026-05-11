@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 
 export default function DevOpsAccess() {
+  // In production, this shortcut is disabled — use /ops directly
   if (process.env.NODE_ENV === 'production') {
-    redirect('/404-not-found')
+    notFound()
   }
 
   const key = process.env.DEV_ADMIN_KEY ?? ''
