@@ -38,6 +38,7 @@ export function ExcelToPdfClient() {
     if (!file) return
 
     setProcessing(true)
+    setError(null)
     startLoading()
     try {
       const formData = new FormData()
@@ -51,8 +52,14 @@ export function ExcelToPdfClient() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Conversion failed')
+        let message = 'Conversion failed'
+        try {
+          const data = await response.json()
+          if (data?.error) message = data.error
+        } catch {
+          message = `Conversion failed (HTTP ${response.status})`
+        }
+        throw new Error(message)
       }
 
       const blob = await response.blob()
