@@ -375,8 +375,26 @@ export default function OpsDashboard() {
   const [activeTab, setActiveTab] = useState<'errors' | 'tools' | 'queue' | 'live'>('errors')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Restore key from sessionStorage on mount
+  // Restore key from sessionStorage or URL ?key= on mount
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const urlKey = params.get('key')
+    if (urlKey) {
+      // Validate then store
+      fetch('/api/ops/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: urlKey }),
+      }).then(r => {
+        if (r.ok) {
+          sessionStorage.setItem('ops_key', urlKey)
+          setSessionKey(urlKey)
+          // Clean key from URL without reload
+          window.history.replaceState({}, '', '/ops')
+        }
+      }).catch(() => {})
+      return
+    }
     const stored = sessionStorage.getItem('ops_key')
     if (stored) setSessionKey(stored)
   }, [])
