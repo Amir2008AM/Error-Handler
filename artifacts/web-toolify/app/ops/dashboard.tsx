@@ -182,6 +182,76 @@ const S = {
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 
+// ── Login Screen ──────────────────────────────────────────────────────────────
+
+function OpsLoginScreen({ onSuccess }: { onSuccess: () => void }) {
+  const [key, setKey]     = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const r = await fetch('/api/ops/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+        credentials: 'include',
+      })
+      if (r.ok) {
+        onSuccess()
+      } else {
+        setError('Invalid key. Please try again.')
+      }
+    } catch {
+      setError('Could not reach server.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ ...S.root, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 12, padding: '32px 28px', width: 320, textAlign: 'center' }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 6 }}>⚡ Toolify Ops</div>
+        <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 24 }}>Enter your admin key to continue</div>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="password"
+            value={key}
+            onChange={e => setKey(e.target.value)}
+            placeholder="Admin key"
+            autoFocus
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: '#0d1117', border: '1px solid #30363d',
+              borderRadius: 6, padding: '9px 12px', color: '#c9d1d9',
+              fontSize: 13, fontFamily: 'inherit', marginBottom: 12, outline: 'none',
+            }}
+          />
+          {error && <div style={{ color: '#f85149', fontSize: 12, marginBottom: 10 }}>{error}</div>}
+          <button
+            type="submit"
+            disabled={loading || !key.trim()}
+            style={{
+              width: '100%', background: loading ? '#21262d' : '#1f6feb',
+              border: 'none', color: '#fff', borderRadius: 6,
+              padding: '9px 0', fontSize: 13, fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            {loading ? 'Verifying…' : 'Access Dashboard'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Dashboard ─────────────────────────────────────────────────────────────
+
 export default function OpsDashboard() {
   const [data, setData]           = useState<OpsData | null>(null)
   const [tab, setTab]             = useState<'errors' | 'tools' | 'live'>('errors')
@@ -190,6 +260,7 @@ export default function OpsDashboard() {
   const [copiedId, setCopiedId]   = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<number | null>(null)
   const [connected, setConnected] = useState(false)
+  const [needsAuth, setNeedsAuth] = useState(false)
 
   const esRef      = useRef<EventSource | null>(null)
   const retryRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -199,11 +270,12 @@ export default function OpsDashboard() {
 
   const connect = useCallback(() => {
     if (esRef.current) { esRef.current.close(); esRef.current = null }
+    if (retryRef.current) { clearTimeout(retryRef.current); retryRef.current = null }
 
     const es = new EventSource('/api/ops/stream', { withCredentials: true })
     esRef.current = es
 
-    es.onopen = () => { setConnected(true); retryCount.current = 0 }
+    es.onopen = () => { setConnected(true); retryCount.current = 0; setNeedsAuth(false) }
 
     es.onmessage = (e: MessageEvent) => {
       try {
@@ -211,6 +283,7 @@ export default function OpsDashboard() {
         setData(payload)
         setLastUpdate(Date.now())
         setConnected(true)
+        setNeedsAuth(false)
 
         // Auto-populate diagMap with any server-side diagnoses in the error list
         const incoming: Record<string, DiagResult> = {}
@@ -227,10 +300,16 @@ export default function OpsDashboard() {
       setConnected(false)
       es.close()
       esRef.current = null
+      // After first failure without ever getting data, assume auth required
+      if (!data) {
+        setNeedsAuth(true)
+        return
+      }
       const delay = Math.min(3_000 * Math.pow(1.5, retryCount.current), 30_000)
       retryCount.current++
       retryRef.current = setTimeout(connect, delay)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -294,6 +373,20 @@ export default function OpsDashboard() {
     setCopiedId(err.id)
     setTimeout(() => setCopiedId(null), 2000)
   }, [diagMap])
+
+  // ── Show login if unauthenticated ──────────────────────────────────────────
+
+  if (needsAuth) {
+    return (
+      <OpsLoginScreen
+        onSuccess={() => {
+          setNeedsAuth(false)
+          retryCount.current = 0
+          connect()
+        }}
+      />
+    )
+  }
 
   // ── Loading screen ─────────────────────────────────────────────────────────
 
