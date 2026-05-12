@@ -14,6 +14,7 @@ import { dbWriteJob, dbWriteError, dbWriteFileStat } from './db'
 import { emitEvent, emitError } from '../monitoring/emitter'
 import { recordFailure } from './analytics-cache'
 import { pushSseEvent } from '../monitoring/sse-bus'
+import { csWriteJobResult, csWriteError } from '../monitoring/central-state'
 
 export interface JobRecord {
   type:       string
@@ -70,7 +71,10 @@ export function recordJob(record: JobRecord): void {
     metadata:    { format: record.format, ...(record.jobId ? { jobId: record.jobId } : {}) },
   })
 
-  // 5. SSE push — instant dashboard update (fire-and-forget)
+  // 5. Central state — immediate in-memory update (single source of truth)
+  csWriteJobResult(record.type, record.success, record.durationMs)
+
+  // 6. SSE push — instant dashboard update (fire-and-forget)
   try {
     pushSseEvent({
       type: record.success ? 'job_success' : 'job_failed',
@@ -101,12 +105,15 @@ export function recordError(tool: string, message: string, jobId?: string): void
   dbWriteError(tool, message)
 
   // Severity classification
-  const severity =
+  const severity: 'low' | 'medium' | 'high' | 'critical' =
     message.toLowerCase().includes('timeout')  ? 'high'
     : message.toLowerCase().includes('crash')  ? 'critical'
     : message.toLowerCase().includes('memory') ? 'high'
     : message.toLowerCase().includes('enoent') ? 'medium'
     : 'medium'
+
+  // Write to central state — makes error immediately visible in dashboard
+  csWriteError(tool, message, severity, 'processing')
 
   // Supabase (fire-and-forget)
   emitError({

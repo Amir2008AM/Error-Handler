@@ -20,6 +20,7 @@ import type { NextRequest } from 'next/server'
 import { recordJob, recordError } from '@/lib/telegram/analytics'
 import { emitEvent, upsertSession } from '@/lib/monitoring/emitter'
 import { upsertActiveUser, setUserIdle } from '@/lib/monitoring/active-users'
+import { csWriteError } from '@/lib/monitoring/central-state'
 
 export interface RouteTrackOptions {
   tool:        string
@@ -98,6 +99,8 @@ export function trackRoute(opts: RouteTrackOptions, rawIp = '0.0.0.0'): void {
 
       if (!opts.success && opts.errorMsg) {
         recordError(opts.tool, opts.errorMsg)
+        // Also write to central state so errors appear in the dashboard immediately
+        csWriteError(opts.tool, opts.errorMsg, 'medium', 'route-error')
       }
 
       // 2. Supabase — emit upload_received event + upsert session

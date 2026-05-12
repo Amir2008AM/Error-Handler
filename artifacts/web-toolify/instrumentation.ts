@@ -39,7 +39,15 @@ export async function register() {
     console.warn('[Monitoring] Failed to init (non-fatal):', (err as Error).message)
   }
 
-  // ── 0d. Analytics cache — isolated background collectors (MUST start first) ─
+  // ── 0d. Central state manager (MUST start before analytics-cache) ───────────
+  try {
+    const { startCentralState } = await import('./lib/monitoring/central-state')
+    startCentralState()
+  } catch (err) {
+    console.warn('[CentralState] Failed to start (non-fatal):', (err as Error).message)
+  }
+
+  // ── 0e. Analytics cache — isolated background collectors ──────────────────
   try {
     const { startAnalyticsCache } = await import('./lib/telegram/analytics-cache')
     startAnalyticsCache()

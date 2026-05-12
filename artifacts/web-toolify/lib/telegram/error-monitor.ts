@@ -15,6 +15,7 @@
 import { getAdminIds, ALERT_COOLDOWN_MS } from './config'
 import { sendAlert } from './api'
 import { dbWriteDetailedError } from './db'
+import { csWriteError } from '../monitoring/central-state'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -471,6 +472,17 @@ async function _sendAsync(ctx: ErrorContext): Promise<void> {
       fix:        diag.fix,
       createdAt:  capturedAt,
     })
+
+    // Write to central state — makes error visible in dashboard immediately
+    csWriteError(
+      ctx.service,
+      sanitise(message),
+      severity as 'low' | 'medium' | 'high' | 'critical',
+      diag.errorType,
+      diag.rootCause
+        ? { cause: diag.rootCause, fix: diag.fix || 'Review logs and restart the affected service.', confidence: 85 }
+        : undefined,
+    )
 
     // Only send Telegram alert for first occurrence in cooldown window
     if (!isFirst) return
