@@ -128,6 +128,11 @@ export function recordError(tool: string, message: string, jobId?: string): void
 
 // ── Live read API (in-memory only) ────────────────────────────────────────────
 
+/** Return raw recent job events, newest first — for live feeds. */
+export function getLiveEvents(limit = 50): JobRecord[] {
+  return liveJobs.slice(-limit).reverse()
+}
+
 export function getLiveActivity() {
   const cutoff = Date.now() - LIVE_WINDOW_MS
   const recent = liveJobs.filter((j) => j.ts >= cutoff)

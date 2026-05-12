@@ -1,703 +1,558 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface OpsError {
+  id:         string
+  type:       string
+  tool:       string
+  severity:   string
+  msg:        string
+  createdAt:  number
+  diagnosis?: { cause: string; fix: string; confidence: number }
+}
+
+interface LiveToolEvent {
+  id:   number
+  tool: string
+  ok:   boolean
+  ts:   number
+}
+
+interface ActiveUser {
+  id:    string
+  tool:  string
+  since: number
+}
 
 interface OpsData {
-  ts: number
-  uptime: number
-  system: { cpu: number; memPct: number; memUsed: number; memTotal: number; age: number } | null
-  queue: { waiting: number; active: number; completed: number; failed: number } | null
-  connectivity: { redisOk: boolean; dbOk: boolean; supabaseOk: boolean } | null
-  dbSnap: { totalJobs: number; jobsToday: number; successRate: number; topTools: Array<{ name: string; count: number }> } | null
-  failures: Array<{ tool: string; error: string; jobId?: string; ts?: number }>
-  failStats: { total: number; byTool: Record<string, number>; last5m: number }
-  live: { recentCount: number; activeUsers: number; byTool: Array<{ tool: string; count: number }> }
-  globalStats: { totalJobs: number; jobsToday: number; successCount: number; failedCount: number } | null
-  toolStats: Array<{ tool: string; total: number; success: number; failed: number; avgMs: number; successRate: number }>
-  recentErrors: Array<{ tool: string; message: string; createdAt: number }>
-  detailedErrors: Array<{ service: string; errorType: string; rawMessage: string; severity: string; diagnosis: string; rootCause: string; fix: string; createdAt: number }>
-  userStats: { totalUsers: number; activeToday: number; avgRequests: number } | null
-  insights: { busiestTool: string; busiestHour: number; errorRate: number } | null
-  nodeEnv: string
-  pid: number
+  activeJobs:    number
+  successRate:   number
+  successCount:  number
+  failedCount:   number
+  usersToday:    number
+  uptimeSeconds: number
+  totalJobs:     number
+  pid:           number
+  cpu:           number
+  ram:           number
+  memoryMB:      number
+  snapshotAge:   number
+  queue:         { waiting: number; active: number; completed: number; failed: number }
+  redisOk:       boolean
+  sqliteOk:      boolean
+  supabaseOk:    boolean
+  errors:        OpsError[]
+  liveTools:     LiveToolEvent[]
+  activeUsers:   ActiveUser[]
 }
 
-interface Diagnosis {
-  severity: 'critical' | 'high' | 'medium' | 'low'
-  title: string
-  rootCause: string
-  affectedComponents: string[]
-  explanation: string
-  steps: Array<{ order: number; action: string; command?: string }>
-  estimatedFixTime: string
-  preventionTips: string[]
-  systemContext: { cpuLoad: number; memPct: number; uptime: number; redisOk: boolean; dbOk: boolean }
-  generatedAt: number
-}
+interface DiagResult { cause: string; fix: string; confidence: number }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-function fmt(n: number | undefined | null, digits = 0): string {
-  if (n == null || isNaN(n)) return '—'
-  return n.toFixed(digits)
-}
-
-function fmtMs(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
-
-function fmtBytes(b: number): string {
-  if (b < 1024) return `${b} B`
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
-  return `${(b / 1024 / 1024).toFixed(1)} MB`
+function timeAgo(ts: number | string | undefined): string {
+  const ms = typeof ts === 'string' ? new Date(ts).getTime() : Number(ts)
+  if (!ms || isNaN(ms)) return 'just now'
+  const diff = Math.floor((Date.now() - ms) / 1000)
+  if (diff < 5)     return 'just now'
+  if (diff < 60)    return `${diff}s ago`
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return `${Math.floor(diff / 86400)}d ago`
 }
 
 function fmtUptime(s: number): string {
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m ${s % 60}s`
+  if (!s || isNaN(s)) return '00:00:00'
+  const h   = Math.floor(s / 3600)
+  const m   = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
-function timeAgo(ts: number): string {
-  const diff = Math.round((Date.now() - ts) / 1000)
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  return `${Math.floor(diff / 3600)}h ago`
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const S = {
+  root: {
+    minHeight: '100vh', background: '#0d1117', color: '#c9d1d9',
+    fontFamily: "'SF Mono','Fira Code',monospace", fontSize: 13,
+  } as React.CSSProperties,
+  topBar: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '10px 16px', borderBottom: '1px solid #21262d',
+    background: '#161b22', position: 'sticky', top: 0, zIndex: 100,
+  } as React.CSSProperties,
+  brand: { display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14, color: '#fff' } as React.CSSProperties,
+  badge: {
+    background: '#21262d', border: '1px solid #30363d',
+    borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#8b949e',
+  } as React.CSSProperties,
+  statusRow: { display: 'flex', alignItems: 'center', gap: 12 } as React.CSSProperties,
+  dot: (ok: boolean): React.CSSProperties => ({
+    width: 7, height: 7, borderRadius: '50%',
+    background: ok ? '#3fb950' : '#f85149',
+    display: 'inline-block', marginRight: 4,
+  }),
+  refreshBtn: {
+    background: '#1f6feb', border: 'none', color: '#fff',
+    borderRadius: 6, padding: '5px 14px', cursor: 'pointer',
+    fontSize: 12, fontWeight: 600,
+  } as React.CSSProperties,
+  body: { padding: '16px' } as React.CSSProperties,
+  cardsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginBottom: 12 } as React.CSSProperties,
+  card: { background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: '14px 16px' } as React.CSSProperties,
+  cardLabel: { fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 } as React.CSSProperties,
+  cardValue: (color: string): React.CSSProperties => ({ fontSize: 26, fontWeight: 800, color, lineHeight: 1.1 }),
+  cardSub: { fontSize: 11, color: '#8b949e', marginTop: 3 } as React.CSSProperties,
+  section: { background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: '14px 16px', marginBottom: 12 } as React.CSSProperties,
+  sectionTitle: { fontSize: 12, fontWeight: 700, color: '#c9d1d9', marginBottom: 12 } as React.CSSProperties,
+  barTrack: { height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden' } as React.CSSProperties,
+  barFill: (pct: number, color: string): React.CSSProperties => ({
+    height: '100%', width: `${Math.min(100, Math.max(0, pct))}%`,
+    background: pct > 80 ? '#f85149' : pct > 60 ? '#d29922' : color,
+    borderRadius: 3, transition: 'width .7s ease',
+  }),
+  qGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 } as React.CSSProperties,
+  qCell: { textAlign: 'center', background: '#0d1117', borderRadius: 6, padding: '12px 0' } as React.CSSProperties,
+  qNum: (color: string): React.CSSProperties => ({ fontSize: 24, fontWeight: 800, color }),
+  qLabel: { fontSize: 11, color: '#8b949e', marginTop: 2 } as React.CSSProperties,
+  tabs: { display: 'flex', gap: 0, borderBottom: '1px solid #21262d', marginBottom: 12 } as React.CSSProperties,
+  tab: (active: boolean): React.CSSProperties => ({
+    padding: '8px 14px', fontSize: 12, cursor: 'pointer', border: 'none',
+    background: 'transparent', color: active ? '#fff' : '#8b949e',
+    borderBottom: active ? '2px solid #1f6feb' : '2px solid transparent',
+    fontFamily: 'inherit',
+  }),
+  errorCard: (sev: string): React.CSSProperties => ({
+    background: sev === 'CRITICAL' ? 'rgba(248,81,73,.06)' : 'rgba(210,153,34,.06)',
+    border: `1px solid ${sev === 'CRITICAL' ? '#f8514933' : '#d2993244'}`,
+    borderRadius: 6, padding: '10px 12px', marginBottom: 8, transition: 'all .3s ease',
+  }),
+  errorTop: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 } as React.CSSProperties,
+  sevBadge: (sev: string): React.CSSProperties => ({
+    background: sev === 'CRITICAL' ? 'rgba(248,81,73,.2)' : 'rgba(210,153,34,.2)',
+    color: sev === 'CRITICAL' ? '#f85149' : '#d29922',
+    border: `1px solid ${sev === 'CRITICAL' ? '#f85149' : '#d29922'}44`,
+    borderRadius: 4, padding: '1px 7px', fontSize: 10, fontWeight: 700,
+    letterSpacing: '.06em', flexShrink: 0,
+  }),
+  toolBadge: {
+    background: '#21262d', border: '1px solid #30363d',
+    borderRadius: 4, padding: '1px 7px', fontSize: 10, color: '#8b949e',
+  } as React.CSSProperties,
+  errorMsg: {
+    fontSize: 11, color: '#8b949e', marginTop: 6,
+    fontFamily: "'SF Mono','Fira Code',monospace",
+    whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+    maxHeight: 60, overflow: 'hidden',
+  } as React.CSSProperties,
+  diagnoseBtn: {
+    background: '#1f6feb', border: 'none', color: '#fff',
+    borderRadius: 5, padding: '4px 12px', fontSize: 11,
+    cursor: 'pointer', fontWeight: 600, flexShrink: 0, fontFamily: 'inherit',
+  } as React.CSSProperties,
+  diagnosisBox: {
+    marginTop: 10, background: '#0d1117',
+    border: '1px solid #1f6feb44', borderRadius: 6, padding: '10px 12px',
+  } as React.CSSProperties,
+  diagRow: { marginBottom: 6 } as React.CSSProperties,
+  diagLabel: { fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '.07em' } as React.CSSProperties,
+  diagVal: { fontSize: 12, color: '#c9d1d9', marginTop: 2 } as React.CSSProperties,
+  copyBtn: {
+    marginTop: 8, background: '#21262d', border: '1px solid #30363d',
+    color: '#8b949e', borderRadius: 5, padding: '3px 10px',
+    fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+  } as React.CSSProperties,
+  liveRow: (ok: boolean): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
+    borderBottom: '1px solid #21262d11', fontSize: 11,
+    color: ok ? '#3fb950' : '#f85149',
+  }),
+  userRow: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '6px 0', borderBottom: '1px solid #21262d', fontSize: 11,
+  } as React.CSSProperties,
+  updatedDot: {
+    width: 7, height: 7, borderRadius: '50%',
+    background: '#3fb950', display: 'inline-block', marginRight: 6,
+  } as React.CSSProperties,
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: '#ef4444',
-  high:     '#f97316',
-  medium:   '#f59e0b',
-  low:      '#6b7280',
-}
-
-const SEVERITY_BG: Record<string, string> = {
-  critical: 'rgba(239,68,68,0.12)',
-  high:     'rgba(249,115,22,0.12)',
-  medium:   'rgba(245,158,11,0.10)',
-  low:      'rgba(107,114,128,0.10)',
-}
-
-// ── Sub-components ─────────────────────────────────────────────────────────
-
-function StatCard({ label, value, sub, color = '#6366f1', icon }: {
-  label: string; value: string | number; sub?: string; color?: string; icon: string
-}) {
-  return (
-    <div style={{
-      background: '#1a1d27', border: '1px solid #2a2d3d', borderRadius: 12,
-      padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 6,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 20 }}>{icon}</span>
-        <span style={{ color: '#8b92a9', fontSize: 12, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: '#6b7280' }}>{sub}</div>}
-    </div>
-  )
-}
-
-function Bar({ value, color, label }: { value: number; color: string; label?: string }) {
-  const pct = Math.min(100, Math.max(0, value))
-  const danger = pct > 85
-  const c = danger ? '#ef4444' : pct > 65 ? '#f59e0b' : color
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {label && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8b92a9' }}>
-        <span>{label}</span><span style={{ color: c, fontWeight: 600 }}>{pct.toFixed(1)}%</span>
-      </div>}
-      <div style={{ height: 8, borderRadius: 4, background: '#2a2d3d', overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: c, borderRadius: 4, transition: 'width 0.6s ease' }} />
-      </div>
-    </div>
-  )
-}
-
-function Badge({ text, color, bg }: { text: string; color: string; bg: string }) {
-  return (
-    <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, border: `1px solid ${color}33`,
-      borderRadius: 6, padding: '2px 7px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-      {text}
-    </span>
-  )
-}
-
-function ConnDot({ ok }: { ok: boolean }) {
-  return (
-    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-      background: ok ? '#22c55e' : '#ef4444', boxShadow: ok ? '0 0 6px #22c55e88' : '0 0 6px #ef444488', marginRight: 6 }} />
-  )
-}
-
-// ── Diagnose Modal ─────────────────────────────────────────────────────────
-
-function DiagnoseModal({ error, onClose, authKey }: { error: { tool: string; message: string }; onClose: () => void; authKey: string }) {
-  const [diag, setDiag] = useState<Diagnosis | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/ops/diagnose', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authKey}` },
-      body: JSON.stringify({ tool: error.tool, message: error.message }),
-    })
-      .then(r => r.json())
-      .then(d => { setDiag(d); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [error])
-
-  const copyReport = () => {
-    if (!diag) return
-    const lines = [
-      `═══ TOOLIFY DIAGNOSIS REPORT ═══`,
-      `Generated: ${new Date(diag.generatedAt).toISOString()}`,
-      ``,
-      `SEVERITY: ${diag.severity.toUpperCase()}`,
-      `TITLE: ${diag.title}`,
-      ``,
-      `ROOT CAUSE`,
-      `──────────`,
-      diag.rootCause,
-      ``,
-      `EXPLANATION`,
-      `───────────`,
-      diag.explanation,
-      ``,
-      `AFFECTED COMPONENTS`,
-      `───────────────────`,
-      diag.affectedComponents.join(', '),
-      ``,
-      `FIX STEPS`,
-      `─────────`,
-      ...diag.steps.map(s => s.command
-        ? `${s.order}. ${s.action}\n   $ ${s.command}`
-        : `${s.order}. ${s.action}`),
-      ``,
-      `ESTIMATED FIX TIME: ${diag.estimatedFixTime}`,
-      ``,
-      `PREVENTION TIPS`,
-      `───────────────`,
-      ...diag.preventionTips.map((t, i) => `${i + 1}. ${t}`),
-      ``,
-      `SYSTEM CONTEXT AT TIME OF DIAGNOSIS`,
-      `────────────────────────────────────`,
-      `CPU Load: ${diag.systemContext.cpuLoad.toFixed(1)}%`,
-      `Memory: ${diag.systemContext.memPct}%`,
-      `Server Uptime: ${fmtUptime(diag.systemContext.uptime)}`,
-      `Redis: ${diag.systemContext.redisOk ? 'OK' : 'DOWN'}`,
-      `Database: ${diag.systemContext.dbOk ? 'OK' : 'DOWN'}`,
-      ``,
-      `Tool: ${error.tool}`,
-      `Error: ${error.message}`,
-    ].join('\n')
-    navigator.clipboard.writeText(lines).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
-  }
-
-  const sevColor = diag ? SEVERITY_COLORS[diag.severity] : '#6366f1'
-  const sevBg    = diag ? SEVERITY_BG[diag.severity] : '#1a1d27'
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: '#12151f', border: '1px solid #2a2d3d', borderRadius: 16, width: '90%', maxWidth: 680, maxHeight: '88vh', overflow: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6)' }}>
-        <div style={{ padding: '24px 28px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Auto Diagnosis</div>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#e2e8f0' }}>
-              {loading ? 'Analyzing…' : (diag?.title ?? 'Error')}
-            </h2>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 22, lineHeight: 1, padding: 4 }}>✕</button>
-        </div>
-
-        <div style={{ padding: '16px 28px 28px' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#6366f1' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>⚙️</div>
-              <div style={{ color: '#8b92a9' }}>Analyzing error patterns and system state…</div>
-            </div>
-          ) : diag ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ background: sevBg, border: `1px solid ${sevColor}44`, borderRadius: 10, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <Badge text={diag.severity} color={sevColor} bg={sevBg} />
-                <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.6 }}>{diag.rootCause}</div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Explanation</div>
-                <p style={{ margin: 0, color: '#94a3b8', fontSize: 13, lineHeight: 1.7 }}>{diag.explanation}</p>
-              </div>
-
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Affected Components</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {diag.affectedComponents.map(c => (
-                    <span key={c} style={{ fontSize: 12, background: '#1e2235', color: '#94a3b8', borderRadius: 6, padding: '3px 10px', border: '1px solid #2a2d3d', fontFamily: 'monospace' }}>{c}</span>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-                  Fix Steps <span style={{ color: '#4b5563', fontWeight: 400, textTransform: 'none', fontSize: 11 }}>— est. {diag.estimatedFixTime}</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {diag.steps.map(step => (
-                    <div key={step.order} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: '#6366f122', color: '#818cf8', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{step.order}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, color: '#cbd5e1', marginBottom: step.command ? 6 : 0 }}>{step.action}</div>
-                        {step.command && (
-                          <div style={{ background: '#0f1117', border: '1px solid #2a2d3d', borderRadius: 6, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                            <code style={{ fontFamily: 'monospace', fontSize: 12, color: '#86efac', flex: 1, wordBreak: 'break-all' }}>{step.command}</code>
-                            <button onClick={() => navigator.clipboard.writeText(step.command!)} style={{ flexShrink: 0, background: '#1e2235', border: '1px solid #2a2d3d', borderRadius: 5, color: '#6b7280', cursor: 'pointer', fontSize: 10, padding: '3px 8px' }}>Copy</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {diag.preventionTips.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Prevention Tips</div>
-                  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {diag.preventionTips.map((t, i) => (
-                      <li key={i} style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.6 }}>{t}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div style={{ background: '#0f1117', border: '1px solid #1e2235', borderRadius: 10, padding: '12px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>System at Diagnosis Time</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
-                  {[
-                    { k: 'CPU', v: `${diag.systemContext.cpuLoad.toFixed(1)}%` },
-                    { k: 'Memory', v: `${diag.systemContext.memPct}%` },
-                    { k: 'Uptime', v: fmtUptime(diag.systemContext.uptime) },
-                    { k: 'Redis', v: diag.systemContext.redisOk ? '✓ OK' : '✗ Down' },
-                    { k: 'DB', v: diag.systemContext.dbOk ? '✓ OK' : '✗ Down' },
-                  ].map(({ k, v }) => (
-                    <div key={k}>
-                      <div style={{ fontSize: 10, color: '#4b5563', marginBottom: 2 }}>{k}</div>
-                      <div style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button onClick={copyReport} style={{ background: copied ? '#065f46' : '#1e2235', border: `1px solid ${copied ? '#059669' : '#2a2d3d'}`, borderRadius: 8, color: copied ? '#34d399' : '#94a3b8', cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 600, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                {copied ? '✓ Copied to clipboard!' : '📋 Copy Full Report'}
-              </button>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', color: '#ef4444', padding: '20px 0' }}>Failed to generate diagnosis.</div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Login Screen ───────────────────────────────────────────────────────────
-
-function LoginScreen({ onAuth }: { onAuth: (key: string) => void }) {
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState('')
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim()) return
-    setLoading(true); setErr('')
-    try {
-      const r = await fetch('/api/ops/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: input.trim() }),
-      })
-      if (r.ok) {
-        sessionStorage.setItem('ops_key', input.trim())
-        onAuth(input.trim())
-      } else {
-        setErr('Invalid key — access denied.')
-      }
-    } catch {
-      setErr('Network error.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '"Inter", system-ui, sans-serif' }}>
-      <form onSubmit={submit} style={{ background: '#12151f', border: '1px solid #2a2d3d', borderRadius: 16, padding: '40px 36px', width: 340, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>⚡</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>Toolify Ops</div>
-          <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>Internal dashboard — restricted access</div>
-        </div>
-        <input
-          type="password"
-          placeholder="Admin key"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          autoFocus
-          style={{ background: '#1a1d27', border: '1px solid #2a2d3d', borderRadius: 8, color: '#e2e8f0', fontSize: 14, outline: 'none', padding: '12px 14px', width: '100%', boxSizing: 'border-box' }}
-        />
-        {err && <div style={{ color: '#ef4444', fontSize: 12, textAlign: 'center' }}>{err}</div>}
-        <button type="submit" disabled={loading} style={{ background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: loading ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600, padding: '12px 0', opacity: loading ? 0.7 : 1 }}>
-          {loading ? 'Verifying…' : 'Access Dashboard'}
-        </button>
-      </form>
-    </div>
-  )
-}
-
-// ── Main Dashboard ─────────────────────────────────────────────────────────
+// ── Main Dashboard ─────────────────────────────────────────────────────────────
 
 export default function OpsDashboard() {
-  const [sessionKey, setSessionKey] = useState<string | null>(null)
-  const [data, setData] = useState<OpsData | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<number | null>(null)
-  const [diagnoseTarget, setDiagnoseTarget] = useState<{ tool: string; message: string } | null>(null)
-  const [activeTab, setActiveTab] = useState<'errors' | 'tools' | 'queue' | 'live'>('errors')
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [data, setData]           = useState<OpsData | null>(null)
+  const [tab, setTab]             = useState<'errors' | 'tools' | 'live'>('errors')
+  const [diagMap, setDiagMap]     = useState<Record<string, DiagResult>>({})
+  const [diagId, setDiagId]       = useState<string | null>(null)
+  const [copiedId, setCopiedId]   = useState<string | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<number | null>(null)
+  const [connected, setConnected] = useState(false)
 
-  // Restore key from sessionStorage or URL ?key= on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const urlKey = params.get('key')
-    if (urlKey) {
-      // Validate then store
-      fetch('/api/ops/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: urlKey }),
-      }).then(r => {
-        if (r.ok) {
-          sessionStorage.setItem('ops_key', urlKey)
-          setSessionKey(urlKey)
-          // Clean key from URL without reload
-          window.history.replaceState({}, '', '/ops')
+  const esRef      = useRef<EventSource | null>(null)
+  const retryRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const retryCount = useRef(0)
+
+  // ── SSE connection with exponential backoff reconnect ──────────────────────
+
+  const connect = useCallback(() => {
+    if (esRef.current) { esRef.current.close(); esRef.current = null }
+
+    const es = new EventSource('/api/ops/stream', { withCredentials: true })
+    esRef.current = es
+
+    es.onopen = () => { setConnected(true); retryCount.current = 0 }
+
+    es.onmessage = (e: MessageEvent) => {
+      try {
+        const payload: OpsData = JSON.parse(e.data as string)
+        setData(payload)
+        setLastUpdate(Date.now())
+        setConnected(true)
+
+        // Auto-populate diagMap with any server-side diagnoses in the error list
+        const incoming: Record<string, DiagResult> = {}
+        for (const err of payload.errors ?? []) {
+          if (err.diagnosis) incoming[err.id] = err.diagnosis
         }
-      }).catch(() => {})
-      return
+        if (Object.keys(incoming).length > 0) {
+          setDiagMap(prev => ({ ...prev, ...incoming }))
+        }
+      } catch {}
     }
-    const stored = sessionStorage.getItem('ops_key')
-    if (stored) setSessionKey(stored)
+
+    es.onerror = () => {
+      setConnected(false)
+      es.close()
+      esRef.current = null
+      const delay = Math.min(3_000 * Math.pow(1.5, retryCount.current), 30_000)
+      retryCount.current++
+      retryRef.current = setTimeout(connect, delay)
+    }
   }, [])
 
-  const fetchData = useCallback(async (silent = false, key?: string) => {
-    const authKey = key ?? sessionKey
-    if (!authKey) return
-    if (!silent) setRefreshing(true)
-    try {
-      const r = await fetch('/api/ops/data', {
-        headers: { 'Authorization': `Bearer ${authKey}` },
-      })
-      if (r.status === 404) {
-        sessionStorage.removeItem('ops_key')
-        setSessionKey(null)
-        return
-      }
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const d = await r.json()
-      setData(d)
-      setLastUpdated(Date.now())
-      setError(null)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      if (!silent) setRefreshing(false)
-    }
-  }, [sessionKey])
-
-  const handleAuth = (key: string) => {
-    setSessionKey(key)
-    fetchData(false, key)
-  }
-
   useEffect(() => {
-    if (!sessionKey) return
-    fetchData()
-    intervalRef.current = setInterval(() => fetchData(true), 5000)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [sessionKey, fetchData])
+    connect()
+    return () => {
+      esRef.current?.close()
+      if (retryRef.current) clearTimeout(retryRef.current)
+    }
+  }, [connect])
 
-  if (!sessionKey) return <LoginScreen onAuth={handleAuth} />
+  // ── Diagnose — calls real /api/ops/diagnose ────────────────────────────────
 
-  const allErrors = [
-    ...(data?.failures ?? []).map(f => ({ tool: f.tool, message: f.error, severity: 'high', createdAt: f.ts ?? Date.now() })),
-    ...(data?.recentErrors ?? []).map(e => ({ tool: e.tool, message: e.message, severity: 'medium', createdAt: e.createdAt })),
-    ...(data?.detailedErrors ?? []).map(e => ({ tool: e.service, message: e.rawMessage, severity: e.severity, createdAt: e.createdAt })),
-  ].sort((a, b) => b.createdAt - a.createdAt).slice(0, 50)
+  const handleDiagnose = useCallback(async (err: OpsError) => {
+    setDiagId(err.id)
+    try {
+      const r = await fetch('/api/ops/diagnose', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tool: err.tool, message: err.msg, errorType: err.type, severity: err.severity }),
+      })
+      if (r.ok) {
+        const d = await r.json() as {
+          rootCause?: string; explanation?: string; fix?: string; confidence?: number;
+          steps?: Array<{ action: string }>
+        }
+        setDiagMap(prev => ({
+          ...prev,
+          [err.id]: {
+            cause:      d.rootCause || d.explanation || 'Unknown root cause',
+            fix:        d.steps?.[0]?.action || d.fix || 'Review the diagnosis.',
+            confidence: d.confidence ?? 80,
+          },
+        }))
+      }
+    } catch {
+      setDiagMap(prev => ({
+        ...prev,
+        [err.id]: { cause: 'Could not reach diagnosis service.', fix: 'Check server logs.', confidence: 0 },
+      }))
+    } finally {
+      setDiagId(null)
+    }
+  }, [])
 
-  const css = `
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-    * { box-sizing: border-box; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0f1117; }
-    ::-webkit-scrollbar-thumb { background: #2a2d3d; border-radius: 3px; }
-    table { border-collapse: collapse; width: 100%; }
-    th { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px; text-align: left; border-bottom: 1px solid #1e2235; }
-    td { font-size: 13px; color: #94a3b8; padding: 10px 12px; border-bottom: 1px solid #1a1d27; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #1a1d27; }
-  `
+  // ── Copy report ────────────────────────────────────────────────────────────
 
-  if (error) return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-        <div style={{ fontSize: 18, fontWeight: 600 }}>{error}</div>
-      </div>
-    </div>
-  )
+  const copyReport = useCallback((err: OpsError) => {
+    const d = diagMap[err.id]
+    const report = [
+      '=== Diagnosis Report ===',
+      `Tool:     ${err.tool}`,
+      `Type:     ${err.type}`,
+      `Severity: ${err.severity}`,
+      `Time:     ${new Date(err.createdAt).toISOString()}`,
+      '', 'Error:', err.msg,
+      '', 'Root Cause:', d?.cause ?? '—',
+      '', 'Fix:', d?.fix ?? '—',
+      '', `Confidence: ${d?.confidence ?? '—'}%`,
+    ].join('\n')
+    navigator.clipboard.writeText(report).catch(() => {})
+    setCopiedId(err.id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }, [diagMap])
 
-  const g = data?.globalStats
-  const successRate = g && g.totalJobs > 0 ? ((g.successCount / g.totalJobs) * 100).toFixed(1) : '—'
+  // ── Loading screen ─────────────────────────────────────────────────────────
 
-  return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#e2e8f0', fontFamily: '"Inter", system-ui, -apple-system, sans-serif' }}>
-      <style>{css}</style>
-
-      {diagnoseTarget && <DiagnoseModal error={diagnoseTarget} onClose={() => setDiagnoseTarget(null)} authKey={sessionKey!} />}
-
-      {/* Header */}
-      <div style={{ borderBottom: '1px solid #1e2235', padding: '0 24px', background: '#12151f', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: 1300, margin: '0 auto', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: 20 }}>⚡</div>
-            <span style={{ fontWeight: 700, fontSize: 16, color: '#e2e8f0' }}>Toolify Ops</span>
-            <span style={{ fontSize: 11, background: '#1e2235', color: '#6366f1', border: '1px solid #6366f122', borderRadius: 5, padding: '2px 8px', fontWeight: 600 }}>INTERNAL</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {data?.connectivity && (
-              <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#6b7280' }}>
-                <span><ConnDot ok={data.connectivity.redisOk} />Redis</span>
-                <span><ConnDot ok={data.connectivity.dbOk} />SQLite</span>
-                <span><ConnDot ok={data.connectivity.supabaseOk} />Supabase</span>
-              </div>
-            )}
-            {lastUpdated && (
-              <span style={{ fontSize: 11, color: '#4b5563' }}>Updated {timeAgo(lastUpdated)}</span>
-            )}
-            <button onClick={() => fetchData()} disabled={refreshing} style={{ background: refreshing ? '#1a1d27' : '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: refreshing ? 'wait' : 'pointer', fontSize: 12, fontWeight: 600, padding: '6px 14px', opacity: refreshing ? 0.7 : 1 }}>
-              {refreshing ? '↻ …' : '↻ Refresh'}
-            </button>
+  if (!data) {
+    return (
+      <div style={{ ...S.root, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <style>{`@keyframes slide{0%{transform:translateX(-200%)}100%{transform:translateX(400%)}}`}</style>
+        <div style={{ textAlign: 'center', color: '#8b949e' }}>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>Connecting to server…</div>
+          <div style={{ width: 120, height: 3, background: '#21262d', borderRadius: 2, overflow: 'hidden', margin: '0 auto' }}>
+            <div style={{ height: '100%', width: '40%', background: '#1f6feb', animation: 'slide 1.2s infinite', borderRadius: 2 }} />
           </div>
         </div>
       </div>
+    )
+  }
 
-      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '24px 24px' }}>
+  const errors      = data.errors      ?? []
+  const liveTools   = data.liveTools   ?? []
+  const activeUsers = data.activeUsers ?? []
+  const TOOL_NAMES  = [...new Set(liveTools.map(e => e.tool))].sort()
 
-        {!data && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#4b5563' }}>
-            <div style={{ fontSize: 36, marginBottom: 12, animation: 'pulse 1.5s infinite' }}>⚙️</div>
-            <div>Loading dashboard…</div>
+  return (
+    <div style={S.root}>
+      <style>{`
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+        @keyframes slide{0%{transform:translateX(-200%)}100%{transform:translateX(400%)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+        .err-card{animation:fadeIn .3s ease}
+        .diagnose-btn:hover{background:#388bfd !important}
+        .copy-btn:hover{color:#c9d1d9 !important}
+      `}</style>
+
+      {/* ── TOP BAR ── */}
+      <div style={S.topBar}>
+        <div style={S.brand}>
+          <span>⚡</span>
+          <span>Toolify Ops</span>
+          <span style={S.badge}>INTERNAL</span>
+        </div>
+        <div style={S.statusRow}>
+          <span><span style={S.dot(data.redisOk)} />Redis</span>
+          <span><span style={S.dot(data.sqliteOk)} />SQLite</span>
+          <span><span style={S.dot(data.supabaseOk)} />Supabase</span>
+          <span style={{ color: '#8b949e', fontSize: 11 }}>
+            {connected && <span style={S.updatedDot} />}
+            Updated {lastUpdate ? timeAgo(lastUpdate) : '—'}
+          </span>
+          <button style={S.refreshBtn} onClick={() => window.location.reload()}>↻ Refresh</button>
+        </div>
+      </div>
+
+      <div style={S.body}>
+
+        {/* ── STAT CARDS ── */}
+        <div style={S.cardsRow}>
+          {[
+            { label: '🔧 Active Jobs', value: data.activeJobs ?? 0, color: '#f0883e', sub: `${data.queue?.waiting ?? 0} waiting` },
+            { label: '✅ Success Rate', value: `${(data.successRate ?? 0).toFixed(1)}%`, color: '#3fb950', sub: `${data.successCount ?? 0} successful` },
+            { label: '✗ Failed', value: data.failedCount ?? 0, color: '#f85149', sub: 'all time' },
+            { label: '👤 Users Today', value: data.usersToday > 0 ? data.usersToday : activeUsers.length, color: '#79c0ff', sub: `${activeUsers.length} active now` },
+            { label: '🕐 Uptime', value: fmtUptime(data.uptimeSeconds), color: '#79c0ff', sub: `PID ${data.pid ?? '—'}`, small: true },
+            { label: '📦 Total Jobs', value: data.totalJobs ?? 0, color: '#f0883e', sub: 'all time' },
+          ].map(({ label, value, color, sub, small }) => (
+            <div key={label} style={S.card}>
+              <div style={S.cardLabel}>{label}</div>
+              <div style={small ? { fontSize: 18, fontWeight: 800, color, lineHeight: 1.1 } : S.cardValue(color)}>{value}</div>
+              <div style={S.cardSub}>{sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── SYSTEM RESOURCES ── */}
+        <div style={S.section}>
+          <div style={S.sectionTitle}>System Resources</div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+              <span>CPU</span>
+              <span style={{ color: data.cpu > 80 ? '#f85149' : data.cpu > 60 ? '#d29922' : '#3fb950', fontWeight: 700 }}>
+                {(data.cpu ?? 0).toFixed(1)}%
+              </span>
+              <span style={{ flex: 1 }} />
+              <span>Memory</span>
+              <span style={{ color: data.ram > 80 ? '#f85149' : '#d29922', fontWeight: 700, marginLeft: 8 }}>
+                {(data.ram ?? 0).toFixed(1)}%
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={S.barTrack}><div style={S.barFill(data.cpu, '#1f6feb')} /></div>
+              <div style={S.barTrack}><div style={S.barFill(data.ram, '#d29922')} /></div>
+            </div>
+            <div style={{ fontSize: 10, color: '#8b949e', marginTop: 5 }}>
+              Memory: {(data.memoryMB ?? 0).toLocaleString()} MB used · Snapshot age: {data.snapshotAge ?? 0}s
+            </div>
+          </div>
+        </div>
+
+        {/* ── BULLMQ QUEUE ── */}
+        <div style={S.section}>
+          <div style={S.sectionTitle}>BullMQ Queue</div>
+          <div style={S.qGrid}>
+            {[
+              { label: 'Waiting',   value: data.queue?.waiting,   color: '#79c0ff' },
+              { label: 'Active',    value: data.queue?.active,    color: '#3fb950' },
+              { label: 'Completed', value: data.queue?.completed, color: '#3fb950' },
+              { label: 'Failed',    value: data.queue?.failed,    color: '#f85149' },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={S.qCell}>
+                <div style={S.qNum(color)}>{value ?? 0}</div>
+                <div style={S.qLabel}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── ACTIVE USERS ── */}
+        {activeUsers.length > 0 && (
+          <div style={S.section}>
+            <div style={S.sectionTitle}>🟢 Active Users ({activeUsers.length})</div>
+            {activeUsers.map(u => (
+              <div key={u.id} style={S.userRow}>
+                <span style={{ color: '#3fb950', fontWeight: 700 }}>{u.id}</span>
+                <span style={S.toolBadge}>{u.tool}</span>
+                <span style={{ color: '#8b949e' }}>{timeAgo(u.since)}</span>
+              </div>
+            ))}
           </div>
         )}
 
-        {data && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.4s ease' }}>
+        {/* ── TABS ── */}
+        <div style={S.section}>
+          <div style={S.tabs}>
+            <button style={S.tab(tab === 'errors')} onClick={() => setTab('errors')}>
+              🔴 Errors ({errors.length})
+            </button>
+            <button style={S.tab(tab === 'tools')} onClick={() => setTab('tools')}>
+              📊 Tool Stats ({TOOL_NAMES.length})
+            </button>
+            <button style={S.tab(tab === 'live')} onClick={() => setTab('live')}>
+              📡 Live Feed ({liveTools.length})
+            </button>
+          </div>
 
-            {/* Stat Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-              <StatCard icon="🔄" label="Active Jobs" value={data.live.activeUsers} color="#6366f1" sub={`${data.queue?.waiting ?? 0} waiting`} />
-              <StatCard icon="✅" label="Success Rate" value={`${successRate}%`} color="#22c55e" sub={`${g?.jobsToday ?? 0} jobs today`} />
-              <StatCard icon="❌" label="Failed" value={g?.failedCount ?? 0} color="#ef4444" sub={`${data.failStats.last5m} in last 5m`} />
-              <StatCard icon="👥" label="Users Today" value={data.userStats?.activeToday ?? '—'} color="#a78bfa" sub={`${data.userStats?.totalUsers ?? 0} total`} />
-              <StatCard icon="🕒" label="Uptime" value={fmtUptime(data.uptime)} color="#38bdf8" sub={`PID ${data.pid}`} />
-              <StatCard icon="📦" label="Total Jobs" value={(g?.totalJobs ?? 0).toLocaleString()} color="#fb923c" sub="all time" />
-            </div>
-
-            {/* System Health */}
-            {data.system && (
-              <div style={{ background: '#1a1d27', border: '1px solid #2a2d3d', borderRadius: 12, padding: '18px 20px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', marginBottom: 14 }}>System Resources</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
-                  <Bar value={data.system.cpu} color="#6366f1" label="CPU" />
-                  <Bar value={data.system.memPct} color="#a78bfa" label="Memory" />
+          {/* ERRORS TAB */}
+          {tab === 'errors' && (
+            <div>
+              {errors.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '30px 0', color: '#3fb950', fontSize: 13 }}>
+                  ✅ No active errors
                 </div>
-                <div style={{ marginTop: 10, fontSize: 11, color: '#4b5563' }}>
-                  Memory: {fmtBytes(data.system.memUsed)} used
-                  {data.system.memTotal ? ` / ${fmtBytes(data.system.memTotal)}` : ''}
-                  {' · '}Snapshot age: {data.system.age}s
-                </div>
-              </div>
-            )}
-
-            {/* Queue Status */}
-            {data.queue && (
-              <div style={{ background: '#1a1d27', border: '1px solid #2a2d3d', borderRadius: 12, padding: '18px 20px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', marginBottom: 14 }}>BullMQ Queue</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                  {[
-                    { label: 'Waiting', value: data.queue.waiting, color: '#f59e0b' },
-                    { label: 'Active', value: data.queue.active, color: '#6366f1' },
-                    { label: 'Completed', value: data.queue.completed, color: '#22c55e' },
-                    { label: 'Failed', value: data.queue.failed, color: '#ef4444' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} style={{ textAlign: 'center', background: '#12151f', borderRadius: 8, padding: '12px 8px', border: '1px solid #1e2235' }}>
-                      <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Main Content Tabs */}
-            <div style={{ background: '#1a1d27', border: '1px solid #2a2d3d', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', borderBottom: '1px solid #2a2d3d', padding: '0 4px' }}>
-                {[
-                  { id: 'errors', label: `Errors (${allErrors.length})`, icon: '🔴' },
-                  { id: 'tools', label: `Tool Stats (${data.toolStats.length})`, icon: '📊' },
-                  { id: 'live', label: `Live Feed (${data.live.byTool.length} tools)`, icon: '📡' },
-                ].map(tab => (
-                  <button key={tab.id} onClick={() => setActiveTab(tab.id as typeof activeTab)} style={{
-                    background: 'none', border: 'none', cursor: 'pointer', padding: '14px 16px', fontSize: 13, fontWeight: activeTab === tab.id ? 700 : 500,
-                    color: activeTab === tab.id ? '#818cf8' : '#6b7280', borderBottom: `2px solid ${activeTab === tab.id ? '#6366f1' : 'transparent'}`,
-                    transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
-                  }}>
-                    {tab.icon} {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ padding: 0, minHeight: 300 }}>
-
-                {/* Errors Tab */}
-                {activeTab === 'errors' && (
-                  <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {allErrors.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px 0', color: '#22c55e', fontSize: 16 }}>
-                        ✅ No errors recorded
+              )}
+              {errors.map(err => {
+                const isDiagnosing = diagId === err.id
+                const diagResult   = diagMap[err.id]
+                return (
+                  <div key={err.id} className="err-card" style={S.errorCard(err.severity)}>
+                    <div style={S.errorTop}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={S.sevBadge(err.severity)}>{err.severity}</span>
+                        <span style={S.toolBadge}>{err.tool}</span>
+                        <span style={{ fontSize: 10, color: '#8b949e' }}>{timeAgo(err.createdAt)}</span>
                       </div>
-                    ) : allErrors.map((err, i) => {
-                      const sev = err.severity || 'medium'
-                      const sc  = SEVERITY_COLORS[sev] || '#6b7280'
-                      const sb  = SEVERITY_BG[sev] || '#1a1d27'
-                      return (
-                        <div key={i} style={{ background: sb, border: `1px solid ${sc}33`, borderRadius: 10, padding: '12px 14px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-                              <Badge text={sev} color={sc} bg={sb} />
-                              <span style={{ fontSize: 12, color: '#818cf8', fontFamily: 'monospace', background: '#0f1117', padding: '1px 7px', borderRadius: 4, border: '1px solid #1e2235' }}>{err.tool}</span>
-                              <span style={{ fontSize: 11, color: '#4b5563', marginLeft: 'auto' }}>{timeAgo(err.createdAt)}</span>
-                            </div>
-                            <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, wordBreak: 'break-word' }}>
-                              {err.message.slice(0, 280)}{err.message.length > 280 ? '…' : ''}
-                            </div>
+                      {!diagResult && (
+                        <button
+                          className="diagnose-btn"
+                          style={{ ...S.diagnoseBtn, opacity: isDiagnosing ? 0.7 : 1 }}
+                          onClick={() => !isDiagnosing && handleDiagnose(err)}
+                          disabled={isDiagnosing}
+                        >
+                          {isDiagnosing
+                            ? <span><span style={{ display: 'inline-block', animation: 'spin .8s linear infinite', marginRight: 5 }}>⟳</span>Diagnosing…</span>
+                            : '🔍 Diagnose'}
+                        </button>
+                      )}
+                    </div>
+                    <div style={S.errorMsg}>{err.msg}</div>
+                    {diagResult && (
+                      <div style={{ ...S.diagnosisBox, animation: 'fadeIn .3s ease' }}>
+                        <div style={S.diagRow}>
+                          <div style={S.diagLabel}>Root Cause</div>
+                          <div style={S.diagVal}>{diagResult.cause}</div>
+                        </div>
+                        <div style={S.diagRow}>
+                          <div style={S.diagLabel}>Recommended Fix</div>
+                          <div style={{ ...S.diagVal, color: '#3fb950' }}>{diagResult.fix}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ fontSize: 11, color: '#8b949e' }}>
+                            Confidence: <span style={{ color: '#79c0ff', fontWeight: 700 }}>{diagResult.confidence}%</span>
                           </div>
-                          <button onClick={() => setDiagnoseTarget({ tool: err.tool, message: err.message })} style={{
-                            flexShrink: 0, background: '#12151f', border: `1px solid ${sc}55`, borderRadius: 8,
-                            color: sc, cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: '6px 12px',
-                            letterSpacing: '0.04em', transition: 'all 0.15s', whiteSpace: 'nowrap',
-                          }}>
-                            🔍 Diagnose
+                          <button className="copy-btn" style={S.copyBtn} onClick={() => copyReport(err)}>
+                            {copiedId === err.id ? '✓ Copied!' : '📋 Copy Report'}
                           </button>
                         </div>
-                      )
-                    })}
+                      </div>
+                    )}
                   </div>
-                )}
-
-                {/* Tool Stats Tab */}
-                {activeTab === 'tools' && (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Tool</th>
-                          <th style={{ textAlign: 'right' }}>Total</th>
-                          <th style={{ textAlign: 'right' }}>Success</th>
-                          <th style={{ textAlign: 'right' }}>Failed</th>
-                          <th style={{ textAlign: 'right' }}>Rate</th>
-                          <th style={{ textAlign: 'right' }}>Avg Time</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.toolStats.length === 0 ? (
-                          <tr><td colSpan={7} style={{ textAlign: 'center', color: '#4b5563', padding: '30px 0' }}>No data yet</td></tr>
-                        ) : data.toolStats.map(t => {
-                          const rate = t.total > 0 ? (t.success / t.total * 100) : 100
-                          const rc = rate > 90 ? '#22c55e' : rate > 70 ? '#f59e0b' : '#ef4444'
-                          return (
-                            <tr key={t.tool}>
-                              <td><span style={{ fontFamily: 'monospace', fontSize: 12, color: '#818cf8' }}>{t.tool}</span></td>
-                              <td style={{ textAlign: 'right', fontWeight: 600 }}>{t.total}</td>
-                              <td style={{ textAlign: 'right', color: '#22c55e' }}>{t.success}</td>
-                              <td style={{ textAlign: 'right', color: t.failed > 0 ? '#ef4444' : '#6b7280' }}>{t.failed}</td>
-                              <td style={{ textAlign: 'right' }}>
-                                <span style={{ color: rc, fontWeight: 700, fontSize: 12 }}>{rate.toFixed(1)}%</span>
-                              </td>
-                              <td style={{ textAlign: 'right', color: '#94a3b8' }}>{fmtMs(t.avgMs)}</td>
-                              <td>
-                                {t.failed > 0 && (
-                                  <button onClick={() => setDiagnoseTarget({ tool: t.tool, message: `Tool has ${t.failed} failures (${(100 - rate).toFixed(1)}% error rate)` })} style={{ background: '#12151f', border: '1px solid #ef444433', borderRadius: 6, color: '#ef4444', cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: '3px 9px' }}>
-                                    Diagnose
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Live Feed Tab */}
-                {activeTab === 'live' && (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Tool</th>
-                          <th>Status</th>
-                          <th style={{ textAlign: 'right' }}>Duration</th>
-                          <th style={{ textAlign: 'right' }}>When</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.live.byTool.length === 0 ? (
-                          <tr><td colSpan={3} style={{ textAlign: 'center', color: '#4b5563', padding: '30px 0' }}>No activity in the last 10 seconds</td></tr>
-                        ) : data.live.byTool.map((t, i) => (
-                          <tr key={i}>
-                            <td><span style={{ fontFamily: 'monospace', fontSize: 12, color: '#818cf8' }}>{t.tool}</span></td>
-                            <td><span style={{ color: '#22c55e', fontSize: 12, fontWeight: 600 }}>{t.count} job{t.count !== 1 ? 's' : ''}</span></td>
-                            <td style={{ textAlign: 'right', color: '#4b5563' }}>last 10s</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                )
+              })}
             </div>
+          )}
 
-            {/* Footer */}
-            <div style={{ textAlign: 'center', fontSize: 11, color: '#2a2d3d', paddingBottom: 16 }}>
-              Toolify Ops Dashboard · Auto-refreshes every 5s · {data.nodeEnv?.toUpperCase()} environment
+          {/* TOOL STATS TAB */}
+          {tab === 'tools' && (
+            <div>
+              {TOOL_NAMES.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: '#8b949e' }}>
+                  No tool activity yet — run a conversion to see stats here
+                </div>
+              )}
+              {TOOL_NAMES.map(tool => {
+                const events  = liveTools.filter(e => e.tool === tool)
+                const success = events.filter(e => e.ok).length
+                const fail    = events.filter(e => !e.ok).length
+                const total   = success + fail
+                const pct     = total > 0 ? (success / total) * 100 : 100
+                return (
+                  <div key={tool} style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                      <span style={S.toolBadge}>{tool}</span>
+                      <span>
+                        <span style={{ color: '#3fb950' }}>✓ {success}</span>
+                        <span style={{ color: '#8b949e', margin: '0 4px' }}>/</span>
+                        <span style={{ color: '#f85149' }}>✗ {fail}</span>
+                        <span style={{ color: '#8b949e', marginLeft: 8 }}>{pct.toFixed(0)}%</span>
+                      </span>
+                    </div>
+                    <div style={S.barTrack}>
+                      <div style={{
+                        height: '100%', borderRadius: 3, transition: 'width .7s ease',
+                        width: `${pct}%`,
+                        background: pct > 80 ? '#3fb950' : pct > 50 ? '#d29922' : '#f85149',
+                      }} />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
+          )}
 
-          </div>
-        )}
+          {/* LIVE FEED TAB */}
+          {tab === 'live' && (
+            <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {liveTools.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: '#8b949e' }}>
+                  Waiting for events…
+                </div>
+              )}
+              {liveTools.map(e => (
+                <div key={e.id} style={S.liveRow(e.ok)}>
+                  <span>{e.ok ? '✓' : '✗'}</span>
+                  <span style={S.toolBadge}>{e.tool}</span>
+                  <span style={{ color: '#8b949e', marginLeft: 'auto' }}>{timeAgo(e.ts)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
