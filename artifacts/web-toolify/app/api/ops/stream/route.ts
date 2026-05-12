@@ -22,8 +22,8 @@ const SNAP_MS         = 1_000
 const PING_MS         = 25_000
 const WORKER_CHECK_MS = 30_000
 
-// Known BullMQ queue names (matches workers started in instrumentation)
-const QUEUE_NAMES = ['pdf', 'image', 'ocr', 'document']
+// Known BullMQ queue names — MUST match QUEUE_NAMES in lib/queue/bullmq-backend.ts
+const QUEUE_NAMES = ['toolify-pdf', 'toolify-image', 'toolify-ocr', 'toolify-document']
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,27 +37,56 @@ interface OpsError {
   diagnosis?: { cause: string; fix: string; confidence: number }
 }
 
-interface OpsPayload {
-  activeJobs:    number
+interface ResolvedErrorEntry {
+  id:         string
+  tool:       string
+  msg:        string
+  severity:   string
+  errorType:  string
+  createdAt:  number
+  resolvedAt: number
+}
+
+interface ToolStat {
+  name:          string
+  count:         number
   successRate:   number
-  successCount:  number
-  failedCount:   number
-  usersToday:    number
-  uptimeSeconds: number
-  totalJobs:     number
-  pid:           number
-  cpu:           number
-  ram:           number
-  memoryMB:      number
-  snapshotAge:   number
-  queue:         { waiting: number; active: number; completed: number; failed: number }
-  redisOk:       boolean
-  sqliteOk:      boolean
-  supabaseOk:    boolean
-  errors:        OpsError[]
-  liveTools:     Array<{ id: number; tool: string; ok: boolean; ts: number }>
-  activeUsers:   Array<{ id: string; tool: string; since: number }>
-  workers:       Array<{ queueName: string; status: string; addr: string; lastSeen: number }>
+  avgDurationMs: number
+  failureRate:   number
+}
+
+interface SecurityStats {
+  failedAuthLast24h:   number
+  rateLimitHitsLast1h: number
+  topOffendingIps:     Array<{ ip: string; count: number }>
+  threatLevel:         'none' | 'low' | 'medium' | 'high'
+  recentEvents:        Array<{ type: string; ip: string; ts: number; detail?: string }>
+}
+
+interface OpsPayload {
+  activeJobs:     number
+  successRate:    number
+  successCount:   number
+  failedCount:    number
+  usersToday:     number
+  uptimeSeconds:  number
+  totalJobs:      number
+  pid:            number
+  cpu:            number
+  ram:            number
+  memoryMB:       number
+  snapshotAge:    number
+  queue:          { waiting: number; active: number; completed: number; failed: number }
+  redisOk:        boolean
+  sqliteOk:       boolean
+  supabaseOk:     boolean
+  errors:         OpsError[]
+  resolvedErrors: ResolvedErrorEntry[]
+  liveTools:      Array<{ id: number; tool: string; ok: boolean; ts: number }>
+  activeUsers:    Array<{ id: string; tool: string; since: number }>
+  workers:        Array<{ queueName: string; status: string; addr: string; lastSeen: number }>
+  toolStats:      ToolStat[]
+  securityStats:  SecurityStats
 }
 
 // ── Worker health poll — #11 ──────────────────────────────────────────────────
@@ -124,10 +153,12 @@ async function buildOpsPayload(): Promise<OpsPayload> {
   const [
     { getSystemSnapshot, getQueueSnapshot, getConnectivitySnapshot, snapshotAge },
     { getLiveEvents },
-    { dbReadGlobalStats, dbReadUserStats, dbReadAllDetailedErrors },
-    { getActiveUsers },
+    { dbReadGlobalStats, dbReadUserStats, dbReadAllDetailedErrors, dbReadToolStats },
+    { getUniqueActiveUsersByIp },
     { syncFromLiveEvents, isErrorActive },
     { getWorkerHealth, seedQueues },
+    { getSecurityStats },
+    { addResolvedError, getResolvedErrors },
   ] = await Promise.all([
     import('@/lib/telegram/analytics-cache'),
     import('@/lib/telegram/analytics'),
@@ -135,6 +166,8 @@ async function buildOpsPayload(): Promise<OpsPayload> {
     import('@/lib/monitoring/active-users'),
     import('@/lib/monitoring/error-resolver'),
     import('@/lib/monitoring/worker-health'),
+    import('@/lib/monitoring/security-monitor'),
+    import('@/lib/monitoring/resolved-errors'),
   ])
 
   // Seed known queues so they appear before first BullMQ poll
@@ -147,31 +180,53 @@ async function buildOpsPayload(): Promise<OpsPayload> {
   const userStats    = dbReadUserStats()
   const rawErrors    = dbReadAllDetailedErrors(20)
   const liveEvents   = getLiveEvents(100)
-  const activeUsers  = getActiveUsers()
+  const activeUsers  = getUniqueActiveUsersByIp()
   const workerHealth = getWorkerHealth()
+  const toolStats    = dbReadToolStats()
+  const secStats     = getSecurityStats()
 
-  // #6 — sync error-resolver with latest live events, then filter resolved errors
+  // Sync error-resolver with latest live events
   syncFromLiveEvents(liveEvents)
 
-  const errors: OpsError[] = rawErrors
-    .filter(e => isErrorActive(e.service || 'unknown', e.createdAt))
-    .map((e, i) => ({
-      id:        `err-${e.createdAt}-${i}`,
-      type:      e.errorType || 'Error',
-      tool:      e.service   || 'unknown',
-      severity:  (e.severity || 'medium').toUpperCase(),
-      msg:       e.rawMessage || '',
-      createdAt: e.createdAt,
-      ...(e.rootCause ? {
-        diagnosis: {
-          cause:      e.rootCause,
-          fix:        e.fix || 'Review the error details and restart the affected service.',
-          confidence: 85,
-        },
-      } : {}),
-    }))
+  // Partition errors into active vs resolved, and persist newly-resolved ones
+  const errors: OpsError[] = []
+  for (let i = 0; i < rawErrors.length; i++) {
+    const e   = rawErrors[i]
+    const id  = `err-${e.createdAt}-${i}`
+    const active = isErrorActive(e.service || 'unknown', e.createdAt)
+    if (active) {
+      errors.push({
+        id,
+        type:      e.errorType || 'Error',
+        tool:      e.service   || 'unknown',
+        severity:  (e.severity || 'medium').toUpperCase(),
+        msg:       e.rawMessage || '',
+        createdAt: e.createdAt,
+        ...(e.rootCause ? {
+          diagnosis: {
+            cause:      e.rootCause,
+            fix:        e.fix || 'Review the error details and restart the affected service.',
+            confidence: 85,
+          },
+        } : {}),
+      })
+    } else {
+      // Error was resolved — persist it to the resolved store
+      addResolvedError({
+        id,
+        tool:       e.service   || 'unknown',
+        msg:        (e.rawMessage || '').slice(0, 300),
+        severity:   (e.severity  || 'medium').toUpperCase(),
+        errorType:  e.errorType  || 'Error',
+        createdAt:  e.createdAt,
+        resolvedAt: Date.now(),
+      })
+    }
+  }
 
-  // #11 — kick off worker health refresh (non-blocking, every 30 s)
+  const resolvedErrors = getResolvedErrors()
+
+  // Kick off worker health refresh (non-blocking, every 30 s)
   void refreshWorkerHealth()
 
   return {
@@ -197,19 +252,27 @@ async function buildOpsPayload(): Promise<OpsPayload> {
     sqliteOk:   connectivity?.dbOk       ?? false,
     supabaseOk: connectivity?.supabaseOk ?? false,
     errors,
+    resolvedErrors,
     liveTools: liveEvents.map(j => ({ id: j.ts, tool: j.type, ok: j.success, ts: j.ts })),
     activeUsers: activeUsers.map(u => ({
-      id:    u.id.slice(0, 8).toUpperCase(),
-      tool:  u.tool || '—',
+      id:    u.ip || u.id.slice(0, 12).toUpperCase(),
+      tool:  u.tool   || '—',
       since: u.since,
     })),
-    // #11 — worker health (new field, dashboard can display or ignore)
     workers: workerHealth.map(w => ({
       queueName: w.queueName,
       status:    w.status,
       addr:      w.addr,
       lastSeen:  w.lastSeen,
     })),
+    toolStats,
+    securityStats: {
+      failedAuthLast24h:   secStats.failedAuthLast24h,
+      rateLimitHitsLast1h: secStats.rateLimitHitsLast1h,
+      topOffendingIps:     secStats.topOffendingIps,
+      threatLevel:         secStats.threatLevel,
+      recentEvents:        secStats.recentEvents,
+    },
   }
 }
 

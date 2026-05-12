@@ -32,7 +32,7 @@ function getMap(): Map<string, ActiveUserEntry> {
   return g[KEY]
 }
 
-const STALE_AFTER_MS = 5 * 60_000
+const STALE_AFTER_MS = 2 * 60_000
 
 /**
  * Add or update a user record. Called before and after each tool invocation.
@@ -96,6 +96,23 @@ export function getActiveUsers(): ActiveUserEntry[] {
 export function getActiveUserCount(): number {
   pruneStaleUsers()
   return getMap().size
+}
+
+/**
+ * Get unique active users deduplicated by masked IP.
+ * When the same IP has multiple sessions open (multiple browser tabs),
+ * only the most-recently-seen entry is returned.
+ */
+export function getUniqueActiveUsersByIp(): ActiveUserEntry[] {
+  pruneStaleUsers()
+  const byIp = new Map<string, ActiveUserEntry>()
+  for (const u of getMap().values()) {
+    const existing = byIp.get(u.ip)
+    if (!existing || u.lastSeen > existing.lastSeen) {
+      byIp.set(u.ip, u)
+    }
+  }
+  return [...byIp.values()].sort((a, b) => b.lastSeen - a.lastSeen)
 }
 
 /** Mask IP for privacy — shows first 3 octets only */

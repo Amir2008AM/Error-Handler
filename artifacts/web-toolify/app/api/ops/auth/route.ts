@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'node:crypto'
+import { recordFailedAuth } from '@/lib/monitoring/security-monitor'
 
 export const runtime = 'nodejs'
 
@@ -20,6 +21,10 @@ export async function POST(request: NextRequest) {
   const key = (body.key ?? '').trim()
 
   if (!key || key !== adminKey) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      ?? request.headers.get('x-real-ip')
+      ?? 'unknown'
+    recordFailedAuth(ip)
     return new NextResponse('Not Found', { status: 404 })
   }
 
