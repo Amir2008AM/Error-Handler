@@ -1307,8 +1307,11 @@ export default function SystemMonitorDashboard() {
         )}
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', fontSize: 11, color: '#1e2235', paddingBottom: 16 }}>
-          Toolify System Monitor v2 · SSE real-time · {snap?.meta?.nodeEnv?.toUpperCase() ?? '…'} · Route: /internal/system-monitor-v2
+        <div style={{ textAlign: 'center', fontSize: 11, color: '#1e2235', paddingBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <span>Toolify System Monitor v2 · SSE real-time · {snap?.meta?.nodeEnv?.toUpperCase() ?? '…'} · Route: /internal/system-monitor-v2</span>
+          <a href="/internal/dev-test" style={{ color: '#6366f1', fontWeight: 700, textDecoration: 'none', fontSize: 11 }}>
+            ⚙ Dev Test Mode →
+          </a>
         </div>
       </div>
 
