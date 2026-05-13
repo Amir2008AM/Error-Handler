@@ -48,3 +48,7 @@ Thumbs.db
 .cache/
 .local/
 .env
+
+# Redis runtime files
+dump.rdb
+*.rdb
