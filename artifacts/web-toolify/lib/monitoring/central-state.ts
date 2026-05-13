@@ -75,6 +75,7 @@ export interface SecurityStatsShape {
 }
 
 export interface OpsSnapshot {
+  // ── Core counters ───────────────────────────────────────────────────────────
   activeJobs:     number
   totalJobs:      number
   successCount:   number
@@ -91,13 +92,24 @@ export interface OpsSnapshot {
   redisOk:        boolean
   sqliteOk:       boolean
   supabaseOk:     boolean
+  // ── Error / event lists ─────────────────────────────────────────────────────
   errors:         OpsErrorEntry[]
   resolvedErrors: OpsResolvedEntry[]
   liveTools:      Array<{ id: number; tool: string; ok: boolean; ts: number }>
-  activeUsers:    Array<{ id: string; tool: string; since: number }>
-  toolStats:      OpsToolStat[]
+  // ── Per-entity maps ─────────────────────────────────────────────────────────
+  activeUsers:    Array<{ id: string; ip: string; tool: string | null; since: number; lastSeen: number; status: string }>
+  toolStats:      Record<string, { calls: number; success: number; fail: number; durations: number[]; enabled: boolean }>
   securityStats:  SecurityStatsShape
   disabledTools:  string[]
+  // ── Alias fields (new dashboard) ────────────────────────────────────────────
+  uptime:      number
+  failCount:   number
+  memMB:       number
+  snapAge:     number
+  secFailed:   number
+  secRateHits: number
+  events:      Array<{ id: string; ts: number; type: string; tool: string; msg: string }>
+  alerts:      Array<{ type: string; msg: string }>
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -290,29 +302,40 @@ export function getOpsSnapshot(): OpsSnapshot {
   const t     = store.total
   const s     = store.success
 
-  // Tool stats: sorted by call count (most used first)
-  const toolStats: OpsToolStat[] = [...store.tools.entries()]
-    .map(([name, acc]) => ({
-      name,
-      count:         acc.calls,
-      successRate:   acc.calls > 0 ? Math.round((acc.success / acc.calls) * 100) : 100,
-      avgDurationMs: acc.calls > 0 ? Math.round(acc.totalMs / acc.calls) : 0,
-      failureRate:   acc.calls > 0 ? Math.round((acc.fail    / acc.calls) * 100) : 0,
-    }))
-    .sort((a, b) => b.count - a.count)
+  // ── Disabled tools ──────────────────────────────────────────────────────────
+  let disabledList: string[] = []
+  try {
+    const { getDisabledTools } = require('../tool-guard') as typeof import('../tool-guard')
+    disabledList = getDisabledTools()
+  } catch {}
 
-  // Active users (read from in-memory store, IP-deduplicated)
+  // ── Tool stats (Record format for new dashboard) ─────────────────────────────
+  const toolStats: OpsSnapshot['toolStats'] = {}
+  for (const [name, acc] of store.tools.entries()) {
+    toolStats[name] = {
+      calls:    acc.calls,
+      success:  acc.success,
+      fail:     acc.fail,
+      durations: [], // individual durations not stored; use totalMs/calls for avg
+      enabled:  !disabledList.includes(name),
+    }
+  }
+
+  // ── Active users (IP-deduplicated) ───────────────────────────────────────────
   let activeUsers: OpsSnapshot['activeUsers'] = []
   try {
     const { getUniqueActiveUsersByIp } = require('./active-users') as typeof import('./active-users')
     activeUsers = getUniqueActiveUsersByIp().map((u) => ({
-      id:    u.ip || u.id.slice(0, 12).toUpperCase(),
-      tool:  u.tool  || '—',
-      since: u.since,
+      id:       u.ip || u.id.slice(0, 12).toUpperCase(),
+      ip:       u.ip || 'unknown',
+      tool:     u.tool || null,
+      since:    u.since,
+      lastSeen: u.lastSeen,
+      status:   u.status,
     }))
   } catch {}
 
-  // Security stats (read from security-monitor globalThis store)
+  // ── Security stats ───────────────────────────────────────────────────────────
   let securityStats: SecurityStatsShape = {
     failedAuthLast24h: 0, rateLimitHitsLast1h: 0,
     topOffendingIps: [], threatLevel: 'none', recentEvents: [],
@@ -322,14 +345,33 @@ export function getOpsSnapshot(): OpsSnapshot {
     securityStats = getSecurityStats()
   } catch {}
 
+  // ── Live events ──────────────────────────────────────────────────────────────
+  const events: OpsSnapshot['events'] = store.events.slice(0, 100).map((e, i) => ({
+    id:   `${e.ts}-${i}`,
+    ts:   e.ts,
+    type: e.ok ? 'success' : 'error',
+    tool: e.tool,
+    msg:  e.ok ? `${e.tool} completed successfully` : `${e.tool} failed`,
+  }))
+
+  // ── System alerts ────────────────────────────────────────────────────────────
+  const alerts: OpsSnapshot['alerts'] = []
+  if (sys.cpu  > 90) alerts.push({ type: 'critical', msg: `High CPU usage: ${sys.cpu.toFixed(1)}%` })
+  if (sys.ram  > 90) alerts.push({ type: 'critical', msg: `High memory usage: ${sys.ram.toFixed(1)}%` })
+  if (t > 0 && (store.fail / t) > 0.2) alerts.push({ type: 'warning', msg: `High error rate: ${((store.fail / t) * 100).toFixed(1)}%` })
+  if (sys.waiting > 50) alerts.push({ type: 'warning', msg: `Large queue backlog: ${sys.waiting} jobs waiting` })
+
+  const uptimeSec = Math.round(process.uptime())
+
   return {
+    // ── Original fields ──────────────────────────────────────────────────────
     activeJobs:     sys.activeJobs,
     totalJobs:      t,
     successCount:   s,
     failedCount:    store.fail,
     successRate:    t > 0 ? Math.round((s / t) * 100) : 100,
     usersToday:     store.usersToday,
-    uptimeSeconds:  Math.round(process.uptime()),
+    uptimeSeconds:  uptimeSec,
     pid:            process.pid,
     cpu:            sys.cpu,
     ram:            sys.ram,
@@ -355,12 +397,16 @@ export function getOpsSnapshot(): OpsSnapshot {
     activeUsers,
     toolStats,
     securityStats,
-    disabledTools: (() => {
-      try {
-        const { getDisabledTools } = require('../tool-guard') as typeof import('../tool-guard')
-        return getDisabledTools()
-      } catch { return [] }
-    })(),
+    disabledTools: disabledList,
+    // ── Alias / new dashboard fields ─────────────────────────────────────────
+    uptime:      uptimeSec,
+    failCount:   store.fail,
+    memMB:       sys.memoryMB,
+    snapAge:     sys.age,
+    secFailed:   securityStats.failedAuthLast24h,
+    secRateHits: securityStats.rateLimitHitsLast1h,
+    events,
+    alerts,
   }
 }
 
