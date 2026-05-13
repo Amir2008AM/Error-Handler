@@ -97,6 +97,7 @@ export interface OpsSnapshot {
   activeUsers:    Array<{ id: string; tool: string; since: number }>
   toolStats:      OpsToolStat[]
   securityStats:  SecurityStatsShape
+  disabledTools:  string[]
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -354,6 +355,12 @@ export function getOpsSnapshot(): OpsSnapshot {
     activeUsers,
     toolStats,
     securityStats,
+    disabledTools: (() => {
+      try {
+        const { getDisabledTools } = require('../tool-guard') as typeof import('../tool-guard')
+        return getDisabledTools()
+      } catch { return [] }
+    })(),
   }
 }
 

@@ -77,6 +77,7 @@ interface OpsData {
   activeUsers:    ActiveUser[]
   toolStats:      ToolStat[]
   securityStats:  SecurityStats
+  disabledTools:  string[]
 }
 
 interface DiagResult { cause: string; fix: string; confidence: number }
@@ -318,6 +319,9 @@ export default function OpsDashboard() {
   const [lastUpdate, setLastUpdate] = useState<number | null>(null)
   const [connected, setConnected]   = useState(false)
   const [needsAuth, setNeedsAuth]   = useState(false)
+  const [toggleBusy, setToggleBusy] = useState<Record<string, boolean>>({})
+  const [testBusy, setTestBusy]     = useState<Record<string, boolean>>({})
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; durationMs: number; error: string | null }>>({})
 
   const esRef      = useRef<EventSource | null>(null)
   const retryRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -376,6 +380,40 @@ export default function OpsDashboard() {
     setCopiedId(err.id)
     setTimeout(() => setCopiedId(null), 2000)
   }, [diagMap])
+
+  // ── Toggle tool enabled / disabled ─────────────────────────────────────────
+
+  const handleToggle = useCallback(async (toolName: string) => {
+    if (toggleBusy[toolName]) return
+    setToggleBusy(prev => ({ ...prev, [toolName]: true }))
+    try {
+      await fetch(`/api/ops/tool/${encodeURIComponent(toolName)}/toggle`, {
+        method: 'POST', credentials: 'include',
+      })
+    } catch {}
+    setToggleBusy(prev => ({ ...prev, [toolName]: false }))
+  }, [toggleBusy])
+
+  // ── Test tool ──────────────────────────────────────────────────────────────
+
+  const handleTest = useCallback(async (toolName: string) => {
+    if (testBusy[toolName]) return
+    setTestBusy(prev => ({ ...prev, [toolName]: true }))
+    try {
+      const r   = await fetch(`/api/ops/tool/${encodeURIComponent(toolName)}/test`, {
+        method: 'POST', credentials: 'include',
+      })
+      const res = await r.json() as { success: boolean; durationMs: number; error: string | null }
+      setTestResults(prev => ({ ...prev, [toolName]: res }))
+      setTimeout(() => setTestResults(prev => { const n = { ...prev }; delete n[toolName]; return n }), 10_000)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Network error'
+      setTestResults(prev => ({ ...prev, [toolName]: { success: false, durationMs: 0, error: msg } }))
+      setTimeout(() => setTestResults(prev => { const n = { ...prev }; delete n[toolName]; return n }), 10_000)
+    } finally {
+      setTestBusy(prev => ({ ...prev, [toolName]: false }))
+    }
+  }, [testBusy])
 
   // ── SSE connection with exponential backoff ────────────────────────────────
 
@@ -794,26 +832,81 @@ export default function OpsDashboard() {
                   No tool activity recorded yet — run a conversion to see stats here
                 </div>
               )}
-              {toolStats.map(t => (
-                <div key={t.name} style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                    <span style={S.toolBadge}>{t.name}</span>
-                    <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <span style={{ color: '#8b949e' }}>{t.count.toLocaleString()}×</span>
-                      <span style={{ color: '#3fb950' }}>✓ {t.successRate}%</span>
-                      <span style={{ color: '#8b949e' }}>avg {fmtMs(t.avgDurationMs)}</span>
-                      {t.failureRate > 0 && <span style={{ color: '#f85149' }}>✗ {t.failureRate}%</span>}
-                    </span>
+              {toolStats.map(t => {
+                const isDisabled = (data.disabledTools ?? []).includes(t.name)
+                const isTglBusy  = !!toggleBusy[t.name]
+                const isTstBusy  = !!testBusy[t.name]
+                const testResult = testResults[t.name]
+                return (
+                  <div key={t.name} style={{ marginBottom: 10, opacity: isDisabled ? 0.45 : 1, transition: 'opacity .3s' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
+                      {/* Left: name + toggle + test */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={S.toolBadge}>{t.name}</span>
+
+                        {/* ON / OFF toggle badge */}
+                        <button
+                          onClick={() => handleToggle(t.name)}
+                          disabled={isTglBusy}
+                          style={{
+                            fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px',
+                            border: 'none', cursor: isTglBusy ? 'default' : 'pointer',
+                            opacity: isTglBusy ? 0.6 : 1,
+                            background: isDisabled ? 'rgba(248,81,73,.18)' : 'rgba(63,185,80,.18)',
+                            color:      isDisabled ? '#f85149'              : '#3fb950',
+                            transition: 'background .25s, color .25s',
+                          }}
+                        >
+                          {isTglBusy ? '…' : isDisabled ? 'OFF' : 'ON'}
+                        </button>
+
+                        {/* Test button */}
+                        <button
+                          onClick={() => handleTest(t.name)}
+                          disabled={isTstBusy}
+                          style={{
+                            fontSize: 10, fontWeight: 600, borderRadius: 4, padding: '2px 8px',
+                            border: '1px solid #30363d', background: '#21262d', color: '#79c0ff',
+                            cursor: isTstBusy ? 'default' : 'pointer', opacity: isTstBusy ? 0.6 : 1,
+                          }}
+                        >
+                          {isTstBusy
+                            ? <span style={{ display: 'inline-block', animation: 'spin .7s linear infinite' }}>⟳</span>
+                            : '▶ Test'}
+                        </button>
+
+                        {/* Test result pill (auto-clears after 10 s) */}
+                        {testResult && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px',
+                            background: testResult.success ? 'rgba(63,185,80,.18)' : 'rgba(248,81,73,.18)',
+                            color:      testResult.success ? '#3fb950'              : '#f85149',
+                          }}>
+                            {testResult.success
+                              ? `✓ ${testResult.durationMs}ms`
+                              : `✗ ${(testResult.error ?? 'failed').slice(0, 40)}`}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Right: stats */}
+                      <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <span style={{ color: '#8b949e' }}>{t.count.toLocaleString()}×</span>
+                        <span style={{ color: '#3fb950' }}>✓ {t.successRate}%</span>
+                        <span style={{ color: '#8b949e' }}>avg {fmtMs(t.avgDurationMs)}</span>
+                        {t.failureRate > 0 && <span style={{ color: '#f85149' }}>✗ {t.failureRate}%</span>}
+                      </span>
+                    </div>
+                    <div style={S.barTrack}>
+                      <div style={{
+                        height: '100%', borderRadius: 3, transition: 'width .7s ease',
+                        width: `${t.successRate}%`,
+                        background: t.successRate > 90 ? '#3fb950' : t.successRate > 70 ? '#d29922' : '#f85149',
+                      }} />
+                    </div>
                   </div>
-                  <div style={S.barTrack}>
-                    <div style={{
-                      height: '100%', borderRadius: 3, transition: 'width .7s ease',
-                      width: `${t.successRate}%`,
-                      background: t.successRate > 90 ? '#3fb950' : t.successRate > 70 ? '#d29922' : '#f85149',
-                    }} />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
