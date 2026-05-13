@@ -4,6 +4,7 @@ import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import { LoadingBarProvider } from '@/components/global-loading-bar'
 import { I18nProvider } from '@/lib/i18n/context'
 import DisconnectBeacon from '@/components/disconnect-beacon'
+import HeartbeatBeacon from '@/components/heartbeat-beacon'
 import './globals.css'
 
 const inter = Inter({
@@ -95,6 +96,7 @@ export default function RootLayout({
           </>
         )}
         <DisconnectBeacon />
+        <HeartbeatBeacon />
         <I18nProvider>
           <LoadingBarProvider>
             {children}
