@@ -1,6 +1,6 @@
 'use client'
-import DeveloperDashboard from '@/components/developer-dashboard'
+import OpsDashboard from './dashboard'
 
 export default function OpsPage() {
-  return <DeveloperDashboard />
+  return <OpsDashboard />
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import DeveloperDashboard from '@/components/developer-dashboard'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,7 @@ interface OpsData {
 
 interface DiagResult { cause: string; fix: string; confidence: number }
 
-type TabId = 'errors' | 'tools' | 'live' | 'resolved' | 'security'
+type TabId = 'errors' | 'tools' | 'live' | 'resolved' | 'security' | 'dev-tools'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -697,6 +698,9 @@ export default function OpsDashboard() {
             <button style={S.tab(tab === 'security')} onClick={() => setTab('security')}>
               🔒 Security Log
             </button>
+            <button style={S.tab(tab === 'dev-tools')} onClick={() => setTab('dev-tools')}>
+              🛠 Dev Tools
+            </button>
           </div>
 
           {/* ACTIVE ERRORS TAB */}
@@ -881,6 +885,13 @@ export default function OpsDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* DEV TOOLS TAB */}
+          {tab === 'dev-tools' && (
+            <div style={{ margin: '0 -16px -14px', borderTop: '1px solid #21262d' }}>
+              <DeveloperDashboard />
             </div>
           )}
         </div>

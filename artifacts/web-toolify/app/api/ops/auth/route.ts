@@ -4,11 +4,28 @@ import { recordFailedAuth } from '@/lib/monitoring/security-monitor'
 
 export const runtime = 'nodejs'
 
-const COOKIE_NAME = 'ops_session'
+const COOKIE_NAME    = 'ops_session'
+const COOKIE_NAME_V2 = 'ops_session_v2'
 const COOKIE_MAX_AGE = 8 * 60 * 60 // 8 hours
 
 function makeToken(key: string): string {
   return createHmac('sha256', key).update('ops-session-v1').digest('hex')
+}
+
+function makeTokenV2(key: string): string {
+  return createHmac('sha256', key).update('ops-v2-session').digest('hex')
+}
+
+function setSessionCookies(response: NextResponse, adminKey: string): void {
+  const cookieOpts = {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax' as const,
+    maxAge: COOKIE_MAX_AGE,
+    path: '/',
+  }
+  response.cookies.set(COOKIE_NAME,    makeToken(adminKey),   cookieOpts)
+  response.cookies.set(COOKIE_NAME_V2, makeTokenV2(adminKey), cookieOpts)
 }
 
 /** POST /api/ops/auth  { key: string } → { ok: true } or 404 */
@@ -30,14 +47,7 @@ export async function POST(request: NextRequest) {
 
   const token = makeToken(adminKey)
   const response = NextResponse.json({ ok: true, token })
-  // Also set cookie as a convenience (works in same-site contexts)
-  response.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: COOKIE_MAX_AGE,
-    path: '/',
-  })
+  setSessionCookies(response, adminKey)
   return response
 }
 
@@ -50,15 +60,8 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Not Found', { status: 404 })
   }
 
-  const token = makeToken(adminKey)
   const response = NextResponse.redirect(new URL('/ops', request.url))
-  response.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: COOKIE_MAX_AGE,
-    path: '/',
-  })
+  setSessionCookies(response, adminKey)
   return response
 }
 
