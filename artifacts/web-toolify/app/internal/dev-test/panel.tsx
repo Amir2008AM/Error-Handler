@@ -208,10 +208,14 @@ function ToolItem({ tool, selected, toggling, onSelect, onToggle }: {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
-export default function DevDashboard() {
+interface TestPanelProps {
+  selectedToolId?: string
+}
+
+export default function DevDashboard({ selectedToolId }: TestPanelProps = {}) {
   const [tools,        setTools]        = useState<DashboardTool[]>([])
   const [loadingTools, setLoadingTools] = useState(true)
-  const [selectedSlug, setSelectedSlug] = useState('')
+  const [selectedSlug, setSelectedSlug] = useState(selectedToolId || '')
   const [toggling,     setToggling]     = useState<string | null>(null)
 
   const [testFile,    setTestFile]    = useState<File | null>(null)
@@ -245,6 +249,20 @@ export default function DevDashboard() {
     const id = setInterval(() => void fetchTools(true), 15_000)
     return () => clearInterval(id)
   }, [fetchTools])
+
+  // ── Auto-select tool when prop changes ─────────────────────────────────────────
+  useEffect(() => {
+    if (selectedToolId && tools.length > 0 && selectedSlug !== selectedToolId) {
+      if (selectedSlug === selectedToolId) return
+      setSelectedSlug(selectedToolId)
+      setTestFile(null); setTestFile2(null); setTestResult(null)
+      setDiagResult(null); setVerifyFile(null); setVerifyResult(null)
+      const cfg = TOOL_CONFIGS[selectedToolId]
+      const defs: Record<string, string> = {}
+      for (const p of cfg?.params ?? []) { if (p.default !== undefined) defs[p.name] = p.default }
+      setTestParams(defs)
+    }
+  }, [selectedToolId, tools.length])
 
   // ── Select tool ──────────────────────────────────────────────────────────────
   const handleSelect = (slug: string) => {
