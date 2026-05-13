@@ -1,697 +1,796 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { TOOL_CONFIGS } from './tool-configs'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Step {
-  name:       string
-  status:     'ok' | 'fail' | 'skip' | 'warn' | 'pending'
-  durationMs: number
-  detail?:    string
+interface DashboardTool {
+  id:           string
+  name:         string
+  category:     string
+  slug:         string
+  enabled:      boolean
+  hasTestConfig: boolean
+  engine:       string | null
+  endpoint:     string | null
+  steps:        string[]
+  lastRun:      { status: 'success' | 'failed'; totalMs: number; timestamp: number; error?: string } | null
+  lastFailure:  { timestamp: number; error?: string; steps: PStep[]; fileInfo: { name: string; size: number } } | null
+  testCount:    number
+  failureCount: number
 }
 
-interface OutputInfo {
-  fileId:      string
-  filename:    string
-  contentType: string
-  sizeBytes:   number
+interface PStep {
+  name: string; status: string; durationMs: number; detail?: string
 }
 
 interface TestResult {
-  tool?:       string
-  toolLabel?:  string
-  engine?:     string
-  endpoint?:   string
-  status:      'success' | 'failed'
+  tool?: string; toolLabel?: string; engine?: string; endpoint?: string
+  status: 'success' | 'failed'
   httpStatus?: number
-  steps:       Step[]
-  warnings:    string[]
-  metadata?:   Record<string, string | number | boolean>
-  output?:     OutputInfo
-  error?:      string
-  rawError?:   string
-  totalMs:     number
+  steps:    PStep[]
+  warnings: string[]
+  metadata?: Record<string, string | number | boolean>
+  output?:  { fileId: string; filename: string; contentType: string; sizeBytes: number }
+  error?:   string
+  rawError?: string
+  totalMs:  number
 }
 
-// ── Colours & helpers ─────────────────────────────────────────────────────────
+interface DiagResult {
+  toolSlug: string; toolName: string; category: string
+  enabled: boolean; hasTestConfig: boolean; engine: string
+  health: 'healthy' | 'warning' | 'error'
+  binaries: Record<string, string | null>
+  issues: string[]
+  recommendation: string
+  lastRun:     { status: string; timestamp: number; totalMs: number } | null
+  lastFailure: { timestamp: number; error?: string; steps: PStep[] } | null
+  testCount: number; failureCount: number; error?: string
+}
+
+// ── Color theme ───────────────────────────────────────────────────────────────
 
 const C = {
-  bg:       '#0f1117',
-  card:     '#161920',
-  border:   '#242736',
-  text:     '#e2e8f0',
-  muted:    '#6b7280',
-  accent:   '#6366f1',
-  ok:       '#22c55e',
-  fail:     '#ef4444',
-  warn:     '#f59e0b',
-  skip:     '#4b5563',
-  pending:  '#94a3b8',
+  bg: '#0d0f14', sidebar: '#0f1118', card: '#141720',
+  border: '#1e2235', border2: '#242736',
+  text: '#e2e8f0', muted: '#6b7280', dim: '#4b5563',
+  accent: '#6366f1', ok: '#22c55e', fail: '#ef4444', warn: '#f59e0b',
 }
 
-const stepColor: Record<Step['status'], string> = {
-  ok: C.ok, fail: C.fail, warn: C.warn, skip: C.skip, pending: C.pending,
-}
-const stepIcon: Record<Step['status'], string> = {
-  ok: '✓', fail: '✗', warn: '⚠', skip: '–', pending: '·',
-}
+// ── Utility ───────────────────────────────────────────────────────────────────
 
-function fmtBytes(b: number): string {
+function fmtBytes(b: number) {
   if (!b) return '—'
   if (b < 1024) return `${b} B`
   if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`
   return `${(b / 1048576).toFixed(2)} MB`
 }
-function fmtMs(ms: number): string {
-  if (!ms) return '—'
-  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`
+function fmtMs(ms: number) { return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s` }
+function fmtTime(ts: number) { return ts ? new Date(ts).toLocaleTimeString() : '—' }
+
+// ── Shared small components ───────────────────────────────────────────────────
+
+function Toggle({ on, onChange, loading }: { on: boolean; onChange: () => void; loading?: boolean }) {
+  return (
+    <div
+      role="switch" aria-checked={on}
+      onClick={loading ? undefined : onChange}
+      style={{ width: 38, height: 22, borderRadius: 11, background: on ? C.ok : '#374151', cursor: loading ? 'not-allowed' : 'pointer', position: 'relative', transition: 'background 0.2s', opacity: loading ? 0.6 : 1, flexShrink: 0 }}
+    >
+      <div style={{
+        position: 'absolute', top: 3, left: on ? 17 : 3, width: 16, height: 16, borderRadius: '50%',
+        background: '#fff', transition: 'left 0.18s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        ...(loading ? { border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.7s linear infinite' } : {}),
+      }} />
+    </div>
+  )
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function Label({ children }: { children: React.ReactNode }) {
+function Btn({ children, onClick, disabled, loading, color = C.accent, outline, fullWidth, big, small }: {
+  children: React.ReactNode; onClick?: () => void; disabled?: boolean; loading?: boolean
+  color?: string; outline?: boolean; fullWidth?: boolean; big?: boolean; small?: boolean
+}) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+    <button
+      onClick={disabled || loading ? undefined : onClick}
+      style={{
+        padding: big ? '11px 18px' : small ? '4px 10px' : '7px 14px',
+        borderRadius: 8, cursor: disabled || loading ? 'not-allowed' : 'pointer',
+        fontSize: big ? 13 : small ? 10 : 12, fontWeight: 700,
+        width: fullWidth ? '100%' : undefined,
+        border: outline ? `1px solid ${color}66` : 'none',
+        background: outline ? 'transparent' : disabled ? '#374151' : color,
+        color: outline ? color : disabled ? C.muted : '#fff',
+        opacity: loading ? 0.7 : 1, transition: 'opacity 0.15s',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      }}
+    >
+      {loading && <span style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />}
       {children}
-    </div>
+    </button>
   )
 }
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px', ...style }}>{children}</div>
+}
+
+function SectionHeader({ icon, children }: { icon?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '18px 20px', ...style }}>
-      {children}
+    <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
+      {icon && <span>{icon}</span>}{children}
     </div>
   )
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function StatusBadge({ enabled }: { enabled: boolean }) {
   return (
-    <div style={{
-      fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase',
-      letterSpacing: '0.07em', marginBottom: 12, paddingBottom: 8,
-      borderBottom: `1px solid ${C.border}`,
-    }}>
-      {children}
-    </div>
-  )
-}
-
-function StatusBadge({ status }: { status: 'success' | 'failed' }) {
-  const ok = status === 'success'
-  return (
-    <span style={{
-      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
-      color: ok ? C.ok : C.fail,
-      background: ok ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-      border: `1px solid ${ok ? C.ok : C.fail}44`,
-      letterSpacing: '0.05em', textTransform: 'uppercase',
-    }}>
-      {ok ? '✓ SUCCESS' : '✗ FAILED'}
+    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 5, color: enabled ? C.ok : C.fail, background: enabled ? `${C.ok}15` : `${C.fail}15`, border: `1px solid ${enabled ? C.ok : C.fail}44` }}>
+      {enabled ? '● ENABLED' : '● DISABLED'}
     </span>
   )
 }
 
-function StepRow({ step }: { step: Step }) {
-  const color = stepColor[step.status]
-  const icon  = stepIcon[step.status]
+function HealthBadge({ health }: { health: 'healthy' | 'warning' | 'error' }) {
+  const cfg = { healthy: { c: C.ok, l: '● Healthy' }, warning: { c: C.warn, l: '⚠ Warning' }, error: { c: C.fail, l: '✗ Error' } }[health]
+  return <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, color: cfg.c, background: `${cfg.c}15`, border: `1px solid ${cfg.c}33` }}>{cfg.l}</span>
+}
+
+function StepRow({ step }: { step: PStep }) {
+  const s = step.status
+  const color = s === 'ok' ? C.ok : s === 'fail' ? C.fail : s === 'warn' ? C.warn : s === 'skip' ? C.dim : C.muted
+  const icon  = s === 'ok' ? '✓' : s === 'fail' ? '✗' : s === 'warn' ? '⚠' : s === 'skip' ? '–' : '·'
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 10,
-      padding: '7px 0', borderBottom: `1px solid ${C.border}22`,
-    }}>
-      <span style={{
-        width: 20, height: 20, borderRadius: 4, display: 'flex', alignItems: 'center',
-        justifyContent: 'center', background: `${color}1a`, color, fontWeight: 700,
-        fontSize: 11, flexShrink: 0, marginTop: 1,
-      }}>
-        {icon}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <code style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-            {step.name}
-          </code>
-          {step.durationMs > 0 && (
-            <span style={{ fontSize: 10, color: C.muted }}>{fmtMs(step.durationMs)}</span>
-          )}
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '5px 0', borderBottom: `1px solid ${C.border}22` }}>
+      <span style={{ width: 18, height: 18, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}18`, color, fontWeight: 700, fontSize: 10, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <code style={{ fontSize: 11, fontWeight: 700, color, fontFamily: 'monospace', letterSpacing: '0.05em' }}>{step.name}</code>
+          {step.durationMs > 0 && <span style={{ fontSize: 10, color: C.muted }}>{fmtMs(step.durationMs)}</span>}
         </div>
-        {step.detail && (
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2, wordBreak: 'break-word' }}>
-            {step.detail}
-          </div>
-        )}
+        {step.detail && <div style={{ fontSize: 10, color: C.muted, marginTop: 2, wordBreak: 'break-word' }}>{step.detail}</div>}
       </div>
     </div>
   )
 }
 
-function MetaTable({ meta }: { meta: Record<string, string | number | boolean> }) {
-  const rows = Object.entries(meta).filter(([, v]) => v !== undefined && v !== null && v !== '')
-  if (!rows.length) return null
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-      {rows.map(([k, v]) => (
-        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: `1px solid ${C.border}44` }}>
-          <span style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            {k.replace(/_/g, ' ')}
-          </span>
-          <span style={{ fontSize: 11, color: C.text, fontWeight: 600 }}>
-            {typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v)}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function OutputPreview({ output }: { output: OutputInfo }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [textContent, setTextContent] = useState<string | null>(null)
-  const isImage = output.contentType.startsWith('image/')
-  const isText  = output.contentType.startsWith('text/')
-  const downloadUrl = `/api/files/${output.fileId}`
-
-  useEffect(() => {
-    if (isImage) {
-      fetch(downloadUrl)
-        .then(r => r.blob())
-        .then(blob => setPreviewUrl(URL.createObjectURL(blob)))
-        .catch(() => {})
-    } else if (isText && output.sizeBytes < 50_000) {
-      fetch(downloadUrl)
-        .then(r => r.text())
-        .then(t => setTextContent(t))
-        .catch(() => {})
-    }
-    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [output.fileId])
-
-  return (
-    <div>
-      <SectionTitle>Output Preview</SectionTitle>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 12, color: C.text }}>
-          <strong>{output.filename}</strong>
-          <span style={{ color: C.muted, marginLeft: 8 }}>{fmtBytes(output.sizeBytes)}</span>
-          <span style={{ color: C.muted, marginLeft: 8 }}>{output.contentType}</span>
-        </div>
-        <a
-          href={downloadUrl}
-          download={output.filename}
-          style={{
-            padding: '6px 16px', borderRadius: 8, background: C.accent,
-            color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none',
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-          }}
-        >
-          ↓ Download
-        </a>
-      </div>
-
-      {isImage && previewUrl && (
-        <div style={{
-          border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden',
-          maxHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: '#0a0c10',
-        }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewUrl} alt="Output preview" style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain' }} />
-        </div>
-      )}
-
-      {isText && textContent !== null && (
-        <pre style={{
-          background: '#0a0c10', border: `1px solid ${C.border}`, borderRadius: 8,
-          padding: '12px 14px', fontSize: 11, color: '#a5f3fc', overflowX: 'auto',
-          maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          fontFamily: 'monospace',
-        }}>
-          {textContent.slice(0, 5000)}{textContent.length > 5000 ? '\n… (truncated)' : ''}
-        </pre>
-      )}
-    </div>
-  )
-}
-
-// ── FileDropZone ──────────────────────────────────────────────────────────────
-
-function FileDropZone({
-  label, accept, file, onFile,
-}: { label: string; accept: string; file: File | null; onFile: (f: File) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [dragging, setDragging] = useState(false)
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setDragging(false)
-    const f = e.dataTransfer.files[0]
-    if (f) onFile(f)
-  }, [onFile])
-
+function FileDropZone({ label, accept, file, onFile }: { label: string; accept: string; file: File | null; onFile: (f: File) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const [drag, setDrag] = useState(false)
   return (
     <div
-      onClick={() => inputRef.current?.click()}
-      onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={handleDrop}
-      style={{
-        border: `2px dashed ${dragging ? C.accent : (file ? C.ok : C.border)}`,
-        borderRadius: 10, padding: '14px 16px', cursor: 'pointer',
-        background: dragging ? `${C.accent}0a` : 'transparent',
-        transition: 'border-color 0.2s, background 0.2s',
-        textAlign: 'center',
-      }}
+      onClick={() => ref.current?.click()}
+      onDragOver={e => { e.preventDefault(); setDrag(true) }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={e => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) onFile(f) }}
+      style={{ border: `2px dashed ${drag ? C.accent : file ? C.ok : C.border2}`, borderRadius: 8, padding: '12px 14px', cursor: 'pointer', background: drag ? `${C.accent}0a` : 'transparent', transition: 'border-color 0.2s', textAlign: 'center' as const }}
     >
-      <input
-        ref={inputRef} type="file" accept={accept} style={{ display: 'none' }}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f) }}
-      />
-      {file ? (
-        <div>
-          <div style={{ fontSize: 13, color: C.ok, fontWeight: 600 }}>✓ {file.name}</div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{fmtBytes(file.size)} — click to change</div>
-        </div>
-      ) : (
-        <div>
-          <div style={{ fontSize: 13, color: C.muted }}>{label}</div>
-          <div style={{ fontSize: 11, color: C.skip, marginTop: 2 }}>click or drag & drop</div>
-        </div>
-      )}
+      <input ref={ref} type="file" accept={accept} style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
+      {file
+        ? <div><div style={{ fontSize: 12, color: C.ok, fontWeight: 600 }}>✓ {file.name}</div><div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{fmtBytes(file.size)} — click to change</div></div>
+        : <div><div style={{ fontSize: 12, color: C.muted }}>{label}</div><div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>click or drag & drop</div></div>}
     </div>
   )
 }
 
-// ── Main Panel ────────────────────────────────────────────────────────────────
+// ── Tool list item (left sidebar) ─────────────────────────────────────────────
 
-export default function DevTestPanel() {
-  const [selectedTool, setSelectedTool] = useState('')
-  const [file,  setFile]  = useState<File | null>(null)
-  const [file2, setFile2] = useState<File | null>(null)
-  const [params, setParams] = useState<Record<string, string>>({})
-  const [running, setRunning] = useState(false)
-  const [result, setResult] = useState<TestResult | null>(null)
+function ToolItem({ tool, selected, toggling, onSelect, onToggle }: {
+  tool: DashboardTool; selected: boolean; toggling: boolean; onSelect: () => void; onToggle: () => void
+}) {
+  const lastIcon  = tool.lastRun ? (tool.lastRun.status === 'success' ? '✓' : '✗') : null
+  const lastColor = tool.lastRun ? (tool.lastRun.status === 'success' ? C.ok : C.fail) : C.muted
+  return (
+    <div
+      onClick={onSelect}
+      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px 7px 10px', cursor: 'pointer', userSelect: 'none' as const, background: selected ? `${C.accent}14` : 'transparent', borderLeft: selected ? `2px solid ${C.accent}` : '2px solid transparent', transition: 'background 0.12s' }}
+    >
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: tool.enabled ? C.ok : C.fail, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: selected ? 700 : 400, color: selected ? C.text : '#cbd5e1', whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {tool.name}
+        </div>
+        {lastIcon && (
+          <div style={{ fontSize: 9, color: lastColor, fontWeight: 700 }}>{lastIcon} last test {fmtTime(tool.lastRun!.timestamp)}</div>
+        )}
+      </div>
+      {tool.lastRun?.status === 'failed' && (
+        <span title="Last test failed" style={{ fontSize: 9, color: C.fail, fontWeight: 900 }}>!</span>
+      )}
+      <div onClick={e => { e.stopPropagation(); onToggle() }} style={{ flexShrink: 0 }}>
+        <Toggle on={tool.enabled} onChange={onToggle} loading={toggling} />
+      </div>
+    </div>
+  )
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────────────────
+
+export default function DevDashboard() {
+  const [tools,        setTools]        = useState<DashboardTool[]>([])
+  const [loadingTools, setLoadingTools] = useState(true)
+  const [selectedSlug, setSelectedSlug] = useState('')
+  const [toggling,     setToggling]     = useState<string | null>(null)
+
+  const [testFile,    setTestFile]    = useState<File | null>(null)
+  const [testFile2,   setTestFile2]   = useState<File | null>(null)
+  const [testParams,  setTestParams]  = useState<Record<string, string>>({})
+  const [testRunning, setTestRunning] = useState(false)
+  const [testResult,  setTestResult]  = useState<TestResult | null>(null)
+
+  const [diagRunning, setDiagRunning] = useState(false)
+  const [diagResult,  setDiagResult]  = useState<DiagResult | null>(null)
+
+  const [verifyFile,    setVerifyFile]    = useState<File | null>(null)
+  const [verifyRunning, setVerifyRunning] = useState(false)
+  const [verifyResult,  setVerifyResult]  = useState<TestResult | null>(null)
+
   const resultRef = useRef<HTMLDivElement>(null)
 
-  const config = selectedTool ? TOOL_CONFIGS[selectedTool] : null
-
-  // Reset state when tool changes
-  const handleToolChange = (id: string) => {
-    setSelectedTool(id)
-    setFile(null); setFile2(null)
-    setParams({})
-    setResult(null)
-    // Pre-populate defaults
-    const cfg = TOOL_CONFIGS[id]
-    if (cfg?.params) {
-      const defaults: Record<string, string> = {}
-      for (const p of cfg.params) {
-        if (p.default !== undefined) defaults[p.name] = p.default
-      }
-      setParams(defaults)
-    }
-  }
-
-  const handleParamChange = (name: string, value: string) => {
-    setParams(prev => ({ ...prev, [name]: value }))
-  }
-
-  const fileAccept = config
-    ? config.fileType === 'pdf' ? '.pdf'
-    : config.fileType === 'image' ? '.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff'
-    : '.docx,.doc,.xlsx,.xls,.pptx,.ppt'
-    : '*'
-
-  const canRun = !!selectedTool && !!file && !running
-
-  const runTest = async () => {
-    if (!file || !selectedTool || !config) return
-    setRunning(true)
-    setResult(null)
-
+  // ── Fetch ────────────────────────────────────────────────────────────────────
+  const fetchTools = useCallback(async (silent = false) => {
+    if (!silent) setLoadingTools(true)
     try {
-      const form = new FormData()
-      form.append('tool', selectedTool)
-      form.append('file', file, file.name)
-      if (file2) form.append('file2', file2, file2.name)
-      form.append('params', JSON.stringify(params))
+      const res  = await fetch('/api/internal/dashboard')
+      const data = await res.json() as { tools: DashboardTool[] }
+      setTools(data.tools ?? [])
+    } catch { /* ignore network errors */ }
+    finally { if (!silent) setLoadingTools(false) }
+  }, [])
 
-      const res = await fetch('/api/internal/dev-test', { method: 'POST', body: form })
-      const data = await res.json() as TestResult
-      setResult(data)
+  useEffect(() => {
+    void fetchTools()
+    const id = setInterval(() => void fetchTools(true), 15_000)
+    return () => clearInterval(id)
+  }, [fetchTools])
 
-      // Scroll to results
-      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-    } catch (err) {
-      setResult({
-        status: 'failed', steps: [], warnings: [],
-        error: err instanceof Error ? err.message : 'Network error',
-        totalMs: 0,
-      })
-    } finally {
-      setRunning(false)
-    }
+  // ── Select tool ──────────────────────────────────────────────────────────────
+  const handleSelect = (slug: string) => {
+    if (slug === selectedSlug) return
+    setSelectedSlug(slug)
+    setTestFile(null); setTestFile2(null); setTestResult(null)
+    setDiagResult(null); setVerifyFile(null); setVerifyResult(null)
+    const cfg = TOOL_CONFIGS[slug]
+    const defs: Record<string, string> = {}
+    for (const p of cfg?.params ?? []) { if (p.default !== undefined) defs[p.name] = p.default }
+    setTestParams(defs)
   }
 
-  // Group tools by category
-  const categories: Record<string, string[]> = {}
-  for (const [id, cfg] of Object.entries(TOOL_CONFIGS)) {
-    if (!categories[cfg.category]) categories[cfg.category] = []
-    categories[cfg.category].push(id)
+  // ── Toggle tool ──────────────────────────────────────────────────────────────
+  const handleToggle = async (slug: string, currentEnabled: boolean) => {
+    setToggling(slug)
+    setTools(prev => prev.map(t => t.slug === slug ? { ...t, enabled: !currentEnabled } : t))
+    try {
+      await fetch('/api/internal/dashboard', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', toolSlug: slug, enabled: !currentEnabled }),
+      })
+    } catch {
+      setTools(prev => prev.map(t => t.slug === slug ? { ...t, enabled: currentEnabled } : t))
+    } finally { setToggling(null) }
+  }
+
+  // ── Run test ─────────────────────────────────────────────────────────────────
+  const handleRunTest = async () => {
+    if (!testFile || !selectedSlug) return
+    setTestRunning(true); setTestResult(null)
+    const form = new FormData()
+    form.append('tool', selectedSlug)
+    form.append('file', testFile, testFile.name)
+    if (testFile2) form.append('file2', testFile2, testFile2.name)
+    form.append('params', JSON.stringify(testParams))
+    try {
+      const res  = await fetch('/api/internal/dev-test', { method: 'POST', body: form })
+      const data = await res.json() as TestResult
+      setTestResult(data)
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+      setTimeout(() => void fetchTools(true), 700)
+    } catch (err) {
+      setTestResult({ status: 'failed', steps: [], warnings: [], error: String(err), totalMs: 0 })
+    } finally { setTestRunning(false) }
+  }
+
+  // ── Diagnose ─────────────────────────────────────────────────────────────────
+  const handleDiagnose = async () => {
+    if (!selectedSlug) return
+    setDiagRunning(true); setDiagResult(null)
+    try {
+      const res = await fetch('/api/internal/dashboard', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'diagnose', toolSlug: selectedSlug }),
+      })
+      setDiagResult(await res.json() as DiagResult)
+    } catch {
+      setDiagResult({ toolSlug: selectedSlug, toolName: '', category: '', enabled: true, hasTestConfig: false, engine: '', health: 'error', binaries: {}, issues: ['Request failed'], recommendation: 'Check server', lastRun: null, lastFailure: null, testCount: 0, failureCount: 0 })
+    } finally { setDiagRunning(false) }
+  }
+
+  // ── Verify fix ───────────────────────────────────────────────────────────────
+  const handleVerifyFix = async () => {
+    if (!verifyFile || !selectedSlug) return
+    setVerifyRunning(true); setVerifyResult(null)
+    const form = new FormData()
+    form.append('tool', selectedSlug)
+    form.append('file', verifyFile, verifyFile.name)
+    form.append('params', JSON.stringify(testParams))
+    try {
+      const res = await fetch('/api/internal/dev-test', { method: 'POST', body: form })
+      setVerifyResult(await res.json() as TestResult)
+      setTimeout(() => void fetchTools(true), 700)
+    } catch (err) {
+      setVerifyResult({ status: 'failed', steps: [], warnings: [], error: String(err), totalMs: 0 })
+    } finally { setVerifyRunning(false) }
+  }
+
+  // ── Derived ───────────────────────────────────────────────────────────────────
+  const selectedTool = tools.find(t => t.slug === selectedSlug) ?? null
+  const testConfig   = TOOL_CONFIGS[selectedSlug] ?? null
+  const fileAccept   = !testConfig ? '*' : testConfig.fileType === 'pdf' ? '.pdf' : testConfig.fileType === 'image' ? '.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff' : '.docx,.doc,.xlsx,.xls,.pptx,.ppt,.html'
+
+  const enabledCount  = tools.filter(t => t.enabled).length
+  const disabledCount = tools.filter(t => !t.enabled).length
+  const totalRuns     = tools.reduce((s, t) => s + t.testCount, 0)
+  const totalFails    = tools.reduce((s, t) => s + t.failureCount, 0)
+
+  const categories: Record<string, DashboardTool[]> = {}
+  for (const t of tools) {
+    if (!categories[t.category]) categories[t.category] = []
+    categories[t.category].push(t)
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '8px 10px', borderRadius: 7,
-    background: '#0f1117', border: `1px solid ${C.border}`,
-    color: C.text, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+    width: '100%', padding: '7px 10px', borderRadius: 6,
+    background: '#0a0c12', border: `1px solid ${C.border}`,
+    color: C.text, fontSize: 12, outline: 'none', boxSizing: 'border-box' as const,
   }
 
-  const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' }
-
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{
-      minHeight: '100vh', background: C.bg, color: C.text,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      padding: '28px 24px',
-    }}>
+    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        ::-webkit-scrollbar { width: 6px; height: 6px }
+        ::-webkit-scrollbar-track { background: transparent }
+        ::-webkit-scrollbar-thumb { background: #242736; border-radius: 3px }
+      `}</style>
+
       {/* ── Header ── */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+      <div style={{ background: C.sidebar, borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: C.warn, background: `${C.warn}18`, border: `1px solid ${C.warn}44`, borderRadius: 5, padding: '2px 8px', letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>⚙ Developer Only</span>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{
-                fontSize: 10, fontWeight: 700, color: C.warn,
-                background: `${C.warn}1a`, border: `1px solid ${C.warn}44`,
-                borderRadius: 5, padding: '2px 8px', letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>
-                ⚙ Developer Only
-              </span>
-              <span style={{ fontSize: 10, color: C.muted }}>hidden route · not indexed</span>
-            </div>
-            <h1 style={{ margin: '6px 0 2px', fontSize: 22, fontWeight: 800, color: C.text }}>
-              Tool Test Mode
-            </h1>
-            <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
-              Upload a real file, run any tool, and inspect the full pipeline diagnostics.
-            </p>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Developer Dashboard</div>
+            <div style={{ fontSize: 10, color: C.muted }}>Real tool control · testing · diagnostics · verify fix</div>
           </div>
-          <div style={{ marginLeft: 'auto' }}>
-            <a
-              href="/internal/system-monitor-v2"
-              style={{ fontSize: 12, color: C.accent, textDecoration: 'none', fontWeight: 600 }}
-            >
-              ← System Monitor
-            </a>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginLeft: 'auto', flexWrap: 'wrap' as const }}>
+          <div style={{ display: 'flex', gap: 18 }}>
+            {[
+              { l: 'Tools', v: tools.length, c: C.text },
+              { l: 'Enabled', v: enabledCount, c: C.ok },
+              { l: 'Disabled', v: disabledCount, c: disabledCount ? C.fail : C.muted },
+              { l: 'Tests Run', v: totalRuns, c: C.text },
+              { l: 'Failures', v: totalFails, c: totalFails ? C.fail : C.muted },
+            ].map(s => (
+              <div key={s.l} style={{ textAlign: 'center' as const }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: s.c }}>{s.v}</div>
+                <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{s.l}</div>
+              </div>
+            ))}
           </div>
+          <a href="/internal/system-monitor-v2" style={{ fontSize: 12, color: C.accent, textDecoration: 'none', fontWeight: 600 }}>← System Monitor</a>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 20, alignItems: 'start' }}>
+      {/* ── 2-column body ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '272px 1fr', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
-        {/* ── Left Panel: Controls ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-          {/* Tool Selector */}
-          <Card>
-            <SectionTitle>Select Tool</SectionTitle>
-            <select
-              value={selectedTool}
-              onChange={(e) => handleToolChange(e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">— choose a tool —</option>
-              {Object.entries(categories).map(([cat, ids]) => (
-                <optgroup key={cat} label={cat}>
-                  {ids.map((id) => (
-                    <option key={id} value={id}>{TOOL_CONFIGS[id].label}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-
-            {config && (
-              <div style={{ marginTop: 12, padding: '8px 10px', background: `${C.accent}0d`, borderRadius: 7, border: `1px solid ${C.accent}22` }}>
-                <div style={{ fontSize: 11, color: C.accent, fontWeight: 600 }}>
-                  {config.engine}
+        {/* ── Left: Tool List ── */}
+        <div style={{ background: C.sidebar, borderRight: `1px solid ${C.border}`, overflowY: 'auto' as const, paddingBottom: 20 }}>
+          {loadingTools ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center' as const, color: C.muted, fontSize: 12 }}>
+              <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${C.border}`, borderTopColor: C.accent, animation: 'spin 0.8s linear infinite', margin: '0 auto 10px' }} />
+              Loading tools…
+            </div>
+          ) : (
+            Object.entries(categories).map(([cat, catTools]) => (
+              <div key={cat}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '10px 12px 4px', borderTop: `1px solid ${C.border}` }}>
+                  {cat} <span style={{ color: C.border2 }}>({catTools.length})</span>
                 </div>
-                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
-                  {config.endpoint}
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
-                  {config.steps.map((s) => (
-                    <code key={s} style={{
-                      fontSize: 9, color: C.muted, background: `${C.border}88`,
-                      padding: '2px 5px', borderRadius: 4, letterSpacing: '0.04em',
-                    }}>{s}</code>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Card>
-
-          {/* File Upload */}
-          {config && (
-            <Card>
-              <SectionTitle>Upload File</SectionTitle>
-              <FileDropZone
-                label={`Upload ${config.fileType === 'pdf' ? 'PDF' : config.fileType === 'image' ? 'Image' : 'Document'}`}
-                accept={fileAccept}
-                file={file}
-                onFile={setFile}
-              />
-              {config.multiFile && (
-                <div style={{ marginTop: 12 }}>
-                  <Label>Second File (required for merge)</Label>
-                  <FileDropZone
-                    label="Upload second PDF"
-                    accept=".pdf"
-                    file={file2}
-                    onFile={setFile2}
+                {catTools.map(tool => (
+                  <ToolItem
+                    key={tool.slug}
+                    tool={tool}
+                    selected={tool.slug === selectedSlug}
+                    toggling={toggling === tool.slug}
+                    onSelect={() => handleSelect(tool.slug)}
+                    onToggle={() => void handleToggle(tool.slug, tool.enabled)}
                   />
-                </div>
-              )}
-            </Card>
-          )}
-
-          {/* Params */}
-          {config?.params && config.params.length > 0 && (
-            <Card>
-              <SectionTitle>Parameters</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {config.params.map((p) => (
-                  <div key={p.name}>
-                    <Label>{p.label ?? p.name}{p.required ? ' *' : ''}</Label>
-                    {p.type === 'select' ? (
-                      <select
-                        value={params[p.name] ?? p.default ?? ''}
-                        onChange={(e) => handleParamChange(p.name, e.target.value)}
-                        style={selectStyle}
-                      >
-                        {p.options?.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        type={p.type === 'number' ? 'text' : 'text'}
-                        value={params[p.name] ?? p.default ?? ''}
-                        onChange={(e) => handleParamChange(p.name, e.target.value)}
-                        placeholder={p.placeholder ?? ''}
-                        style={inputStyle}
-                      />
-                    )}
-                  </div>
                 ))}
               </div>
-            </Card>
+            ))
           )}
-
-          {/* Run Button */}
-          {config && (
-            <button
-              onClick={runTest}
-              disabled={!canRun}
-              style={{
-                padding: '13px 20px', borderRadius: 10, border: 'none',
-                background: canRun ? C.accent : C.border,
-                color: canRun ? '#fff' : C.muted,
-                fontSize: 14, fontWeight: 700, cursor: canRun ? 'pointer' : 'not-allowed',
-                transition: 'background 0.2s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              {running ? (
-                <>
-                  <span style={{
-                    width: 14, height: 14, borderRadius: '50%',
-                    border: `2px solid ${C.muted}`, borderTopColor: '#fff',
-                    display: 'inline-block', animation: 'spin 0.7s linear infinite',
-                  }} />
-                  Running test…
-                </>
-              ) : (
-                <>▶ Run Test</>
-              )}
-            </button>
-          )}
-
-          {!selectedTool && (
-            <div style={{
-              padding: '16px', borderRadius: 10, border: `1px dashed ${C.border}`,
-              textAlign: 'center', color: C.muted, fontSize: 12,
-            }}>
-              Select a tool above to begin
-            </div>
+          {!loadingTools && tools.length === 0 && (
+            <div style={{ padding: '30px 16px', textAlign: 'center' as const, color: C.muted, fontSize: 12 }}>No tools found</div>
           )}
         </div>
 
-        {/* ── Right Panel: Results ── */}
-        <div ref={resultRef} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* ── Right: Main Area ── */}
+        <div style={{ overflowY: 'auto' as const, padding: 20, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
 
-          {!result && !running && (
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              minHeight: 320, border: `1px dashed ${C.border}`, borderRadius: 12, gap: 12,
-              color: C.muted,
-            }}>
-              <div style={{ fontSize: 36 }}>🔬</div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>No test run yet</div>
-              <div style={{ fontSize: 12 }}>Select a tool, upload a file, and click Run Test</div>
+          {/* Empty state */}
+          {!selectedSlug && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', minHeight: 400, color: C.muted, gap: 12 }}>
+              <div style={{ fontSize: 48 }}>🛠️</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Select a tool from the left panel</div>
+              <div style={{ fontSize: 12 }}>Toggle ON/OFF, run real tests, inspect diagnostics, or verify a fix</div>
             </div>
           )}
 
-          {running && (
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              minHeight: 320, border: `1px dashed ${C.accent}55`, borderRadius: 12, gap: 14, color: C.muted,
-            }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%',
-                border: `3px solid ${C.border}`, borderTopColor: C.accent,
-                animation: 'spin 0.8s linear infinite',
-              }} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.accent }}>Running test…</div>
-              <div style={{ fontSize: 11 }}>
-                Uploading file → running {config?.label ?? 'tool'} → collecting diagnostics
-              </div>
-            </div>
-          )}
-
-          {result && (
-            <>
-              {/* Summary Header */}
-              <Card>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>
-                      {result.toolLabel ?? result.tool ?? 'Test'}
+          {/* Tool detail */}
+          {selectedSlug && selectedTool && (() => {
+            const tool = selectedTool
+            return (
+              <>
+                {/* ── 1. Tool Header ── */}
+                <Card>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' as const }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const, marginBottom: 6 }}>
+                        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{tool.name}</h2>
+                        <StatusBadge enabled={tool.enabled} />
+                        {tool.lastRun && (
+                          <span style={{ fontSize: 10, color: tool.lastRun.status === 'success' ? C.ok : C.fail, fontWeight: 600 }}>
+                            {tool.lastRun.status === 'success' ? '✓' : '✗'} tested {fmtTime(tool.lastRun.timestamp)} ({fmtMs(tool.lastRun.totalMs)})
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+                        {tool.engine   && <span style={{ fontSize: 11, color: C.accent }}>⚙ {tool.engine}</span>}
+                        {tool.endpoint && <code style={{ fontSize: 11, color: C.muted, fontFamily: 'monospace' }}>{tool.endpoint}</code>}
+                        <span style={{ fontSize: 11, color: C.muted }}>{tool.category}</span>
+                        {tool.testCount > 0 && (
+                          <span style={{ fontSize: 11, color: C.muted }}>
+                            {tool.testCount} run{tool.testCount !== 1 ? 's' : ''}
+                            {tool.failureCount > 0 && <span style={{ color: C.fail }}> · {tool.failureCount} fail{tool.failureCount !== 1 ? 's' : ''}</span>}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                      {result.engine && <span style={{ color: C.accent }}>{result.engine}</span>}
-                      {result.endpoint && <span style={{ marginLeft: 8 }}>{result.endpoint}</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, color: C.muted }}>{tool.enabled ? 'ON' : 'OFF'}</span>
+                      <Toggle on={tool.enabled} onChange={() => void handleToggle(tool.slug, tool.enabled)} loading={toggling === tool.slug} />
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <StatusBadge status={result.status} />
-                    <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>
-                      {fmtMs(result.totalMs)}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Pipeline Steps */}
-              <Card>
-                <SectionTitle>Pipeline Steps</SectionTitle>
-                {result.steps.length === 0 ? (
-                  <div style={{ fontSize: 12, color: C.muted }}>No steps recorded.</div>
-                ) : (
-                  <div>
-                    {result.steps.map((step, i) => (
-                      <StepRow key={i} step={step} />
-                    ))}
-                  </div>
-                )}
-              </Card>
-
-              {/* Warnings */}
-              {result.warnings.length > 0 && (
-                <Card style={{ border: `1px solid ${C.warn}33` }}>
-                  <SectionTitle>⚠ Warnings</SectionTitle>
-                  {result.warnings.map((w, i) => (
-                    <div key={i} style={{
-                      fontSize: 12, color: C.warn, padding: '5px 0',
-                      borderBottom: i < result.warnings.length - 1 ? `1px solid ${C.border}44` : 'none',
-                    }}>
-                      {w}
+                  {!tool.enabled && (
+                    <div style={{ marginTop: 10, padding: '8px 12px', background: `${C.fail}0d`, border: `1px solid ${C.fail}33`, borderRadius: 7, fontSize: 11, color: C.fail }}>
+                      ⚠ This tool is disabled. Users visiting <code style={{ background: 'transparent', fontFamily: 'monospace' }}>/{tool.slug}</code> will see "Tool temporarily unavailable" when they try to process a file.
                     </div>
-                  ))}
-                </Card>
-              )}
-
-              {/* Error */}
-              {result.error && (
-                <Card style={{ border: `1px solid ${C.fail}33` }}>
-                  <SectionTitle>✗ Error Details</SectionTitle>
-                  <div style={{ fontSize: 13, color: C.fail, fontWeight: 600, marginBottom: 8 }}>
-                    {result.error}
-                  </div>
-                  {result.rawError && (
-                    <details>
-                      <summary style={{ fontSize: 11, color: C.muted, cursor: 'pointer', userSelect: 'none' }}>
-                        Stack trace
-                      </summary>
-                      <pre style={{
-                        marginTop: 8, padding: '10px 12px', background: '#0a0c10',
-                        borderRadius: 7, fontSize: 10, color: '#fca5a5', overflowX: 'auto',
-                        whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace',
-                        maxHeight: 200, overflowY: 'auto',
-                      }}>
-                        {result.rawError}
-                      </pre>
-                    </details>
                   )}
                 </Card>
-              )}
 
-              {/* Metadata */}
-              {result.metadata && Object.keys(result.metadata).length > 0 && (
+                {/* ── 2. Test Tool ── */}
                 <Card>
-                  <SectionTitle>Diagnostics &amp; Metadata</SectionTitle>
-                  <MetaTable meta={result.metadata} />
-                </Card>
-              )}
+                  <SectionHeader icon="▶">Test Tool — Real File Processing</SectionHeader>
 
-              {/* Output / Preview */}
-              {result.output && (
+                  {!testConfig ? (
+                    <div style={{ padding: '20px 0', textAlign: 'center' as const, color: C.muted }}>
+                      <div style={{ fontSize: 20, marginBottom: 8 }}>🖥️</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4 }}>Client-side tool</div>
+                      <div style={{ fontSize: 12 }}>This tool has no server-side file processing. No file upload test available.</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+                      {/* Left: file upload + pipeline steps */}
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, marginBottom: 6 }}>
+                            Upload {testConfig.fileType === 'pdf' ? 'PDF' : testConfig.fileType === 'image' ? 'Image' : 'Document'}
+                          </div>
+                          <FileDropZone label={`Drop ${testConfig.fileType} here`} accept={fileAccept} file={testFile} onFile={setTestFile} />
+                        </div>
+                        {testConfig.multiFile && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, marginBottom: 6 }}>Second File (required for merge)</div>
+                            <FileDropZone label="Drop second PDF" accept=".pdf" file={testFile2} onFile={setTestFile2} />
+                          </div>
+                        )}
+                        {testConfig.steps.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, marginBottom: 6 }}>Expected Pipeline</div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
+                              {testConfig.steps.map(s => (
+                                <code key={s} style={{ fontSize: 9, color: C.muted, background: `${C.border}88`, padding: '2px 5px', borderRadius: 4 }}>{s}</code>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: params + run button */}
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+                        {testConfig.params && testConfig.params.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, marginBottom: 8 }}>Parameters</div>
+                            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 9 }}>
+                              {testConfig.params.map(p => (
+                                <div key={p.name}>
+                                  <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{p.label ?? p.name}{p.required ? ' *' : ''}</div>
+                                  {p.type === 'select' ? (
+                                    <select value={testParams[p.name] ?? p.default ?? ''} onChange={e => setTestParams(prev => ({ ...prev, [p.name]: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                      {p.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                  ) : (
+                                    <input type="text" value={testParams[p.name] ?? p.default ?? ''} onChange={e => setTestParams(prev => ({ ...prev, [p.name]: e.target.value }))} placeholder={p.placeholder ?? ''} style={inputStyle} />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div style={{ marginTop: 'auto' }}>
+                          <Btn onClick={handleRunTest} disabled={!testFile || testRunning} loading={testRunning} fullWidth big>
+                            {testRunning ? 'Running real pipeline…' : '▶ Run Test'}
+                          </Btn>
+                          {!testFile && <div style={{ fontSize: 10, color: C.muted, textAlign: 'center' as const, marginTop: 6 }}>Upload a file first</div>}
+                        </div>
+
+                        <div style={{ padding: '8px 10px', background: `${C.accent}0a`, border: `1px solid ${C.accent}22`, borderRadius: 7, fontSize: 10, color: C.muted }}>
+                          Test runs the exact same backend, engine, and routes used by real users.
+                          {tool.enabled ? ' Tool is enabled.' : <span style={{ color: C.warn }}> Tool is currently disabled — test bypasses the guard.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+
+                {/* ── 3. Results ── */}
+                <div ref={resultRef}>
+                  {(testRunning || testResult) && (
+                    <Card>
+                      <SectionHeader icon="📋">Pipeline Trace & Results</SectionHeader>
+
+                      {testRunning && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0', color: C.muted }}>
+                          <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${C.border}`, borderTopColor: C.accent, animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>Running {tool.name}…</div>
+                            <div style={{ fontSize: 11 }}>Uploading file → executing {testConfig?.engine ?? 'engine'} → collecting diagnostics</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {testResult && !testRunning && (
+                        <>
+                          {/* Summary bar */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' as const }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 6, textTransform: 'uppercase' as const, color: testResult.status === 'success' ? C.ok : C.fail, background: testResult.status === 'success' ? `${C.ok}15` : `${C.fail}15`, border: `1px solid ${testResult.status === 'success' ? C.ok : C.fail}44` }}>
+                              {testResult.status === 'success' ? '✓ SUCCESS' : '✗ FAILED'}
+                            </span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{fmtMs(testResult.totalMs)}</span>
+                            {testResult.httpStatus && <span style={{ fontSize: 11, color: C.muted }}>HTTP {testResult.httpStatus}</span>}
+                            {testResult.engine && <span style={{ fontSize: 11, color: C.accent }}>via {testResult.engine}</span>}
+                          </div>
+
+                          {/* Pipeline steps */}
+                          <div style={{ marginBottom: 12 }}>
+                            {testResult.steps.map((s, i) => <StepRow key={i} step={s} />)}
+                          </div>
+
+                          {/* Warnings */}
+                          {testResult.warnings.length > 0 && (
+                            <div style={{ marginBottom: 10, padding: '8px 12px', background: `${C.warn}0d`, border: `1px solid ${C.warn}33`, borderRadius: 7 }}>
+                              {testResult.warnings.map((w, i) => <div key={i} style={{ fontSize: 11, color: C.warn }}>⚠ {w}</div>)}
+                            </div>
+                          )}
+
+                          {/* Error */}
+                          {testResult.error && (
+                            <div style={{ padding: '10px 12px', background: `${C.fail}0d`, border: `1px solid ${C.fail}33`, borderRadius: 7, marginBottom: 10 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: C.fail, marginBottom: 4 }}>Error Details</div>
+                              <div style={{ fontSize: 12, color: C.text }}>{testResult.error}</div>
+                              {testResult.rawError && (
+                                <details style={{ marginTop: 8 }}>
+                                  <summary style={{ fontSize: 10, color: C.muted, cursor: 'pointer' }}>Stack trace ▾</summary>
+                                  <pre style={{ fontSize: 10, color: C.muted, marginTop: 6, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 200, overflowY: 'auto', fontFamily: 'monospace' }}>{testResult.rawError}</pre>
+                                </details>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Metadata */}
+                          {testResult.metadata && Object.keys(testResult.metadata).length > 2 && (
+                            <div style={{ marginBottom: 12 }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 6 }}>Metadata</div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 12px' }}>
+                                {Object.entries(testResult.metadata).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'application/json').map(([k, v]) => (
+                                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${C.border}44` }}>
+                                    <span style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase' as const }}>{k.replace(/_/g, ' ')}</span>
+                                    <span style={{ fontSize: 10, color: C.text, fontWeight: 600 }}>{String(v)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Output */}
+                          {testResult.output && (
+                            <div style={{ padding: '10px 12px', background: `${C.ok}0a`, border: `1px solid ${C.ok}33`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 8 }}>
+                              <div style={{ fontSize: 12 }}>
+                                <span style={{ fontWeight: 600 }}>{testResult.output.filename}</span>
+                                <span style={{ color: C.muted, marginLeft: 8 }}>{fmtBytes(testResult.output.sizeBytes)}</span>
+                                <span style={{ color: C.muted, marginLeft: 8 }}>{testResult.output.contentType}</span>
+                              </div>
+                              <a href={`/api/files/${testResult.output.fileId}`} download={testResult.output.filename} style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: C.accent, padding: '5px 14px', borderRadius: 6, textDecoration: 'none' }}>
+                                ↓ Download
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Re-run */}
+                          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                            <Btn onClick={handleRunTest} disabled={!testFile || testRunning} loading={testRunning} outline small>↺ Run Again</Btn>
+                            <Btn onClick={() => setTestResult(null)} color={C.muted} outline small>✕ Clear</Btn>
+                          </div>
+                        </>
+                      )}
+                    </Card>
+                  )}
+                </div>
+
+                {/* ── 4. Diagnostics ── */}
                 <Card>
-                  <OutputPreview output={result.output} />
-                </Card>
-              )}
+                  <SectionHeader icon="🔍">Diagnostics</SectionHeader>
 
-              {/* Re-run button */}
-              <button
-                onClick={runTest}
-                disabled={!canRun}
-                style={{
-                  padding: '10px 20px', borderRadius: 8, border: `1px solid ${C.border}`,
-                  background: 'transparent', color: canRun ? C.muted : C.skip,
-                  fontSize: 12, fontWeight: 600, cursor: canRun ? 'pointer' : 'not-allowed',
-                  alignSelf: 'flex-start',
-                }}
-              >
-                ↺ Re-run Test
-              </button>
-            </>
-          )}
+                  {!diagResult && !diagRunning && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <Btn onClick={handleDiagnose} loading={diagRunning} outline>Run Diagnostics</Btn>
+                      <span style={{ fontSize: 11, color: C.muted }}>Checks binaries, engine health, config, and test history for {tool.name}</span>
+                    </div>
+                  )}
+
+                  {diagRunning && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: C.muted }}>
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${C.border}`, borderTopColor: C.accent, animation: 'spin 0.8s linear infinite' }} />
+                      <span style={{ fontSize: 12 }}>Inspecting {tool.name}…</span>
+                    </div>
+                  )}
+
+                  {diagResult && !diagRunning && (
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                        <HealthBadge health={diagResult.health} />
+                        {diagResult.engine && <span style={{ fontSize: 11, color: C.accent }}>⚙ {diagResult.engine}</span>}
+                        <span style={{ fontSize: 11, color: C.muted }}>{diagResult.testCount} tests · {diagResult.failureCount} failures</span>
+                        <Btn onClick={handleDiagnose} loading={diagRunning} color={C.muted} outline small>↺ Re-run</Btn>
+                      </div>
+
+                      {/* Binaries */}
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, marginBottom: 6 }}>Binaries / Dependencies</div>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                          {Object.entries(diagResult.binaries).map(([bin, ver]) => (
+                            <div key={bin} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', background: ver ? `${C.ok}08` : `${C.fail}08`, border: `1px solid ${ver ? C.ok : C.fail}22`, borderRadius: 6 }}>
+                              <code style={{ fontSize: 11, color: C.text, fontFamily: 'monospace' }}>{bin}</code>
+                              <span style={{ fontSize: 10, color: ver ? C.ok : C.fail, fontWeight: 600, maxWidth: '55%', textAlign: 'right' as const, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ver ?? '✗ not found'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Issues */}
+                      {diagResult.issues.length > 0 && (
+                        <div style={{ padding: '10px 12px', background: `${C.warn}0d`, border: `1px solid ${C.warn}33`, borderRadius: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: C.warn, textTransform: 'uppercase' as const, marginBottom: 6 }}>Issues Found</div>
+                          {diagResult.issues.map((issue, i) => <div key={i} style={{ fontSize: 11, color: C.text, marginBottom: 3 }}>⚠ {issue}</div>)}
+                        </div>
+                      )}
+
+                      {/* Recommendation */}
+                      <div style={{ padding: '8px 12px', background: `${C.accent}0a`, border: `1px solid ${C.accent}22`, borderRadius: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase' as const, marginBottom: 4 }}>Recommendation</div>
+                        <div style={{ fontSize: 12, color: C.text }}>{diagResult.recommendation}</div>
+                      </div>
+
+                      {/* Last runs */}
+                      {diagResult.lastRun && (
+                        <div style={{ fontSize: 11, color: C.muted }}>
+                          Last test: <span style={{ color: diagResult.lastRun.status === 'success' ? C.ok : C.fail }}>{diagResult.lastRun.status}</span>
+                          {' '}at {fmtTime(diagResult.lastRun.timestamp)} ({fmtMs(diagResult.lastRun.totalMs)})
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+
+                {/* ── 5. Verify Fix ── */}
+                <Card style={{ marginBottom: 8 }}>
+                  <SectionHeader icon="✅">Verify Fix</SectionHeader>
+
+                  {!tool.lastFailure && !verifyResult && (
+                    <div style={{ fontSize: 12, color: C.muted, textAlign: 'center' as const, padding: '16px 0' }}>
+                      No stored failures for <strong style={{ color: C.text }}>{tool.name}</strong> yet.
+                      <br />
+                      <span style={{ fontSize: 11 }}>Run a test above — if it fails, the full trace will be saved here for comparison after fixing.</span>
+                    </div>
+                  )}
+
+                  {tool.lastFailure && (
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+
+                      {/* Before: stored failure */}
+                      <div style={{ padding: '12px 14px', background: `${C.fail}0a`, border: `1px solid ${C.fail}33`, borderRadius: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.fail, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8 }}>
+                          ✗ Previous Failure · {fmtTime(tool.lastFailure.timestamp)}
+                        </div>
+                        {tool.lastFailure.fileInfo && (
+                          <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+                            File: <span style={{ color: C.text, fontWeight: 600 }}>{tool.lastFailure.fileInfo.name}</span>
+                            <span style={{ marginLeft: 6 }}>({fmtBytes(tool.lastFailure.fileInfo.size)})</span>
+                          </div>
+                        )}
+                        {tool.lastFailure.error && (
+                          <div style={{ fontSize: 11, color: C.fail, marginBottom: 8, padding: '6px 8px', background: `${C.fail}08`, borderRadius: 6 }}>
+                            {tool.lastFailure.error}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase' as const, marginBottom: 4 }}>Pipeline at failure time</div>
+                        {tool.lastFailure.steps?.map((s, i) => <StepRow key={i} step={s} />)}
+                      </div>
+
+                      {/* Upload + re-run */}
+                      {!verifyResult && (
+                        <div>
+                          <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+                            Upload the same problematic file (or a fixed version) to verify the issue is resolved:
+                          </div>
+                          <FileDropZone label="Upload file to verify" accept={fileAccept} file={verifyFile} onFile={setVerifyFile} />
+                          <div style={{ marginTop: 10 }}>
+                            <Btn onClick={handleVerifyFix} disabled={!verifyFile || verifyRunning} loading={verifyRunning} fullWidth big>
+                              {verifyRunning ? 'Re-running with real backend…' : '✅ Re-run to Verify Fix'}
+                            </Btn>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* After: comparison */}
+                      {verifyResult && (
+                        <div>
+                          <div style={{ padding: '12px 14px', background: verifyResult.status === 'success' ? `${C.ok}0a` : `${C.fail}0a`, border: `1px solid ${verifyResult.status === 'success' ? C.ok : C.fail}33`, borderRadius: 8 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: verifyResult.status === 'success' ? C.ok : C.fail, marginBottom: 10 }}>
+                              {verifyResult.status === 'success'
+                                ? '✅ Fixed Successfully — All Pipeline Steps Passed'
+                                : '❌ Problem Still Exists — Issue Not Resolved'}
+                            </div>
+                            {verifyResult.steps.map((s, i) => <StepRow key={i} step={s} />)}
+                            {verifyResult.error && (
+                              <div style={{ marginTop: 8, fontSize: 11, color: C.fail, padding: '6px 8px', background: `${C.fail}08`, borderRadius: 6 }}>
+                                {verifyResult.error}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ marginTop: 10, fontSize: 11, color: C.muted }}>
+                            Comparison: <span style={{ color: C.fail }}>Before</span> → <span style={{ color: verifyResult.status === 'success' ? C.ok : C.fail }}>After</span>
+                            {verifyResult.totalMs > 0 && ` · ran in ${fmtMs(verifyResult.totalMs)}`}
+                          </div>
+                          <div style={{ marginTop: 8 }}>
+                            <Btn onClick={() => { setVerifyFile(null); setVerifyResult(null) }} color={C.muted} outline small>↺ Try Again</Btn>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              </>
+            )
+          })()}
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        select option { background: #1a1d27; color: #e2e8f0; }
-        select optgroup { background: #1a1d27; color: #6366f1; font-weight: 700; }
-      `}</style>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { pdfProcessor } from '@/lib/processing'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -11,6 +12,9 @@ const VALID_LEVELS = ['low', 'medium', 'high'] as const
 type CompressionLevel = (typeof VALID_LEVELS)[number]
 
 export async function POST(request: NextRequest) {
+  const guard = getToolGuardResponse('compress-pdf')
+  if (guard) return guard
+
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })

@@ -4,11 +4,15 @@ import { createZipFromFiles } from '@/lib/processing/file-utils'
 import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
+  const guard = getToolGuardResponse('pdf-to-jpg')
+  if (guard) return guard
+
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })

@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pdfProcessor } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
+  const guard = getToolGuardResponse('pdf-to-text')
+  if (guard) return guard
+
   const { files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })

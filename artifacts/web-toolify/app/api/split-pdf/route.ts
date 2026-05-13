@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  const guard = getToolGuardResponse('split-pdf')
+  if (guard) return guard
+
   const { fields, files, cleanup } = await streamUpload(req).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })

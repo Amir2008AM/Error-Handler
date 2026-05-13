@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 180
@@ -35,6 +36,9 @@ function runExtractor(pdfPath: string, xlsxPath: string): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
+  const guard = getToolGuardResponse('pdf-to-excel')
+  if (guard) return guard
+
   const { files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })

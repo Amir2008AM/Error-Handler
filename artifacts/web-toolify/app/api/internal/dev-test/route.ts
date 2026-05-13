@@ -14,6 +14,7 @@ import { verifyOpsV2Session } from '@/app/api/internal/auth/route'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
 import { TOOL_CONFIGS } from '@/app/internal/dev-test/tool-configs'
+import { storeTestRunResult } from '@/lib/tool-guard'
 
 export { TOOL_CONFIGS }
 
@@ -256,12 +257,14 @@ export async function POST(request: NextRequest) {
         tracker.skip(s, 'skipped due to processing failure')
       }
 
-      return NextResponse.json({
+      const failPayload = {
         tool: toolId, toolLabel: config.label, engine: config.engine,
-        endpoint: config.endpoint, status: 'failed', httpStatus,
+        endpoint: config.endpoint, status: 'failed' as const, httpStatus,
         steps: tracker.steps, warnings, error: errMsg, metadata,
         totalMs: Date.now() - totalStart,
-      })
+      }
+      storeTestRunResult(toolId, fileName, fileSize, failPayload)
+      return NextResponse.json(failPayload)
     }
 
     tracker.end('ok', `HTTP ${httpStatus}`)
@@ -344,12 +347,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const successPayload = {
       tool:      toolId,
       toolLabel: config.label,
       engine:    config.engine,
       endpoint:  config.endpoint,
-      status:    'success',
+      status:    'success' as const,
       httpStatus,
       steps:     tracker.steps,
       warnings,
@@ -361,7 +364,9 @@ export async function POST(request: NextRequest) {
         sizeBytes:   outputSizeBytes,
       } : undefined,
       totalMs: Date.now() - totalStart,
-    })
+    }
+    storeTestRunResult(toolId, fileName, fileSize, successPayload)
+    return NextResponse.json(successPayload)
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unexpected error'
@@ -371,12 +376,14 @@ export async function POST(request: NextRequest) {
       last.detail = msg
       last.durationMs = 0
     }
-    return NextResponse.json({
-      tool: toolId, status: 'failed',
+    const errPayload = {
+      tool: toolId, status: 'failed' as const,
       steps: tracker.steps, warnings,
       error: msg, rawError: err instanceof Error ? err.stack : String(err),
       totalMs: Date.now() - totalStart,
-    }, { status: 500 })
+    }
+    storeTestRunResult(toolId, fileName, fileSize, errPayload)
+    return NextResponse.json(errPayload, { status: 500 })
   } finally {
     await cleanup()
   }

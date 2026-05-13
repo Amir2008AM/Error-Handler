@@ -3,11 +3,15 @@ import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
 import { mapWithConcurrency } from '@/lib/processing/concurrency'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  const guard = getToolGuardResponse('merge-pdf')
+  if (guard) return guard
+
   const { files, cleanup } = await streamUpload(req).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })

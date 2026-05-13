@@ -3,11 +3,15 @@ import { PDFSecurityProcessor, WrongPasswordError } from '@/lib/processing/pdf-s
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
+  const guard = getToolGuardResponse('unlock-pdf')
+  if (guard) return guard
+
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })

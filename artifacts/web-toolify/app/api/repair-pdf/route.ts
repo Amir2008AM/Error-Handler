@@ -3,11 +3,15 @@ import { repairPdf, UnrepairableError } from '@/lib/processing/pdf-repair'
 import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
+import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
 export const maxDuration = 180
 
 export async function POST(request: NextRequest) {
+  const guard = getToolGuardResponse('repair-pdf')
+  if (guard) return guard
+
   const { files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
