@@ -723,6 +723,74 @@ export class DocumentConverter {
     }
   }
 
+  // ── PDF → Word ────────────────────────────────────────────────────────
+
+  /**
+   * Convert a PDF document to a Word document (.docx).
+   * Uses LibreOffice headless: soffice --convert-to docx input.pdf
+   * Preserves text, basic layout, and embedded fonts when possible.
+   */
+  async pdfToWord(pdfBuffer: Buffer): Promise<ConversionResult> {
+    if (!isPdf(pdfBuffer)) {
+      throw new Error('File is not a valid PDF')
+    }
+
+    if (await binaryExists('soffice')) {
+      return withTempDir('lo-pdf-word-', async (dir) => {
+        const inFile = join(dir, 'input.pdf')
+        await writeFile(inFile, pdfBuffer)
+
+        const result = await runCli(
+          'soffice',
+          [
+            '--headless',
+            '--norestore',
+            '--nofirststartwizard',
+            '--infilter=writer_pdf_import',
+            '--convert-to', 'docx',
+            '--outdir', dir,
+            inFile,
+          ],
+          {
+            timeoutMs: 120_000,
+            env: { HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' },
+          }
+        )
+
+        if (result.code !== 0) {
+          throw new Error(
+            `LibreOffice exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(0, 400)}`
+          )
+        }
+
+        const outFile = join(dir, 'input.docx')
+        const docxBuffer = await fsReadFile(outFile)
+
+        if (docxBuffer.length < 4) {
+          throw new Error('LibreOffice produced an empty or invalid Word file')
+        }
+
+        let pageCount = 1
+        try {
+          const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+          pageCount = pdfDoc.getPageCount()
+        } catch { /* best-effort */ }
+
+        return {
+          buffer:         docxBuffer,
+          pageCount,
+          originalFormat: 'pdf',
+          engine:         'libreoffice',
+        }
+      })
+    }
+
+    throw new Error(
+      'LibreOffice (soffice) is required to convert PDF to Word. ' +
+      'Please ensure it is installed on the server.'
+    )
+  }
+
   // ── PDF → PowerPoint ──────────────────────────────────────────────────
 
   /**

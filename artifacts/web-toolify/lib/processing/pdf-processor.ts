@@ -27,13 +27,15 @@ import JSZip from 'jszip'
 import { BaseProcessor } from './base-processor'
 import { mapWithConcurrency } from './concurrency'
 
-let _pdfjs: typeof import('pdfjs-dist') | null = null
+let _pdfjs: Awaited<ReturnType<typeof import('pdfjs-dist/legacy/build/pdf.mjs')>> | null = null
 async function getPdfjs() {
   if (!_pdfjs) {
-    _pdfjs = await import('pdfjs-dist')
-    _pdfjs.GlobalWorkerOptions.workerSrc = ''
+    // Must use the legacy build in Node.js — standard build requires DOMMatrix / browser globals
+    const mod = await import('pdfjs-dist/legacy/build/pdf.mjs' as string)
+    _pdfjs = mod as unknown as typeof _pdfjs
+    ;(_pdfjs as any).GlobalWorkerOptions.workerSrc = ''
   }
-  return _pdfjs
+  return _pdfjs!
 }
 
 import type {
@@ -525,16 +527,32 @@ export class PDFProcessor extends BaseProcessor {
   }
 
   /**
-   * Convert PDF to Word document using pdfjs-dist for text + position extraction.
-   * Groups text by Y position into lines, detects headings by font size,
-   * detects simple tables by X-alignment, and builds a real .docx.
+   * Convert PDF to Word document.
+   * Primary: LibreOffice headless (soffice --convert-to docx) — highest fidelity,
+   *   preserves text, layout, fonts, tables, and RTL/Arabic content correctly.
+   * Fallback: pdfjs text extraction + docx rebuild — used only if LibreOffice fails.
    */
   async toWord(options: PDFToWordOptions): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(options.file)
 
       const { result, time } = await this.measureTime(async () => {
-        // Use pdfjs-dist to extract text with position data
+        const pdfBuffer = Buffer.from(options.file)
+
+        // ── Primary: LibreOffice ──────────────────────────────────────────
+        try {
+          const { DocumentConverter } = await import('./document-converter')
+          const converter = new DocumentConverter()
+          const conversion = await converter.pdfToWord(pdfBuffer)
+          return conversion.buffer
+        } catch (loErr) {
+          console.warn(
+            '[pdf-processor] LibreOffice PDF→Word failed, using pdfjs fallback:',
+            loErr instanceof Error ? loErr.message : String(loErr)
+          )
+        }
+
+        // ── Fallback: pdfjs text extraction + docx ────────────────────────
         const pdfjs = await getPdfjs()
         const loadingTask = pdfjs.getDocument({
           data: new Uint8Array(options.file),
@@ -565,16 +583,14 @@ export class PDFProcessor extends BaseProcessor {
             height: number
           }>) {
             if (!item.str.trim()) continue
-            // transform = [a, b, c, d, e, f] — e=x, f=y, d≈fontSize
             const x = item.transform[4]
-            const y = viewport.height - item.transform[5] // flip Y (PDF coords are bottom-up)
+            const y = viewport.height - item.transform[5]
             const fontSize = Math.abs(item.transform[3])
             items.push({ str: item.str, x, y, fontSize })
           }
           allPageItems.push(items)
         }
 
-        // Determine dominant (body) font size to classify headings
         const allFontSizes = allPageItems.flat().map((i) => i.fontSize)
         const sortedSizes = [...allFontSizes].sort((a, b) => a - b)
         const medianFontSize = sortedSizes[Math.floor(sortedSizes.length / 2)] ?? 12
@@ -584,65 +600,38 @@ export class PDFProcessor extends BaseProcessor {
         for (let p = 0; p < allPageItems.length; p++) {
           const items = allPageItems[p]
           if (p > 0) {
-            docChildren.push(
-              new Paragraph({
-                text: '',
-                spacing: { before: 400 },
-              })
-            )
+            docChildren.push(new Paragraph({ text: '', spacing: { before: 400 } }))
           }
 
-          // Group items into lines by Y position (within 5 units = same line)
           const lines: TextItem[][] = []
           for (const item of items) {
-            const existingLine = lines.find(
-              (line) => Math.abs(line[0].y - item.y) <= 5
-            )
-            if (existingLine) {
-              existingLine.push(item)
-            } else {
-              lines.push([item])
-            }
+            const existingLine = lines.find((line) => Math.abs(line[0].y - item.y) <= 5)
+            if (existingLine) existingLine.push(item)
+            else lines.push([item])
           }
-          // Sort lines by Y (top to bottom), items in each line by X (left to right)
           lines.sort((a, b) => a[0].y - b[0].y)
-          for (const line of lines) {
-            line.sort((a, b) => a.x - b.x)
-          }
+          for (const line of lines) line.sort((a, b) => a.x - b.x)
 
-          // Detect table patterns: 3+ consecutive lines where ≥2 items share similar X positions
           const isTableLine = (lineA: TextItem[], lineB: TextItem[]): boolean => {
             if (lineA.length < 2 || lineB.length < 2) return false
-            const matchCount = lineA.filter((a) =>
-              lineB.some((b) => Math.abs(a.x - b.x) <= 10)
-            ).length
-            return matchCount >= 2
+            return lineA.filter((a) => lineB.some((b) => Math.abs(a.x - b.x) <= 10)).length >= 2
           }
 
           let i = 0
           while (i < lines.length) {
-            // Try to detect a table block
             let tableEnd = i + 1
-            while (
-              tableEnd < lines.length &&
-              isTableLine(lines[tableEnd - 1], lines[tableEnd])
-            ) {
+            while (tableEnd < lines.length && isTableLine(lines[tableEnd - 1], lines[tableEnd])) {
               tableEnd++
             }
 
             if (tableEnd - i >= 3) {
-              // Build a docx Table from these lines
               const tableLines = lines.slice(i, tableEnd)
               const maxCols = Math.max(...tableLines.map((l) => l.length))
               const rows = tableLines.map((line) => {
                 const cells = Array.from({ length: maxCols }, (_, ci) => {
                   const cell = line[ci]
                   return new TableCell({
-                    children: [
-                      new Paragraph({
-                        children: [new TextRun({ text: cell?.str ?? '' })],
-                      }),
-                    ],
+                    children: [new Paragraph({ children: [new TextRun({ text: cell?.str ?? '' })] })],
                     borders: {
                       top: { style: BorderStyle.SINGLE, size: 1 },
                       bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -653,44 +642,24 @@ export class PDFProcessor extends BaseProcessor {
                 })
                 return new TableRow({ children: cells })
               })
-              docChildren.push(
-                new Table({
-                  rows,
-                  width: { size: 100, type: WidthType.PERCENTAGE },
-                })
-              )
+              docChildren.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }))
               i = tableEnd
             } else {
-              // Normal line → paragraph
               const line = lines[i]
               const lineText = line.map((item) => item.str).join(' ').trim()
-              const avgFontSize =
-                line.reduce((s, item) => s + item.fontSize, 0) / line.length
-
+              const avgFontSize = line.reduce((s, item) => s + item.fontSize, 0) / line.length
               let heading: (typeof HeadingLevel)[keyof typeof HeadingLevel] | undefined
-              if (avgFontSize >= medianFontSize * 1.8) {
-                heading = HeadingLevel.HEADING_1
-              } else if (avgFontSize >= medianFontSize * 1.4) {
-                heading = HeadingLevel.HEADING_2
-              } else if (avgFontSize >= medianFontSize * 1.2) {
-                heading = HeadingLevel.HEADING_3
-              }
+              if (avgFontSize >= medianFontSize * 1.8) heading = HeadingLevel.HEADING_1
+              else if (avgFontSize >= medianFontSize * 1.4) heading = HeadingLevel.HEADING_2
+              else if (avgFontSize >= medianFontSize * 1.2) heading = HeadingLevel.HEADING_3
 
               if (lineText) {
-                docChildren.push(
-                  new Paragraph({
-                    ...(heading ? { heading } : {}),
-                    children: [
-                      new TextRun({
-                        text: lineText,
-                        bold: !!heading,
-                        size: Math.round(Math.min(avgFontSize * 2, 72)),
-                      }),
-                    ],
-                    spacing: { after: 100 },
-                    alignment: AlignmentType.LEFT,
-                  })
-                )
+                docChildren.push(new Paragraph({
+                  ...(heading ? { heading } : {}),
+                  children: [new TextRun({ text: lineText, bold: !!heading, size: Math.round(Math.min(avgFontSize * 2, 72)) })],
+                  spacing: { after: 100 },
+                  alignment: AlignmentType.LEFT,
+                }))
               }
               i++
             }
@@ -698,19 +667,10 @@ export class PDFProcessor extends BaseProcessor {
         }
 
         if (docChildren.length === 0) {
-          docChildren.push(
-            new Paragraph({
-              children: [
-                new TextRun({ text: 'No extractable text found in this PDF.' }),
-              ],
-            })
-          )
+          docChildren.push(new Paragraph({ children: [new TextRun({ text: 'No extractable text found in this PDF.' })] }))
         }
 
-        const doc = new Document({
-          sections: [{ properties: {}, children: docChildren }],
-        })
-
+        const doc = new Document({ sections: [{ properties: {}, children: docChildren }] })
         return Buffer.from(await Packer.toBuffer(doc))
       })
 

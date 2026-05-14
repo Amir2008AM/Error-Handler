@@ -35,10 +35,11 @@ const MIN_PDF_BYTES = 512
 
 const PDF_OUTPUT_TYPES = new Set<JobType>([
   'merge-pdf', 'split-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
-  'protect-pdf', 'unlock-pdf', 'sign-pdf', 'pdf-to-word', 'pdf-to-excel',
+  'protect-pdf', 'unlock-pdf', 'sign-pdf',
   'word-to-pdf', 'excel-to-pdf', 'html-to-pdf', 'ppt-to-pdf',
   'add-page-numbers', 'organize-pdf', 'delete-pages', 'extract-pages',
   'repair-pdf', 'image-to-pdf',
+  // Note: pdf-to-word → .docx, pdf-to-excel → .xlsx — checked separately
 ])
 
 /**
