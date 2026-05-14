@@ -31,6 +31,38 @@ import { recordJob, recordError } from '../telegram/analytics'
 const MAX_RETRIES = 2
 const RETRY_BASE_DELAY_MS = 1_000
 
+const MIN_PDF_BYTES = 512
+
+const PDF_OUTPUT_TYPES = new Set<JobType>([
+  'merge-pdf', 'split-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
+  'protect-pdf', 'unlock-pdf', 'sign-pdf', 'pdf-to-word', 'pdf-to-excel',
+  'word-to-pdf', 'excel-to-pdf', 'html-to-pdf', 'ppt-to-pdf',
+  'add-page-numbers', 'organize-pdf', 'delete-pages', 'extract-pages',
+  'repair-pdf', 'image-to-pdf',
+])
+
+/**
+ * Quality Gate — runs after every processor returns.
+ * For PDF outputs: verifies the magic header and minimum size.
+ * Throws so the retry loop can attempt a safer fallback mode.
+ */
+function assertOutputQuality(jobType: JobType, buffer: Buffer): void {
+  if (!PDF_OUTPUT_TYPES.has(jobType)) return
+
+  if (buffer.length < MIN_PDF_BYTES) {
+    throw new Error(
+      `Quality gate failed: output is only ${buffer.length} bytes (min ${MIN_PDF_BYTES})`
+    )
+  }
+
+  const header = buffer.slice(0, 5).toString('ascii')
+  if (!header.startsWith('%PDF')) {
+    throw new Error(
+      `Quality gate failed: output does not start with %PDF (got "${header}")`
+    )
+  }
+}
+
 type SingleResult = { buffer: Buffer; fileName: string; mimeType: string }
 type BatchResult = { buffers: Array<{ buffer: Buffer; fileName: string; mimeType: string }> }
 type ProcessorFunction = (job: Job) => Promise<SingleResult | BatchResult>
@@ -136,6 +168,7 @@ export async function processJob(jobId: string): Promise<JobResult | null> {
         if ('buffers' in result) {
           await manager.setJobResultBatch(jobId, result.buffers)
         } else {
+          assertOutputQuality(job.type, result.buffer)
           await manager.setJobResult(jobId, result.buffer, result.fileName, result.mimeType)
         }
 

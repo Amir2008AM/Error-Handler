@@ -19,7 +19,7 @@ function makeTokenV2(key: string): string {
 function setSessionCookies(response: NextResponse, adminKey: string): void {
   const cookieOpts = {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
     maxAge: COOKIE_MAX_AGE,
     path: '/',
@@ -51,18 +51,9 @@ export async function POST(request: NextRequest) {
   return response
 }
 
-/** GET /api/ops/auth?key=... → redirect to /ops (kept for backwards-compat) */
-export async function GET(request: NextRequest) {
-  const adminKey = process.env.DEV_ADMIN_KEY ?? ''
-  const key = request.nextUrl.searchParams.get('key') ?? ''
-
-  if (!adminKey || !key || key !== adminKey) {
-    return new NextResponse('Not Found', { status: 404 })
-  }
-
-  const response = NextResponse.redirect(new URL('/ops', request.url))
-  setSessionCookies(response, adminKey)
-  return response
+/** GET /api/ops/auth — disabled (key-in-URL leaks to logs/history) */
+export async function GET() {
+  return new NextResponse('Not Found', { status: 404 })
 }
 
 /** Verify session from cookie or Authorization header */
@@ -71,12 +62,11 @@ export function verifyOpsSession(request: NextRequest): boolean {
   if (!adminKey) return false
   const expected = makeToken(adminKey)
 
-  // Check Authorization: Bearer <token>
+  // Check Authorization: Bearer <HMAC-token> (raw key not accepted — HMAC only)
   const auth = request.headers.get('authorization') ?? ''
   if (auth.startsWith('Bearer ')) {
     const bearer = auth.slice(7).trim()
-    // Accept either raw key or HMAC token
-    if (bearer === adminKey || bearer === expected) return true
+    if (bearer === expected) return true
   }
 
   // Fallback: cookie

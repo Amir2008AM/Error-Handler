@@ -240,6 +240,26 @@ def _register_fonts() -> FontSet:
         except Exception:
             pass
 
+    # ── Safety net: if DejaVu wasn't found, promote the best Arabic font  ──
+    # to Latin slots too.  Amiri / Noto / DejaVu are all full-Unicode;
+    # only 'Helvetica' (the dataclass default) is WinAnsi and will crash on
+    # any non-ASCII glyph.  Better to render everything in one Unicode font
+    # than to silently corrupt Arabic characters.
+    if not fs.has_unicode and fs.has_arabic:
+        fs.regular     = fs.arabic_reg
+        fs.bold        = fs.arabic_bold
+        fs.has_unicode = True
+        print(
+            f'[FontRegistry] WARNING: DejaVuSans not found — using '
+            f'{fs.arabic_reg} for Latin text to avoid WinAnsi encoding errors.',
+            flush=True,
+        )
+    elif not fs.has_unicode and not fs.has_arabic:
+        raise RuntimeError(
+            'No Unicode font found (DejaVu / Noto / Amiri). '
+            'Cannot produce a valid PDF — aborting to prevent WinAnsi corruption.'
+        )
+
     _font_set = fs
     return fs
 
