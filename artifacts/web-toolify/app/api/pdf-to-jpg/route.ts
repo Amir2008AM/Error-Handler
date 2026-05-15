@@ -5,6 +5,9 @@ import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-uploa
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
+import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
+import { acquireGuard } from '@/lib/concurrency-guard'
+import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -12,6 +15,9 @@ export const maxDuration = 300
 export async function POST(request: NextRequest) {
   const guard = getToolGuardResponse('pdf-to-jpg')
   if (guard) return guard
+
+  const rateLimited = applyToolRateLimit(request, 'pdf-to-jpg')
+  if (rateLimited) return rateLimited
 
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
@@ -55,25 +61,26 @@ export async function POST(request: NextRequest) {
     }
 
     const converter = new PdfToImageConverter()
-
-    const results = await converter.convert(buffer, {
-      format,
-      quality,
-      dpi,
-      pages,
-    })
+    const release = await acquireGuard('pdfjs')
+    let results: Awaited<ReturnType<PdfToImageConverter['convert']>>
+    try {
+      results = await converter.convert(buffer, { format, quality, dpi, pages })
+    } finally {
+      release()
+    }
 
     if (results.length === 0) {
-      trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: 'No pages converted' })
-      return NextResponse.json(
-        { error: 'No pages could be converted' },
-        { status: 500 }
-      )
+      const durationMs = Date.now() - start
+      trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: false, durationMs, errorMsg: 'No pages converted' })
+      recordToolEvent('pdf-to-jpg', { ts: Date.now(), success: false, durationMs, fileSizeB: file.size, engine: 'node-canvas', error: 'No pages converted' })
+      return NextResponse.json({ error: 'No pages could be converted' }, { status: 500 })
     }
 
     if (results.length === 1) {
       const safeOutputName = safeFilename(results[0].fileName)
-      trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+      const durationMs = Date.now() - start
+      trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: true, durationMs })
+      recordToolEvent('pdf-to-jpg', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'node-canvas' })
       return new NextResponse(results[0].buffer, {
         headers: {
           'Content-Type': results[0].mimeType,
@@ -84,14 +91,13 @@ export async function POST(request: NextRequest) {
     }
 
     const zipBuffer = await createZipFromFiles(
-      results.map((r) => ({
-        name: r.fileName,
-        buffer: r.buffer,
-      }))
+      results.map((r) => ({ name: r.fileName, buffer: r.buffer }))
     )
 
     const baseName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
-    trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    const durationMs = Date.now() - start
+    trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: file.size, format: 'pdf', success: true, durationMs })
+    recordToolEvent('pdf-to-jpg', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'node-canvas' })
 
     return new NextResponse(zipBuffer, {
       headers: {
@@ -101,10 +107,13 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    const durationMs = Date.now() - start
+    const status = (error as { _status?: number })._status ?? 500
+    const msg = error instanceof Error ? error.message : 'Failed to convert PDF to images'
     console.error('[pdf-to-jpg]', error)
-    trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
-    const errorMessage = error instanceof Error ? error.message : 'Failed to convert PDF to images'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    trackRouteRequest(request, { tool: 'pdf-to-jpg', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs, errorMsg: msg })
+    recordToolEvent('pdf-to-jpg', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'node-canvas', error: msg })
+    return NextResponse.json({ error: msg }, { status })
   } finally {
     await cleanup()
   }

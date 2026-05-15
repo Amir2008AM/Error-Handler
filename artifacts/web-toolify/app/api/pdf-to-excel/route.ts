@@ -7,6 +7,9 @@ import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
+import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
+import { acquireGuard } from '@/lib/concurrency-guard'
+import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
 export const maxDuration = 180
@@ -39,6 +42,9 @@ export async function POST(request: NextRequest) {
   const guard = getToolGuardResponse('pdf-to-excel')
   if (guard) return guard
 
+  const rateLimited = applyToolRateLimit(request, 'pdf-to-excel')
+  if (rateLimited) return rateLimited
+
   const { files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
@@ -62,18 +68,19 @@ export async function POST(request: NextRequest) {
 
     const xlsxPath = join(outDir, 'output.xlsx')
 
-    await runExtractor(pdfPath, xlsxPath)
+    const release = await acquireGuard('python')
+    try {
+      await runExtractor(pdfPath, xlsxPath)
+    } finally {
+      release()
+    }
 
     const buffer = await readFile(xlsxPath)
     const baseName = safeFilename(file.filename.replace(/\.pdf$/i, ''))
 
-    trackRouteRequest(request, {
-      tool: 'pdf-to-excel',
-      fileSizeB: file.size,
-      format: 'pdf',
-      success: true,
-      durationMs: Date.now() - start,
-    })
+    const durationMs = Date.now() - start
+    trackRouteRequest(request, { tool: 'pdf-to-excel', fileSizeB: file.size, format: 'pdf', success: true, durationMs })
+    recordToolEvent('pdf-to-excel', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'python-reportlab' })
 
     return new NextResponse(buffer, {
       headers: {

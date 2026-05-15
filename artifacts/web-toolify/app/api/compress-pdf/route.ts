@@ -4,6 +4,9 @@ import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
 import { getTempStorage } from '@/lib/storage'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
+import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
+import { acquireGuard } from '@/lib/concurrency-guard'
+import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -14,6 +17,9 @@ type CompressionLevel = (typeof VALID_LEVELS)[number]
 export async function POST(request: NextRequest) {
   const guard = getToolGuardResponse('compress-pdf')
   if (guard) return guard
+
+  const rateLimited = applyToolRateLimit(request, 'compress-pdf')
+  if (rateLimited) return rateLimited
 
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
@@ -41,10 +47,18 @@ export async function POST(request: NextRequest) {
     }
     const level = rawLevel as CompressionLevel
 
-    const result = await pdfProcessor.compress(file.path, level)
+    const release = await acquireGuard('ghostscript')
+    let result: Awaited<ReturnType<typeof pdfProcessor.compress>>
+    try {
+      result = await pdfProcessor.compress(file.path, level)
+    } finally {
+      release()
+    }
 
     if (!result.success || !result.data) {
-      trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'compress failed' })
+      const durationMs = Date.now() - start
+      trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs, errorMsg: result.error ?? 'compress failed' })
+      recordToolEvent('compress-pdf', { ts: Date.now(), success: false, durationMs, fileSizeB: file.size, engine: 'ghostscript', error: result.error ?? 'compress failed' })
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
@@ -52,14 +66,14 @@ export async function POST(request: NextRequest) {
     const compressionStatus = (result.metadata?.compressionStatus as string) || 'compressed'
     const alreadyOptimized  = compressionStatus === 'already_optimized'
 
-    // When already optimised we return the original — keep the original filename
-    // so the download is clearly labelled and not confusingly prefixed "compressed-".
     const outputFilename = alreadyOptimized ? file.filename : `compressed-${file.filename}`
 
     const storage = getTempStorage()
     const fileId  = await storage.store(result.data, outputFilename, 'application/pdf')
 
-    trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
+    const durationMs = Date.now() - start
+    trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs })
+    recordToolEvent('compress-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'ghostscript' })
 
     return NextResponse.json({
       success: true,
@@ -73,9 +87,13 @@ export async function POST(request: NextRequest) {
       level,
     })
   } catch (error) {
+    const durationMs = Date.now() - start
+    const status = (error as { _status?: number })._status ?? 500
+    const msg = error instanceof Error ? error.message : 'Failed to compress PDF'
     console.error('[compress-pdf]', error)
-    trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
-    return NextResponse.json({ error: 'Failed to compress PDF' }, { status: 500 })
+    trackRouteRequest(request, { tool: 'compress-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs, errorMsg: msg })
+    recordToolEvent('compress-pdf', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'ghostscript', error: msg })
+    return NextResponse.json({ error: msg }, { status })
   } finally {
     await cleanup()
   }

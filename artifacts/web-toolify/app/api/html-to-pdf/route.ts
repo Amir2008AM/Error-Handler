@@ -4,6 +4,9 @@ import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
+import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
+import { acquireGuard } from '@/lib/concurrency-guard'
+import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -11,6 +14,9 @@ export const maxDuration = 120
 export async function POST(request: NextRequest) {
   const guard = getToolGuardResponse('html-to-pdf')
   if (guard) return guard
+
+  const rateLimited = applyToolRateLimit(request, 'html-to-pdf')
+  if (rateLimited) return rateLimited
 
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
@@ -47,10 +53,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No HTML file or content provided' }, { status: 400 })
     }
 
-    const converter = new DocumentConverter()
-    const result    = await converter.htmlToPdf(html, { pageSize, orientation, fontSize })
+    const release = await acquireGuard('libreoffice')
+    let result: Awaited<ReturnType<DocumentConverter['htmlToPdf']>>
+    try {
+      const converter = new DocumentConverter()
+      result = await converter.htmlToPdf(html, { pageSize, orientation, fontSize })
+    } finally {
+      release()
+    }
 
-    trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: file?.size ?? html.length, format: 'html', success: true, durationMs: Date.now() - start })
+    const durationMs = Date.now() - start
+    trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: file?.size ?? html.length, format: 'html', success: true, durationMs })
+    recordToolEvent('html-to-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: file?.size ?? html.length, engine: 'libreoffice' })
 
     return new NextResponse(result.buffer, {
       headers: {
@@ -61,10 +75,13 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    const durationMs = Date.now() - start
+    const status = (error as { _status?: number })._status ?? 500
+    const msg = error instanceof Error ? error.message : 'Failed to convert HTML to PDF'
     console.error('[html-to-pdf]', error)
-    trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: files[0]?.size, format: 'html', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
-    const errorMessage = error instanceof Error ? error.message : 'Failed to convert HTML to PDF'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: files[0]?.size, format: 'html', success: false, durationMs, errorMsg: msg })
+    recordToolEvent('html-to-pdf', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'libreoffice', error: msg })
+    return NextResponse.json({ error: msg }, { status })
   } finally {
     await cleanup()
   }

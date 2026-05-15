@@ -4,6 +4,9 @@ import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
+import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
+import { acquireGuard } from '@/lib/concurrency-guard'
+import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -11,6 +14,9 @@ export const maxDuration = 120
 export async function POST(request: NextRequest) {
   const guard = getToolGuardResponse('excel-to-pdf')
   if (guard) return guard
+
+  const rateLimited = applyToolRateLimit(request, 'excel-to-pdf')
+  if (rateLimited) return rateLimited
 
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
@@ -38,26 +44,37 @@ export async function POST(request: NextRequest) {
 
     const buffer = await readFile(file.path)
 
-    const converter = new DocumentConverter()
-    const result    = await converter.excelToPdf(buffer, { pageSize, orientation, fontSize })
+    const release = await acquireGuard('python')
+    let result: Awaited<ReturnType<DocumentConverter['excelToPdf']>>
+    try {
+      const converter = new DocumentConverter()
+      result = await converter.excelToPdf(buffer, { pageSize, orientation, fontSize })
+    } finally {
+      release()
+    }
 
+    const durationMs = Date.now() - start
     const baseName = safeFilename(file.filename.replace(/\.(xlsx?|xls|csv)$/i, ''))
-    trackRouteRequest(request, { tool: 'excel-to-pdf', fileSizeB: file.size, format: 'xlsx', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(request, { tool: 'excel-to-pdf', fileSizeB: file.size, format: 'xlsx', success: true, durationMs })
+    recordToolEvent('excel-to-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'python-reportlab' })
 
     return new NextResponse(result.buffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
         'X-Page-Count': result.pageCount.toString(),
-        'X-Engine-Used': result.engine ?? 'unknown',
+        'X-Engine-Used': result.engine ?? 'python-reportlab',
         'Cache-Control': 'no-store',
       },
     })
   } catch (error) {
+    const durationMs = Date.now() - start
+    const status = (error as { _status?: number })._status ?? 500
+    const msg = error instanceof Error ? error.message : 'Failed to convert Excel to PDF'
     console.error('[excel-to-pdf]', error)
-    trackRouteRequest(request, { tool: 'excel-to-pdf', fileSizeB: files[0]?.size, format: 'xlsx', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
-    const errorMessage = error instanceof Error ? error.message : 'Failed to convert Excel to PDF'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    trackRouteRequest(request, { tool: 'excel-to-pdf', fileSizeB: files[0]?.size, format: 'xlsx', success: false, durationMs, errorMsg: msg })
+    recordToolEvent('excel-to-pdf', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'python-reportlab', error: msg })
+    return NextResponse.json({ error: msg }, { status })
   } finally {
     await cleanup()
   }

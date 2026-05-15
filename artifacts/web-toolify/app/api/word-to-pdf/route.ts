@@ -4,6 +4,9 @@ import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
+import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
+import { acquireGuard } from '@/lib/concurrency-guard'
+import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -11,6 +14,9 @@ export const maxDuration = 120
 export async function POST(request: NextRequest) {
   const guard = getToolGuardResponse('word-to-pdf')
   if (guard) return guard
+
+  const rateLimited = applyToolRateLimit(request, 'word-to-pdf')
+  if (rateLimited) return rateLimited
 
   const { fields, files, cleanup } = await streamUpload(request).catch((err) => {
     throw Object.assign(err, { _status: 400 })
@@ -36,11 +42,19 @@ export async function POST(request: NextRequest) {
 
     const buffer = await readFile(file.path)
 
-    const converter = new DocumentConverter()
-    const result    = await converter.wordToPdf(buffer, { pageSize, orientation, fontSize })
+    const release = await acquireGuard('libreoffice')
+    let result: Awaited<ReturnType<DocumentConverter['wordToPdf']>>
+    try {
+      const converter = new DocumentConverter()
+      result = await converter.wordToPdf(buffer, { pageSize, orientation, fontSize })
+    } finally {
+      release()
+    }
 
+    const durationMs = Date.now() - start
     const baseName = safeFilename(file.filename.replace(/\.(docx?|doc)$/i, ''))
-    trackRouteRequest(request, { tool: 'word-to-pdf', fileSizeB: file.size, format: 'docx', success: true, durationMs: Date.now() - start })
+    trackRouteRequest(request, { tool: 'word-to-pdf', fileSizeB: file.size, format: 'docx', success: true, durationMs })
+    recordToolEvent('word-to-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'libreoffice' })
 
     return new NextResponse(result.buffer, {
       headers: {
@@ -51,10 +65,13 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    const durationMs = Date.now() - start
+    const status = (error as { _status?: number })._status ?? 500
+    const msg = error instanceof Error ? error.message : 'Failed to convert Word to PDF'
     console.error('[word-to-pdf]', error)
-    trackRouteRequest(request, { tool: 'word-to-pdf', fileSizeB: files[0]?.size, format: 'docx', success: false, durationMs: Date.now() - start, errorMsg: error instanceof Error ? error.message : 'unknown' })
-    const errorMessage = error instanceof Error ? error.message : 'Failed to convert Word to PDF'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    trackRouteRequest(request, { tool: 'word-to-pdf', fileSizeB: files[0]?.size, format: 'docx', success: false, durationMs, errorMsg: msg })
+    recordToolEvent('word-to-pdf', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'libreoffice', error: msg })
+    return NextResponse.json({ error: msg }, { status })
   } finally {
     await cleanup()
   }

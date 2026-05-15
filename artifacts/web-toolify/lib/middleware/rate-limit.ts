@@ -111,6 +111,27 @@ export const JOB_STATUS_LIMIT: RateLimitConfig = { limit: 120, windowMs: 60_000 
 export const FILE_DOWNLOAD_LIMIT: RateLimitConfig = { limit: 60, windowMs: 60_000 }
 
 /**
+ * Tool-class rate limit tiers.
+ *
+ * HEAVY  — LibreOffice, OCR, Tesseract, Python Excel converter
+ *          5 requests / minute / IP
+ * MEDIUM — Ghostscript compress, pdfjs rendering, PDF→Excel
+ *          15 requests / minute / IP
+ * LIGHT  — pdf-lib operations, Sharp image ops
+ *          30 requests / minute / IP
+ */
+export const HEAVY_TOOL_LIMIT:  RateLimitConfig = { limit: 5,  windowMs: 60_000 }
+export const MEDIUM_TOOL_LIMIT: RateLimitConfig = { limit: 15, windowMs: 60_000 }
+export const LIGHT_TOOL_LIMIT:  RateLimitConfig = { limit: 30, windowMs: 60_000 }
+
+/** Map from registry tier name to config. */
+export const TIER_CONFIGS: Record<string, RateLimitConfig> = {
+  heavy:  HEAVY_TOOL_LIMIT,
+  medium: MEDIUM_TOOL_LIMIT,
+  light:  LIGHT_TOOL_LIMIT,
+}
+
+/**
  * Apply rate limiting inside an API route handler.
  * Returns a 429 NextResponse when the limit is exceeded, or `null` when ok.
  *
@@ -147,4 +168,21 @@ export function applyRateLimit(
   }
 
   return null
+}
+
+/**
+ * Apply tool-aware rate limiting using the tool registry tier.
+ * Looks up the tier from the registry; falls back to MEDIUM if slug unknown.
+ *
+ * Usage:
+ *   const limited = applyToolRateLimit(request, 'excel-to-pdf')
+ *   if (limited) return limited
+ */
+export function applyToolRateLimit(req: NextRequest, toolSlug: string): NextResponse | null {
+  // Lazy import to avoid circular deps (registry → rate-limit → registry)
+  // We use TIER_CONFIGS directly keyed by the tier string.
+  const { getToolMeta } = require('@/lib/tool-registry') as typeof import('@/lib/tool-registry')
+  const meta = getToolMeta(toolSlug)
+  const config = meta ? (TIER_CONFIGS[meta.rateTier] ?? MEDIUM_TOOL_LIMIT) : MEDIUM_TOOL_LIMIT
+  return applyRateLimit(req, config, `tool:${toolSlug}`)
 }

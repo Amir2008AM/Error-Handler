@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'node:child_process'
 import { getJobManager } from '@/lib/queue'
 import { getTempStorage } from '@/lib/storage'
+import { getAllGuardStates } from '@/lib/concurrency-guard'
+import { getAllToolHealthSummaries } from '@/lib/tool-registry'
 
 const startTime = Date.now()
 
@@ -219,6 +221,26 @@ export async function GET(_request: NextRequest) {
           maxBytes: storageStats.maxSize,
           usagePercent: parseFloat(storageStats.usagePercent.toFixed(1)),
         },
+
+        concurrencyGuards: getAllGuardStates().map((g) => ({
+          name:          g.name,
+          max:           g.max,
+          current:       g.current,
+          waiting:       g.waiting,
+          totalAcquired: g.totalAcquired,
+          totalRejected: g.totalRejected,
+        })),
+
+        toolHealth: getAllToolHealthSummaries().map((h) => ({
+          slug:          h.slug,
+          totalCalls:    h.totalCalls,
+          successRate:   h.successRate,
+          avgDurationMs: h.avgDurationMs,
+          p95DurationMs: h.p95DurationMs,
+          lastSuccess:   h.lastSuccess,
+          lastFailure:   h.lastFailure,
+          lastError:     h.lastError,
+        })),
       },
       {
         status: 200,
