@@ -27,13 +27,24 @@ import JSZip from 'jszip'
 import { BaseProcessor } from './base-processor'
 import { mapWithConcurrency } from './concurrency'
 
-let _pdfjs: Awaited<ReturnType<typeof import('pdfjs-dist/legacy/build/pdf.mjs')>> | null = null
-async function getPdfjs() {
+type PdfjsModule = typeof import('pdfjs-dist')
+let _pdfjs: PdfjsModule | null = null
+async function getPdfjs(): Promise<PdfjsModule> {
   if (!_pdfjs) {
-    // Must use the legacy build in Node.js — standard build requires DOMMatrix / browser globals
-    const mod = await import('pdfjs-dist/legacy/build/pdf.mjs' as string)
-    _pdfjs = mod as unknown as typeof _pdfjs
-    ;(_pdfjs as any).GlobalWorkerOptions.workerSrc = ''
+    try {
+      // MUST use the legacy build in Node.js environments.
+      // The standard pdfjs-dist build references DOMMatrix and other browser globals
+      // at module-init time, crashing the Node.js process immediately on import.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const legacyPath = require.resolve('pdfjs-dist/legacy/build/pdf.mjs')
+      const mod = await import(/* webpackIgnore: true */ legacyPath)
+      _pdfjs = mod as unknown as PdfjsModule
+      ;(_pdfjs as PdfjsModule).GlobalWorkerOptions.workerSrc = ''
+    } catch (importErr) {
+      throw new Error(
+        `pdfjs-dist legacy build failed to load: ${importErr instanceof Error ? importErr.message : String(importErr)}`
+      )
+    }
   }
   return _pdfjs!
 }
