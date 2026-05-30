@@ -243,7 +243,6 @@ export class PdfToImageConverter {
       standardFontDataUrl: STANDARD_FONT_DATA_URL,
       cMapUrl: CMAP_URL,
       cMapPacked: true,
-      isEvalSupported: false,
       useSystemFonts: false,
       disableFontFace: true,
     })
