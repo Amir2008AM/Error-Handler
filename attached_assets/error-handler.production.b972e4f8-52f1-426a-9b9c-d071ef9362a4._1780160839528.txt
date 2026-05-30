@@ -1,0 +1,358 @@
+2026-05-30T16:07:18.429Z	Initializing build environment...
+2026-05-30T16:07:21.272Z	Success: Finished initializing build environment
+2026-05-30T16:07:21.825Z	Cloning repository...
+2026-05-30T16:07:24.314Z	Restoring from dependencies cache
+2026-05-30T16:07:24.316Z	Restoring from build output cache
+2026-05-30T16:07:25.809Z	Detected the following tools from environment: pnpm@10.26.1, nodejs@22.16.0
+2026-05-30T16:07:27.212Z	Installing project dependencies: pnpm install --frozen-lockfile
+2026-05-30T16:07:27.882Z	Scope: all 9 workspace projects
+2026-05-30T16:07:28.001Z	Lockfile is up to date, resolution step is skipped
+2026-05-30T16:07:28.077Z	Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-05-30T16:07:28.172Z	Packages: +727
+2026-05-30T16:07:28.172Z	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-05-30T16:07:29.078Z	Progress: resolved 727, reused 0, downloaded 51, added 15
+2026-05-30T16:07:30.079Z	Progress: resolved 727, reused 0, downloaded 172, added 68
+2026-05-30T16:07:31.080Z	Progress: resolved 727, reused 0, downloaded 185, added 72
+2026-05-30T16:07:32.081Z	Progress: resolved 727, reused 0, downloaded 187, added 72
+2026-05-30T16:07:33.082Z	Progress: resolved 727, reused 0, downloaded 236, added 92
+2026-05-30T16:07:34.098Z	Progress: resolved 727, reused 0, downloaded 384, added 158
+2026-05-30T16:07:35.101Z	Progress: resolved 727, reused 0, downloaded 450, added 186
+2026-05-30T16:07:36.099Z	Progress: resolved 727, reused 0, downloaded 463, added 190
+2026-05-30T16:07:37.100Z	Progress: resolved 727, reused 0, downloaded 464, added 190
+2026-05-30T16:07:38.738Z	Progress: resolved 727, reused 0, downloaded 465, added 190
+2026-05-30T16:07:39.747Z	Progress: resolved 727, reused 0, downloaded 466, added 190
+2026-05-30T16:07:40.748Z	Progress: resolved 727, reused 0, downloaded 481, added 198
+2026-05-30T16:07:41.747Z	Progress: resolved 727, reused 0, downloaded 507, added 202
+2026-05-30T16:07:42.747Z	Progress: resolved 727, reused 0, downloaded 541, added 211
+2026-05-30T16:07:43.749Z	Progress: resolved 727, reused 0, downloaded 621, added 239
+2026-05-30T16:07:44.753Z	Progress: resolved 727, reused 0, downloaded 654, added 519
+2026-05-30T16:07:45.750Z	Progress: resolved 727, reused 0, downloaded 654, added 536
+2026-05-30T16:07:46.120Z	Progress: resolved 727, reused 0, downloaded 654, added 727, done
+2026-05-30T16:07:46.381Z	.../core-js@3.49.0/node_modules/core-js postinstall$ node -e "try{require('./postinstall')}catch(e){}"
+2026-05-30T16:07:46.410Z	.../sharp@0.34.5/node_modules/sharp install$ node install/check.js || npm run build
+2026-05-30T16:07:46.411Z	.../node_modules/msgpackr-extract install$ node-gyp-build-optional-packages
+2026-05-30T16:07:46.411Z	.../canvas@3.2.3/node_modules/canvas install$ prebuild-install -r napi || node-gyp rebuild
+2026-05-30T16:07:46.425Z	.../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+2026-05-30T16:07:46.473Z	.../core-js@3.49.0/node_modules/core-js postinstall: Done
+2026-05-30T16:07:46.576Z	.../sharp@0.34.5/node_modules/sharp install: Done
+2026-05-30T16:07:46.600Z	.../node_modules/msgpackr-extract install: Done
+2026-05-30T16:07:46.655Z	.../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+2026-05-30T16:07:46.768Z	.../sharp@0.33.5/node_modules/sharp install$ node install/check
+2026-05-30T16:07:46.768Z	.../node_modules/tesseract.js postinstall$ opencollective-postinstall || true
+2026-05-30T16:07:46.857Z	.../sharp@0.33.5/node_modules/sharp install: Done
+2026-05-30T16:07:46.858Z	.../node_modules/tesseract.js postinstall: Done
+2026-05-30T16:07:47.359Z	.../canvas@3.2.3/node_modules/canvas install: Done
+2026-05-30T16:07:47.755Z	
+2026-05-30T16:07:47.755Z	devDependencies:
+2026-05-30T16:07:47.755Z	+ prettier 3.8.3
+2026-05-30T16:07:47.756Z	+ typescript 5.9.3
+2026-05-30T16:07:47.756Z	
+2026-05-30T16:07:47.817Z	. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in *pnpm*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+2026-05-30T16:07:47.833Z	. preinstall: Done
+2026-05-30T16:07:47.975Z	Done in 20.5s using pnpm v10.26.1
+2026-05-30T16:07:48.032Z	Installing project dependencies: pip install -r requirements.txt
+2026-05-30T16:07:48.945Z	Collecting arabic-reshaper==3.0.0 (from -r requirements.txt (line 1))
+2026-05-30T16:07:49.014Z	  Downloading arabic_reshaper-3.0.0-py3-none-any.whl.metadata (12 kB)
+2026-05-30T16:07:49.120Z	Collecting python-bidi==0.4.2 (from -r requirements.txt (line 2))
+2026-05-30T16:07:49.127Z	  Downloading python_bidi-0.4.2-py2.py3-none-any.whl.metadata (4.6 kB)
+2026-05-30T16:07:49.216Z	Collecting reportlab==4.2.5 (from -r requirements.txt (line 3))
+2026-05-30T16:07:49.221Z	  Downloading reportlab-4.2.5-py3-none-any.whl.metadata (1.5 kB)
+2026-05-30T16:07:49.237Z	Collecting openpyxl==3.1.5 (from -r requirements.txt (line 4))
+2026-05-30T16:07:49.241Z	  Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-05-30T16:07:49.392Z	Collecting Pillow==10.4.0 (from -r requirements.txt (line 5))
+2026-05-30T16:07:49.398Z	  Downloading pillow-10.4.0-cp313-cp313-manylinux_2_28_x86_64.whl.metadata (9.2 kB)
+2026-05-30T16:07:49.414Z	Collecting pdfplumber==0.11.9 (from -r requirements.txt (line 6))
+2026-05-30T16:07:49.418Z	  Downloading pdfplumber-0.11.9-py3-none-any.whl.metadata (43 kB)
+2026-05-30T16:07:49.621Z	Collecting numpy==2.4.4 (from -r requirements.txt (line 7))
+2026-05-30T16:07:49.627Z	  Downloading numpy-2.4.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+2026-05-30T16:07:49.737Z	Collecting pandas==3.0.2 (from -r requirements.txt (line 8))
+2026-05-30T16:07:49.743Z	  Downloading pandas-3.0.2-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (79 kB)
+2026-05-30T16:07:49.786Z	Collecting pdf2image==1.17.0 (from -r requirements.txt (line 9))
+2026-05-30T16:07:49.789Z	  Downloading pdf2image-1.17.0-py3-none-any.whl.metadata (6.2 kB)
+2026-05-30T16:07:49.801Z	Collecting pytesseract==0.3.13 (from -r requirements.txt (line 10))
+2026-05-30T16:07:49.805Z	  Downloading pytesseract-0.3.13-py3-none-any.whl.metadata (11 kB)
+2026-05-30T16:07:49.856Z	Collecting opencv-python-headless==4.13.0.92 (from -r requirements.txt (line 11))
+2026-05-30T16:07:49.861Z	  Downloading opencv_python_headless-4.13.0.92-cp37-abi3-manylinux_2_28_x86_64.whl.metadata (19 kB)
+2026-05-30T16:07:49.875Z	Collecting camelot-py==1.0.9 (from camelot-py[cv]==1.0.9->-r requirements.txt (line 12))
+2026-05-30T16:07:49.879Z	  Downloading camelot_py-1.0.9-py3-none-any.whl.metadata (9.8 kB)
+2026-05-30T16:07:49.896Z	Collecting six (from python-bidi==0.4.2->-r requirements.txt (line 2))
+2026-05-30T16:07:49.900Z	  Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-05-30T16:07:49.929Z	Collecting chardet (from reportlab==4.2.5->-r requirements.txt (line 3))
+2026-05-30T16:07:49.933Z	  Downloading chardet-7.4.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (9.4 kB)
+2026-05-30T16:07:49.947Z	Collecting et-xmlfile (from openpyxl==3.1.5->-r requirements.txt (line 4))
+2026-05-30T16:07:49.953Z	  Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-05-30T16:07:49.970Z	Collecting pdfminer.six==20251230 (from pdfplumber==0.11.9->-r requirements.txt (line 6))
+2026-05-30T16:07:49.974Z	  Downloading pdfminer_six-20251230-py3-none-any.whl.metadata (4.3 kB)
+2026-05-30T16:07:50.061Z	Collecting pypdfium2>=4.18.0 (from pdfplumber==0.11.9->-r requirements.txt (line 6))
+2026-05-30T16:07:50.068Z	  Downloading pypdfium2-5.8.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (68 kB)
+2026-05-30T16:07:50.085Z	Collecting python-dateutil>=2.8.2 (from pandas==3.0.2->-r requirements.txt (line 8))
+2026-05-30T16:07:50.089Z	  Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2026-05-30T16:07:50.095Z	Requirement already satisfied: packaging>=21.3 in /opt/buildhome/.local/lib/python3.13/site-packages (from pytesseract==0.3.13->-r requirements.txt (line 10)) (26.2)
+2026-05-30T16:07:50.098Z	Requirement already satisfied: click>=8.0.1 in /opt/buildhome/.local/lib/python3.13/site-packages (from camelot-py==1.0.9->camelot-py[cv]==1.0.9->-r requirements.txt (line 12)) (8.4.1)
+2026-05-30T16:07:50.119Z	Collecting pypdf<6.0,>=4.0 (from camelot-py==1.0.9->camelot-py[cv]==1.0.9->-r requirements.txt (line 12))
+2026-05-30T16:07:50.125Z	  Downloading pypdf-5.9.0-py3-none-any.whl.metadata (7.1 kB)
+2026-05-30T16:07:50.143Z	Collecting tabulate>=0.9.0 (from camelot-py==1.0.9->camelot-py[cv]==1.0.9->-r requirements.txt (line 12))
+2026-05-30T16:07:50.148Z	  Downloading tabulate-0.10.0-py3-none-any.whl.metadata (40 kB)
+2026-05-30T16:07:50.159Z	WARNING: camelot-py 1.0.9 does not provide the extra 'cv'
+2026-05-30T16:07:50.274Z	Collecting charset-normalizer>=2.0.0 (from pdfminer.six==20251230->pdfplumber==0.11.9->-r requirements.txt (line 6))
+2026-05-30T16:07:50.276Z	  Using cached charset_normalizer-3.4.7-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+2026-05-30T16:07:50.490Z	Collecting cryptography>=36.0.0 (from pdfminer.six==20251230->pdfplumber==0.11.9->-r requirements.txt (line 6))
+2026-05-30T16:07:50.493Z	  Using cached cryptography-48.0.0-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (4.3 kB)
+2026-05-30T16:07:50.610Z	Collecting cffi>=2.0.0 (from cryptography>=36.0.0->pdfminer.six==20251230->pdfplumber==0.11.9->-r requirements.txt (line 6))
+2026-05-30T16:07:50.613Z	  Using cached cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.6 kB)
+2026-05-30T16:07:50.633Z	Collecting pycparser (from cffi>=2.0.0->cryptography>=36.0.0->pdfminer.six==20251230->pdfplumber==0.11.9->-r requirements.txt (line 6))
+2026-05-30T16:07:50.635Z	  Using cached pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+2026-05-30T16:07:50.649Z	Downloading arabic_reshaper-3.0.0-py3-none-any.whl (20 kB)
+2026-05-30T16:07:50.656Z	Downloading python_bidi-0.4.2-py2.py3-none-any.whl (30 kB)
+2026-05-30T16:07:50.663Z	Downloading reportlab-4.2.5-py3-none-any.whl (1.9 MB)
+2026-05-30T16:07:50.698Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 58.8 MB/s  0:00:00
+2026-05-30T16:07:50.703Z	Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-05-30T16:07:50.713Z	Downloading pillow-10.4.0-cp313-cp313-manylinux_2_28_x86_64.whl (4.5 MB)
+2026-05-30T16:07:50.796Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 53.4 MB/s  0:00:00
+2026-05-30T16:07:50.801Z	Downloading pdfplumber-0.11.9-py3-none-any.whl (60 kB)
+2026-05-30T16:07:50.808Z	Downloading numpy-2.4.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.6 MB)
+2026-05-30T16:07:51.111Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.6/16.6 MB 54.9 MB/s  0:00:00
+2026-05-30T16:07:51.117Z	Downloading pandas-3.0.2-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (10.9 MB)
+2026-05-30T16:07:51.313Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.9/10.9 MB 55.0 MB/s  0:00:00
+2026-05-30T16:07:51.317Z	Downloading pdf2image-1.17.0-py3-none-any.whl (11 kB)
+2026-05-30T16:07:51.322Z	Downloading pytesseract-0.3.13-py3-none-any.whl (14 kB)
+2026-05-30T16:07:51.332Z	Downloading opencv_python_headless-4.13.0.92-cp37-abi3-manylinux_2_28_x86_64.whl (60.4 MB)
+2026-05-30T16:07:52.409Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.4/60.4 MB 56.2 MB/s  0:00:01
+2026-05-30T16:07:52.414Z	Downloading camelot_py-1.0.9-py3-none-any.whl (66 kB)
+2026-05-30T16:07:52.421Z	Downloading pdfminer_six-20251230-py3-none-any.whl (6.6 MB)
+2026-05-30T16:07:52.543Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.6/6.6 MB 53.6 MB/s  0:00:00
+2026-05-30T16:07:52.547Z	Downloading pypdf-5.9.0-py3-none-any.whl (313 kB)
+2026-05-30T16:07:52.555Z	Downloading chardet-7.4.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (887 kB)
+2026-05-30T16:07:52.571Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 887.4/887.4 kB 52.6 MB/s  0:00:00
+2026-05-30T16:07:52.573Z	Using cached charset_normalizer-3.4.7-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (215 kB)
+2026-05-30T16:07:52.576Z	Using cached cryptography-48.0.0-cp311-abi3-manylinux_2_34_x86_64.whl (4.7 MB)
+2026-05-30T16:07:52.593Z	Using cached cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (219 kB)
+2026-05-30T16:07:52.603Z	Downloading pypdfium2-5.8.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.7 MB)
+2026-05-30T16:07:52.677Z	   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 49.8 MB/s  0:00:00
+2026-05-30T16:07:52.680Z	Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2026-05-30T16:07:52.689Z	Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-05-30T16:07:52.695Z	Downloading tabulate-0.10.0-py3-none-any.whl (39 kB)
+2026-05-30T16:07:52.702Z	Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-05-30T16:07:52.706Z	Using cached pycparser-3.0-py3-none-any.whl (48 kB)
+2026-05-30T16:07:52.974Z	Installing collected packages: arabic-reshaper, tabulate, six, pypdfium2, pypdf, pycparser, Pillow, numpy, et-xmlfile, charset-normalizer, chardet, reportlab, python-dateutil, python-bidi, pytesseract, pdf2image, openpyxl, opencv-python-headless, cffi, pandas, cryptography, pdfminer.six, pdfplumber, camelot-py
+2026-05-30T16:08:06.452Z	
+2026-05-30T16:08:06.453Z	Successfully installed Pillow-10.4.0 arabic-reshaper-3.0.0 camelot-py-1.0.9 cffi-2.0.0 chardet-7.4.3 charset-normalizer-3.4.7 cryptography-48.0.0 et-xmlfile-2.0.0 numpy-2.4.4 opencv-python-headless-4.13.0.92 openpyxl-3.1.5 pandas-3.0.2 pdf2image-1.17.0 pdfminer.six-20251230 pdfplumber-0.11.9 pycparser-3.0 pypdf-5.9.0 pypdfium2-5.8.0 pytesseract-0.3.13 python-bidi-0.4.2 python-dateutil-2.9.0.post0 reportlab-4.2.5 six-1.17.0 tabulate-0.10.0
+2026-05-30T16:08:06.578Z	Reshimming asdf python...
+2026-05-30T16:08:07.716Z	Executing user build command: pnpm run build
+2026-05-30T16:08:08.219Z	
+2026-05-30T16:08:08.219Z	> workspace@0.0.0 build /opt/buildhome/repo
+2026-05-30T16:08:08.219Z	> pnpm run typecheck && pnpm -r --filter "!@workspace/mockup-sandbox" --if-present run build
+2026-05-30T16:08:08.219Z	
+2026-05-30T16:08:08.561Z	
+2026-05-30T16:08:08.562Z	> workspace@0.0.0 typecheck /opt/buildhome/repo
+2026-05-30T16:08:08.562Z	> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+2026-05-30T16:08:08.562Z	
+2026-05-30T16:08:08.923Z	
+2026-05-30T16:08:08.923Z	> workspace@0.0.0 typecheck:libs /opt/buildhome/repo
+2026-05-30T16:08:08.923Z	> tsc --build
+2026-05-30T16:08:08.923Z	
+2026-05-30T16:08:12.203Z	Scope: 4 of 9 workspace projects
+2026-05-30T16:08:12.209Z	artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+2026-05-30T16:08:12.209Z	artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+2026-05-30T16:08:14.407Z	artifacts/api-server typecheck: Done
+2026-05-30T16:08:14.414Z	scripts typecheck$ tsc -p tsconfig.json --noEmit
+2026-05-30T16:08:15.935Z	scripts typecheck: Done
+2026-05-30T16:08:19.560Z	artifacts/mockup-sandbox typecheck: Done
+2026-05-30T16:08:19.981Z	Scope: 7 of 9 workspace projects
+2026-05-30T16:08:19.989Z	artifacts/web-toolify build$ next build
+2026-05-30T16:08:20.411Z	artifacts/web-toolify build: ⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+2026-05-30T16:08:20.415Z	artifacts/web-toolify build: Attention: Next.js now collects completely anonymous telemetry regarding usage.
+2026-05-30T16:08:20.421Z	artifacts/web-toolify build: This information is used to shape Next.js' roadmap and prioritize features.
+2026-05-30T16:08:20.421Z	artifacts/web-toolify build: You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+2026-05-30T16:08:20.421Z	artifacts/web-toolify build: https://nextjs.org/telemetry
+2026-05-30T16:08:20.437Z	artifacts/web-toolify build: Warning: Custom Cache-Control headers detected for the following routes:
+2026-05-30T16:08:20.437Z	artifacts/web-toolify build:   - /_next/static/:path*
+2026-05-30T16:08:20.437Z	artifacts/web-toolify build: Setting a custom Cache-Control header can break Next.js development behavior.
+2026-05-30T16:08:20.451Z	artifacts/web-toolify build: ▲ Next.js 16.2.0 (Turbopack)
+2026-05-30T16:08:20.451Z	artifacts/web-toolify build: - Experiments (use with caution):
+2026-05-30T16:08:20.451Z	artifacts/web-toolify build:   · proxyClientMaxBodySize: "100mb"
+2026-05-30T16:08:20.451Z	artifacts/web-toolify build:   · serverActions
+2026-05-30T16:08:20.534Z	artifacts/web-toolify build:   Creating an optimized production build ...
+2026-05-30T16:08:47.645Z	artifacts/web-toolify build: Turbopack build encountered 3 warnings:
+2026-05-30T16:08:47.646Z	artifacts/web-toolify build: ./artifacts/web-toolify/next.config.mjs
+2026-05-30T16:08:47.646Z	artifacts/web-toolify build: Encountered unexpected file in NFT list
+2026-05-30T16:08:47.646Z	artifacts/web-toolify build: A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+2026-05-30T16:08:47.646Z	artifacts/web-toolify build: - filesystem operations (like path.join, path.resolve or fs.readFile), or
+2026-05-30T16:08:47.648Z	artifacts/web-toolify build: - very dynamic requires (like require('./' + foo)).
+2026-05-30T16:08:47.648Z	artifacts/web-toolify build: To resolve this, you can
+2026-05-30T16:08:47.650Z	artifacts/web-toolify build: - remove them if possible, or
+2026-05-30T16:08:47.650Z	artifacts/web-toolify build: - only use them in development, or
+2026-05-30T16:08:47.650Z	artifacts/web-toolify build: - make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+2026-05-30T16:08:47.650Z	artifacts/web-toolify build: - add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+2026-05-30T16:08:47.650Z	artifacts/web-toolify build: Import trace:
+2026-05-30T16:08:47.650Z	artifacts/web-toolify build:   App Route:
+2026-05-30T16:08:47.650Z	artifacts/web-toolify build:     ./artifacts/web-toolify/next.config.mjs
+2026-05-30T16:08:47.652Z	artifacts/web-toolify build:     ./artifacts/web-toolify/lib/processing/pdf-processor.ts
+2026-05-30T16:08:47.652Z	artifacts/web-toolify build:     ./artifacts/web-toolify/app/api/organize-pdf/route.ts
+2026-05-30T16:08:47.652Z	artifacts/web-toolify build: ./artifacts/web-toolify/next.config.mjs
+2026-05-30T16:08:47.652Z	artifacts/web-toolify build: Encountered unexpected file in NFT list
+2026-05-30T16:08:47.652Z	artifacts/web-toolify build: A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+2026-05-30T16:08:47.652Z	artifacts/web-toolify build: - filesystem operations (like path.join, path.resolve or fs.readFile), or
+2026-05-30T16:08:47.652Z	artifacts/web-toolify build: - very dynamic requires (like require('./' + foo)).
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build: To resolve this, you can
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build: - remove them if possible, or
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build: - only use them in development, or
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build: - make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build: - add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build: Output asset trace:
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build:   [output]/artifacts/web-toolify/.next/server/app/api/ops/data/route.js
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build:   [output]/artifacts/web-toolify/.next/server/chunks/[root-of-the-server]__0yd3k8~._.js
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build: Import trace:
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build:   App Route:
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build:     ./artifacts/web-toolify/next.config.mjs
+2026-05-30T16:08:47.653Z	artifacts/web-toolify build:     ./artifacts/web-toolify/lib/processing/pdf-processor.ts
+2026-05-30T16:08:47.654Z	artifacts/web-toolify build:     ./artifacts/web-toolify/app/api/organize-pdf/route.ts
+2026-05-30T16:08:47.654Z	artifacts/web-toolify build: ./artifacts/web-toolify/next.config.mjs
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: Encountered unexpected file in NFT list
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: - filesystem operations (like path.join, path.resolve or fs.readFile), or
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: - very dynamic requires (like require('./' + foo)).
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: To resolve this, you can
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: - remove them if possible, or
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: - only use them in development, or
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: - make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: - add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: Output asset trace:
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build:   [output]/artifacts/web-toolify/.next/server/instrumentation.js
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build:   [output]/artifacts/web-toolify/.next/server/chunks/artifacts_web-toolify_090f7v9._.js
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build: Import trace:
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build:   App Route:
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build:     ./artifacts/web-toolify/next.config.mjs
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build:     ./artifacts/web-toolify/lib/processing/pdf-processor.ts
+2026-05-30T16:08:47.658Z	artifacts/web-toolify build:     ./artifacts/web-toolify/app/api/organize-pdf/route.ts
+2026-05-30T16:08:47.672Z	artifacts/web-toolify build: ✓ Compiled successfully in 26.9s
+2026-05-30T16:08:47.680Z	artifacts/web-toolify build:   Running TypeScript ...
+2026-05-30T16:09:01.949Z	artifacts/web-toolify build:   Finished TypeScript in 14.3s ...
+2026-05-30T16:09:01.957Z	artifacts/web-toolify build:   Collecting page data using 1 worker ...
+2026-05-30T16:09:02.553Z	artifacts/web-toolify build: (node:2271) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+2026-05-30T16:09:02.553Z	artifacts/web-toolify build: (Use `node --trace-warnings ...` to show where the warning was created)
+2026-05-30T16:09:03.080Z	artifacts/web-toolify build:   Generating static pages using 1 worker (0/81) ...
+2026-05-30T16:09:06.034Z	artifacts/web-toolify build:   Generating static pages using 1 worker (20/81) 
+2026-05-30T16:09:06.044Z	artifacts/web-toolify build:   Generating static pages using 1 worker (40/81) 
+2026-05-30T16:09:06.362Z	artifacts/web-toolify build:   Generating static pages using 1 worker (60/81) 
+2026-05-30T16:09:06.542Z	artifacts/web-toolify build: ✓ Generating static pages using 1 worker (81/81) in 3.5s
+2026-05-30T16:09:06.553Z	artifacts/web-toolify build:   Finalizing page optimization ...
+2026-05-30T16:09:06.562Z	artifacts/web-toolify build: Route (app)
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ┌ ○ /
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ○ /_not-found
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ○ /age-calculator
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/compress-image
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/compress-pdf
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/convert-image
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/crop-image
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/delete-pages
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/excel-to-pdf
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/files/[id]
+2026-05-30T16:09:06.563Z	artifacts/web-toolify build: ├ ƒ /api/health
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/heartbeat
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/html-to-pdf
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/auth
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/dashboard
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/dev-test
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/diagnose
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/registry
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/stream
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/tools/status
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/tools/toggle
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/internal/tools/verify-fix
+2026-05-30T16:09:06.567Z	artifacts/web-toolify build: ├ ƒ /api/jobs/[id]
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/jobs/create
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/merge-pdf
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ocr/detect
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ocr/image
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ocr/pdf
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ops/auth
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ops/data
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ops/diagnose
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ops/stream
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ops/tool/[toolName]/test
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/ops/tool/[toolName]/toggle
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/organize-pdf
+2026-05-30T16:09:06.568Z	artifacts/web-toolify build: ├ ƒ /api/page-numbers
+2026-05-30T16:09:06.571Z	artifacts/web-toolify build: ├ ƒ /api/pdf-to-excel
+2026-05-30T16:09:06.571Z	artifacts/web-toolify build: ├ ƒ /api/pdf-to-jpg
+2026-05-30T16:09:06.571Z	artifacts/web-toolify build: ├ ƒ /api/pdf-to-ppt
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/pdf-to-text
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/pdf-to-word
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/ppt-to-pdf
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/protect-pdf
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/repair-pdf
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/resize-image
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/rotate-pdf
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/sign-pdf
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/split-pdf
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/telegram/admin-webhook
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/test-excel-engine
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/unlock-pdf
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/user/disconnect
+2026-05-30T16:09:06.572Z	artifacts/web-toolify build: ├ ƒ /api/watermark-pdf
+2026-05-30T16:09:06.573Z	artifacts/web-toolify build: ├ ƒ /api/word-to-pdf
+2026-05-30T16:09:06.573Z	artifacts/web-toolify build: ├ ○ /compress-image
+2026-05-30T16:09:06.573Z	artifacts/web-toolify build: ├ ○ /compress-pdf
+2026-05-30T16:09:06.573Z	artifacts/web-toolify build: ├ ○ /convert-image
+2026-05-30T16:09:06.573Z	artifacts/web-toolify build: ├ ○ /crop-image
+2026-05-30T16:09:06.573Z	artifacts/web-toolify build: ├ ƒ /dev-ops
+2026-05-30T16:09:06.573Z	artifacts/web-toolify build: ├ ○ /excel-to-pdf
+2026-05-30T16:09:06.575Z	artifacts/web-toolify build: ├ ○ /html-to-pdf
+2026-05-30T16:09:06.575Z	artifacts/web-toolify build: ├ ○ /image-to-pdf
+2026-05-30T16:09:06.575Z	artifacts/web-toolify build: ├ ○ /internal/dev-test
+2026-05-30T16:09:06.575Z	artifacts/web-toolify build: ├ ○ /internal/system-monitor-v2
+2026-05-30T16:09:06.575Z	artifacts/web-toolify build: ├ ○ /merge-pdf
+2026-05-30T16:09:06.575Z	artifacts/web-toolify build: ├ ○ /ocr-image
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /ops
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /organize-pdf
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /page-numbers
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /pdf-to-excel
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /pdf-to-jpg
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /pdf-to-ppt
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /pdf-to-word
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /percentage-calculator
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /ppt-to-pdf
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /protect-pdf
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /repair-pdf
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /resize-image
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /robots.txt
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /rotate-pdf
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /sitemap.xml
+2026-05-30T16:09:06.576Z	artifacts/web-toolify build: ├ ○ /split-pdf
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: ├ ○ /text-case
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: ├ ○ /unlock-pdf
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: ├ ○ /watermark-pdf
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: ├ ○ /word-counter
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: └ ○ /word-to-pdf
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: ƒ Proxy (Middleware)
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: ○  (Static)   prerendered as static content
+2026-05-30T16:09:06.577Z	artifacts/web-toolify build: ƒ  (Dynamic)  server-rendered on demand
+2026-05-30T16:09:06.726Z	artifacts/web-toolify build: Done
+2026-05-30T16:09:06.727Z	artifacts/api-server build$ node ./build.mjs
+2026-05-30T16:09:06.996Z	artifacts/api-server build:   dist/index.mjs                       1.4mb ⚠️
+2026-05-30T16:09:06.996Z	artifacts/api-server build:   dist/pino-worker.mjs               153.4kb
+2026-05-30T16:09:06.996Z	artifacts/api-server build:   dist/pino-file.mjs                 142.1kb
+2026-05-30T16:09:06.996Z	artifacts/api-server build:   dist/pino-pretty.mjs               114.6kb
+2026-05-30T16:09:06.996Z	artifacts/api-server build:   dist/thread-stream-worker.mjs        7.3kb
+2026-05-30T16:09:06.996Z	artifacts/api-server build:   dist/index.mjs.map                   2.1mb
+2026-05-30T16:09:06.997Z	artifacts/api-server build:   dist/pino-worker.mjs.map           256.9kb
+2026-05-30T16:09:06.997Z	artifacts/api-server build:   dist/pino-file.mjs.map             229.0kb
+2026-05-30T16:09:06.997Z	artifacts/api-server build:   dist/pino-pretty.mjs.map           204.0kb
+2026-05-30T16:09:06.997Z	artifacts/api-server build:   dist/thread-stream-worker.mjs.map   12.0kb
+2026-05-30T16:09:06.997Z	artifacts/api-server build: ⚡ Done in 199ms
+2026-05-30T16:09:07.009Z	artifacts/api-server build: Done
+2026-05-30T16:09:07.032Z	Success: Build command completed
+2026-05-30T16:09:07.286Z	Executing user deploy command: npx wrangler deploy
+2026-05-30T16:09:08.462Z	npm warn exec The following package was not found and will be installed: wrangler@4.95.0
+2026-05-30T16:09:16.407Z	
+2026-05-30T16:09:16.407Z	 ⛅️ wrangler 4.95.0
+2026-05-30T16:09:16.407Z	───────────────────
+2026-05-30T16:09:16.419Z	
+2026-05-30T16:09:16.419Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2026-05-30T16:09:16.884Z	
+2026-05-30T16:09:16.939Z	✘ [ERROR] The Wrangler application detection logic has been run in the root of a workspace instead of targeting a specific project. Change your working directory to one of the applications in the workspace and try again.
+2026-05-30T16:09:16.939Z	
+2026-05-30T16:09:16.939Z	
+2026-05-30T16:09:16.960Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2026-05-30_16-09-16_106.log"
+2026-05-30T16:09:17.030Z	Failed: error occurred while running deploy command
