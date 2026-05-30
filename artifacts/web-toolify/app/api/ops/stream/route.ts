@@ -69,7 +69,7 @@ async function refreshWorkerHealth(): Promise<void> {
 
     await Promise.all(QUEUE_NAMES.map(async (name) => {
       try {
-        const q       = new Queue(name, { connection })
+        const q       = new Queue(name, { connection: connection as never })
         const workers = await q.getWorkers()
         await q.close()
 
