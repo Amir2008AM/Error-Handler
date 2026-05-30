@@ -113,7 +113,7 @@ const queues = new Map<WorkerGroup, Queue>()
 function getQueue(group: WorkerGroup): Queue {
   if (!queues.has(group)) {
     queues.set(group, new Queue(QUEUE_NAMES[group], {
-      connection: getRedis(),
+      connection: getRedis() as never,
       defaultJobOptions: {
         attempts: 1,                    // let job-processor.ts handle internal retries
         removeOnComplete: { age: JOB_TTL_COMPLETED_MS / 1000 },
@@ -298,7 +298,7 @@ export function startWorkers(): void {
       QUEUE_NAMES[group],
       executeBullMQJob,
       {
-        connection:  getRedis(),
+        connection:  getRedis() as never,
         concurrency: CONCURRENCY[group],
         lockDuration: JOB_TIMEOUT_MS + 30_000, // must be > job timeout
       }
