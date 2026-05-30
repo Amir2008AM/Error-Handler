@@ -52,11 +52,11 @@ export async function GET() {
 
   // Check all candidate script paths
   const possiblePaths = [
-    path.join(process.cwd(), 'lib', 'processing', 'excel_to_pdf.py'),
-    path.join(process.cwd(), '..', '..', 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf.py'),
+    path.join(/*turbopackIgnore: true*/ process.cwd(), 'lib', 'processing', 'excel_to_pdf.py'),
+    path.join(/*turbopackIgnore: true*/ process.cwd(), '..', '..', 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf.py'),
     '/app/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
     '/app/lib/processing/excel_to_pdf.py',
-    path.join(__dirname, '..', '..', '..', 'lib', 'processing', 'excel_to_pdf.py'),
+    path.join(/*turbopackIgnore: true*/ __dirname, '..', '..', '..', 'lib', 'processing', 'excel_to_pdf.py'),
   ]
   for (const p of possiblePaths) {
     results[`path_exists:${p}`] = fs.existsSync(p) ? 'YES' : 'NO'
