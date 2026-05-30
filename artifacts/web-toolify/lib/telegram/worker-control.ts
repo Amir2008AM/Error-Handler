@@ -30,7 +30,7 @@ async function withQueues<T>(fn: (q: Queue) => Promise<T>): Promise<T[]> {
   return Promise.all(
     QUEUE_NAMES.map(async (name) => {
       const q = new Queue(name, {
-        connection: r,
+        connection: r as never,
       })
       try { return await fn(q) } finally { await q.close() }
     })

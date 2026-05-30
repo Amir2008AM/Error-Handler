@@ -91,7 +91,7 @@ export async function getQueueCounts(): Promise<QueueCounts & { byQueue: Record<
 
   await Promise.all(QUEUE_NAMES.map(async (name) => {
     try {
-      const q = new Queue(name, { connection: r })
+      const q = new Queue(name, { connection: r as never })
       const counts = await q.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed')
       await q.close()
       const qc: QueueCounts = {
