@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import path from 'path'
-import fs from 'fs'
 
 export const runtime = 'nodejs'
 
 const execAsync = promisify(exec)
+
+// Static candidate paths for the excel script — evaluated at request time only,
+// no filesystem crawl during build/NFT tracing.
+const SCRIPT_CANDIDATES: readonly string[] = [
+  '/app/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
+  '/app/lib/processing/excel_to_pdf.py',
+  '/opt/render/project/src/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
+]
 
 export async function GET() {
   const results: Record<string, string> = {}
@@ -50,20 +56,27 @@ export async function GET() {
   // Check process.cwd()
   results.cwd = process.cwd()
 
-  // Check all candidate script paths
-  const possiblePaths = [
-    path.join(/*turbopackIgnore: true*/ process.cwd(), 'lib', 'processing', 'excel_to_pdf.py'),
-    path.join(/*turbopackIgnore: true*/ process.cwd(), '..', '..', 'artifacts', 'web-toolify', 'lib', 'processing', 'excel_to_pdf.py'),
-    '/app/artifacts/web-toolify/lib/processing/excel_to_pdf.py',
-    '/app/lib/processing/excel_to_pdf.py',
-    path.join(/*turbopackIgnore: true*/ __dirname, '..', '..', '..', 'lib', 'processing', 'excel_to_pdf.py'),
-  ]
-  for (const p of possiblePaths) {
-    results[`path_exists:${p}`] = fs.existsSync(p) ? 'YES' : 'NO'
+  // Check static candidate script paths
+  for (const p of SCRIPT_CANDIDATES) {
+    try {
+      await execAsync(`test -f "${p}"`)
+      results[`path_exists:${p}`] = 'YES'
+    } catch {
+      results[`path_exists:${p}`] = 'NO'
+    }
   }
 
   // The resolved script (first existing path)
-  const resolvedScript = possiblePaths.find(p => fs.existsSync(p))
+  let resolvedScript: string | undefined
+  for (const p of SCRIPT_CANDIDATES) {
+    try {
+      await execAsync(`test -f "${p}"`)
+      resolvedScript = p
+      break
+    } catch {
+      // continue
+    }
+  }
   results.resolved_script = resolvedScript ?? 'NONE FOUND'
 
   // Try running script --help if we found it

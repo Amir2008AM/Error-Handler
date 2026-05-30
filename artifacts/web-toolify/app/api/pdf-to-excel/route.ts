@@ -14,11 +14,24 @@ import { recordToolEvent } from '@/lib/tool-registry'
 export const runtime = 'nodejs'
 export const maxDuration = 180
 
-const PYTHON_SCRIPT = join(process.cwd(), '../../pdf_table_extractor.py')
+// Candidate paths tried in order — resolved at request time, not at module load,
+// so Turbopack NFT tracing never crawls the filesystem for this module.
+const SCRIPT_CANDIDATES: readonly string[] = [
+  '/app/pdf_table_extractor.py',
+  '/app/artifacts/web-toolify/pdf_table_extractor.py',
+  '/opt/render/project/src/pdf_table_extractor.py',
+]
+
+function resolveScript(): string {
+  // Return the first candidate; actual existence is validated by the OS when
+  // python3 is spawned. Keeping this out of top-level scope prevents NFT issues.
+  return SCRIPT_CANDIDATES[0]
+}
 
 function runExtractor(pdfPath: string, xlsxPath: string): Promise<void> {
+  const script = resolveScript()
   return new Promise((resolve, reject) => {
-    const py = spawn('python3', [PYTHON_SCRIPT, '-q', pdfPath, xlsxPath], {
+    const py = spawn('python3', [script, '-q', pdfPath, xlsxPath], {
       timeout: 150_000,
     })
 

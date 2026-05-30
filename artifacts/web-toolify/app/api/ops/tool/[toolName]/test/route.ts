@@ -9,8 +9,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { readFile } from 'node:fs/promises'
-import { join }     from 'node:path'
 import { verifyOpsSession } from '@/app/api/ops/auth/route'
 import { TOOL_CONFIGS }     from '@/app/internal/dev-test/tool-configs'
 import { csWriteError }     from '@/lib/monitoring/central-state'
@@ -82,28 +80,13 @@ export async function POST(
     let testMime: string
 
     if (config.fileType === 'pdf') {
-      // Try the real test PDF first; fall back to the inline minimal one
-      try {
-        const pdfPath = join(process.cwd(), 'public', 'test_arabic_output.pdf')
-        testBuffer   = await readFile(pdfPath)
-        testFilename = 'test.pdf'
-        testMime     = 'application/pdf'
-      } catch {
-        testBuffer   = Buffer.from(MINIMAL_PDF_B64, 'base64')
-        testFilename = 'test.pdf'
-        testMime     = 'application/pdf'
-      }
+      testBuffer   = Buffer.from(MINIMAL_PDF_B64, 'base64')
+      testFilename = 'test.pdf'
+      testMime     = 'application/pdf'
     } else if (config.fileType === 'image') {
-      try {
-        const imgPath = join(process.cwd(), 'public', 'placeholder.jpg')
-        testBuffer   = await readFile(imgPath)
-        testFilename = 'test.jpg'
-        testMime     = 'image/jpeg'
-      } catch {
-        testBuffer   = Buffer.from(MINIMAL_JPEG_B64, 'base64')
-        testFilename = 'test.jpg'
-        testMime     = 'image/jpeg'
-      }
+      testBuffer   = Buffer.from(MINIMAL_JPEG_B64, 'base64')
+      testFilename = 'test.jpg'
+      testMime     = 'image/jpeg'
     } else {
       // document — LibreOffice accepts HTML for all doc-based tools since skipValidation=true
       testBuffer   = MINIMAL_HTML

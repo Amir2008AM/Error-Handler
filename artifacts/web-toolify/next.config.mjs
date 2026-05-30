@@ -5,9 +5,8 @@ const nextConfig = {
   },
 
   serverExternalPackages: [
-    'pdf-parse', 'sharp', 'canvas', 'pdfjs-dist',
+    'pdf-parse', 'sharp', 'canvas',
     'tesseract.js', 'franc', 'nanoid',
-    'child_process', 'fs', 'os', 'path',
     'bullmq', 'ioredis',
   ],
 
