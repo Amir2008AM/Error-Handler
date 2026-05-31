@@ -100,6 +100,9 @@ export default function RootLayout({
         <I18nProvider>
           <LoadingBarProvider>
             {children}
+            <footer className="w-full border-t border-border py-4 text-center text-sm text-muted-foreground">
+              © 2026 ToolifyPDF. All Rights Reserved.
+            </footer>
           </LoadingBarProvider>
         </I18nProvider>
       </body>
