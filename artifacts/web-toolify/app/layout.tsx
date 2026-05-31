@@ -5,6 +5,7 @@ import { LoadingBarProvider } from '@/components/global-loading-bar'
 import { I18nProvider } from '@/lib/i18n/context'
 import DisconnectBeacon from '@/components/disconnect-beacon'
 import HeartbeatBeacon from '@/components/heartbeat-beacon'
+import { MinimalFooter } from '@/components/minimal-footer'
 import './globals.css'
 
 const inter = Inter({
@@ -100,9 +101,7 @@ export default function RootLayout({
         <I18nProvider>
           <LoadingBarProvider>
             {children}
-            <footer className="w-full border-t border-border py-4 text-center text-sm text-muted-foreground">
-              © 2026 ToolifyPDF. All Rights Reserved.
-            </footer>
+            <MinimalFooter />
           </LoadingBarProvider>
         </I18nProvider>
       </body>
