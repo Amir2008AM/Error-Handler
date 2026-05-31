@@ -159,26 +159,80 @@ export function HomeContent() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-border py-8">
+      <footer style={{ backgroundColor: '#111111' }} className="py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
-                <Zap className="w-3.5 h-3.5 text-primary-foreground" fill="currentColor" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-white" fill="currentColor" />
+                </div>
+                <span className="text-white text-lg font-bold">Toolify</span>
               </div>
-              <span className="text-sm font-semibold text-foreground">ToolifyPDF</span>
+              <p style={{ color: '#9ca3af' }} className="text-sm leading-relaxed">
+                Free online tools for everyone.<br />
+                No registration, no limits.<br />
+                Process files instantly in your browser.
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {t('common.free')} · {t('common.noRegistration')}
-            </p>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>
-              <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
+
+            {/* PDF Tools */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-4">PDF Tools</h3>
+              <ul className="space-y-3">
+                {[
+                  { label: 'Image to PDF', href: '/image-to-pdf' },
+                  { label: 'Merge PDF', href: '/merge-pdf' },
+                  { label: 'Split PDF', href: '/split-pdf' },
+                  { label: 'PDF to Word', href: '/pdf-to-word' },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Image Tools */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-4">Image Tools</h3>
+              <ul className="space-y-3">
+                {[
+                  { label: 'Compress Image', href: '/compress-image' },
+                  { label: 'Resize Image', href: '/resize-image' },
+                  { label: 'Convert Image', href: '/convert-image' },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Other Tools */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-4">Other Tools</h3>
+              <ul className="space-y-3">
+                {[
+                  { label: 'Word Counter', href: '/word-counter' },
+                  { label: 'Text Case Converter', href: '/text-case' },
+                  { label: 'Percentage Calculator', href: '/percentage-calculator' },
+                  { label: 'Age Calculator', href: '/age-calculator' },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            © 2026 ToolifyPDF. All Rights Reserved.
-          </p>
         </div>
       </footer>
     </main>
