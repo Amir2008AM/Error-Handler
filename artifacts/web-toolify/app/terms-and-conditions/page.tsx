@@ -6,92 +6,154 @@ export const metadata: Metadata = {
   description: 'Terms of Use for Toolify — the rules and guidelines for using our free online tools.',
 }
 
+const sections_en = [
+  {
+    title: '1. Service Use',
+    body: 'The service is provided free of charge without subscriptions.',
+  },
+  {
+    title: '2. User Responsibility',
+    body: 'Users are responsible for the files they upload and must ensure they have legal rights to use them.',
+  },
+  {
+    title: '3. Prohibited Use',
+    body: 'It is prohibited to use the website for:',
+    list: [
+      'Uploading malicious files',
+      'Violating copyright or intellectual property rights',
+      'Any illegal activity',
+    ],
+  },
+  {
+    title: '4. File Processing',
+    body: 'All processing is fully automated. Files are deleted within approximately 1 hour after processing.',
+  },
+  {
+    title: '5. Intellectual Property',
+    body: 'All website content belongs to ToolifyPDF. Users retain ownership of their uploaded files.',
+  },
+  {
+    title: '6. Disclaimer',
+    body: 'The service is provided "as is" without warranties of any kind. We do not guarantee accuracy or results.',
+  },
+  {
+    title: '7. Limitation of Liability',
+    body: 'We are not responsible for any damages or data loss resulting from use of the service.',
+  },
+  {
+    title: '8. Changes',
+    body: 'We may update these terms at any time.',
+  },
+]
+
+const sections_ar = [
+  {
+    title: '1. استخدام الخدمة',
+    body: 'يتم تقديم الخدمة مجانًا بدون أي اشتراكات.',
+  },
+  {
+    title: '2. مسؤولية المستخدم',
+    body: 'المستخدم مسؤول عن الملفات التي يقوم برفعها، ويجب التأكد من امتلاكه الحقوق القانونية لاستخدامها.',
+  },
+  {
+    title: '3. الاستخدام الممنوع',
+    body: 'يُمنع استخدام الموقع في الحالات التالية:',
+    list: [
+      'رفع ملفات ضارة أو خبيثة',
+      'انتهاك حقوق النشر أو الملكية الفكرية',
+      'أي نشاط غير قانوني',
+    ],
+  },
+  {
+    title: '4. معالجة الملفات',
+    body: 'تتم جميع عمليات المعالجة بشكل آلي بالكامل. يتم حذف الملفات خلال حوالي ساعة واحدة بعد المعالجة.',
+  },
+  {
+    title: '5. الملكية الفكرية',
+    body: 'جميع محتويات الموقع مملوكة لموقع ToolifyPDF. بينما يحتفظ المستخدم بملكية الملفات التي يقوم برفعها.',
+  },
+  {
+    title: '6. إخلاء المسؤولية',
+    body: 'يتم تقديم الخدمة "كما هي" بدون أي ضمانات من أي نوع. نحن لا نضمن الدقة أو النتائج.',
+  },
+  {
+    title: '7. تحديد المسؤولية',
+    body: 'نحن غير مسؤولين عن أي أضرار أو فقدان بيانات ينتج عن استخدام الخدمة.',
+  },
+  {
+    title: '8. التعديلات',
+    body: 'يجوز لنا تحديث هذه الشروط في أي وقت.',
+  },
+]
+
+function PolicySection({
+  title,
+  body,
+  list,
+  rtl,
+}: {
+  title: string
+  body: string
+  list?: string[]
+  rtl?: boolean
+}) {
+  return (
+    <section dir={rtl ? 'rtl' : 'ltr'}>
+      <h2 className="text-xl font-semibold mb-3">{title}</h2>
+      {body.split('\n\n').map((para, i) => (
+        <p key={i} className="text-muted-foreground leading-relaxed mb-2">
+          {para}
+        </p>
+      ))}
+      {list && (
+        <ul className="list-disc text-muted-foreground space-y-1 mt-2 ml-5 rtl:mr-5 rtl:ml-0">
+          {list.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export default function TermsAndConditionsPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">
       <div className="max-w-3xl mx-auto">
-        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 inline-block">
+        <Link
+          href="/"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 inline-block"
+        >
           ← Back to Home
         </Link>
-        <h1 className="text-3xl font-bold mb-2">Terms of Use</h1>
-        <p className="text-muted-foreground text-sm mb-10">Last updated: May 2026</p>
 
-        <div className="space-y-8 text-foreground">
-          <section>
-            <h2 className="text-xl font-semibold mb-3">1. Acceptance of Terms</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              By accessing and using Toolify (&quot;the Service&quot;), you accept and agree to be bound by these Terms of Use. If you do not agree to these terms, please do not use our tools.
-            </p>
-          </section>
+        {/* ── English ─────────────────────────────────────────────────── */}
+        <h1 className="text-3xl font-bold mb-1">Terms of Use</h1>
+        <p className="text-muted-foreground leading-relaxed mb-8">
+          ToolifyPDF provides free tools for PDF processing.
+        </p>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">2. Description of Service</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Toolify provides free, browser-based tools for processing PDF files, images, and documents. All tools are provided as-is, free of charge, without any guarantee of availability or suitability for a specific purpose.
-            </p>
-          </section>
+        <div className="space-y-8 mb-16">
+          {sections_en.map((s) => (
+            <PolicySection key={s.title} {...s} />
+          ))}
+        </div>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">3. Acceptable Use</h2>
-            <p className="text-muted-foreground leading-relaxed mb-3">You agree not to use Toolify to:</p>
-            <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-2">
-              <li>Upload, process, or share any illegal, harmful, or offensive content</li>
-              <li>Infringe upon the intellectual property rights of others</li>
-              <li>Attempt to gain unauthorised access to our systems or infrastructure</li>
-              <li>Use automated scripts or bots to abuse or overload our service</li>
-              <li>Distribute malware, viruses, or any malicious code</li>
-            </ul>
-          </section>
+        {/* ── Divider ──────────────────────────────────────────────────── */}
+        <div className="border-t border-border my-12" />
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">4. File Processing and Data</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Files uploaded to Toolify are processed solely for the purpose of providing the requested tool output. Uploaded files are automatically deleted from our servers within 20 minutes. You retain full ownership of any files you upload and any results you download.
-            </p>
-          </section>
+        {/* ── Arabic ───────────────────────────────────────────────────── */}
+        <div dir="rtl">
+          <h1 className="text-3xl font-bold mb-1">شروط الاستخدام</h1>
+          <p className="text-muted-foreground leading-relaxed mb-8">
+            يوفر موقع ToolifyPDF أدوات مجانية لمعالجة ملفات PDF.
+          </p>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">5. Intellectual Property</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              The Toolify name, logo, website design, and underlying software are the intellectual property of Toolify. You may not reproduce, distribute, or create derivative works without prior written permission.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">6. Limitation of Liability</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Toolify is provided &quot;as is&quot; without any warranty. We are not liable for any loss of data, loss of profits, or any other damages arising from your use of the service. Please see our{' '}
-              <Link href="/disclaimer" className="text-primary hover:underline">Disclaimer</Link> for full details.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">7. Service Availability</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              We strive to keep Toolify available at all times but cannot guarantee uninterrupted access. We reserve the right to modify, suspend, or discontinue any part of the service at any time without prior notice.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">8. Changes to These Terms</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              We reserve the right to update these Terms of Use at any time. Updated terms will be posted on this page with a revised date. Your continued use of Toolify after changes are posted constitutes acceptance of the new terms.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">9. Governing Law</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              These Terms of Use shall be governed by and construed in accordance with applicable law. Any disputes shall be subject to the exclusive jurisdiction of the relevant courts.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">10. Contact</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              If you have any questions about these Terms of Use, please contact us via the details provided on our website.
-            </p>
-          </section>
+          <div className="space-y-8">
+            {sections_ar.map((s) => (
+              <PolicySection key={s.title} {...s} rtl />
+            ))}
+          </div>
         </div>
       </div>
     </main>
