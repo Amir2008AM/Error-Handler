@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { CropImageClient } from './client'
@@ -21,7 +20,6 @@ export default function CropImagePage() {
       <ToolPageLayout tool={tool}>
         <CropImageClient />
       </ToolPageLayout>
-      <Footer />
     </div>
   )
 }

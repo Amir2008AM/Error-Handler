@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { WatermarkPdfClient } from './client'
@@ -21,7 +20,6 @@ export default function WatermarkPdfPage() {
       <ToolPageLayout tool={tool}>
         <WatermarkPdfClient />
       </ToolPageLayout>
-      <Footer />
     </div>
   )
 }

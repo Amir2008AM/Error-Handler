@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { MergePdfClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
@@ -20,7 +19,6 @@ export default function MergePdfPage() {
       <ToolPageLayout tool={tool}>
         <MergePdfClient />
       </ToolPageLayout>
-      <Footer />
     </div>
   )
 }
