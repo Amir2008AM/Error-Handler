@@ -60,7 +60,7 @@ const sections_en = [
   },
   {
     title: '9. Contact',
-    body: 'For privacy-related inquiries, please contact us via the official support email.',
+    body: 'For privacy-related inquiries, please contact us at: contact@toolifypdf.online',
   },
 ]
 
