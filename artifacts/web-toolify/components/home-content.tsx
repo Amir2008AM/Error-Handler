@@ -166,7 +166,7 @@ export function HomeContent() {
               <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
                 <Zap className="w-3.5 h-3.5 text-primary-foreground" fill="currentColor" />
               </div>
-              <span className="text-sm font-semibold text-foreground">Toolify</span>
+              <span className="text-sm font-semibold text-foreground">ToolifyPDF</span>
             </div>
             <p className="text-sm text-muted-foreground">
               {t('common.free')} · {t('common.noRegistration')}
@@ -176,6 +176,9 @@ export function HomeContent() {
               <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
             </div>
           </div>
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            © 2026 ToolifyPDF. All Rights Reserved.
+          </p>
         </div>
       </footer>
     </main>
