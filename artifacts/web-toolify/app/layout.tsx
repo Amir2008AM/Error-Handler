@@ -58,6 +58,14 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', type: 'image/png', sizes: '256x256' },
+    ],
+    apple: { url: '/apple-icon.png', type: 'image/png', sizes: '256x256' },
+    shortcut: '/favicon.ico',
+  },
 }
 
 export const viewport: Viewport = {
