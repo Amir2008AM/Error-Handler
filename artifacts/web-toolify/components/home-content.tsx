@@ -233,6 +233,12 @@ export function HomeContent() {
               </ul>
             </div>
           </div>
+
+          <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 text-center">
+            <p style={{ color: '#6b7280' }} className="text-sm">
+              © 2026 Toolify. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </main>
