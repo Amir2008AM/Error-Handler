@@ -6,88 +6,197 @@ export const metadata: Metadata = {
   description: 'Privacy Policy for Toolify — learn how we collect, use, and protect your information.',
 }
 
+const sections_en = [
+  {
+    title: '1. Information We Do NOT Collect',
+    body: 'We do not collect personal information such as name, email address, or payment details.',
+  },
+  {
+    title: '2. Information We Process',
+    body: 'When you use our services, we may temporarily process:',
+    list: [
+      'Uploaded files (PDFs, images, documents)',
+      'Technical data such as IP address, browser type, operating system, and usage behavior',
+    ],
+  },
+  {
+    title: '3. How We Use Information',
+    body: 'We use this information only to:',
+    list: [
+      'Provide file processing services (merge, convert, compress, etc.)',
+      'Maintain security and prevent abuse',
+      'Improve website performance and user experience',
+    ],
+  },
+  {
+    title: '4. File Handling and Storage',
+    body: 'All uploaded files are processed automatically and are deleted within a short period (approximately 1 hour) after processing.\n\nWe do not permanently store user files and we do not access their content manually.',
+  },
+  {
+    title: '5. Cookies',
+    body: 'We use cookies to:',
+    list: [
+      'Maintain session functionality',
+      'Store user preferences (such as dark mode)',
+      'Analyze website traffic using third-party analytics tools',
+    ],
+  },
+  {
+    title: '6. Analytics',
+    body: 'We may use analytics services (such as Google Analytics) to collect anonymous usage statistics.',
+  },
+  {
+    title: '7. Data Security',
+    body: 'We use HTTPS encryption and secure infrastructure to protect data during transmission and processing.',
+  },
+  {
+    title: '8. Your Rights',
+    body: 'Depending on your location (e.g., GDPR or CCPA regions), you may have rights to:',
+    list: [
+      'Access your data',
+      'Request deletion',
+      'Request restriction of processing',
+    ],
+  },
+  {
+    title: '9. Contact',
+    body: 'For privacy-related inquiries, please contact us via the official support email.',
+  },
+]
+
+const sections_ar = [
+  {
+    title: '1. المعلومات التي لا نقوم بجمعها',
+    body: 'نحن لا نقوم بجمع معلومات شخصية مثل الاسم أو البريد الإلكتروني أو بيانات الدفع.',
+  },
+  {
+    title: '2. المعلومات التي نقوم بمعالجتها',
+    body: 'عند استخدامك لخدماتنا، قد نقوم بمعالجة مؤقتة لما يلي:',
+    list: [
+      'الملفات التي يتم رفعها (PDF، صور، مستندات)',
+      'البيانات التقنية مثل عنوان IP، نوع المتصفح، نظام التشغيل، وسلوك الاستخدام',
+    ],
+  },
+  {
+    title: '3. كيفية استخدام المعلومات',
+    body: 'نستخدم هذه المعلومات فقط من أجل:',
+    list: [
+      'تقديم خدمات معالجة الملفات (دمج، تحويل، ضغط، وغيرها)',
+      'الحفاظ على الأمان ومنع إساءة الاستخدام',
+      'تحسين أداء الموقع وتجربة المستخدم',
+    ],
+  },
+  {
+    title: '4. التعامل مع الملفات وتخزينها',
+    body: 'يتم معالجة جميع الملفات المرفوعة بشكل تلقائي، ويتم حذفها خلال فترة قصيرة (حوالي ساعة واحدة) بعد المعالجة.\n\nنحن لا نقوم بتخزين ملفات المستخدمين بشكل دائم ولا نقوم بالوصول إلى محتواها يدويًا.',
+  },
+  {
+    title: '5. ملفات تعريف الارتباط (Cookies)',
+    body: 'نستخدم ملفات الكوكيز من أجل:',
+    list: [
+      'الحفاظ على وظائف الجلسة',
+      'حفظ تفضيلات المستخدم (مثل الوضع الليلي)',
+      'تحليل حركة الموقع باستخدام أدوات تحليل خارجية',
+    ],
+  },
+  {
+    title: '6. التحليلات',
+    body: 'قد نستخدم خدمات تحليل مثل Google Analytics لجمع إحصائيات استخدام مجهولة الهوية.',
+  },
+  {
+    title: '7. أمان البيانات',
+    body: 'نستخدم تشفير HTTPS وبنية تحتية آمنة لحماية البيانات أثناء النقل والمعالجة.',
+  },
+  {
+    title: '8. حقوقك',
+    body: 'حسب موقعك الجغرافي (مثل مناطق GDPR أو CCPA)، قد يكون لديك حقوق مثل:',
+    list: [
+      'الوصول إلى بياناتك',
+      'طلب حذف البيانات',
+      'طلب تقييد المعالجة',
+    ],
+  },
+  {
+    title: '9. التواصل',
+    body: 'للاستفسارات المتعلقة بالخصوصية، يرجى التواصل معنا عبر البريد الإلكتروني الرسمي للدعم.',
+  },
+]
+
+function PolicySection({
+  title,
+  body,
+  list,
+  rtl,
+}: {
+  title: string
+  body: string
+  list?: string[]
+  rtl?: boolean
+}) {
+  return (
+    <section dir={rtl ? 'rtl' : 'ltr'}>
+      <h2 className="text-xl font-semibold mb-3">{title}</h2>
+      {body.split('\n\n').map((para, i) => (
+        <p key={i} className="text-muted-foreground leading-relaxed mb-2">
+          {para}
+        </p>
+      ))}
+      {list && (
+        <ul className="list-disc text-muted-foreground space-y-1 mt-2 ml-5 rtl:mr-5 rtl:ml-0">
+          {list.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export default function PrivacyPolicyPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">
       <div className="max-w-3xl mx-auto">
-        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 inline-block">
+        <Link
+          href="/"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 inline-block"
+        >
           ← Back to Home
         </Link>
-        <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-muted-foreground text-sm mb-10">Last updated: May 2026</p>
 
-        <div className="space-y-8 text-foreground">
-          <section>
-            <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Welcome to Toolify. We respect your privacy and are committed to protecting any information you share while using our free online tools. This Privacy Policy explains what data we collect, how we use it, and your rights regarding that data.
-            </p>
-          </section>
+        {/* ── English ─────────────────────────────────────────────────── */}
+        <h1 className="text-3xl font-bold mb-1">Privacy Policy</h1>
+        <p className="text-muted-foreground text-sm mb-2">Last updated: May 2026</p>
+        <p className="text-muted-foreground leading-relaxed mb-8">
+          ToolifyPDF (&quot;we&quot;, &quot;us&quot;) operates the website{' '}
+          <span className="text-foreground font-medium">toolifypdf.online</span>.
+          We are committed to protecting your privacy and ensuring transparency
+          about how data is handled.
+        </p>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">2. Information We Collect</h2>
-            <p className="text-muted-foreground leading-relaxed mb-3">
-              Toolify is designed to process files entirely within your browser session or on our servers temporarily. We do not require account registration.
-            </p>
-            <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-2">
-              <li><strong className="text-foreground">Uploaded files:</strong> Files you upload are processed on our servers and automatically deleted after your session ends (within 20 minutes). We do not store, read, or share your files.</li>
-              <li><strong className="text-foreground">Usage data:</strong> We collect anonymous usage statistics (tool used, general location, browser type) to improve our services.</li>
-              <li><strong className="text-foreground">Log data:</strong> Standard server logs including IP address, access times, and referring URLs may be retained for up to 30 days for security purposes.</li>
-            </ul>
-          </section>
+        <div className="space-y-8 mb-16">
+          {sections_en.map((s) => (
+            <PolicySection key={s.title} {...s} />
+          ))}
+        </div>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">3. How We Use Your Information</h2>
-            <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-2">
-              <li>To provide and improve our file-processing tools</li>
-              <li>To monitor performance, security, and reliability</li>
-              <li>To understand how our tools are used (aggregated, anonymous data only)</li>
-              <li>To comply with legal obligations</li>
-            </ul>
-          </section>
+        {/* ── Divider ──────────────────────────────────────────────────── */}
+        <div className="border-t border-border my-12" />
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">4. File Data and Security</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              All files uploaded to Toolify are transmitted over HTTPS. Files are stored in temporary, isolated storage and are permanently deleted within 20 minutes of processing. We do not access, analyse, or share the contents of your files with any third party.
-            </p>
-          </section>
+        {/* ── Arabic ───────────────────────────────────────────────────── */}
+        <div dir="rtl">
+          <h1 className="text-3xl font-bold mb-1">سياسة الخصوصية</h1>
+          <p className="text-muted-foreground text-sm mb-2">آخر تحديث: مايو 2026</p>
+          <p className="text-muted-foreground leading-relaxed mb-8">
+            يُدير موقع ToolifyPDF (&quot;نحن&quot;، &quot;لنا&quot;) الموقع الإلكتروني{' '}
+            <span className="text-foreground font-medium">toolifypdf.online</span>.
+            نحن ملتزمون بحماية خصوصيتك وضمان الشفافية فيما يتعلق بكيفية التعامل مع البيانات.
+          </p>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-3">5. Cookies</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              We use essential cookies to keep the service running and anonymous analytics cookies to understand how the site is used. You can learn more in our{' '}
-              <Link href="/cookies-policy" className="text-primary hover:underline">Cookies Policy</Link>.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">6. Third-Party Services</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              We may use third-party analytics services for aggregated traffic analysis. These services do not receive your uploaded files. Any third-party service we use is bound by their own privacy policies.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">7. Your Rights</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Since we do not maintain user accounts or store personal files beyond your session, most data rights (access, deletion, portability) are satisfied automatically. If you have a concern about data we may hold, please contact us.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">8. Changes to This Policy</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Continued use of Toolify after changes constitutes your acceptance of the revised policy.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">9. Contact</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              If you have any questions about this Privacy Policy, please reach out via the contact information on our website.
-            </p>
-          </section>
+          <div className="space-y-8">
+            {sections_ar.map((s) => (
+              <PolicySection key={s.title} {...s} rtl />
+            ))}
+          </div>
         </div>
       </div>
     </main>
