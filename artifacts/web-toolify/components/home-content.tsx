@@ -234,10 +234,27 @@ export function HomeContent() {
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 text-center">
+          <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p style={{ color: '#6b7280' }} className="text-sm">
               © 2026 Toolify. All rights reserved.
             </p>
+            <div className="flex items-center gap-5">
+              {[
+                { label: 'Privacy Policy', href: '/privacy-policy' },
+                { label: 'Terms of Use', href: '/terms-and-conditions' },
+                { label: 'Cookies Policy', href: '/cookies-policy' },
+                { label: 'Disclaimer', href: '/disclaimer' },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{ color: '#6b7280' }}
+                  className="text-sm hover:text-white transition-colors whitespace-nowrap"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
