@@ -13,6 +13,18 @@ export const metadata: Metadata = {
   },
 }
 
+const articles = [
+  {
+    slug: 'how-to-convert-pdf-to-word',
+    title: 'How to Convert PDF to Word for Free',
+    description:
+      'Learn 3 easy ways to convert a PDF into an editable Word document at no cost — online tools, Google Docs, and Microsoft Word.',
+    date: 'June 1, 2026',
+    readTime: '8 min read',
+    category: 'PDF Guide',
+  },
+]
+
 export default function BlogPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">
@@ -36,42 +48,41 @@ export default function BlogPage() {
         </nav>
 
         {/* Header */}
-        <header className="mb-12">
+        <header className="mb-10">
           <h1 className="text-3xl font-bold mb-3">Blog</h1>
           <p className="text-muted-foreground leading-relaxed">
             Tips, guides, and tutorials on PDF processing, image conversion, and getting the most out of Toolify&apos;s free online tools.
           </p>
         </header>
 
-        {/* Coming soon state */}
-        <div className="border border-border rounded-xl p-10 text-center">
-          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-5">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-7 h-7 text-muted-foreground"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              aria-hidden="true"
+        {/* Article cards */}
+        <div className="space-y-5">
+          {articles.map((article) => (
+            <Link
+              key={article.slug}
+              href={`/blog/${article.slug}`}
+              className="group block border border-border rounded-xl p-6 bg-white transition-all duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-0.5"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Articles coming soon</h2>
-          <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-            We&apos;re working on helpful guides and tips. Check back soon for articles on PDF tools, image processing, and productivity.
-          </p>
-          <Link
-            href="/"
-            className="inline-block mt-6 px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Explore Tools
-          </Link>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3 flex-wrap">
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ backgroundColor: '#eff3ff', color: '#3b6ef5' }}>
+                      {article.category}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{article.date}</span>
+                    <span className="text-xs text-muted-foreground">· {article.readTime}</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                    {article.title}
+                  </h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {article.description}
+                  </p>
+                </div>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors mt-1 flex-shrink-0 text-lg">→</span>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
     </main>
