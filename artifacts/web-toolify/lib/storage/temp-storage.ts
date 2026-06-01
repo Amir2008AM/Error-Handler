@@ -69,7 +69,7 @@ export interface StorageConfig {
 }
 
 const DEFAULT_CONFIG: StorageConfig = {
-  defaultTtlMs: 20 * 60 * 1000, // 20 minutes
+  defaultTtlMs: 60 * 60 * 1000, // 60 minutes — matches the "~1 hour" user-facing guarantee
   maxStorageBytes: 500 * 1024 * 1024, // 500MB
   maxFileBytes: 100 * 1024 * 1024, // 100MB per file
   cleanupIntervalMs: 60 * 1000, // 1 minute
@@ -319,8 +319,17 @@ class TempStorage {
     let removed = 0
     for await (const meta of this.iterMeta()) {
       if (now > meta.expiresAt) {
-        if (await this.delete(meta.id)) removed++
+        if (await this.delete(meta.id)) {
+          removed++
+          console.log(
+            `[TempStorage] Deleted expired file: ${meta.id} (${meta.fileName}, ` +
+            `expired ${Math.round((now - meta.expiresAt) / 1000)}s ago)`
+          )
+        }
       }
+    }
+    if (removed > 0) {
+      console.log(`[TempStorage] Cleanup pass complete: removed ${removed} expired file(s)`)
     }
     return removed
   }

@@ -11,6 +11,18 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
 
+  // ── -1. Automatic file cleanup (startup sweep + periodic orphan sweep) ────
+  try {
+    const { runStartupCleanup, startPeriodicOrphanSweep } = await import('./lib/storage/file-cleanup')
+    // Run the startup sweep in the background so it doesn't delay server boot
+    void runStartupCleanup().catch((err: Error) =>
+      console.warn('[FileCleanup] Startup sweep error (non-fatal):', err.message)
+    )
+    startPeriodicOrphanSweep() // every 10 minutes
+  } catch (err) {
+    console.warn('[FileCleanup] Failed to init (non-fatal):', (err as Error).message)
+  }
+
   // ── 0. Analytics SQLite DB ───────────────────────────────────────────────
   try {
     const { getDb } = await import('./lib/telegram/db')
