@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import {
   FileText, Image, Minimize2, FilePlus2, Scissors,
@@ -7,6 +9,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Tool } from '@/lib/tools'
+import { useI18n } from '@/lib/i18n/context'
+import type { TranslationKey } from '@/lib/i18n/translations'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
@@ -36,7 +40,16 @@ interface ToolCardProps {
 }
 
 export function ToolCard({ tool, compact = false }: ToolCardProps) {
+  const { t } = useI18n()
   const Icon = iconMap[tool.icon] ?? FileText
+
+  const tk = (field: 'name' | 'desc') => {
+    const key = `tools.${tool.id}.${field}` as TranslationKey
+    const result = t(key)
+    return result !== key ? result : undefined
+  }
+  const displayName = tk('name') ?? tool.name
+  const displayDesc = tk('desc') ?? tool.description
 
   if (compact) {
     return (
@@ -48,7 +61,7 @@ export function ToolCard({ tool, compact = false }: ToolCardProps) {
           <Icon className={cn('w-6 h-6', tool.color)} />
         </div>
         <h3 className="text-sm font-semibold text-foreground text-center group-hover:text-primary transition-colors">
-          {tool.name}
+          {displayName}
         </h3>
       </Link>
     )
@@ -63,10 +76,10 @@ export function ToolCard({ tool, compact = false }: ToolCardProps) {
         <Icon className={cn('w-7 h-7', tool.color)} />
       </div>
       <h3 className="text-base font-semibold text-foreground text-center mb-2 group-hover:text-primary transition-colors">
-        {tool.name}
+        {displayName}
       </h3>
       <p className="text-sm text-muted-foreground text-center leading-relaxed line-clamp-2">
-        {tool.description}
+        {displayDesc}
       </p>
     </Link>
   )

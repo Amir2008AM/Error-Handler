@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } from 'lucide-react'
 import Link from 'next/link'
+import { LanguageSwitcher } from './language-switcher'
 import { ToolCard } from './tool-card'
 import { AdBanner } from './ad-banner'
 import { Navbar } from './navbar'
@@ -265,6 +266,7 @@ export function HomeContent() {
                   {item.label}
                 </Link>
               ))}
+              <LanguageSwitcher variant="dark-footer" />
             </div>
           </div>
         </div>

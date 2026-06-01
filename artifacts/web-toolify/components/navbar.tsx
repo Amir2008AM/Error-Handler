@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Search, Menu, X, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { LanguageSwitcher } from './language-switcher'
 import { useI18n } from '@/lib/i18n/context'
 
 export function Navbar() {
@@ -57,7 +56,7 @@ export function Navbar() {
             ))}
           </nav>
 
-          {/* Desktop right: search + language switcher */}
+          {/* Desktop right: search */}
           <div className="hidden md:flex items-center gap-2">
             <form onSubmit={handleSearch} className="flex items-center">
               <div className="relative">
@@ -71,12 +70,10 @@ export function Navbar() {
                 />
               </div>
             </form>
-            <LanguageSwitcher />
           </div>
 
-          {/* Mobile: language + menu */}
+          {/* Mobile: menu */}
           <div className="md:hidden flex items-center gap-1">
-            <LanguageSwitcher />
             <button
               className="p-2 rounded-lg hover:bg-muted transition-colors"
               onClick={() => setMobileOpen(!mobileOpen)}

@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { en, t as translate, type TranslationKey, type TranslationMap } from './translations'
 import { WEBSITE_LANGUAGES, DEFAULT_LANGUAGE, type WebsiteLanguage } from './website-languages'
 
-const STORAGE_KEY = 'toolify_lang'
+const LANG_KEY = 'toolify_lang'
 
 interface I18nContextValue {
   lang: string
@@ -31,26 +31,16 @@ async function loadLocale(code: string): Promise<TranslationMap> {
   }
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<string>(DEFAULT_LANGUAGE)
+export function I18nProvider({
+  children,
+  initialLang = DEFAULT_LANGUAGE,
+}: {
+  children: React.ReactNode
+  initialLang?: string
+}) {
+  const [lang, setLangState] = useState<string>(initialLang)
   const [map, setMap] = useState<TranslationMap>(en)
   const cache = useRef<Record<string, TranslationMap>>({ en })
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      const browser = navigator.language?.split('-')[0]
-      const supported = WEBSITE_LANGUAGES.map((l) => l.code)
-      const candidate = stored && supported.includes(stored)
-        ? stored
-        : browser && supported.includes(browser)
-          ? browser
-          : null
-      if (candidate && candidate !== DEFAULT_LANGUAGE) {
-        setLangState(candidate)
-      }
-    } catch {}
-  }, [])
 
   useEffect(() => {
     const lang_obj = WEBSITE_LANGUAGES.find((l) => l.code === lang)
@@ -74,7 +64,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLang = useCallback((code: string) => {
     setLangState(code)
     try {
-      localStorage.setItem(STORAGE_KEY, code)
+      document.cookie = `${LANG_KEY}=${code}; max-age=31536000; path=/; samesite=lax`
+      localStorage.setItem(LANG_KEY, code)
     } catch {}
   }, [])
 

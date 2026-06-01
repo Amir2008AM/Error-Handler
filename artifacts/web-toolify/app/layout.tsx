@@ -1,11 +1,13 @@
 import Script from 'next/script'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
+import { cookies } from 'next/headers'
 import { LoadingBarProvider } from '@/components/global-loading-bar'
 import { I18nProvider } from '@/lib/i18n/context'
 import DisconnectBeacon from '@/components/disconnect-beacon'
 import HeartbeatBeacon from '@/components/heartbeat-beacon'
 import { MinimalFooter } from '@/components/minimal-footer'
+import { WEBSITE_LANGUAGES } from '@/lib/i18n/website-languages'
 import './globals.css'
 
 const inter = Inter({
@@ -74,13 +76,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies()
+  const stored = cookieStore.get('toolify_lang')?.value
+  const supported = WEBSITE_LANGUAGES.map((l) => l.code)
+  const initialLang = stored && supported.includes(stored) ? stored : 'en'
   return (
-    <html lang="en" className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
+    <html lang={initialLang} suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
       <head />
       <body className="font-sans antialiased">
         {process.env.NODE_ENV === 'production' && (
@@ -106,7 +112,7 @@ export default function RootLayout({
         )}
         <DisconnectBeacon />
         <HeartbeatBeacon />
-        <I18nProvider>
+        <I18nProvider initialLang={initialLang}>
           <LoadingBarProvider>
             {children}
             <MinimalFooter />
