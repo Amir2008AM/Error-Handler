@@ -302,6 +302,53 @@ export type TranslationKey =
   | 'imageToPdf.successTitle'
   | 'imageToPdf.selectImages'
   | 'imageToPdf.downloadPdf'
+  // Tool card names
+  | 'tools.merge-pdf.name' | 'tools.merge-pdf.desc'
+  | 'tools.split-pdf.name' | 'tools.split-pdf.desc'
+  | 'tools.compress-pdf.name' | 'tools.compress-pdf.desc'
+  | 'tools.rotate-pdf.name' | 'tools.rotate-pdf.desc'
+  | 'tools.watermark-pdf.name' | 'tools.watermark-pdf.desc'
+  | 'tools.page-numbers.name' | 'tools.page-numbers.desc'
+  | 'tools.organize-pdf.name' | 'tools.organize-pdf.desc'
+  | 'tools.repair-pdf.name' | 'tools.repair-pdf.desc'
+  | 'tools.protect-pdf.name' | 'tools.protect-pdf.desc'
+  | 'tools.unlock-pdf.name' | 'tools.unlock-pdf.desc'
+  | 'tools.image-to-pdf.name' | 'tools.image-to-pdf.desc'
+  | 'tools.pdf-to-jpg.name' | 'tools.pdf-to-jpg.desc'
+  | 'tools.pdf-to-word.name' | 'tools.pdf-to-word.desc'
+  | 'tools.word-to-pdf.name' | 'tools.word-to-pdf.desc'
+  | 'tools.excel-to-pdf.name' | 'tools.excel-to-pdf.desc'
+  | 'tools.html-to-pdf.name' | 'tools.html-to-pdf.desc'
+  | 'tools.ppt-to-pdf.name' | 'tools.ppt-to-pdf.desc'
+  | 'tools.pdf-to-ppt.name' | 'tools.pdf-to-ppt.desc'
+  | 'tools.pdf-to-excel.name' | 'tools.pdf-to-excel.desc'
+  | 'tools.ocr-image.name' | 'tools.ocr-image.desc'
+  | 'tools.compress-image.name' | 'tools.compress-image.desc'
+  | 'tools.resize-image.name' | 'tools.resize-image.desc'
+  | 'tools.convert-image.name' | 'tools.convert-image.desc'
+  | 'tools.crop-image.name' | 'tools.crop-image.desc'
+  | 'tools.word-counter.name' | 'tools.word-counter.desc'
+  | 'tools.text-case.name' | 'tools.text-case.desc'
+  | 'tools.percentage-calculator.name' | 'tools.percentage-calculator.desc'
+  | 'tools.age-calculator.name' | 'tools.age-calculator.desc'
+  // Upload dropzone
+  | 'dropzone.sizeLimitReached'
+  | 'dropzone.removeToAdd'
+  | 'dropzone.totalSize'
+  | 'dropzone.remaining'
+  | 'dropzone.chooseFile'
+  | 'dropzone.chooseFiles'
+  // Footer shared
+  | 'footer.copyright'
+  | 'footer.privacy'
+  | 'footer.terms'
+  | 'footer.cookies'
+  | 'footer.disclaimer'
+  // Home footer extras
+  | 'home.footer.brandDesc'
+  | 'home.footer.otherTools'
+  | 'home.footer.blogCol'
+  | 'home.footer.allArticles'
 
 export type TranslationMap = Record<TranslationKey, string>
 
@@ -609,6 +656,81 @@ export const en: TranslationMap = {
   'imageToPdf.successTitle': 'PDF generated successfully!',
   'imageToPdf.selectImages': 'Please click on images to select and order them before converting.',
   'imageToPdf.downloadPdf': 'Download PDF',
+  // Tool names & descriptions
+  'tools.merge-pdf.name': 'Merge PDF',
+  'tools.merge-pdf.desc': 'Combine multiple PDF files into a single document.',
+  'tools.split-pdf.name': 'Split PDF',
+  'tools.split-pdf.desc': 'Split a PDF into multiple separate files.',
+  'tools.compress-pdf.name': 'Compress PDF',
+  'tools.compress-pdf.desc': 'Reduce PDF file size while maintaining quality.',
+  'tools.rotate-pdf.name': 'Rotate PDF',
+  'tools.rotate-pdf.desc': 'Rotate PDF pages by 90, 180, or 270 degrees.',
+  'tools.watermark-pdf.name': 'Watermark PDF',
+  'tools.watermark-pdf.desc': 'Add text watermarks to your PDF documents.',
+  'tools.page-numbers.name': 'Add Page Numbers',
+  'tools.page-numbers.desc': 'Add page numbers to your PDF documents.',
+  'tools.organize-pdf.name': 'Organize PDF',
+  'tools.organize-pdf.desc': 'Reorder, delete, or duplicate PDF pages.',
+  'tools.repair-pdf.name': 'Repair PDF',
+  'tools.repair-pdf.desc': 'Fix corrupted or damaged PDF files.',
+  'tools.protect-pdf.name': 'Protect PDF',
+  'tools.protect-pdf.desc': 'Add password protection to your PDF files.',
+  'tools.unlock-pdf.name': 'Unlock PDF',
+  'tools.unlock-pdf.desc': 'Remove password protection from PDF files.',
+  'tools.image-to-pdf.name': 'Image to PDF',
+  'tools.image-to-pdf.desc': 'Convert images to a PDF file with custom ordering.',
+  'tools.pdf-to-jpg.name': 'PDF to JPG',
+  'tools.pdf-to-jpg.desc': 'Convert PDF pages to JPG images.',
+  'tools.pdf-to-word.name': 'PDF to Word',
+  'tools.pdf-to-word.desc': 'Convert PDF documents to editable Word files.',
+  'tools.word-to-pdf.name': 'Word to PDF',
+  'tools.word-to-pdf.desc': 'Convert Word documents to PDF files.',
+  'tools.excel-to-pdf.name': 'Excel to PDF',
+  'tools.excel-to-pdf.desc': 'Convert Excel spreadsheets to PDF files.',
+  'tools.html-to-pdf.name': 'HTML to PDF',
+  'tools.html-to-pdf.desc': 'Convert HTML files or web content to PDF.',
+  'tools.ppt-to-pdf.name': 'PowerPoint to PDF',
+  'tools.ppt-to-pdf.desc': 'Convert PowerPoint presentations to PDF files.',
+  'tools.pdf-to-ppt.name': 'PDF to PowerPoint',
+  'tools.pdf-to-ppt.desc': 'Convert PDF documents to editable PowerPoint presentations.',
+  'tools.pdf-to-excel.name': 'PDF to Excel',
+  'tools.pdf-to-excel.desc': 'Reconstruct tables from PDF files into Excel spreadsheets.',
+  'tools.ocr-image.name': 'Image to Text (OCR)',
+  'tools.ocr-image.desc': 'Extract text from images using OCR technology.',
+  'tools.compress-image.name': 'Compress Image',
+  'tools.compress-image.desc': 'Reduce image file size while maintaining quality.',
+  'tools.resize-image.name': 'Resize Image',
+  'tools.resize-image.desc': 'Resize images to exact dimensions or percentages.',
+  'tools.convert-image.name': 'Convert Image',
+  'tools.convert-image.desc': 'Convert images between JPG, PNG, WebP, and GIF.',
+  'tools.crop-image.name': 'Crop Image',
+  'tools.crop-image.desc': 'Crop images to any size with precision controls.',
+  'tools.word-counter.name': 'Word Counter',
+  'tools.word-counter.desc': 'Count words, characters, sentences, and paragraphs.',
+  'tools.text-case.name': 'Text Case Converter',
+  'tools.text-case.desc': 'Convert text to uppercase, lowercase, title case, and more.',
+  'tools.percentage-calculator.name': 'Percentage Calculator',
+  'tools.percentage-calculator.desc': 'Calculate percentages, discounts, and percentage changes.',
+  'tools.age-calculator.name': 'Age Calculator',
+  'tools.age-calculator.desc': 'Calculate exact age from a date of birth.',
+  // Upload dropzone
+  'dropzone.sizeLimitReached': 'Size limit reached',
+  'dropzone.removeToAdd': 'Remove some files to add more',
+  'dropzone.totalSize': 'Total size:',
+  'dropzone.remaining': 'remaining',
+  'dropzone.chooseFile': 'Choose File',
+  'dropzone.chooseFiles': 'Choose Files',
+  // Footer shared
+  'footer.copyright': '© 2026 ToolifyPDF. All Rights Reserved.',
+  'footer.privacy': 'Privacy Policy',
+  'footer.terms': 'Terms of Use',
+  'footer.cookies': 'Cookies Policy',
+  'footer.disclaimer': 'Disclaimer',
+  // Home footer extras
+  'home.footer.brandDesc': 'Free online tools for everyone.\nNo registration, no limits.\nProcess files instantly in your browser.',
+  'home.footer.otherTools': 'Other Tools',
+  'home.footer.blogCol': 'Blog',
+  'home.footer.allArticles': 'All Articles',
 }
 
 export function t(lang: string, key: TranslationKey, map: TranslationMap = en): string {
