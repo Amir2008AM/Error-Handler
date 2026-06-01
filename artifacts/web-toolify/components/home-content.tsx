@@ -161,7 +161,7 @@ export function HomeContent() {
       {/* Footer */}
       <footer style={{ backgroundColor: '#111111' }} className="py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
             {/* Brand */}
             <div>
               <div className="flex items-center gap-2 mb-4">
@@ -230,6 +230,17 @@ export function HomeContent() {
                     </Link>
                   </li>
                 ))}
+              </ul>
+            </div>
+            {/* Blog */}
+            <div>
+              <h3 className="text-white font-semibold text-sm mb-4">Blog</h3>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/blog" style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
+                    All Articles
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>
