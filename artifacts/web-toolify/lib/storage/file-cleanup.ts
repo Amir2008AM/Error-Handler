@@ -31,12 +31,11 @@ interface CleanupResult {
   tempStorageRemoved: number
 }
 
-/* ── Orphaned busboy upload dirs (/tmp/upload-*/) ─────────────────────────
- *
- * busboy writes incoming uploads to mkdtemp dirs under /tmp/upload-{random}/.
- * Routes delete these in finally blocks. When a route crashes or the server
- * restarts mid-request the dir is left behind. We clean those up here.
- */
+// ── Orphaned busboy upload dirs (/tmp/upload-*/) ─────────────────────────
+//
+// busboy writes incoming uploads to mkdtemp dirs under /tmp/upload-{random}/.
+// Routes delete these in finally blocks. When a route crashes or the server
+// restarts mid-request the dir is left behind. We clean those up here.
 async function cleanOrphanedUploadDirs(): Promise<number> {
   const now = Date.now()
   let removed = 0
