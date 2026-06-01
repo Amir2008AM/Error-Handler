@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Blog | Toolify',
+  title: 'Blog | ToolifyPDF',
   description:
-    'Tips, guides, and tutorials on PDF processing, image conversion, and free online tools — from the Toolify team.',
+    'Tips, guides, and tutorials on PDF processing, image conversion, and free online tools — from the ToolifyPDF team.',
   openGraph: {
-    title: 'Blog | Toolify',
+    title: 'Blog | ToolifyPDF',
     description:
       'Tips, guides, and tutorials on PDF processing, image conversion, and free online tools.',
     type: 'website',
@@ -22,69 +22,83 @@ const articles = [
     date: 'June 1, 2026',
     readTime: '8 min read',
     category: 'PDF Guide',
+    color: '#3b6ef5',
   },
 ]
 
+function PdfIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="4" y="2" width="16" height="20" rx="3" fill="white" fillOpacity="0.25" />
+      <rect x="4" y="2" width="16" height="20" rx="3" stroke="white" strokeWidth="1.5" />
+      <path d="M8 8h8M8 12h8M8 16h5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="15" y="14" width="9" height="10" rx="2" fill="white" fillOpacity="0.9" />
+      <text x="19.5" y="21.5" textAnchor="middle" fontSize="5.5" fontWeight="800" fill="#3b6ef5" fontFamily="system-ui">PDF</text>
+    </svg>
+  )
+}
+
+function ArticleCard({ article }: { article: typeof articles[number] }) {
+  return (
+    <Link
+      href={`/blog/${article.slug}`}
+      className="group flex flex-col rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-250 hover:-translate-y-1 bg-white border border-border"
+    >
+      {/* Colored header */}
+      <div
+        className="px-6 py-7 flex flex-col gap-4"
+        style={{ background: `linear-gradient(135deg, ${article.color} 0%, #5a84f7 100%)` }}
+      >
+        <div className="flex items-start justify-between">
+          <PdfIcon />
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-white">
+            {article.category}
+          </span>
+        </div>
+        <h2 className="text-lg font-bold text-white leading-snug group-hover:opacity-90 transition-opacity">
+          {article.title}
+        </h2>
+      </div>
+
+      {/* White lower section */}
+      <div className="px-6 py-5 flex flex-col flex-1 gap-3">
+        <p className="text-xs text-muted-foreground">
+          {article.date} &middot; {article.readTime}
+        </p>
+        <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+          {article.description}
+        </p>
+        <span
+          className="text-sm font-semibold inline-flex items-center gap-1 transition-gap duration-200 group-hover:gap-2"
+          style={{ color: article.color }}
+        >
+          Read More
+          <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+        </span>
+      </div>
+    </Link>
+  )
+}
+
 export default function BlogPage() {
   return (
-    <main className="min-h-screen bg-background py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+    <main className="min-h-screen bg-background">
+      {/* Hero header */}
+      <div className="bg-background border-b border-border py-14 px-4 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">Blog</h1>
+        <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+          Tips, guides, and tutorials on PDF processing, image conversion, and free online tools.
+        </p>
+      </div>
 
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="mb-8">
-          <ol className="flex items-center gap-2 text-sm text-muted-foreground" itemScope itemType="https://schema.org/BreadcrumbList">
-            <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
-              <Link href="/" itemProp="item" className="hover:text-foreground transition-colors">
-                <span itemProp="name">Home</span>
-              </Link>
-              <meta itemProp="position" content="1" />
-            </li>
-            <li aria-hidden="true" className="text-border">›</li>
-            <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
-              <span itemProp="name" className="text-foreground font-medium">Blog</span>
-              <meta itemProp="position" content="2" />
-            </li>
-          </ol>
-        </nav>
-
-        {/* Header */}
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold mb-3">Blog</h1>
-          <p className="text-muted-foreground leading-relaxed">
-            Tips, guides, and tutorials on PDF processing, image conversion, and getting the most out of Toolify&apos;s free online tools.
-          </p>
-        </header>
-
-        {/* Article cards */}
-        <div className="space-y-5">
+      {/* Grid */}
+      <section className="max-w-6xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map((article) => (
-            <Link
-              key={article.slug}
-              href={`/blog/${article.slug}`}
-              className="group block border border-border rounded-xl p-6 bg-white transition-all duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-0.5"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3 flex-wrap">
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ backgroundColor: '#eff3ff', color: '#3b6ef5' }}>
-                      {article.category}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{article.date}</span>
-                    <span className="text-xs text-muted-foreground">· {article.readTime}</span>
-                  </div>
-                  <h2 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                    {article.title}
-                  </h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {article.description}
-                  </p>
-                </div>
-                <span className="text-muted-foreground group-hover:text-foreground transition-colors mt-1 flex-shrink-0 text-lg">→</span>
-              </div>
-            </Link>
+            <ArticleCard key={article.slug} article={article} />
           ))}
         </div>
-      </div>
+      </section>
     </main>
   )
 }
