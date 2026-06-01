@@ -161,7 +161,7 @@ export function HomeContent() {
       {/* Footer */}
       <footer style={{ backgroundColor: '#111111' }} className="py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 md:gap-10">
             {/* Brand */}
             <div>
               <div className="flex items-center gap-2 mb-4">
@@ -246,10 +246,10 @@ export function HomeContent() {
           </div>
 
           <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p style={{ color: '#6b7280' }} className="text-sm">
+            <p style={{ color: '#6b7280' }} className="text-sm shrink-0">
               © 2026 Toolify. All rights reserved.
             </p>
-            <div className="flex items-center gap-5">
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-5 gap-y-2">
               {[
                 { label: 'Privacy Policy', href: '/privacy-policy' },
                 { label: 'Terms of Use', href: '/terms-and-conditions' },
@@ -260,7 +260,7 @@ export function HomeContent() {
                   key={item.href}
                   href={item.href}
                   style={{ color: '#6b7280' }}
-                  className="text-sm hover:text-white transition-colors whitespace-nowrap"
+                  className="text-sm hover:text-white transition-colors"
                 >
                   {item.label}
                 </Link>

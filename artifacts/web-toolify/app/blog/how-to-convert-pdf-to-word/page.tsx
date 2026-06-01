@@ -335,7 +335,7 @@ export default function ArticlePage() {
           </section>
 
           {/* Image 1 */}
-          <div className="mb-12 p-6 bg-muted/40 rounded-2xl border border-border">
+          <div className="hidden sm:block mb-12 p-6 bg-muted/40 rounded-2xl border border-border">
             <IllustrationPdfToWord />
           </div>
 
@@ -358,7 +358,7 @@ export default function ArticlePage() {
             </p>
 
             {/* Image 2 */}
-            <div className="my-8 p-6 bg-muted/40 rounded-2xl border border-border">
+            <div className="hidden sm:block my-8 p-6 bg-muted/40 rounded-2xl border border-border">
               <IllustrationUpload />
             </div>
 
@@ -404,7 +404,7 @@ export default function ArticlePage() {
             ]} />
 
             {/* Image 3 */}
-            <div className="my-8 p-6 bg-muted/40 rounded-2xl border border-border">
+            <div className="hidden sm:block my-8 p-6 bg-muted/40 rounded-2xl border border-border">
               <IllustrationGoogleDocs />
             </div>
 
@@ -430,7 +430,7 @@ export default function ArticlePage() {
             ]} />
 
             {/* Image 4 */}
-            <div className="my-8 p-6 bg-muted/40 rounded-2xl border border-border">
+            <div className="hidden sm:block my-8 p-6 bg-muted/40 rounded-2xl border border-border">
               <IllustrationWordImport />
             </div>
 
@@ -493,7 +493,7 @@ export default function ArticlePage() {
             <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
 
             {/* Image 5 */}
-            <div className="mb-8 p-6 bg-muted/40 rounded-2xl border border-border">
+            <div className="hidden sm:block mb-8 p-6 bg-muted/40 rounded-2xl border border-border">
               <IllustrationFaq />
             </div>
 
