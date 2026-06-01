@@ -11,7 +11,6 @@ export function MinimalFooter() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
         <span>© 2026 ToolifyPDF. All Rights Reserved.</span>
         <nav aria-label="Footer navigation" className="flex items-center gap-5 flex-wrap justify-center">
-          <Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link>
           <Link href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <Link href="/terms-and-conditions" className="hover:text-foreground transition-colors">Terms of Use</Link>
           <Link href="/cookies-policy" className="hover:text-foreground transition-colors">Cookies Policy</Link>
