@@ -132,9 +132,9 @@ export function HomeContent() {
           <div className="text-center py-16 text-muted-foreground">
             <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p className="font-medium text-lg">
-              No tools found for &quot;{searchQuery}&quot;
+              {t('home.noToolsFound')} &quot;{searchQuery}&quot;
             </p>
-            <p className="text-sm mt-2">Try a different keyword or browse all tools</p>
+            <p className="text-sm mt-2">{t('home.noToolsFoundHint')}</p>
             <button
               onClick={() => {
                 setSearchQuery('')
@@ -172,15 +172,13 @@ export function HomeContent() {
                 <span className="text-white text-lg font-bold">Toolify</span>
               </div>
               <p style={{ color: '#9ca3af' }} className="text-sm leading-relaxed">
-                Free online tools for everyone.<br />
-                No registration, no limits.<br />
-                Process files instantly in your browser.
+                {t('home.footer.brandDesc')}
               </p>
             </div>
 
             {/* PDF Tools */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">PDF Tools</h3>
+              <h3 className="text-white font-semibold text-sm mb-4">{t('home.pdfTools')}</h3>
               <ul className="space-y-3">
                 {[
                   { label: 'Image to PDF', href: '/image-to-pdf' },
@@ -199,7 +197,7 @@ export function HomeContent() {
 
             {/* Image Tools */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">Image Tools</h3>
+              <h3 className="text-white font-semibold text-sm mb-4">{t('home.imageTools')}</h3>
               <ul className="space-y-3">
                 {[
                   { label: 'Compress Image', href: '/compress-image' },
@@ -217,7 +215,7 @@ export function HomeContent() {
 
             {/* Other Tools */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">Other Tools</h3>
+              <h3 className="text-white font-semibold text-sm mb-4">{t('home.footer.otherTools')}</h3>
               <ul className="space-y-3">
                 {[
                   { label: 'Word Counter', href: '/word-counter' },
@@ -235,11 +233,11 @@ export function HomeContent() {
             </div>
             {/* Blog */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">Blog</h3>
+              <h3 className="text-white font-semibold text-sm mb-4">{t('home.footer.blogCol')}</h3>
               <ul className="space-y-3">
                 <li>
                   <Link href="/blog" style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
-                    All Articles
+                    {t('home.footer.allArticles')}
                   </Link>
                 </li>
               </ul>
@@ -252,10 +250,10 @@ export function HomeContent() {
             </p>
             <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-5 gap-y-2">
               {[
-                { label: 'Privacy Policy', href: '/privacy-policy' },
-                { label: 'Terms of Use', href: '/terms-and-conditions' },
-                { label: 'Cookies Policy', href: '/cookies-policy' },
-                { label: 'Disclaimer', href: '/disclaimer' },
+                { labelKey: 'footer.privacy' as const, href: '/privacy-policy' },
+                { labelKey: 'footer.terms' as const, href: '/terms-and-conditions' },
+                { labelKey: 'footer.cookies' as const, href: '/cookies-policy' },
+                { labelKey: 'footer.disclaimer' as const, href: '/disclaimer' },
               ].map((item) => (
                 <Link
                   key={item.href}
@@ -263,7 +261,7 @@ export function HomeContent() {
                   style={{ color: '#6b7280' }}
                   className="text-sm hover:text-white transition-colors"
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               ))}
               <LanguageSwitcher variant="dark-footer" />

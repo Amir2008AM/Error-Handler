@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import type { TranslationKey } from '@/lib/i18n/translations'
 
 interface ConvertResult {
   downloadUrl: string
@@ -14,14 +16,15 @@ interface ConvertResult {
   format: string
 }
 
-const formats = [
-  { value: 'jpeg', label: 'JPG', description: 'Best for photos' },
-  { value: 'png', label: 'PNG', description: 'Lossless quality' },
-  { value: 'webp', label: 'WebP', description: 'Modern & compact' },
-  { value: 'avif', label: 'AVIF', description: 'Next-gen format' },
+const formats: { value: string; label: string; descKey: TranslationKey }[] = [
+  { value: 'jpeg', label: 'JPG', descKey: 'convert.bestForPhotos' },
+  { value: 'png', label: 'PNG', descKey: 'convert.losslessQuality' },
+  { value: 'webp', label: 'WebP', descKey: 'convert.modernCompact' },
+  { value: 'avif', label: 'AVIF', descKey: 'convert.nextGen' },
 ]
 
 export function ConvertImageClient() {
+  const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [targetFormat, setTargetFormat] = useState('webp')
@@ -41,7 +44,7 @@ export function ConvertImageClient() {
 
   const handleConvert = async () => {
     if (!file) return
-    
+
     setError(null)
     setResult(null)
     progress.startProcessing('Uploading image...')
@@ -70,12 +73,11 @@ export function ConvertImageClient() {
       progress.stageProcessing(undefined, ['Converting format...', 'Almost done...'])
 
       const blob = await res.blob()
-
       const ext = targetFormat === 'jpeg' ? 'jpg' : targetFormat
       const filename = `${file.name.replace(/\.[^/.]+$/, '')}.${ext}`
       setResult({ downloadUrl: URL.createObjectURL(blob), filename, format: targetFormat.toUpperCase() })
 
-      progress.stageDone('Conversion complete!')
+      progress.stageDone(`${t('convert.successPrefix')} ${targetFormat.toUpperCase()}!`)
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)
@@ -104,18 +106,17 @@ export function ConvertImageClient() {
           accept="image/jpeg,image/jpg,image/png,image/webp,image/avif,image/gif"
           multiple={false}
           onFilesSelected={handleFileSelected}
-          label="Drop an image here or click to browse"
+          label={t('common.dropImageHere')}
           sublabel="Supports JPG, PNG, WebP, AVIF, GIF"
         />
       ) : (
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Preview */}
             <div className="relative rounded-xl overflow-hidden border border-border bg-muted/30 aspect-video flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={preview ?? ''} alt="Preview" className="max-w-full max-h-full object-contain" />
-              <button 
-                onClick={reset} 
+              <button
+                onClick={reset}
                 disabled={isProcessing}
                 className="absolute top-2 right-2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-destructive transition-colors disabled:opacity-50"
               >
@@ -126,10 +127,9 @@ export function ConvertImageClient() {
               </div>
             </div>
 
-            {/* Controls */}
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-semibold text-foreground block mb-3">Convert To</label>
+                <label className="text-sm font-semibold text-foreground block mb-3">{t('convert.convertTo')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {formats.map((fmt) => (
                     <button
@@ -144,7 +144,7 @@ export function ConvertImageClient() {
                       )}
                     >
                       <p className="font-bold text-sm text-foreground">{fmt.label}</p>
-                      <p className="text-xs text-muted-foreground">{fmt.description}</p>
+                      <p className="text-xs text-muted-foreground">{t(fmt.descKey)}</p>
                     </button>
                   ))}
                 </div>
@@ -157,13 +157,12 @@ export function ConvertImageClient() {
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-all"
                 >
                   {isProcessing ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> Converting...</>
+                    <><Loader2 className="w-5 h-5 animate-spin" /> {t('convert.converting')}</>
                   ) : (
-                    `Convert to ${targetFormat.toUpperCase()}`
+                    `${t('convert.convertTo')} ${targetFormat.toUpperCase()}`
                   )}
                 </button>
-                
-                {/* Real Progress Bar */}
+
                 <RealProgressBar
                   status={progress.status}
                   progress={progress.progress}
@@ -189,20 +188,20 @@ export function ConvertImageClient() {
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-green-600" />
                 <div>
-                  <p className="font-semibold text-green-900">Converted to {result.format}!</p>
+                  <p className="font-semibold text-green-900">{t('convert.successPrefix')} {result.format}!</p>
                   <p className="text-sm text-green-700">{result.filename}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <a 
-                  href={result.downloadUrl} 
-                  download={result.filename} 
+                <a
+                  href={result.downloadUrl}
+                  download={result.filename}
                   className="flex items-center gap-2 bg-green-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  <Download className="w-4 h-4" /> Download
+                  <Download className="w-4 h-4" /> {t('common.download')}
                 </a>
-                <button 
-                  onClick={reset} 
+                <button
+                  onClick={reset}
                   className="flex items-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                 >
                   <RotateCcw className="w-4 h-4" />

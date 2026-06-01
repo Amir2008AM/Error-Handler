@@ -9,46 +9,21 @@ import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar
 import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
 
 type CompressionLevel = 'low' | 'medium' | 'high'
 
-const LEVEL_OPTIONS: Array<{
-  value: CompressionLevel
-  emoji: string
-  label: string
-  description: string
-  detail: string
-}> = [
-  {
-    value: 'low',
-    emoji: '🟢',
-    label: 'Light',
-    description: 'Best quality, minimal reduction',
-    detail: '150 DPI · /ebook preset',
-  },
-  {
-    value: 'medium',
-    emoji: '🟡',
-    label: 'Medium',
-    description: 'Good balance of quality and size',
-    detail: '100 DPI · font subsetting',
-  },
-  {
-    value: 'high',
-    emoji: '🔴',
-    label: 'Maximum',
-    description: 'Smallest file, aggressive compression',
-    detail: '72 DPI · all channels · metadata stripped',
-  },
-]
-
-const LEVEL_LABEL: Record<CompressionLevel, string> = {
-  low:    'Light',
-  medium: 'Medium',
-  high:   'Maximum',
+const LEVEL_EMOJI: Record<CompressionLevel, string> = {
+  low: '🟢',
+  medium: '🟡',
+  high: '🔴',
+}
+const LEVEL_DETAIL: Record<CompressionLevel, string> = {
+  low: '150 DPI · /ebook preset',
+  medium: '100 DPI · font subsetting',
+  high: '72 DPI · all channels · metadata stripped',
 }
 
-// compressionStatus sent by the server
 type CompressionStatus = 'compressed' | 'size_increased' | 'already_optimized'
 
 interface CompressResult {
@@ -56,17 +31,30 @@ interface CompressResult {
   filename:          string
   originalSize:      number
   compressedSize:    number
-  compressionRatio:  number   // positive = smaller, negative = larger
+  compressionRatio:  number
   compressionStatus: CompressionStatus
   alreadyOptimized:  boolean
   level:             CompressionLevel
 }
 
 export function CompressPdfClient() {
+  const { t } = useI18n()
   const [file, setFile]     = useState<File | null>(null)
   const [level, setLevel]   = useState<CompressionLevel>('medium')
   const [result, setResult] = useState<CompressResult | null>(null)
   const progress            = useRealProgress()
+
+  const levelLabel = (lv: CompressionLevel) => {
+    if (lv === 'low') return t('compress.light')
+    if (lv === 'medium') return t('compress.medium')
+    return t('compress.maximum')
+  }
+
+  const levelDesc = (lv: CompressionLevel) => {
+    if (lv === 'low') return t('compress.lightDesc')
+    if (lv === 'medium') return t('compress.mediumDesc')
+    return t('compress.maximumDesc')
+  }
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -107,7 +95,7 @@ export function CompressPdfClient() {
       const data = await response.json() as CompressResult
       setResult(data)
 
-      progress.stageDone('Compression complete!')
+      progress.stageDone(t('compress.successPdf'))
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to compress PDF'
       progress.fail(message)
@@ -144,15 +132,14 @@ export function CompressPdfClient() {
                   <Upload className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">Upload PDF</p>
-                  <p className="text-sm text-muted-foreground">Click or drag and drop your PDF file here</p>
+                  <p className="font-semibold text-lg">{t('common.uploadPdf')}</p>
+                  <p className="text-sm text-muted-foreground">{t('common.clickOrDragPdf')}</p>
                 </div>
               </div>
             </Card>
           </label>
         ) : (
           <div className="space-y-6">
-            {/* File info */}
             <Card className="p-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
@@ -161,49 +148,39 @@ export function CompressPdfClient() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{file.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Original size: {formatSize(file.size)}
+                    {t('common.originalSize')}: {formatSize(file.size)}
                   </p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setFile(null)
-                    setResult(null)
-                    progress.reset()
-                  }}
+                  onClick={() => { setFile(null); setResult(null); progress.reset() }}
                   disabled={isProcessing}
                 >
-                  Change
+                  {t('common.change')}
                 </Button>
               </div>
             </Card>
 
-            {/* Result card — shown once done */}
             {result && progress.status === 'completed' && (() => {
               const { alreadyOptimized, compressionStatus } = result
-              const ratio    = result.compressionRatio
-              const gained   = ratio > 0 && compressionStatus === 'compressed'
-              const absPct   = Math.abs(Math.round(ratio))
+              const absPct   = Math.abs(Math.round(result.compressionRatio))
               const savedBytes = result.originalSize - result.compressedSize
               const absDelta = Math.abs(savedBytes)
 
-              // ── Already optimised — neutral informational state ───────────────
               if (alreadyOptimized || compressionStatus === 'already_optimized') {
                 return (
                   <ProcessedFileCard fileId={result.fileId} filename={result.filename}>
                     <div className="flex items-start gap-3 mt-2">
                       <CheckCircle2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                       <div className="text-sm space-y-0.5 text-blue-800">
-                        <p className="font-medium">
-                          This PDF is already highly optimized
-                        </p>
+                        <p className="font-medium">This PDF is already highly optimized</p>
                         <p className="text-blue-700">
                           No further compression is possible without degrading quality.
                           Your original file is available to download below.
                         </p>
                         <p className="text-blue-600 text-xs mt-1">
-                          Size: {formatSize(result.originalSize)} · Level tried: {LEVEL_LABEL[result.level]}
+                          Size: {formatSize(result.originalSize)} · {t('compress.levelLabel')} {levelLabel(result.level)}
                         </p>
                       </div>
                     </div>
@@ -211,59 +188,50 @@ export function CompressPdfClient() {
                 )
               }
 
-              // ── Successful compression ────────────────────────────────────────
               return (
                 <ProcessedFileCard fileId={result.fileId} filename={result.filename}>
                   <div className="flex items-start gap-3 mt-2">
                     <TrendingDown className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                     <div className="text-sm space-y-0.5 text-green-700">
                       <p className="font-medium">
-                        Compressed — reduced by {absPct}% ({formatSize(absDelta)} saved)
+                        {t('compress.reducedBy')} {absPct}% ({formatSize(absDelta)} {t('compress.saved')})
                       </p>
-                      <p>
-                        {formatSize(result.originalSize)}
-                        {' → '}
-                        {formatSize(result.compressedSize)}
-                      </p>
-                      <p>Level: {LEVEL_LABEL[result.level]}</p>
+                      <p>{formatSize(result.originalSize)} → {formatSize(result.compressedSize)}</p>
+                      <p>{t('compress.levelLabel')} {levelLabel(result.level)}</p>
                     </div>
                   </div>
                 </ProcessedFileCard>
               )
             })()}
 
-            {/* Level picker */}
             <div>
-              <p className="text-sm font-medium mb-3">Compression level</p>
+              <p className="text-sm font-medium mb-3">{t('compress.level')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {LEVEL_OPTIONS.map((opt) => {
-                  const selected = level === opt.value
+                {(['low', 'medium', 'high'] as CompressionLevel[]).map((lv) => {
+                  const selected = level === lv
                   return (
                     <button
-                      key={opt.value}
+                      key={lv}
                       type="button"
-                      onClick={() => setLevel(opt.value)}
+                      onClick={() => setLevel(lv)}
                       disabled={isProcessing}
                       className={`text-left rounded-lg border-2 p-4 transition-colors ${
-                        selected
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/40'
+                        selected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
                       } ${isProcessing ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                       aria-pressed={selected}
                     >
                       <div className="flex items-center gap-2">
-                        <span aria-hidden="true">{opt.emoji}</span>
-                        <span className="font-semibold">{opt.label}</span>
+                        <span aria-hidden="true">{LEVEL_EMOJI[lv]}</span>
+                        <span className="font-semibold">{levelLabel(lv)}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">{opt.description}</p>
-                      <p className="text-xs text-muted-foreground/70 mt-0.5">{opt.detail}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{levelDesc(lv)}</p>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">{LEVEL_DETAIL[lv]}</p>
                     </button>
                   )
                 })}
               </div>
             </div>
 
-            {/* Action */}
             <div className="flex flex-col items-center">
               <Button
                 size="lg"
@@ -272,15 +240,9 @@ export function CompressPdfClient() {
                 className="min-w-[200px]"
               >
                 {isProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Compressing...
-                  </>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('compress.processing')}</>
                 ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Compress PDF
-                  </>
+                  <><Download className="w-4 h-4 mr-2" />{t('compress.actionPdf')}</>
                 )}
               </Button>
 

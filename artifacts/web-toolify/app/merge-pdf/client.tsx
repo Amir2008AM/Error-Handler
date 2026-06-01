@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { PDFDocument } from 'pdf-lib'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
 
 interface PdfEntry {
   id: string
@@ -26,6 +27,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function MergePdfClient() {
+  const { t } = useI18n()
   const [pdfs, setPdfs] = useState<PdfEntry[]>([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -70,7 +72,6 @@ export function MergePdfClient() {
     setDownloadUrl(null)
   }
 
-  // Drag to reorder
   const handleDragStart = (id: string) => setDraggedId(id)
   const handleDragOver = (e: React.DragEvent, id: string) => {
     e.preventDefault()
@@ -94,23 +95,19 @@ export function MergePdfClient() {
 
   const handleMerge = async () => {
     if (pdfs.length < 2) {
-      setError('Please add at least 2 PDF files to merge.')
+      setError(t('merge.minFilesError'))
       return
     }
-    
+
     setError(null)
     setDownloadUrl(null)
     progress.startProcessing('Reading files...')
 
     try {
-      // Stage: Upload (-> 10%) — local file read for client-side processing
       progress.stageUpload(100, 'Reading files...')
-
-      // Stage: Validation (-> 20%)
       progress.stageValidation('Validating PDFs...')
       const mergedPdf = await PDFDocument.create()
 
-      // Stage: Processing (-> 70%) — sub-progress driven by file index
       const totalFiles = pdfs.length
       for (let i = 0; i < totalFiles; i++) {
         const { file } = pdfs[i]
@@ -128,8 +125,7 @@ export function MergePdfClient() {
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
       setDownloadUrl(URL.createObjectURL(blob))
 
-      // Stage: Done (-> 100%)
-      progress.stageDone('PDFs merged successfully!')
+      progress.stageDone(t('merge.successTitle'))
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong during merge'
       setError(message)
@@ -147,8 +143,8 @@ export function MergePdfClient() {
         accept="application/pdf"
         multiple
         onFilesSelected={handleFilesSelected}
-        label="Drop PDF files here or click to browse"
-        sublabel="Add multiple PDFs — drag to reorder before merging"
+        label={t('merge.dropFiles')}
+        sublabel={t('merge.subLabel')}
         maxSizeMB={50}
         maxTotalSizeMB={100}
         currentTotalSize={totalSize}
@@ -158,19 +154,19 @@ export function MergePdfClient() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">
-              {pdfs.length} file{pdfs.length !== 1 ? 's' : ''} · {formatBytes(totalSize)} total
+              {pdfs.length} file{pdfs.length !== 1 ? 's' : ''} · {formatBytes(totalSize)} {t('merge.total')}
             </p>
             <button
               onClick={() => { setPdfs([]); setDownloadUrl(null); progress.reset() }}
               className="text-xs text-destructive font-medium hover:underline"
               disabled={isProcessing}
             >
-              Clear all
+              {t('merge.clearAll')}
             </button>
           </div>
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-primary">
-            Drag rows or use the arrow buttons to reorder PDFs. The final merged document will follow this order.
+            {t('merge.reorderHint')}
           </div>
 
           <div className="space-y-2">
@@ -189,22 +185,15 @@ export function MergePdfClient() {
                   isProcessing && 'opacity-60'
                 )}
               >
-                {/* Drag handle */}
                 <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
-
-                {/* Page number badge */}
                 <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
                   {idx + 1}
                 </div>
-
                 <FileText className="w-5 h-5 text-red-500 shrink-0" />
-
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{pdf.file.name}</p>
                   <p className="text-xs text-muted-foreground">{formatBytes(pdf.size)}</p>
                 </div>
-
-                {/* Reorder arrows */}
                 <div className="flex gap-1 shrink-0">
                   <button
                     onClick={() => moveUp(idx)}
@@ -223,7 +212,6 @@ export function MergePdfClient() {
                     <ArrowDown className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
                 <button
                   onClick={() => remove(pdf.id)}
                   disabled={isProcessing}
@@ -253,9 +241,9 @@ export function MergePdfClient() {
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isProcessing ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Merging PDFs...</>
+                <><Loader2 className="w-5 h-5 animate-spin" /> {t('merge.processing')}</>
               ) : (
-                <><FilePlus2 className="w-5 h-5" /> Merge {pdfs.length} PDFs</>
+                <><FilePlus2 className="w-5 h-5" /> {t('merge.action')} ({pdfs.length})</>
               )}
             </button>
             <button
@@ -263,11 +251,10 @@ export function MergePdfClient() {
               disabled={isProcessing}
               className="flex items-center justify-center gap-2 border border-border px-5 py-3 rounded-xl text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
             >
-              <RotateCcw className="w-4 h-4" /> Reset
+              <RotateCcw className="w-4 h-4" /> {t('merge.reset')}
             </button>
           </div>
 
-          {/* Real Progress Bar */}
           <RealProgressBar
             status={progress.status}
             progress={progress.progress}
@@ -288,7 +275,7 @@ export function MergePdfClient() {
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="font-semibold text-green-900">PDFs merged successfully!</p>
+              <p className="font-semibold text-green-900">{t('merge.successTitle')}</p>
               <p className="text-sm text-green-700">{pdfs.length} files combined into one PDF</p>
             </div>
           </div>
@@ -298,7 +285,7 @@ export function MergePdfClient() {
             className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
           >
             <Download className="w-4 h-4" />
-            Download PDF
+            {t('merge.downloadPdf')}
           </a>
         </div>
       )}

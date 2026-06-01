@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -15,6 +16,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function RotatePdfClient() {
+  const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [rotation, setRotation] = useState<90 | 180 | 270>(90)
   const [result, setResult] = useState<{ downloadUrl: string; filename: string } | null>(null)
@@ -59,12 +61,11 @@ export function RotatePdfClient() {
       progress.stageProcessing(undefined, ['Rotating pages...', 'Almost done...'])
 
       const blob = await res.blob()
-
       const downloadUrl = URL.createObjectURL(blob)
       const filename = `${file.name.replace(/\.pdf$/i, '')}-rotated.pdf`
 
       setResult({ downloadUrl, filename })
-      progress.stageDone('Rotation complete!')
+      progress.stageDone(t('rotate.successTitle'))
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)
@@ -90,14 +91,12 @@ export function RotatePdfClient() {
           accept="application/pdf"
           multiple={false}
           onFilesSelected={handleFileSelected}
-          label="Drop a PDF here or click to browse"
-          sublabel="Maximum file size: 50MB"
+          label={t('common.dropPdfHere')}
+          sublabel={t('common.maxFileSizeMB')}
         />
       ) : (
         <div className="space-y-6">
-          {/* File info + Controls */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* File Preview */}
             <div className="relative rounded-xl overflow-hidden border border-border bg-muted/30 p-6 flex flex-col items-center justify-center min-h-[200px]">
               <div className="w-16 h-20 bg-red-100 rounded-lg flex items-center justify-center mb-3">
                 <span className="text-red-600 font-bold text-sm">PDF</span>
@@ -114,11 +113,10 @@ export function RotatePdfClient() {
               </button>
             </div>
 
-            {/* Controls */}
             <div className="space-y-5">
               <div>
                 <label className="text-sm font-semibold text-foreground block mb-3">
-                  Rotation Angle
+                  {t('rotate.angle')}
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {([90, 180, 270] as const).map((angle) => (
@@ -133,10 +131,7 @@ export function RotatePdfClient() {
                           : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
                       )}
                     >
-                      <RotateCw 
-                        className="w-6 h-6"
-                        style={{ transform: `rotate(${angle}deg)` }}
-                      />
+                      <RotateCw className="w-6 h-6" style={{ transform: `rotate(${angle}deg)` }} />
                       {angle}°
                     </button>
                   ))}
@@ -144,7 +139,7 @@ export function RotatePdfClient() {
               </div>
 
               <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-                <p>All pages will be rotated by {rotation} degrees clockwise.</p>
+                <p>{t('rotate.willRotate')}</p>
               </div>
 
               <div className="space-y-3">
@@ -154,13 +149,12 @@ export function RotatePdfClient() {
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isProcessing ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> Rotating...</>
+                    <><Loader2 className="w-5 h-5 animate-spin" /> {t('rotate.processing')}</>
                   ) : (
-                    <><RotateCw className="w-5 h-5" /> Rotate PDF</>
+                    <><RotateCw className="w-5 h-5" /> {t('rotate.action')}</>
                   )}
                 </button>
 
-                {/* Real Progress Bar */}
                 <RealProgressBar
                   status={progress.status}
                   progress={progress.progress}
@@ -175,24 +169,21 @@ export function RotatePdfClient() {
             </div>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
               {error}
             </div>
           )}
 
-          {/* Result */}
           {result && progress.status === 'completed' && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
                 <div>
-                  <p className="font-semibold text-green-900">PDF rotated successfully!</p>
+                  <p className="font-semibold text-green-900">{t('rotate.successTitle')}</p>
                   <p className="text-sm text-green-700">All pages rotated by {rotation} degrees</p>
                 </div>
               </div>
-
               <div className="flex gap-3">
                 <a
                   href={result.downloadUrl}
@@ -200,14 +191,14 @@ export function RotatePdfClient() {
                   className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  Download Rotated PDF
+                  {t('rotate.download')}
                 </a>
                 <button
                   onClick={reset}
                   className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  New File
+                  {t('rotate.newFile')}
                 </button>
               </div>
             </div>

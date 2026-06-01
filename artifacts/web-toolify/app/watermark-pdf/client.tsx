@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -17,6 +18,7 @@ function formatBytes(bytes: number): string {
 type WatermarkPosition = 'center' | 'diagonal' | 'top' | 'bottom'
 
 export function WatermarkPdfClient() {
+  const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [text, setText] = useState('')
   const [opacity, setOpacity] = useState(30)
@@ -67,12 +69,11 @@ export function WatermarkPdfClient() {
       progress.stageProcessing(undefined, ['Adding watermark...', 'Almost done...'])
 
       const blob = await res.blob()
-
       const downloadUrl = URL.createObjectURL(blob)
       const filename = `${file.name.replace(/\.pdf$/i, '')}-watermarked.pdf`
 
       setResult({ downloadUrl, filename })
-      progress.stageDone('Watermark added!')
+      progress.stageDone(t('watermark.successTitle'))
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
       setError(message)
@@ -98,14 +99,12 @@ export function WatermarkPdfClient() {
           accept="application/pdf"
           multiple={false}
           onFilesSelected={handleFileSelected}
-          label="Drop a PDF here or click to browse"
-          sublabel="Maximum file size: 50MB"
+          label={t('common.dropPdfHere')}
+          sublabel={t('common.maxFileSizeMB')}
         />
       ) : (
         <div className="space-y-6">
-          {/* File info + Controls */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* File Preview */}
             <div className="relative rounded-xl overflow-hidden border border-border bg-muted/30 p-6 flex flex-col items-center justify-center min-h-[200px]">
               <div className="w-16 h-20 bg-red-100 rounded-lg flex items-center justify-center mb-3">
                 <span className="text-red-600 font-bold text-sm">PDF</span>
@@ -122,27 +121,24 @@ export function WatermarkPdfClient() {
               </button>
             </div>
 
-            {/* Controls */}
             <div className="space-y-4">
-              {/* Watermark Text */}
               <div>
                 <label className="text-sm font-semibold text-foreground block mb-2">
-                  Watermark Text
+                  {t('watermark.text')}
                 </label>
                 <input
                   type="text"
                   value={text}
                   onChange={(e) => { setText(e.target.value); setResult(null) }}
-                  placeholder="e.g., CONFIDENTIAL, DRAFT, etc."
+                  placeholder={t('watermark.placeholder')}
                   disabled={isProcessing}
                   className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
                 />
               </div>
 
-              {/* Position */}
               <div>
                 <label className="text-sm font-semibold text-foreground block mb-2">
-                  Position
+                  {t('watermark.position')}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['diagonal', 'center', 'top', 'bottom'] as const).map((pos) => (
@@ -163,11 +159,10 @@ export function WatermarkPdfClient() {
                 </div>
               </div>
 
-              {/* Opacity */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-semibold text-foreground">
-                    Opacity: <span className="text-primary">{opacity}%</span>
+                    {t('watermark.opacity')}: <span className="text-primary">{opacity}%</span>
                   </label>
                 </div>
                 <input
@@ -181,16 +176,15 @@ export function WatermarkPdfClient() {
                   className="w-full accent-primary disabled:opacity-50"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>More subtle</span>
-                  <span>More visible</span>
+                  <span>{t('watermark.moreSubtle')}</span>
+                  <span>{t('watermark.moreVisible')}</span>
                 </div>
               </div>
 
-              {/* Font Size */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-semibold text-foreground">
-                    Font Size: <span className="text-primary">{fontSize}pt</span>
+                    {t('watermark.fontSize')}: <span className="text-primary">{fontSize}pt</span>
                   </label>
                 </div>
                 <input
@@ -212,13 +206,12 @@ export function WatermarkPdfClient() {
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isProcessing ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> Adding Watermark...</>
+                    <><Loader2 className="w-5 h-5 animate-spin" /> {t('watermark.processing')}</>
                   ) : (
-                    <><Droplets className="w-5 h-5" /> Add Watermark</>
+                    <><Droplets className="w-5 h-5" /> {t('watermark.action')}</>
                   )}
                 </button>
 
-                {/* Real Progress Bar */}
                 <RealProgressBar
                   status={progress.status}
                   progress={progress.progress}
@@ -233,24 +226,21 @@ export function WatermarkPdfClient() {
             </div>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
               {error}
             </div>
           )}
 
-          {/* Result */}
           {result && progress.status === 'completed' && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
                 <div>
-                  <p className="font-semibold text-green-900">Watermark added successfully!</p>
+                  <p className="font-semibold text-green-900">{t('watermark.successTitle')}</p>
                   <p className="text-sm text-green-700">&quot;{text}&quot; watermark applied to all pages</p>
                 </div>
               </div>
-
               <div className="flex gap-3">
                 <a
                   href={result.downloadUrl}
@@ -258,14 +248,14 @@ export function WatermarkPdfClient() {
                   className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  Download Watermarked PDF
+                  {t('watermark.download')}
                 </a>
                 <button
                   onClick={reset}
                   className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  New File
+                  {t('watermark.newFile')}
                 </button>
               </div>
             </div>

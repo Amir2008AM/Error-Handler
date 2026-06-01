@@ -11,6 +11,7 @@ import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar
 import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
 
 interface ProtectResult {
   fileId: string
@@ -18,6 +19,7 @@ interface ProtectResult {
 }
 
 export function ProtectPdfClient() {
+  const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -40,12 +42,12 @@ export function ProtectPdfClient() {
     if (!file) return
 
     if (password.length < 4) {
-      setError('Password must be at least 4 characters')
+      setError(t('protect.errorMinLength'))
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('protect.errorMismatch'))
       return
     }
 
@@ -109,8 +111,8 @@ export function ProtectPdfClient() {
                   <Lock className="w-8 h-8 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">Upload PDF to Protect</p>
-                  <p className="text-sm text-muted-foreground">Click or drag and drop your PDF file here</p>
+                  <p className="font-semibold text-lg">{t('protect.uploadTitle')}</p>
+                  <p className="text-sm text-muted-foreground">{t('common.clickOrDragPdf')}</p>
                 </div>
               </div>
             </Card>
@@ -134,7 +136,7 @@ export function ProtectPdfClient() {
                   onClick={() => { setFile(null); setResult(null); progress.reset() }}
                   disabled={isProcessing}
                 >
-                  Change
+                  {t('common.change')}
                 </Button>
               </div>
             </Card>
@@ -146,7 +148,7 @@ export function ProtectPdfClient() {
             <Card className="p-6 space-y-4">
               <div>
                 <Label htmlFor="password" className="text-sm font-medium mb-2 block">
-                  Password
+                  {t('protect.password')}
                 </Label>
                 <div className="relative">
                   <Input
@@ -154,7 +156,7 @@ export function ProtectPdfClient() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password"
+                    placeholder={t('protect.enterPassword')}
                     className="pr-10"
                     disabled={isProcessing}
                   />
@@ -170,14 +172,14 @@ export function ProtectPdfClient() {
 
               <div>
                 <Label htmlFor="confirmPassword" className="text-sm font-medium mb-2 block">
-                  Confirm Password
+                  {t('protect.confirmPassword')}
                 </Label>
                 <Input
                   id="confirmPassword"
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm password"
+                  placeholder={t('protect.confirmPlaceholder')}
                   disabled={isProcessing}
                 />
               </div>
@@ -195,15 +197,9 @@ export function ProtectPdfClient() {
                 className="min-w-[200px]"
               >
                 {isProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Protecting...
-                  </>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('protect.processing')}</>
                 ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Protect & Download
-                  </>
+                  <><Download className="w-4 h-4 mr-2" />{t('protect.action')}</>
                 )}
               </Button>
 

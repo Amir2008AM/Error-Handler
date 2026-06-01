@@ -3,23 +3,25 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { BackButton } from '@/components/back-button'
+import { useI18n } from '@/lib/i18n/context'
+import type { TranslationKey } from '@/lib/i18n/translations'
 
 type CalcMode = 'whatPercent' | 'percentOf' | 'increase' | 'decrease'
 
 interface ModeConfig {
-  label: string
-  description: string
-  inputs: { id: string; label: string; placeholder: string }[]
+  labelKey: TranslationKey
+  descKey: TranslationKey
+  inputs: { id: string; labelKey: TranslationKey; placeholder: string }[]
   compute: (vals: Record<string, string>) => string | null
 }
 
 const modes: Record<CalcMode, ModeConfig> = {
   whatPercent: {
-    label: 'What % is X of Y?',
-    description: 'Find what percentage one number is of another',
+    labelKey: 'pct.whatPercent',
+    descKey: 'pct.whatPercentDesc',
     inputs: [
-      { id: 'x', label: 'Value (X)', placeholder: 'e.g. 25' },
-      { id: 'y', label: 'Total (Y)', placeholder: 'e.g. 200' },
+      { id: 'x', labelKey: 'pct.valueX', placeholder: 'e.g. 25' },
+      { id: 'y', labelKey: 'pct.totalY', placeholder: 'e.g. 200' },
     ],
     compute: ({ x, y }) => {
       const nx = parseFloat(x), ny = parseFloat(y)
@@ -28,11 +30,11 @@ const modes: Record<CalcMode, ModeConfig> = {
     },
   },
   percentOf: {
-    label: 'X% of Y = ?',
-    description: 'Calculate a percentage of a number',
+    labelKey: 'pct.percentOf',
+    descKey: 'pct.percentOfDesc',
     inputs: [
-      { id: 'pct', label: 'Percentage (%)', placeholder: 'e.g. 15' },
-      { id: 'y', label: 'Of number (Y)', placeholder: 'e.g. 500' },
+      { id: 'pct', labelKey: 'pct.percentage', placeholder: 'e.g. 15' },
+      { id: 'y', labelKey: 'pct.ofNumber', placeholder: 'e.g. 500' },
     ],
     compute: ({ pct, y }) => {
       const np = parseFloat(pct), ny = parseFloat(y)
@@ -41,11 +43,11 @@ const modes: Record<CalcMode, ModeConfig> = {
     },
   },
   increase: {
-    label: 'Increase by %',
-    description: 'Add a percentage to a value (e.g. price + tax)',
+    labelKey: 'pct.increaseBy',
+    descKey: 'pct.increaseByDesc',
     inputs: [
-      { id: 'base', label: 'Original value', placeholder: 'e.g. 100' },
-      { id: 'pct', label: 'Increase by (%)', placeholder: 'e.g. 20' },
+      { id: 'base', labelKey: 'pct.originalValue', placeholder: 'e.g. 100' },
+      { id: 'pct', labelKey: 'pct.increasePercent', placeholder: 'e.g. 20' },
     ],
     compute: ({ base, pct }) => {
       const nb = parseFloat(base), np = parseFloat(pct)
@@ -55,11 +57,11 @@ const modes: Record<CalcMode, ModeConfig> = {
     },
   },
   decrease: {
-    label: 'Decrease by %',
-    description: 'Subtract a percentage from a value (e.g. discount)',
+    labelKey: 'pct.decreaseBy',
+    descKey: 'pct.decreaseByDesc',
     inputs: [
-      { id: 'base', label: 'Original value', placeholder: 'e.g. 200' },
-      { id: 'pct', label: 'Decrease by (%)', placeholder: 'e.g. 25' },
+      { id: 'base', labelKey: 'pct.originalValue', placeholder: 'e.g. 200' },
+      { id: 'pct', labelKey: 'pct.decreasePercent', placeholder: 'e.g. 25' },
     ],
     compute: ({ base, pct }) => {
       const nb = parseFloat(base), np = parseFloat(pct)
@@ -71,6 +73,7 @@ const modes: Record<CalcMode, ModeConfig> = {
 }
 
 export function PercentageCalculatorClient() {
+  const { t } = useI18n()
   const [mode, setMode] = useState<CalcMode>('whatPercent')
   const [values, setValues] = useState<Record<string, string>>({})
 
@@ -85,9 +88,8 @@ export function PercentageCalculatorClient() {
   return (
     <div className="space-y-5 max-w-lg">
       <BackButton />
-      {/* Mode Tabs */}
       <div>
-        <label className="text-sm font-semibold text-foreground block mb-3">Calculation Type</label>
+        <label className="text-sm font-semibold text-foreground block mb-3">{t('pct.calcType')}</label>
         <div className="grid grid-cols-2 gap-2">
           {(Object.entries(modes) as [CalcMode, ModeConfig][]).map(([key, cfg]) => (
             <button
@@ -100,19 +102,18 @@ export function PercentageCalculatorClient() {
                   : 'border-border hover:border-primary/30'
               )}
             >
-              <p className="text-xs font-bold text-foreground">{cfg.label}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{cfg.description}</p>
+              <p className="text-xs font-bold text-foreground">{t(cfg.labelKey)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{t(cfg.descKey)}</p>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Inputs */}
       <div className="space-y-4">
         {config.inputs.map((inp) => (
           <div key={inp.id}>
             <label className="text-sm font-semibold text-foreground block mb-1.5">
-              {inp.label}
+              {t(inp.labelKey)}
             </label>
             <input
               type="number"
@@ -125,10 +126,9 @@ export function PercentageCalculatorClient() {
         ))}
       </div>
 
-      {/* Result */}
       {result !== null && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
-          <p className="text-xs text-muted-foreground mb-1">Result</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('pct.result')}</p>
           <p className="text-3xl font-bold text-primary">{result}</p>
         </div>
       )}
