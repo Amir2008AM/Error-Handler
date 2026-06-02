@@ -586,41 +586,49 @@ export default function ArticlePage() {
             </p>
           </section>
 
-          {/* CTA */}
-          <div className="rounded-2xl overflow-hidden border border-border">
+          {/* ── CTA ──────────────────────────────────────────────────────────── */}
+          <section aria-label="Call to action" className="mb-12">
             <div
-              className="px-8 py-8 text-center"
-              style={{ background: 'linear-gradient(135deg, #6b21a8 0%, #9333ea 100%)' }}
+              className="rounded-2xl p-8 md:p-12 text-center"
+              style={{ background: 'linear-gradient(135deg, #6b21a8 0%, #9333ea 60%, #c084fc 100%)' }}
             >
-              <h2 className="text-2xl font-bold text-white mb-2">Ready to Manage Your PDF Security?</h2>
-              <p className="text-purple-100 mb-6 leading-relaxed">
-                Protect sensitive PDF files or remove passwords from documents you own.
+              {/* Animated arrow */}
+              <div className="text-white/70 text-3xl mb-3 animate-bounce" aria-hidden="true">↓</div>
+
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                Ready to Secure or Unlock Your PDF?
+              </h2>
+              <p className="text-purple-100 leading-relaxed mb-8 max-w-md mx-auto">
+                Protect sensitive PDF files or remove passwords from documents you own with ToolifyPDF.
               </p>
-              <ul className="text-sm text-purple-200 space-y-1 mb-8 inline-block text-left">
-                <li>✓ Supports files up to 100 MB</li>
-                <li>✓ No sign-up required</li>
-                <li>✓ Mobile-friendly</li>
-                <li>✓ Fast processing</li>
-                <li>✓ Secure file handling</li>
-                <li>✓ Automatic file deletion after 1 hour</li>
+
+              <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-purple-100">
+                {[
+                  'Supports files up to 100 MB',
+                  'No sign-up required',
+                  'Mobile-friendly',
+                  'Fast processing',
+                  'Secure file handling',
+                  'Automatic file deletion after 1 hour',
+                ].map((b) => (
+                  <li key={b} className="flex items-center gap-2">
+                    <span className="text-green-300 font-bold">✓</span>
+                    {b}
+                  </li>
+                ))}
               </ul>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+
+              <div>
                 <Link
                   href="/protect-pdf"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white font-semibold text-sm transition-all hover:shadow-lg hover:opacity-95"
-                  style={{ color: ACCENT }}
+                  className="inline-block px-8 py-4 rounded-full font-bold text-base md:text-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl active:scale-95"
+                  style={{ backgroundColor: 'white', color: '#6b21a8' }}
                 >
-                  🔒 Lock PDF Now
-                </Link>
-                <Link
-                  href="/unlock-pdf"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:shadow-lg border-2 border-white text-white hover:bg-white/10"
-                >
-                  🔓 Unlock PDF Now
+                  Protect or Unlock Your PDF Now
                 </Link>
               </div>
             </div>
-          </div>
+          </section>
 
           {/* Back to blog */}
           <div className="mt-10 pt-8 border-t border-border">
