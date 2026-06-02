@@ -95,9 +95,8 @@ export default async function RootLayout({
         {process.env.NODE_ENV === 'production' && (
           <>
             <Script
-              async
               src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
-              strategy="afterInteractive"
+              strategy="beforeInteractive"
               crossOrigin="anonymous"
             />
             <Script
