@@ -618,13 +618,19 @@ export default function ArticlePage() {
                 ))}
               </ul>
 
-              <div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
                   href="/protect-pdf"
                   className="inline-block px-8 py-4 rounded-full font-bold text-base md:text-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl active:scale-95"
                   style={{ backgroundColor: 'white', color: '#6b21a8' }}
                 >
-                  Protect or Unlock Your PDF Now
+                  🔒 Lock PDF Now
+                </Link>
+                <Link
+                  href="/unlock-pdf"
+                  className="inline-block px-8 py-4 rounded-full font-bold text-base md:text-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl active:scale-95 border-2 border-white text-white hover:bg-white/15"
+                >
+                  🔓 Unlock PDF Now
                 </Link>
               </div>
             </div>
