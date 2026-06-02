@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
+import { AdBanner } from '@/components/ad-banner'
 
 export const metadata: Metadata = {
   title: 'How to Convert JPG to PDF Online for Free | Toolify Blog',
@@ -283,6 +284,8 @@ export default function ArticlePage() {
             </div>
           </header>
 
+          <AdBanner slot="6978025975" format="horizontal" className="my-6" />
+
           {/* Introduction */}
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
@@ -544,6 +547,8 @@ export default function ArticlePage() {
               </Link>
             </div>
           </div>
+
+          <AdBanner slot="6978025975" format="horizontal" className="my-8" />
 
           {/* Back to blog */}
           <div className="mt-10 pt-8 border-t border-border">
