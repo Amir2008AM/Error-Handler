@@ -6,7 +6,6 @@ import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } f
 import Link from 'next/link'
 import { LanguageSwitcher } from './language-switcher'
 import { ToolCard } from './tool-card'
-import { AdBanner } from './ad-banner'
 import { Navbar } from './navbar'
 import { tools, categories, categoryMeta, searchTools, type ToolCategory } from '@/lib/tools'
 import { cn } from '@/lib/utils'
@@ -152,11 +151,6 @@ export function HomeContent() {
             ))}
           </div>
         )}
-      </section>
-
-      {/* AdSense */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
-        <AdBanner slot="6978025975" format="horizontal" />
       </section>
 
       {/* Footer */}

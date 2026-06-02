@@ -92,11 +92,6 @@ export default async function RootLayout({
         {process.env.NODE_ENV === 'production' && (
           <>
             <Script
-              src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
-              strategy="afterInteractive"
-              crossOrigin="anonymous"
-            />
-            <Script
               src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
               strategy="lazyOnload"
             />
