@@ -258,6 +258,13 @@ export function HomeContent() {
                   {t(item.labelKey)}
                 </Link>
               ))}
+              <a
+                href="mailto:contact@toolifypdf.online"
+                style={{ color: '#6b7280' }}
+                className="text-sm hover:text-white transition-colors"
+              >
+                Contact Us
+              </a>
               <LanguageSwitcher variant="dark-footer" />
             </div>
           </div>
