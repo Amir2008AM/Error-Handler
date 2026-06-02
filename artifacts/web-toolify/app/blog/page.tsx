@@ -15,6 +15,17 @@ export const metadata: Metadata = {
 
 const articles = [
   {
+    slug: 'how-to-compress-pdf-online',
+    title: 'How to Compress PDF Online for Free',
+    description:
+      'Learn how to compress PDF files online for free without losing quality. Reduce PDF file size quickly, securely, and easily — no software required.',
+    date: 'June 2, 2026',
+    readTime: '7 min read',
+    category: 'PDF Guide',
+    color: '#e85d35',
+    gradient: 'linear-gradient(135deg, #c0392b 0%, #e85d35 100%)',
+  },
+  {
     slug: 'how-to-convert-pdf-to-word',
     title: 'How to Convert PDF to Word for Free',
     description:
@@ -33,8 +44,8 @@ const articles = [
     date: 'June 1, 2026',
     readTime: '7 min read',
     category: 'Word Guide',
-    color: '#e85d35',
-    gradient: 'linear-gradient(135deg, #c0392b 0%, #e85d35 100%)',
+    color: '#2b579a',
+    gradient: 'linear-gradient(135deg, #1e3a5f 0%, #2b579a 100%)',
   },
 ]
 
