@@ -19,15 +19,36 @@ const I18nContext = createContext<I18nContextValue | null>(null)
 
 async function loadLocale(code: string): Promise<TranslationMap> {
   switch (code) {
-    case 'ar': return (await import('./locales/ar')).default as unknown as TranslationMap
-    case 'fr': return (await import('./locales/fr')).default as unknown as TranslationMap
-    case 'de': return (await import('./locales/de')).default as unknown as TranslationMap
-    case 'es': return (await import('./locales/es')).default as unknown as TranslationMap
-    case 'pt': return (await import('./locales/pt')).default as unknown as TranslationMap
-    case 'ru': return (await import('./locales/ru')).default as unknown as TranslationMap
-    case 'zh': return (await import('./locales/zh')).default as unknown as TranslationMap
-    case 'ja': return (await import('./locales/ja')).default as unknown as TranslationMap
-    default:   return en
+    case 'ar':    return (await import('./locales/ar')).default as unknown as TranslationMap
+    case 'bn':    return (await import('./locales/bn')).default as unknown as TranslationMap
+    case 'cs':    return (await import('./locales/cs')).default as unknown as TranslationMap
+    case 'da':    return (await import('./locales/da')).default as unknown as TranslationMap
+    case 'de':    return (await import('./locales/de')).default as unknown as TranslationMap
+    case 'el':    return (await import('./locales/el')).default as unknown as TranslationMap
+    case 'es':    return (await import('./locales/es')).default as unknown as TranslationMap
+    case 'fa':    return (await import('./locales/fa')).default as unknown as TranslationMap
+    case 'fi':    return (await import('./locales/fi')).default as unknown as TranslationMap
+    case 'fr':    return (await import('./locales/fr')).default as unknown as TranslationMap
+    case 'hi':    return (await import('./locales/hi')).default as unknown as TranslationMap
+    case 'hu':    return (await import('./locales/hu')).default as unknown as TranslationMap
+    case 'id':    return (await import('./locales/id')).default as unknown as TranslationMap
+    case 'it':    return (await import('./locales/it')).default as unknown as TranslationMap
+    case 'ja':    return (await import('./locales/ja')).default as unknown as TranslationMap
+    case 'ko':    return (await import('./locales/ko')).default as unknown as TranslationMap
+    case 'nl':    return (await import('./locales/nl')).default as unknown as TranslationMap
+    case 'no':    return (await import('./locales/no')).default as unknown as TranslationMap
+    case 'pl':    return (await import('./locales/pl')).default as unknown as TranslationMap
+    case 'pt':    return (await import('./locales/pt')).default as unknown as TranslationMap
+    case 'ro':    return (await import('./locales/ro')).default as unknown as TranslationMap
+    case 'ru':    return (await import('./locales/ru')).default as unknown as TranslationMap
+    case 'sv':    return (await import('./locales/sv')).default as unknown as TranslationMap
+    case 'th':    return (await import('./locales/th')).default as unknown as TranslationMap
+    case 'tr':    return (await import('./locales/tr')).default as unknown as TranslationMap
+    case 'uk':    return (await import('./locales/uk')).default as unknown as TranslationMap
+    case 'vi':    return (await import('./locales/vi')).default as unknown as TranslationMap
+    case 'zh':    return (await import('./locales/zh')).default as unknown as TranslationMap
+    case 'zh-TW': return (await import('./locales/zh-TW')).default as unknown as TranslationMap
+    default:      return en
   }
 }
 
