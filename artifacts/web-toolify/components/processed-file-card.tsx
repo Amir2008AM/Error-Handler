@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Download, AlertCircle, RefreshCw } from 'lucide-react'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 interface ProcessedFileCardProps {
   fileId: string
@@ -83,47 +84,51 @@ export function ProcessedFileCard({ fileId, filename, children }: ProcessedFileC
   }
 
   return (
-    <Card className="p-6 bg-green-50 border-green-200">
-      <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-          <CheckCircle2 className="w-5 h-5 text-green-600" />
+    <>
+      <Card className="p-6 bg-green-50 border-green-200">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-green-800">File ready</p>
+            <p className="text-sm text-green-700 truncate">{filename}</p>
+
+            {children && <div className="mt-2">{children}</div>}
+
+            {autoFailed && !downloadError && (
+              <p className="text-xs text-green-700 mt-2">
+                Didn&apos;t start? Click the button to download.
+              </p>
+            )}
+
+            {downloadError && (
+              <div className="flex items-start gap-1.5 mt-2">
+                <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{downloadError}</p>
+              </div>
+            )}
+          </div>
+
+          <Button
+            size="sm"
+            onClick={handleManualDownload}
+            disabled={downloading}
+            className="shrink-0"
+            aria-label={`Download ${filename}`}
+          >
+            {downloading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            <span className="ml-1.5">{downloadError ? 'Retry' : 'Download'}</span>
+          </Button>
         </div>
+      </Card>
 
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-green-800">File ready</p>
-          <p className="text-sm text-green-700 truncate">{filename}</p>
-
-          {children && <div className="mt-2">{children}</div>}
-
-          {autoFailed && !downloadError && (
-            <p className="text-xs text-green-700 mt-2">
-              Didn&apos;t start? Click the button to download.
-            </p>
-          )}
-
-          {downloadError && (
-            <div className="flex items-start gap-1.5 mt-2">
-              <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-red-600">{downloadError}</p>
-            </div>
-          )}
-        </div>
-
-        <Button
-          size="sm"
-          onClick={handleManualDownload}
-          disabled={downloading}
-          className="shrink-0"
-          aria-label={`Download ${filename}`}
-        >
-          {downloading ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <Download className="w-4 h-4" />
-          )}
-          <span className="ml-1.5">{downloadError ? 'Retry' : 'Download'}</span>
-        </Button>
-      </div>
-    </Card>
+      <TrustpilotReview />
+    </>
   )
 }
