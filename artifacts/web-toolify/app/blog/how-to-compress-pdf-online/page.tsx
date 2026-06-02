@@ -215,18 +215,6 @@ function BulletList({ items }: { items: string[] }) {
   )
 }
 
-function CheckList({ items }: { items: string[] }) {
-  return (
-    <ul className="mt-3 space-y-2">
-      {items.map((item, i) => (
-        <li key={i} className="flex gap-3 items-start text-muted-foreground">
-          <span className="mt-0.5 flex-shrink-0 text-green-600 font-bold text-sm">✓</span>
-          <span className="leading-relaxed">{item}</span>
-        </li>
-      ))}
-    </ul>
-  )
-}
 
 function ProblemItem({ problem, solution }: { problem: string; solution: string }) {
   return (
@@ -515,33 +503,53 @@ export default function ArticlePage() {
             </p>
           </section>
 
-          {/* CTA */}
-          <section
-            className="rounded-2xl px-8 py-10 text-center"
-            style={{ background: 'linear-gradient(135deg, #c0392b 0%, #e85d35 100%)' }}
-          >
-            <h2 className="text-2xl font-bold text-white mb-3">Ready to Compress Your PDF?</h2>
-            <p className="text-white/80 mb-6">Reduce your PDF file size in seconds with ToolifyPDF.</p>
-            <CheckList items={[
-              'Supports files up to 100 MB',
-              'No sign-up required',
-              'Mobile-friendly',
-              'Fast compression',
-              'Secure processing',
-              'Automatic file deletion after 1 hour',
-            ]} />
-            <Link
-              href="/compress-pdf"
-              className="mt-8 inline-flex items-center gap-2 px-8 py-3 rounded-full bg-white font-semibold text-sm transition-all hover:shadow-lg hover:scale-105"
-              style={{ color: ACCENT }}
+          {/* ── CTA ──────────────────────────────────────────────────────────── */}
+          <section aria-label="Call to action" className="mb-12">
+            <div
+              className="rounded-2xl p-8 md:p-12 text-center"
+              style={{ background: 'linear-gradient(135deg, #c0392b 0%, #e85d35 60%, #f4a27d 100%)' }}
             >
-              Compress PDF Now →
-            </Link>
+              {/* Animated arrow */}
+              <div className="text-white/70 text-3xl mb-3 animate-bounce" aria-hidden="true">↓</div>
+
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                Ready to Compress Your PDF?
+              </h2>
+              <p className="text-orange-100 leading-relaxed mb-8 max-w-md mx-auto">
+                Reduce your PDF file size in seconds with ToolifyPDF.
+              </p>
+
+              <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-orange-100">
+                {[
+                  'Supports files up to 100 MB',
+                  'No sign-up required',
+                  'Mobile-friendly',
+                  'Fast compression',
+                  'Secure processing',
+                  'Automatic file deletion after 1 hour',
+                ].map((b) => (
+                  <li key={b} className="flex items-center gap-2">
+                    <span className="text-green-300 font-bold">✓</span>
+                    {b}
+                  </li>
+                ))}
+              </ul>
+
+              <div>
+                <Link
+                  href="/compress-pdf"
+                  className="inline-block px-8 py-4 rounded-full font-bold text-base md:text-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl active:scale-95"
+                  style={{ backgroundColor: 'white', color: '#c0392b' }}
+                >
+                  Compress PDF Now
+                </Link>
+              </div>
+            </div>
           </section>
 
           {/* Back to blog */}
-          <div className="mt-12 pt-8 border-t border-border">
-            <Link href="/blog" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <div className="text-center">
+            <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               ← Back to Blog
             </Link>
           </div>
