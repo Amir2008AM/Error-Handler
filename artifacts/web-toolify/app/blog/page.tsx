@@ -15,6 +15,17 @@ export const metadata: Metadata = {
 
 const articles = [
   {
+    slug: 'how-to-merge-pdf-files-online',
+    title: 'How to Merge PDF Files Online for Free',
+    description:
+      'Learn how to merge PDF files online for free. Combine multiple PDF documents into one organized file quickly, securely, and without installing software.',
+    date: 'June 5, 2026',
+    readTime: '7 min read',
+    category: 'PDF Guide',
+    color: '#2563eb',
+    gradient: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+  },
+  {
     slug: 'how-to-compress-pdf-online',
     title: 'How to Compress PDF Online for Free',
     description:
