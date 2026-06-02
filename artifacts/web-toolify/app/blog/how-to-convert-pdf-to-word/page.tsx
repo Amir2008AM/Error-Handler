@@ -326,6 +326,7 @@ export default function ArticlePage() {
 
           {/* Introduction */}
           <section className="mb-10 prose-section">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
             <p className="text-foreground leading-relaxed mb-4">
               Converting a PDF into a Word document can make editing text, updating layouts, or reusing content much easier. Whether you&apos;re updating a contract, editing a report, or making changes to a school document, converting PDF files into editable Word documents can save a significant amount of time.
             </p>

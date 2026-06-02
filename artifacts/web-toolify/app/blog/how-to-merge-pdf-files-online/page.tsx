@@ -304,6 +304,7 @@ export default function ArticlePage() {
 
           {/* Introduction */}
           <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
             <p className="text-foreground leading-relaxed mb-4">
               Managing multiple PDF files can quickly become inconvenient, especially when you need to share related documents, organize reports, combine contracts, or create a single file for printing. Instead of sending several separate PDFs, merging them into one document creates a cleaner and more professional experience.
             </p>

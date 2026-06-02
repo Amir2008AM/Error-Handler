@@ -285,6 +285,7 @@ export default function ArticlePage() {
 
           {/* Introduction */}
           <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
             <p className="text-foreground leading-relaxed mb-4">
               Converting your JPG images into a PDF document is quick and easy thanks to modern online tools. Whether you need to submit documents, create a digital portfolio, archive scanned pages, or share multiple images in a professional format, PDF is often the preferred choice.
             </p>

@@ -283,6 +283,7 @@ export default function ArticlePage() {
 
           {/* Introduction */}
           <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
             <p className="text-foreground leading-relaxed mb-4">
               Large PDF files can be difficult to upload, share, or store. Whether you&apos;re sending documents by email, uploading files to a website, or saving space on your device, reducing PDF file size can make the process much easier.
             </p>

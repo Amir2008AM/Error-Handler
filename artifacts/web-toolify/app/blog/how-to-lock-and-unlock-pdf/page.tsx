@@ -320,6 +320,7 @@ export default function ArticlePage() {
 
           {/* Introduction */}
           <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
             <p className="text-foreground leading-relaxed mb-4">
               PDF files are one of the most popular formats for sharing documents online. Whether you&apos;re sending contracts, invoices, reports, forms, or personal records, protecting sensitive information is often essential.
             </p>

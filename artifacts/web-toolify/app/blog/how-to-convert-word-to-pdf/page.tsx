@@ -317,6 +317,7 @@ export default function ArticlePage() {
 
           {/* Introduction */}
           <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
             <p className="text-foreground leading-relaxed mb-4">
               Converting a Word document to PDF is one of the easiest ways to share files while keeping their original formatting intact. Whether you&apos;re sending a resume, business proposal, report, or school assignment, PDF files ensure that your document looks the same on every device.
             </p>
