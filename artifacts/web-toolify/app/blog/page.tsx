@@ -26,6 +26,17 @@ const articles = [
     gradient: 'linear-gradient(135deg, #c0392b 0%, #e85d35 100%)',
   },
   {
+    slug: 'how-to-convert-jpg-to-pdf',
+    title: 'How to Convert JPG to PDF Online for Free',
+    description:
+      'Learn how to convert JPG images to PDF files for free online. Combine your JPGs into high-quality PDFs in seconds — no sign-up required.',
+    date: 'June 3, 2026',
+    readTime: '7 min read',
+    category: 'Image Guide',
+    color: '#6d28d9',
+    gradient: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
+  },
+  {
     slug: 'how-to-convert-pdf-to-word',
     title: 'How to Convert PDF to Word for Free',
     description:
