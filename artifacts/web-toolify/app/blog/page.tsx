@@ -37,6 +37,17 @@ const articles = [
     gradient: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
   },
   {
+    slug: 'how-to-lock-and-unlock-pdf',
+    title: 'How to Lock and Unlock PDF Files Online for Free',
+    description:
+      'Protect sensitive documents with passwords or remove passwords from PDFs you own — fast, secure, and no sign-up required.',
+    date: 'June 4, 2026',
+    readTime: '8 min read',
+    category: 'PDF Security',
+    color: '#9333ea',
+    gradient: 'linear-gradient(135deg, #6b21a8 0%, #9333ea 100%)',
+  },
+  {
     slug: 'how-to-convert-pdf-to-word',
     title: 'How to Convert PDF to Word for Free',
     description:
