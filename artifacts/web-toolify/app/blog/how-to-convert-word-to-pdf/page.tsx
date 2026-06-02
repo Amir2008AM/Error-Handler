@@ -39,7 +39,7 @@ const schema = {
   keywords: 'convert word to pdf, word to pdf online, docx to pdf free, word to pdf converter',
 }
 
-const ACCENT = '#e85d35'
+const ACCENT = '#0d9488'
 
 /* ── Inline SVG illustrations ───────────────────────────────────────────── */
 
@@ -562,18 +562,18 @@ export default function ArticlePage() {
           <section aria-label="Call to action" className="mb-12">
             <div
               className="rounded-2xl p-8 md:p-12 text-center"
-              style={{ background: `linear-gradient(135deg, #c0392b 0%, ${ACCENT} 60%, #f4a27d 100%)` }}
+              style={{ background: `linear-gradient(135deg, #0f766e 0%, ${ACCENT} 60%, #5eead4 100%)` }}
             >
               <div className="text-white/70 text-3xl mb-3 animate-bounce" aria-hidden="true">↓</div>
 
               <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
                 Ready to Convert Your Word File?
               </h2>
-              <p className="text-orange-100 leading-relaxed mb-8 max-w-md mx-auto">
+              <p className="text-teal-100 leading-relaxed mb-8 max-w-md mx-auto">
                 Convert your Word document to PDF in seconds with ToolifyPDF.
               </p>
 
-              <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-orange-100">
+              <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-teal-100">
                 {[
                   'Supports files up to 100 MB',
                   'No sign-up required',
@@ -592,7 +592,7 @@ export default function ArticlePage() {
                 <Link
                   href="/word-to-pdf"
                   className="inline-block px-8 py-4 rounded-full font-bold text-base md:text-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl active:scale-95"
-                  style={{ backgroundColor: 'white', color: '#c0392b' }}
+                  style={{ backgroundColor: 'white', color: '#0f766e' }}
                 >
                   Convert Word to PDF Now
                 </Link>

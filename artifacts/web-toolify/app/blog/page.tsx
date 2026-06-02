@@ -44,8 +44,8 @@ const articles = [
     date: 'June 1, 2026',
     readTime: '7 min read',
     category: 'Word Guide',
-    color: '#2b579a',
-    gradient: 'linear-gradient(135deg, #1e3a5f 0%, #2b579a 100%)',
+    color: '#0d9488',
+    gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)',
   },
 ]
 
