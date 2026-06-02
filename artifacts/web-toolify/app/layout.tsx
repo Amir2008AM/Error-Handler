@@ -60,6 +60,9 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  other: {
+    'google-adsense-account': 'ca-pub-4805747941246928',
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -91,6 +94,12 @@ export default async function RootLayout({
       <body className="font-sans antialiased">
         {process.env.NODE_ENV === 'production' && (
           <>
+            <Script
+              async
+              src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
+              strategy="afterInteractive"
+              crossOrigin="anonymous"
+            />
             <Script
               src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
               strategy="lazyOnload"
