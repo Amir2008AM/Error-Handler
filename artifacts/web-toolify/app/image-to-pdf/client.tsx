@@ -2,19 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
-import { X, Download, Loader2, GripVertical, CheckCircle2, RotateCcw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { ImageGallery, getIsSizeExceeded } from '@/components/image-gallery'
+import type { ImageItem } from '@/components/image-gallery'
+import { Download, Loader2, CheckCircle2, RotateCcw, AlertTriangle } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 import { t } from '@/lib/i18n/translations'
-
-interface ImageEntry {
-  id: string
-  file: File
-  preview: string
-  order: number | null
-}
 
 let idCounter = 0
 
@@ -22,6 +16,7 @@ const POLL_INTERVAL_MS = 600
 const POLL_TIMEOUT_MS  = 5 * 60 * 1000
 const CLIENT_MAX_PX = 1600
 const MAX_UPLOAD_BYTES = 80 * 1024 * 1024
+const MAX_TOTAL_SIZE_MB = 100
 
 async function compressForUpload(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -90,18 +85,16 @@ async function pollJobUntilDone(
 
 export function ImageToPdfClient() {
   const { lang } = useI18n()
-  const [images,      setImages]      = useState<ImageEntry[]>([])
+  const [images,      setImages]      = useState<ImageItem[]>([])
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [error,       setError]       = useState<string | null>(null)
-  const [dragOver,    setDragOver]    = useState<string | null>(null)
-  const [draggedId,   setDraggedId]   = useState<string | null>(null)
   const progress = useRealProgress()
 
   const handleFilesSelected = useCallback((files: File[]) => {
     setDownloadUrl(null)
     setError(null)
     progress.reset()
-    const newEntries: ImageEntry[] = files.map((file) => ({
+    const newEntries: ImageItem[] = files.map((file) => ({
       id:      `img-${++idCounter}`,
       file,
       preview: URL.createObjectURL(file),
@@ -110,47 +103,43 @@ export function ImageToPdfClient() {
     setImages((prev) => [...prev, ...newEntries])
   }, [progress])
 
-  const removeImage = (id: string) => {
+  const removeImage = useCallback((id: string) => {
     setImages((prev) => reorderImages(prev.filter((img) => img.id !== id)))
     setDownloadUrl(null)
-  }
+  }, [])
 
-  const reorderImages = (imgs: ImageEntry[]): ImageEntry[] => {
+  const reorderImages = (imgs: ImageItem[]): ImageItem[] => {
     let counter = 1
     return imgs.map((img) =>
-      img.order !== null ? { ...img, order: counter++ } : img,
+      img.order != null ? { ...img, order: counter++ } : img,
     )
   }
 
-  const toggleOrder = (id: string) => {
-    setImages((prev) => {
-      const img = prev.find((i) => i.id === id)
-      if (!img) return prev
-      if (img.order !== null) {
-        return reorderImages(prev.map((i) => (i.id === id ? { ...i, order: null } : i)))
-      }
-      const maxOrder = Math.max(0, ...prev.filter((i) => i.order !== null).map((i) => i.order ?? 0))
-      return prev.map((i) => (i.id === id ? { ...i, order: maxOrder + 1 } : i))
-    })
-    setDownloadUrl(null)
-  }
-
-  const handleDragStart = (id: string) => setDraggedId(id)
-  const handleDragOver  = (e: React.DragEvent, id: string) => { e.preventDefault(); setDragOver(id) }
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault()
-    if (!draggedId || draggedId === targetId) return
+  const handleReorder = useCallback((fromId: string, toId: string) => {
     setImages((prev) => {
       const arr     = [...prev]
-      const fromIdx = arr.findIndex((i) => i.id === draggedId)
-      const toIdx   = arr.findIndex((i) => i.id === targetId)
+      const fromIdx = arr.findIndex((i) => i.id === fromId)
+      const toIdx   = arr.findIndex((i) => i.id === toId)
+      if (fromIdx === -1 || toIdx === -1) return prev
       const [moved] = arr.splice(fromIdx, 1)
       arr.splice(toIdx, 0, moved)
       return arr
     })
-    setDraggedId(null)
-    setDragOver(null)
-  }
+    setDownloadUrl(null)
+  }, [])
+
+  const toggleOrder = useCallback((id: string) => {
+    setImages((prev) => {
+      const img = prev.find((i) => i.id === id)
+      if (!img) return prev
+      if (img.order != null) {
+        return reorderImages(prev.map((i) => (i.id === id ? { ...i, order: null } : i)))
+      }
+      const maxOrder = Math.max(0, ...prev.filter((i) => i.order != null).map((i) => i.order ?? 0))
+      return prev.map((i) => (i.id === id ? { ...i, order: maxOrder + 1 } : i))
+    })
+    setDownloadUrl(null)
+  }, [])
 
   const selectAll = () => setImages((prev) => prev.map((img, idx) => ({ ...img, order: idx + 1 })))
 
@@ -162,11 +151,14 @@ export function ImageToPdfClient() {
     progress.reset()
   }
 
-  const handleConvert = async () => {
-    const selectedImages = images
-      .filter((i) => i.order !== null)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  const isSizeExceeded = getIsSizeExceeded(images, MAX_TOTAL_SIZE_MB)
+  const selectedImages = images
+    .filter((i) => i.order != null)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  const selectedCount  = selectedImages.length
+  const isProcessing   = progress.status === 'processing'
 
+  const handleConvert = async () => {
     if (selectedImages.length === 0) {
       setError(t(lang, 'imageToPdf.selectImages'))
       return
@@ -253,8 +245,7 @@ export function ImageToPdfClient() {
     }
   }
 
-  const selectedCount = images.filter((i) => i.order !== null).length
-  const isProcessing  = progress.status === 'processing'
+  const canProcess = !isProcessing && !isSizeExceeded && selectedCount > 0
 
   return (
     <div className="space-y-6">
@@ -266,7 +257,7 @@ export function ImageToPdfClient() {
         label={t(lang, 'imageToPdf.label')}
         sublabel={t(lang, 'imageToPdf.sublabel')}
         maxSizeMB={50}
-        maxTotalSizeMB={100}
+        maxTotalSizeMB={MAX_TOTAL_SIZE_MB}
         currentTotalSize={images.reduce((acc, img) => acc + img.file.size, 0)}
       />
 
@@ -299,67 +290,16 @@ export function ImageToPdfClient() {
             {t(lang, 'imageToPdf.howItWorks')}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {images.map((img) => (
-              <div
-                key={img.id}
-                draggable={!isProcessing}
-                onDragStart={() => handleDragStart(img.id)}
-                onDragOver={(e) => handleDragOver(e, img.id)}
-                onDrop={(e) => handleDrop(e, img.id)}
-                onDragEnd={() => { setDraggedId(null); setDragOver(null) }}
-                className={cn(
-                  'relative group rounded-xl overflow-hidden border-2 cursor-pointer transition-all select-none',
-                  img.order !== null
-                    ? 'border-primary shadow-md ring-2 ring-primary/20'
-                    : 'border-border hover:border-primary/40',
-                  dragOver  === img.id && 'border-primary scale-105',
-                  draggedId === img.id && 'opacity-50',
-                  isProcessing && 'pointer-events-none opacity-60',
-                )}
-                onClick={() => !isProcessing && toggleOrder(img.id)}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.preview}
-                  alt={img.file.name}
-                  className="w-full aspect-square object-cover"
-                  draggable={false}
-                />
-
-                {img.order !== null && (
-                  <div className="absolute top-2 left-2 w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shadow">
-                    {img.order}
-                  </div>
-                )}
-
-                <div className="absolute top-2 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <GripVertical className="w-4 h-4 text-white drop-shadow" />
-                </div>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); removeImage(img.id) }}
-                  disabled={isProcessing}
-                  className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive disabled:opacity-30"
-                  aria-label="Remove image"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-2">
-                  <p className="text-xs text-white truncate">{img.file.name}</p>
-                </div>
-
-                {img.order === null && (
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-white text-xs font-semibold bg-black/60 px-2 py-1 rounded-lg">
-                      {t(lang, 'imageToPdf.clickToAdd')}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <ImageGallery
+            images={images}
+            onRemove={removeImage}
+            onReorder={handleReorder}
+            onToggleOrder={toggleOrder}
+            isProcessing={isProcessing}
+            maxTotalSizeMB={MAX_TOTAL_SIZE_MB}
+            showOrderBadges
+            clickToToggleLabel={t(lang, 'imageToPdf.clickToAdd')}
+          />
 
           <div className="flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3">
             <p className="text-sm text-muted-foreground">
@@ -380,10 +320,17 @@ export function ImageToPdfClient() {
 
       {images.length > 0 && (
         <div className="space-y-3">
+          {isSizeExceeded && !isProcessing && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2.5 text-sm">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>Processing is unavailable because the selected files exceed the maximum allowed size. Remove some images to continue.</span>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleConvert}
-              disabled={isProcessing || selectedCount === 0}
+              disabled={!canProcess}
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isProcessing ? (

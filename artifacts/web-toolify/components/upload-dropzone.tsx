@@ -12,7 +12,7 @@ interface UploadDropzoneProps {
   sublabel?: string
   maxSizeMB?: number
   maxTotalSizeMB?: number
-  currentTotalSize?: number // in bytes - existing files total size
+  currentTotalSize?: number
 }
 
 function formatBytes(bytes: number): string {
@@ -36,9 +36,11 @@ export function UploadDropzone({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const maxTotalBytes = maxTotalSizeMB * 1024 * 1024
-  const usagePercent = useMemo(() => Math.min((currentTotalSize / maxTotalBytes) * 100, 100), [currentTotalSize, maxTotalBytes])
-  const remainingBytes = maxTotalBytes - currentTotalSize
-  const isAtLimit = currentTotalSize >= maxTotalBytes
+  const usagePercent = useMemo(
+    () => Math.min((currentTotalSize / maxTotalBytes) * 100, 100),
+    [currentTotalSize, maxTotalBytes],
+  )
+  const remainingBytes = Math.max(0, maxTotalBytes - currentTotalSize)
 
   const handleFiles = useCallback(
     (fileList: FileList | null) => {
@@ -47,77 +49,83 @@ export function UploadDropzone({
 
       const maxPerFile = maxSizeMB * 1024 * 1024
       const validFiles: File[] = []
-      let newTotalSize = currentTotalSize
-      const errors: string[] = []
+      let skippedCount = 0
 
       for (const f of Array.from(fileList)) {
-        // Check per-file limit
         if (f.size > maxPerFile) {
-          errors.push(`"${f.name}" exceeds ${maxSizeMB}MB per-file limit`)
+          skippedCount++
           continue
         }
-
-        // Check if adding this file would exceed total limit
-        if (newTotalSize + f.size > maxTotalBytes) {
-          errors.push(`"${f.name}" would exceed total ${maxTotalSizeMB}MB limit`)
-          continue
-        }
-
         validFiles.push(f)
-        newTotalSize += f.size
       }
 
-      if (errors.length > 0) {
-        setSizeError(errors.join('. '))
+      if (skippedCount > 0) {
+        setSizeError(
+          skippedCount === 1
+            ? `1 file was skipped because it exceeds the ${maxSizeMB} MB per-file limit.`
+            : `${skippedCount} files were skipped because they exceed the ${maxSizeMB} MB per-file limit.`,
+        )
       }
 
       if (validFiles.length > 0) {
         onFilesSelected(validFiles)
       }
     },
-    [onFilesSelected, maxSizeMB, maxTotalBytes, currentTotalSize, maxTotalSizeMB]
+    [onFilesSelected, maxSizeMB],
   )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
       setIsDragging(false)
-      if (!isAtLimit) {
-        handleFiles(e.dataTransfer.files)
-      }
+      handleFiles(e.dataTransfer.files)
     },
-    [handleFiles, isAtLimit]
+    [handleFiles],
   )
 
   const handleClick = () => {
-    if (!isAtLimit) {
-      inputRef.current?.click()
-    }
+    inputRef.current?.click()
   }
 
   return (
     <div className="space-y-3">
-      {/* Size Progress Bar - only show for multi-file uploads when there's existing files */}
       {multiple && currentTotalSize > 0 && (
         <div className="bg-muted/50 rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              Total size: <span className="font-semibold text-foreground">{formatBytes(currentTotalSize)}</span>
+              Total size:{' '}
+              <span className="font-semibold text-foreground">{formatBytes(currentTotalSize)}</span>
             </span>
-            <span className={cn(
-              "text-xs font-medium",
-              usagePercent >= 90 ? "text-destructive" : usagePercent >= 70 ? "text-amber-600" : "text-muted-foreground"
-            )}>
-              {formatBytes(remainingBytes)} remaining
+            <span
+              className={cn(
+                'text-xs font-medium',
+                usagePercent >= 100
+                  ? 'text-destructive'
+                  : usagePercent >= 90
+                    ? 'text-destructive'
+                    : usagePercent >= 70
+                      ? 'text-amber-600'
+                      : 'text-muted-foreground',
+              )}
+            >
+              {usagePercent >= 100
+                ? `${formatBytes(currentTotalSize - maxTotalBytes)} over limit`
+                : `${formatBytes(remainingBytes)} remaining`}
             </span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
+            <div
               className={cn(
-                "h-full transition-all duration-300 rounded-full",
-                usagePercent >= 90 ? "bg-destructive" : usagePercent >= 70 ? "bg-amber-500" : "bg-primary"
+                'h-full transition-all duration-300 rounded-full',
+                usagePercent >= 100
+                  ? 'bg-destructive'
+                  : usagePercent >= 90
+                    ? 'bg-destructive'
+                    : usagePercent >= 70
+                      ? 'bg-amber-500'
+                      : 'bg-primary',
               )}
-              style={{ width: `${usagePercent}%` }}
+              style={{ width: `${Math.min(usagePercent, 100)}%` }}
             />
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -127,7 +135,6 @@ export function UploadDropzone({
         </div>
       )}
 
-      {/* Error Message */}
       {sizeError && (
         <div className="flex items-start gap-2 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -135,63 +142,38 @@ export function UploadDropzone({
         </div>
       )}
 
-      {/* Dropzone */}
       <div
         className={cn(
-          'border-2 border-dashed rounded-xl p-10 text-center transition-all duration-200',
-          isAtLimit 
-            ? 'border-destructive/50 bg-destructive/5 cursor-not-allowed' 
-            : 'cursor-pointer hover:border-primary hover:bg-primary/5',
-          isDragging && !isAtLimit ? 'border-primary bg-primary/5 scale-[1.01]' : !isAtLimit && 'border-border bg-muted/30'
+          'border-2 border-dashed rounded-xl p-10 text-center transition-all duration-200 cursor-pointer hover:border-primary hover:bg-primary/5',
+          isDragging ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border bg-muted/30',
         )}
-        onDragOver={(e) => { e.preventDefault(); if (!isAtLimit) setIsDragging(true) }}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={handleClick}
         role="button"
-        tabIndex={isAtLimit ? -1 : 0}
+        tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && handleClick()}
         aria-label={label}
-        aria-disabled={isAtLimit}
       >
         <div className="flex flex-col items-center gap-3">
-          <div className={cn(
-            "w-14 h-14 rounded-full flex items-center justify-center",
-            isAtLimit ? "bg-destructive/10" : "bg-primary/10"
-          )}>
-            {isAtLimit ? (
-              <AlertCircle className="w-7 h-7 text-destructive" />
-            ) : (
-              <Upload className="w-7 h-7 text-primary" />
-            )}
+          <div className="w-14 h-14 rounded-full flex items-center justify-center bg-primary/10">
+            <Upload className="w-7 h-7 text-primary" />
           </div>
           <div>
-            {isAtLimit ? (
-              <>
-                <p className="font-semibold text-destructive">Size limit reached</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Remove some files to add more (max {maxTotalSizeMB}MB total)
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="font-semibold text-foreground">{label}</p>
-                {sublabel && <p className="text-sm text-muted-foreground mt-1">{sublabel}</p>}
-                <p className="text-xs text-muted-foreground mt-2">
-                  Max {maxSizeMB}MB per file{multiple && ` · ${maxTotalSizeMB}MB total`}
-                </p>
-              </>
-            )}
+            <p className="font-semibold text-foreground">{label}</p>
+            {sublabel && <p className="text-sm text-muted-foreground mt-1">{sublabel}</p>}
+            <p className="text-xs text-muted-foreground mt-2">
+              Max {maxSizeMB}MB per file{multiple && ` · ${maxTotalSizeMB}MB total`}
+            </p>
           </div>
-          {!isAtLimit && (
-            <button
-              type="button"
-              className="px-5 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors"
-              onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
-            >
-              Choose {multiple ? 'Files' : 'File'}
-            </button>
-          )}
+          <button
+            type="button"
+            className="px-5 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
+          >
+            Choose {multiple ? 'Files' : 'File'}
+          </button>
         </div>
         <input
           ref={inputRef}
@@ -200,7 +182,6 @@ export function UploadDropzone({
           multiple={multiple}
           className="hidden"
           onChange={(e) => { handleFiles(e.target.files); e.target.value = '' }}
-          disabled={isAtLimit}
         />
       </div>
     </div>
