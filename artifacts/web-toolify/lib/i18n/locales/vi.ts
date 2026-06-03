@@ -373,6 +373,8 @@ const vi = {
   'home.footer.otherTools': 'Công cụ khác',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Tất cả bài viết',
+  'seo.titleSuffix': 'Công Cụ Trực Tuyến Miễn Phí | ToolifyPDF',
+  'seo.descSuffix': 'Miễn phí, nhanh chóng và bảo mật. Không cần đăng ký.',
 }
 
 export default vi

@@ -373,6 +373,8 @@ const hu = {
   'home.footer.otherTools': 'Egyéb eszközök',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Összes cikk',
+  'seo.titleSuffix': 'Ingyenes Online Eszköz | ToolifyPDF',
+  'seo.descSuffix': 'Ingyenes, gyors és biztonságos. Regisztráció nélkül.',
 }
 
 export default hu

@@ -373,6 +373,8 @@ const no = {
   'home.footer.otherTools': 'Andre verktøy',
   'home.footer.blogCol': 'Blogg',
   'home.footer.allArticles': 'Alle artikler',
+  'seo.titleSuffix': 'Gratis Online-verktøy | ToolifyPDF',
+  'seo.descSuffix': 'Gratis, raskt og sikkert. Ingen registrering nødvendig.',
 }
 
 export default no

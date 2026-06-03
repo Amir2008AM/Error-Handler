@@ -373,6 +373,8 @@ const th = {
   'home.footer.otherTools': 'เครื่องมืออื่นๆ',
   'home.footer.blogCol': 'บล็อก',
   'home.footer.allArticles': 'บทความทั้งหมด',
+  'seo.titleSuffix': 'เครื่องมือออนไลน์ฟรี | ToolifyPDF',
+  'seo.descSuffix': 'ฟรี รวดเร็ว และปลอดภัย ไม่ต้องลงทะเบียน',
 }
 
 export default th

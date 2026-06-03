@@ -373,6 +373,8 @@ const nl = {
   'home.footer.otherTools': 'Andere tools',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Alle artikelen',
+  'seo.titleSuffix': 'Gratis Online Tool | ToolifyPDF',
+  'seo.descSuffix': 'Gratis, snel en veilig. Geen registratie vereist.',
 }
 
 export default nl

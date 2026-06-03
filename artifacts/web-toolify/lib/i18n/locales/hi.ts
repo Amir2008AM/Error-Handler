@@ -373,6 +373,8 @@ const hi = {
   'home.footer.otherTools': 'अन्य टूल',
   'home.footer.blogCol': 'ब्लॉग',
   'home.footer.allArticles': 'सभी लेख',
+  'seo.titleSuffix': 'मुफ़्त ऑनलाइन टूल | ToolifyPDF',
+  'seo.descSuffix': 'मुफ़्त, तेज़ और सुरक्षित। पंजीकरण की ज़रूरत नहीं।',
 }
 
 export default hi

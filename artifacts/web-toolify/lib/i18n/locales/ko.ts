@@ -373,6 +373,8 @@ const ko = {
   'home.footer.otherTools': '기타 도구',
   'home.footer.blogCol': '블로그',
   'home.footer.allArticles': '모든 기사',
+  'seo.titleSuffix': '무료 온라인 도구 | ToolifyPDF',
+  'seo.descSuffix': '무료, 빠르고 안전합니다. 회원가입 불필요.',
 }
 
 export default ko

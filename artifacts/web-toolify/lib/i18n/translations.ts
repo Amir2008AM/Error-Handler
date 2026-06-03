@@ -349,6 +349,9 @@ export type TranslationKey =
   | 'home.footer.otherTools'
   | 'home.footer.blogCol'
   | 'home.footer.allArticles'
+  // Shared SEO suffix — applies to all 28 tool pages via pattern
+  | 'seo.titleSuffix'
+  | 'seo.descSuffix'
 
 export type TranslationMap = Record<TranslationKey, string>
 
@@ -731,6 +734,8 @@ export const en: TranslationMap = {
   'home.footer.otherTools': 'Other Tools',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'All Articles',
+  'seo.titleSuffix': 'Free Online Tool | ToolifyPDF',
+  'seo.descSuffix': 'Free, fast, and secure. No registration required.',
 }
 
 export function t(lang: string, key: TranslationKey, map: TranslationMap = en): string {

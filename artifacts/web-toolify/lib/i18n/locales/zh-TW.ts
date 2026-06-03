@@ -373,6 +373,8 @@ const zhTW = {
   'home.footer.otherTools': '其他工具',
   'home.footer.blogCol': '部落格',
   'home.footer.allArticles': '所有文章',
+  'seo.titleSuffix': '免費線上工具 | ToolifyPDF',
+  'seo.descSuffix': '免費、快速、安全，無需註冊。',
 }
 
 export default zhTW

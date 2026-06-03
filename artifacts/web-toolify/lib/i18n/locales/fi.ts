@@ -373,6 +373,8 @@ const fi = {
   'home.footer.otherTools': 'Muut työkalut',
   'home.footer.blogCol': 'Blogi',
   'home.footer.allArticles': 'Kaikki artikkelit',
+  'seo.titleSuffix': 'Ilmainen Verkkotyökalu | ToolifyPDF',
+  'seo.descSuffix': 'Ilmainen, nopea ja turvallinen. Ei rekisteröitymistä.',
 }
 
 export default fi

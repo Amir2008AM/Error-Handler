@@ -373,6 +373,8 @@ const ar = {
   'home.footer.otherTools': 'أدوات أخرى',
   'home.footer.blogCol': 'المدونة',
   'home.footer.allArticles': 'جميع المقالات',
+  'seo.titleSuffix': 'أداة مجانية أونلاين | ToolifyPDF',
+  'seo.descSuffix': 'مجاني وسريع وآمن. لا تسجيل مطلوب.',
 } as const
 
 export default ar

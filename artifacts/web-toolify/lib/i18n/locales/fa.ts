@@ -373,6 +373,8 @@ const fa = {
   'home.footer.otherTools': 'ابزارهای دیگر',
   'home.footer.blogCol': 'وبلاگ',
   'home.footer.allArticles': 'همه مقالات',
+  'seo.titleSuffix': 'ابزار آنلاین رایگان | ToolifyPDF',
+  'seo.descSuffix': 'رایگان، سریع و امن. نیازی به ثبت‌نام نیست.',
 }
 
 export default fa

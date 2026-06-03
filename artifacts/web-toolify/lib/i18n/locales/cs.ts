@@ -373,6 +373,8 @@ const cs = {
   'home.footer.otherTools': 'Další nástroje',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Všechny články',
+  'seo.titleSuffix': 'Bezplatný Online Nástroj | ToolifyPDF',
+  'seo.descSuffix': 'Zdarma, rychle a bezpečně. Bez registrace.',
 }
 
 export default cs

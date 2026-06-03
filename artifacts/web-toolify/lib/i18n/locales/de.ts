@@ -373,6 +373,8 @@ const de = {
   'home.footer.otherTools': 'Weitere Tools',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Alle Artikel',
+  'seo.titleSuffix': 'Kostenloses Online-Tool | ToolifyPDF',
+  'seo.descSuffix': 'Kostenlos, schnell und sicher. Keine Registrierung erforderlich.',
 } as const
 
 export default de

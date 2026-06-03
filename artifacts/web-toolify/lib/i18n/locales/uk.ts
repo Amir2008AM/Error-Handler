@@ -373,6 +373,8 @@ const uk = {
   'home.footer.otherTools': 'Інші інструменти',
   'home.footer.blogCol': 'Блог',
   'home.footer.allArticles': 'Всі статті',
+  'seo.titleSuffix': 'Безкоштовний онлайн-інструмент | ToolifyPDF',
+  'seo.descSuffix': 'Безкоштовно, швидко та безпечно. Без реєстрації.',
 }
 
 export default uk

@@ -373,6 +373,8 @@ const bn = {
   'home.footer.otherTools': 'অন্যান্য টুল',
   'home.footer.blogCol': 'ব্লগ',
   'home.footer.allArticles': 'সব প্রবন্ধ',
+  'seo.titleSuffix': 'বিনামূল্যে অনলাইন টুল | ToolifyPDF',
+  'seo.descSuffix': 'বিনামূল্যে, দ্রুত এবং নিরাপদ। নিবন্ধন প্রয়োজন নেই।',
 }
 
 export default bn

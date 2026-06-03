@@ -373,6 +373,8 @@ const zh = {
   'home.footer.otherTools': '其他工具',
   'home.footer.blogCol': '博客',
   'home.footer.allArticles': '所有文章',
+  'seo.titleSuffix': '免费在线工具 | ToolifyPDF',
+  'seo.descSuffix': '免费、快速、安全，无需注册。',
 } as const
 
 export default zh

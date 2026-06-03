@@ -373,6 +373,8 @@ const ro = {
   'home.footer.otherTools': 'Alte instrumente',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Toate articolele',
+  'seo.titleSuffix': 'Instrument Online Gratuit | ToolifyPDF',
+  'seo.descSuffix': 'Gratuit, rapid și sigur. Fără înregistrare.',
 }
 
 export default ro

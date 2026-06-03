@@ -373,6 +373,8 @@ const id = {
   'home.footer.otherTools': 'Alat Lainnya',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Semua Artikel',
+  'seo.titleSuffix': 'Alat Online Gratis | ToolifyPDF',
+  'seo.descSuffix': 'Gratis, cepat, dan aman. Tidak perlu registrasi.',
 }
 
 export default id

@@ -373,6 +373,8 @@ const ru = {
   'home.footer.otherTools': 'Другие инструменты',
   'home.footer.blogCol': 'Блог',
   'home.footer.allArticles': 'Все статьи',
+  'seo.titleSuffix': 'Бесплатный онлайн-инструмент | ToolifyPDF',
+  'seo.descSuffix': 'Бесплатно, быстро и безопасно. Без регистрации.',
 } as const
 
 export default ru

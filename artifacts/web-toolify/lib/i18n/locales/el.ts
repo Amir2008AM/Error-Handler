@@ -373,6 +373,8 @@ const el = {
   'home.footer.otherTools': 'Άλλα εργαλεία',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Όλα τα άρθρα',
+  'seo.titleSuffix': 'Δωρεάν Διαδικτυακό Εργαλείο | ToolifyPDF',
+  'seo.descSuffix': 'Δωρεάν, γρήγορο και ασφαλές. Χωρίς εγγραφή.',
 }
 
 export default el

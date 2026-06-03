@@ -373,6 +373,8 @@ const ja = {
   'home.footer.otherTools': 'その他のツール',
   'home.footer.blogCol': 'ブログ',
   'home.footer.allArticles': '全記事',
+  'seo.titleSuffix': '無料オンラインツール | ToolifyPDF',
+  'seo.descSuffix': '無料・高速・安全。登録不要。',
 } as const
 
 export default ja

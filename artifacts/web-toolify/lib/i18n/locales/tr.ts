@@ -373,6 +373,8 @@ const tr = {
   'home.footer.otherTools': 'Diğer Araçlar',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Tüm Makaleler',
+  'seo.titleSuffix': 'Ücretsiz Çevrimiçi Araç | ToolifyPDF',
+  'seo.descSuffix': 'Ücretsiz, hızlı ve güvenli. Kayıt gerekmez.',
 }
 
 export default tr

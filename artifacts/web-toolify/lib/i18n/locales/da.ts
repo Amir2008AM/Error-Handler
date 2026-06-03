@@ -373,6 +373,8 @@ const da = {
   'home.footer.otherTools': 'Andre værktøjer',
   'home.footer.blogCol': 'Blog',
   'home.footer.allArticles': 'Alle artikler',
+  'seo.titleSuffix': 'Gratis Online-værktøj | ToolifyPDF',
+  'seo.descSuffix': 'Gratis, hurtigt og sikkert. Ingen registrering kræves.',
 }
 
 export default da

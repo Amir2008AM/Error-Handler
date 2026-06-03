@@ -373,6 +373,8 @@ const sv = {
   'home.footer.otherTools': 'Andra verktyg',
   'home.footer.blogCol': 'Blogg',
   'home.footer.allArticles': 'Alla artiklar',
+  'seo.titleSuffix': 'Gratis Online-verktyg | ToolifyPDF',
+  'seo.descSuffix': 'Gratis, snabbt och säkert. Ingen registrering krävs.',
 }
 
 export default sv
