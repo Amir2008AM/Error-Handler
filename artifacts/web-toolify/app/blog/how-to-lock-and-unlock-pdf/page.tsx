@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     'Learn how to lock and unlock PDF files online for free. Protect sensitive documents with passwords or remove passwords from PDFs you own using secure online tools.',
   alternates: {
-    canonical: 'https://toolifypdf.online/blog/how-to-lock-and-unlock-pdf',
+    canonical: 'https://www.toolifypdf.online/blog/how-to-lock-and-unlock-pdf',
   },
   openGraph: {
     title: 'How to Lock and Unlock PDF Files Online for Free',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
       'Protect sensitive documents with passwords or remove passwords from PDFs you own using secure online tools. No sign-up required.',
     type: 'article',
     publishedTime: '2026-06-04T00:00:00.000Z',
-    url: 'https://toolifypdf.online/blog/how-to-lock-and-unlock-pdf',
+    url: 'https://www.toolifypdf.online/blog/how-to-lock-and-unlock-pdf',
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,9 +34,9 @@ const schema = {
     'Learn how to lock and unlock PDF files online for free. Protect sensitive documents with passwords or remove passwords from PDFs you own using secure online tools.',
   datePublished: '2026-06-04T00:00:00.000Z',
   dateModified: '2026-06-04T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-lock-and-unlock-pdf' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-lock-and-unlock-pdf' },
   keywords: 'lock pdf, unlock pdf, password protect pdf, remove pdf password, pdf security online free',
 }
 

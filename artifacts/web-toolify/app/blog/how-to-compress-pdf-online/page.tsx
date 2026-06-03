@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     'Learn how to compress PDF files online for free without losing quality. Follow this step-by-step guide to reduce PDF file size quickly, securely, and easily.',
   alternates: {
-    canonical: 'https://toolifypdf.online/blog/how-to-compress-pdf-online',
+    canonical: 'https://www.toolifypdf.online/blog/how-to-compress-pdf-online',
   },
   openGraph: {
     title: 'How to Compress PDF Online for Free',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
       'Learn how to compress PDF files online for free without losing quality. Reduce PDF file size quickly, securely, and easily.',
     type: 'article',
     publishedTime: '2026-06-02T00:00:00.000Z',
-    url: 'https://toolifypdf.online/blog/how-to-compress-pdf-online',
+    url: 'https://www.toolifypdf.online/blog/how-to-compress-pdf-online',
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,9 +34,9 @@ const schema = {
     'Learn how to compress PDF files online for free without losing quality. Follow this step-by-step guide to reduce PDF file size quickly, securely, and easily.',
   datePublished: '2026-06-02T00:00:00.000Z',
   dateModified: '2026-06-02T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-compress-pdf-online' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-compress-pdf-online' },
   keywords: 'compress pdf, reduce pdf size, pdf compressor online, compress pdf free, pdf file size reducer',
 }
 

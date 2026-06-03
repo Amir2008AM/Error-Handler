@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     'ocr',
     'image to text',
   ],
-  metadataBase: new URL('https://toolify.app'),
+  metadataBase: new URL('https://www.toolifypdf.online'),
   openGraph: {
     title: 'Toolify — All Tools in One Place',
     description: 'Free online tools for PDF, images, text, and more. No registration needed.',

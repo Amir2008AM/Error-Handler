@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     'Learn how to convert Word documents to PDF online for free. Follow this simple guide to preserve formatting, improve security, and share documents easily.',
   alternates: {
-    canonical: 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf',
+    canonical: 'https://www.toolifypdf.online/blog/how-to-convert-word-to-pdf',
   },
   openGraph: {
     title: 'How to Convert Word to PDF Online for Free',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
       'Learn how to convert Word documents to PDF online for free. Preserve formatting, improve security, and share documents easily.',
     type: 'article',
     publishedTime: '2026-06-01T00:00:00.000Z',
-    url: 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf',
+    url: 'https://www.toolifypdf.online/blog/how-to-convert-word-to-pdf',
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,9 +34,9 @@ const schema = {
     'Learn how to convert Word documents to PDF online for free. Preserve formatting, improve security, and share documents easily.',
   datePublished: '2026-06-01T00:00:00.000Z',
   dateModified: '2026-06-01T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-word-to-pdf' },
   keywords: 'convert word to pdf, word to pdf online, docx to pdf free, word to pdf converter',
 }
 

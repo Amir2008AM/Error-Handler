@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     'Learn how to merge PDF files online for free. Combine multiple PDF documents into one organized file quickly, securely, and without installing software.',
   alternates: {
-    canonical: 'https://toolifypdf.online/blog/how-to-merge-pdf-files-online',
+    canonical: 'https://www.toolifypdf.online/blog/how-to-merge-pdf-files-online',
   },
   openGraph: {
     title: 'How to Merge PDF Files Online for Free',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
       'Learn how to merge PDF files online for free. Combine multiple PDF documents into one organized file quickly, securely, and without installing software.',
     type: 'article',
     publishedTime: '2026-06-05T00:00:00.000Z',
-    url: 'https://toolifypdf.online/blog/how-to-merge-pdf-files-online',
+    url: 'https://www.toolifypdf.online/blog/how-to-merge-pdf-files-online',
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,9 +34,9 @@ const schema = {
     'Learn how to merge PDF files online for free. Combine multiple PDF documents into one organized file quickly, securely, and without installing software.',
   datePublished: '2026-06-05T00:00:00.000Z',
   dateModified: '2026-06-05T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-merge-pdf-files-online' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-merge-pdf-files-online' },
   keywords: 'merge pdf, combine pdf files, pdf merger online, merge pdf free, join pdf files online',
 }
 

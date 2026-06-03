@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     'Learn 3 easy ways to convert a PDF into an editable Word document at no cost. This guide covers free online tools, Google Docs, and Microsoft Word with step-by-step instructions and troubleshooting tips.',
   alternates: {
-    canonical: 'https://toolifypdf.online/blog/how-to-convert-pdf-to-word',
+    canonical: 'https://www.toolifypdf.online/blog/how-to-convert-pdf-to-word',
   },
   openGraph: {
     title: 'How to Convert PDF to Word for Free',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
       'Learn 3 easy ways to convert a PDF into an editable Word document at no cost — free online tools, Google Docs, and Microsoft Word.',
     type: 'article',
     publishedTime: '2026-06-01T00:00:00.000Z',
-    url: 'https://toolifypdf.online/blog/how-to-convert-pdf-to-word',
+    url: 'https://www.toolifypdf.online/blog/how-to-convert-pdf-to-word',
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,9 +34,9 @@ const schema = {
     'Learn 3 easy ways to convert a PDF into an editable Word document at no cost. This guide covers free online tools, Google Docs, and Microsoft Word.',
   datePublished: '2026-06-01T00:00:00.000Z',
   dateModified: '2026-06-01T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-pdf-to-word' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-pdf-to-word' },
   keywords: 'convert pdf to word, pdf to docx, free pdf converter, pdf to word online',
 }
 

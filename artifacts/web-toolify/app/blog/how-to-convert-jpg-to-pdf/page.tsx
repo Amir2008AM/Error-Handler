@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     'Learn how to convert JPG images to PDF files for free online. Follow this easy step-by-step guide to combine your JPGs into high-quality PDFs in seconds.',
   alternates: {
-    canonical: 'https://toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
+    canonical: 'https://www.toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
   },
   openGraph: {
     title: 'How to Convert JPG to PDF Online for Free',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
       'Learn how to convert JPG images to PDF files for free online. Combine your JPGs into high-quality PDFs in seconds.',
     type: 'article',
     publishedTime: '2026-06-03T00:00:00.000Z',
-    url: 'https://toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
+    url: 'https://www.toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,9 +34,9 @@ const schema = {
     'Learn how to convert JPG images to PDF files for free online. Follow this easy step-by-step guide to combine your JPGs into high-quality PDFs in seconds.',
   datePublished: '2026-06-03T00:00:00.000Z',
   dateModified: '2026-06-03T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online' },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-jpg-to-pdf' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-jpg-to-pdf' },
   keywords: 'jpg to pdf, convert jpg to pdf, image to pdf, jpg to pdf online free, convert jpeg to pdf',
 }
 

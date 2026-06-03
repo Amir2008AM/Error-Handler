@@ -5,11 +5,15 @@ export const metadata: Metadata = {
   title: 'Blog | ToolifyPDF',
   description:
     'Tips, guides, and tutorials on PDF processing, image conversion, and free online tools — from the ToolifyPDF team.',
+  alternates: {
+    canonical: 'https://www.toolifypdf.online/blog',
+  },
   openGraph: {
     title: 'Blog | ToolifyPDF',
     description:
       'Tips, guides, and tutorials on PDF processing, image conversion, and free online tools.',
     type: 'website',
+    url: 'https://www.toolifypdf.online/blog',
   },
 }
 
