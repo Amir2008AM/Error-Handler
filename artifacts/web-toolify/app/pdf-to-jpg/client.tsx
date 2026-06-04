@@ -17,12 +17,15 @@ import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('pdf-to-jpg')!
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function PdfToJpgClient() {
   const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [format, setFormat] = useState<'jpg' | 'png' | 'webp'>('jpg')
+  const [done, setDone] = useState(false)
   const [quality, setQuality] = useState(90)
   const [dpi, setDpi] = useState(150)
   const { startLoading, stopLoading } = useLoadingBar()
@@ -75,6 +78,7 @@ export function PdfToJpgClient() {
       a.download = filename
       a.click()
       URL.revokeObjectURL(url)
+      setDone(true)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to convert PDF to images')
     } finally {
@@ -223,6 +227,7 @@ export function PdfToJpgClient() {
           </div>
         )}
       </div>
+      {done && <TrustpilotReview />}
     </ToolPageLayout>
   )
 }

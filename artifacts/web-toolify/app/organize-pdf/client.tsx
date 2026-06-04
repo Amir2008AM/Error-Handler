@@ -20,6 +20,8 @@ interface PageItem {
 
 let idCounter = 0
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function OrganizePdfClient() {
   const [file,        setFile]        = useState<File | null>(null)
   const [pages,       setPages]       = useState<PageItem[]>([])
@@ -304,6 +306,7 @@ export function OrganizePdfClient() {
           </a>
         </div>
       )}
+      {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
     </div>
   )
 }

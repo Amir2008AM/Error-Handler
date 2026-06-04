@@ -17,6 +17,8 @@ function formatBytes(bytes: number): string {
 
 type WatermarkPosition = 'center' | 'diagonal' | 'top' | 'bottom'
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function WatermarkPdfClient() {
   const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -260,6 +262,7 @@ export function WatermarkPdfClient() {
               </div>
             </div>
           )}
+          {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>
       )}
     </div>

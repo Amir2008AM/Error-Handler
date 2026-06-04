@@ -15,10 +15,13 @@ import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('html-to-pdf')!
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function HtmlToPdfClient() {
   const [mode, setMode] = useState<'file' | 'paste'>('paste')
   const [file, setFile] = useState<File | null>(null)
   const [htmlContent, setHtmlContent] = useState('')
+  const [done, setDone] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4')
@@ -80,6 +83,7 @@ export function HtmlToPdfClient() {
       a.download = file ? file.name.replace(/\.(html?|htm)$/i, '.pdf') : 'document.pdf'
       a.click()
       URL.revokeObjectURL(url)
+      setDone(true)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to convert HTML')
     } finally {
@@ -234,6 +238,7 @@ export function HtmlToPdfClient() {
           </Button>
         </div>
       </div>
+      {done && <TrustpilotReview />}
     </ToolPageLayout>
   )
 }

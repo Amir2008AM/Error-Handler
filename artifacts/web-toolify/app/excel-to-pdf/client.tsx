@@ -13,11 +13,14 @@ import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('excel-to-pdf')!
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function ExcelToPdfClient() {
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4')
+  const [done, setDone] = useState(false)
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('landscape')
   const { startLoading, stopLoading } = useLoadingBar()
 
@@ -69,6 +72,7 @@ export function ExcelToPdfClient() {
       a.download = file.name.replace(/\.(xlsx?|xls|csv)$/i, '.pdf')
       a.click()
       URL.revokeObjectURL(url)
+      setDone(true)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to convert spreadsheet')
     } finally {
@@ -191,6 +195,7 @@ export function ExcelToPdfClient() {
           </div>
         )}
       </div>
+      {done && <TrustpilotReview />}
     </ToolPageLayout>
   )
 }

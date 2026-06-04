@@ -94,7 +94,7 @@ function IllustrationUploadSteps() {
       <polyline points="300,122 300,100" stroke={ACCENT} strokeWidth="3" strokeLinecap="round" />
       <polyline points="288,110 300,98 312,110" stroke={ACCENT} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       <text x="300" y="152" textAnchor="middle" fill="#374151" fontSize="13" fontWeight="600" fontFamily="system-ui">Drop your Word file here or click to upload</text>
-      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">DOC and DOCX supported · up to 100 MB</text>
+      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">DOC and DOCX supported · up to 50 MB</text>
       <rect x="230" y="183" width="140" height="32" rx="16" fill={ACCENT} />
       <text x="300" y="204" textAnchor="middle" fill="white" fontSize="13" fontWeight="600" fontFamily="system-ui">Convert to PDF</text>
     </svg>
@@ -340,7 +340,7 @@ export default function ArticlePage() {
               </thead>
               <tbody>
                 {[
-                  ['Maximum File Size', '100 MB'],
+                  ['Maximum File Size', '50 MB'],
                   ['Registration Required', 'No'],
                   ['Mobile Support', 'Yes'],
                   ['Secure Processing', 'Yes'],
@@ -436,7 +436,7 @@ export default function ArticlePage() {
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Supports Large Files</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  ToolifyPDF supports files up to 100 MB, making it suitable for lengthy reports, presentations, and image-rich documents.
+                  ToolifyPDF supports files up to 50 MB, making it suitable for lengthy reports, presentations, and image-rich documents.
                 </p>
               </div>
 
@@ -467,7 +467,7 @@ export default function ArticlePage() {
                 {
                   title: 'Large File Uploads',
                   body: 'Some converters restrict file sizes.',
-                  solution: 'Use a converter that supports larger uploads such as ToolifyPDF\'s 100 MB limit.',
+                  solution: 'Use a converter that supports larger uploads such as ToolifyPDF\'s 50 MB limit.',
                 },
                 {
                   title: 'Password-Protected Files',
@@ -579,7 +579,7 @@ export default function ArticlePage() {
 
               <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-teal-100">
                 {[
-                  'Supports files up to 100 MB',
+                  'Supports files up to 50 MB',
                   'No sign-up required',
                   'Mobile-friendly conversion',
                   'Secure file processing',

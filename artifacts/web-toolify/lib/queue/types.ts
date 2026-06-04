@@ -156,6 +156,6 @@ export const DEFAULT_QUEUE_CONFIG: QueueConfig = {
   jobTimeoutMs: 5 * 60 * 1000, // 5 minutes
   jobTtlMs: 10 * 60 * 1000, // 10 minutes
   maxJobsPerUser: 10,
-  maxFileSizeBytes: 100 * 1024 * 1024, // 100MB
+  maxFileSizeBytes: 50 * 1024 * 1024, // 50MB
   maxTotalFileSizeBytes: 500 * 1024 * 1024, // 500MB total
 }

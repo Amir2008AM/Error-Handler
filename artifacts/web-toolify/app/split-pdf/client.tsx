@@ -20,6 +20,8 @@ function formatBytes(bytes: number): string {
 
 type SplitMode = 'all' | 'range'
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function SplitPdfClient() {
   const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -250,6 +252,7 @@ export function SplitPdfClient() {
               </a>
             </div>
           )}
+          {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
         </div>
       )}
     </div>

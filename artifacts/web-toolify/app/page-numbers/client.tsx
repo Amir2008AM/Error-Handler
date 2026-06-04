@@ -13,6 +13,8 @@ import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 import { t } from '@/lib/i18n/translations'
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function PageNumbersClient() {
   const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -239,6 +241,7 @@ export function PageNumbersClient() {
                 showMessage={true}
                 autoHide={false}
               />
+              {progress.status === 'completed' && <TrustpilotReview />}
             </div>
           </div>
         )}

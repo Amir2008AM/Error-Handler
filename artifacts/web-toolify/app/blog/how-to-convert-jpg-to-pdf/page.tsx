@@ -103,7 +103,7 @@ function IllustrationUpload() {
       <polyline points="300,122 300,100" stroke="#6d28d9" strokeWidth="3" strokeLinecap="round" />
       <polyline points="288,110 300,98 312,110" stroke="#6d28d9" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       <text x="300" y="152" textAnchor="middle" fill="#374151" fontSize="13" fontWeight="600" fontFamily="system-ui">Drop your JPG files here or click to upload</text>
-      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">Supports JPG / JPEG up to 100 MB</text>
+      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">Supports JPG / JPEG up to 50 MB</text>
       {/* Convert button */}
       <rect x="210" y="183" width="180" height="32" rx="16" fill="#6d28d9" />
       <text x="300" y="204" textAnchor="middle" fill="white" fontSize="13" fontWeight="600" fontFamily="system-ui">Convert to PDF</text>
@@ -377,7 +377,7 @@ export default function ArticlePage() {
 
             <StepList steps={[
               'Open the JPG to PDF Tool — Visit the ToolifyPDF JPG to PDF converter using any modern web browser.',
-              'Upload Your Images — Click the upload area or drag and drop your JPG files into the converter. You can upload a single JPG image, multiple images, high-resolution photos, or scanned documents. ToolifyPDF supports files up to 100 MB.',
+              'Upload Your Images — Click the upload area or drag and drop your JPG files into the converter. You can upload a single JPG image, multiple images, high-resolution photos, or scanned documents. ToolifyPDF supports files up to 50 MB.',
               'Arrange the Images — If you\'re converting multiple images, arrange them in the desired order before creating the PDF. This ensures the pages appear correctly in the final document.',
               'Start the Conversion — Click the Convert button and allow the tool to process your files. The conversion usually takes only a few seconds.',
               'Download Your PDF — Once the process is complete, download the newly created PDF file to your device. Your images are now combined into a professional PDF document ready to share, print, or store.',
@@ -424,7 +424,7 @@ export default function ArticlePage() {
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Supports Large Files</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports uploads up to 100 MB, suitable for high-resolution images and large image collections.</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports uploads up to 50 MB, suitable for high-resolution images and large image collections.</p>
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Maintains Image Quality</h3>
@@ -517,7 +517,7 @@ export default function ArticlePage() {
               Converting JPG images to PDF online is one of the easiest ways to create professional, shareable documents. Whether you&apos;re organizing scanned paperwork, creating reports, submitting applications, or combining photos into a single file, a JPG to PDF converter makes the process fast and hassle-free.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              ToolifyPDF provides a simple solution that works across desktop and mobile devices without requiring registration. With support for files up to 100 MB, fast processing, and automatic file deletion after one hour, it offers a convenient way to turn images into PDF documents whenever you need them.
+              ToolifyPDF provides a simple solution that works across desktop and mobile devices without requiring registration. With support for files up to 50 MB, fast processing, and automatic file deletion after one hour, it offers a convenient way to turn images into PDF documents whenever you need them.
             </p>
           </section>
 
@@ -531,7 +531,7 @@ export default function ArticlePage() {
               Turn your JPG images into PDF files in seconds with ToolifyPDF.
             </p>
             <ul className="text-sm text-purple-200 space-y-1 mb-6 inline-block text-left">
-              <li>✓ Supports files up to 100 MB</li>
+              <li>✓ Supports files up to 50 MB</li>
               <li>✓ No sign-up required</li>
               <li>✓ Mobile-friendly conversion</li>
               <li>✓ Secure processing</li>

@@ -53,6 +53,8 @@ const PIPELINE_STEPS = [
   },
 ]
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function PdfToExcelClient() {
   const [file, setFile]           = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -147,7 +149,7 @@ export function PdfToExcelClient() {
                 <div>
                   <p className="font-semibold text-lg">Upload a PDF</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Drag &amp; drop or click to browse — up to 100 MB
+                    Drag &amp; drop or click to browse — up to 50 MB
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2 mt-1">
@@ -211,10 +213,13 @@ export function PdfToExcelClient() {
             )}
 
             {done && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                Excel file downloaded successfully!
-              </div>
+              <>
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  Excel file downloaded successfully!
+                </div>
+                <TrustpilotReview />
+              </>
             )}
 
             <div className="flex justify-center gap-3">

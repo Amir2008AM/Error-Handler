@@ -71,7 +71,7 @@ export interface StorageConfig {
 const DEFAULT_CONFIG: StorageConfig = {
   defaultTtlMs: 60 * 60 * 1000, // 60 minutes — matches the "~1 hour" user-facing guarantee
   maxStorageBytes: 500 * 1024 * 1024, // 500MB
-  maxFileBytes: 100 * 1024 * 1024, // 100MB per file
+  maxFileBytes: 50 * 1024 * 1024, // 50MB per file
   cleanupIntervalMs: 60 * 1000, // 1 minute
   storageDir: join(tmpdir(), 'toolify'),
 }

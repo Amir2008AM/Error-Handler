@@ -15,6 +15,8 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function RotatePdfClient() {
   const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -203,6 +205,7 @@ export function RotatePdfClient() {
               </div>
             </div>
           )}
+          {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>
       )}
     </div>

@@ -16,6 +16,8 @@ import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('word-to-pdf')!
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function WordToPdfClient() {
   const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -210,6 +212,7 @@ export function WordToPdfClient() {
                 showMessage={true}
                 autoHide={false}
               />
+              {progress.status === 'completed' && <TrustpilotReview />}
             </div>
           </div>
         )}

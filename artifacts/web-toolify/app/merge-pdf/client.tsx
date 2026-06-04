@@ -26,6 +26,8 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function MergePdfClient() {
   const { t } = useI18n()
   const [pdfs, setPdfs] = useState<PdfEntry[]>([])
@@ -289,6 +291,7 @@ export function MergePdfClient() {
           </a>
         </div>
       )}
+      {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
     </div>
   )
 }

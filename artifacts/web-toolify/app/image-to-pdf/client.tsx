@@ -16,8 +16,8 @@ let idCounter = 0
 const POLL_INTERVAL_MS = 600
 const POLL_TIMEOUT_MS  = 5 * 60 * 1000
 const CLIENT_MAX_PX = 1600
-const MAX_UPLOAD_BYTES = 80 * 1024 * 1024
-const MAX_TOTAL_SIZE_MB = 100
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+const MAX_TOTAL_SIZE_MB = 50
 
 async function compressForUpload(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -83,6 +83,8 @@ async function pollJobUntilDone(
 
   throw new Error('PDF generation timed out — please try with fewer images or try again.')
 }
+
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function ImageToPdfClient() {
   const { lang } = useI18n()
@@ -380,6 +382,7 @@ export function ImageToPdfClient() {
           </a>
         </div>
       )}
+      {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
     </div>
   )
 }

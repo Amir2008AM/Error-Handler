@@ -119,7 +119,7 @@ function IllustrationLockSteps() {
       <polyline points="190,108 200,98 210,108" stroke="#9333ea" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       <text x="320" y="98" textAnchor="middle" fill="#374151" fontSize="12" fontWeight="600" fontFamily="system-ui">Drop your PDF here</text>
       <text x="320" y="116" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">or click to upload</text>
-      <text x="320" y="132" textAnchor="middle" fill="#9ca3af" fontSize="10" fontFamily="system-ui">Supports PDF up to 100 MB</text>
+      <text x="320" y="132" textAnchor="middle" fill="#9ca3af" fontSize="10" fontFamily="system-ui">Supports PDF up to 50 MB</text>
       {/* Password field */}
       <rect x="80" y="170" width="280" height="32" rx="8" fill="white" stroke="#9333ea" strokeWidth="1.5" />
       <text x="100" y="190" fill="#9ca3af" fontSize="11" fontFamily="system-ui">Enter password</text>
@@ -405,7 +405,7 @@ export default function ArticlePage() {
 
             <StepList steps={[
               'Open the Lock PDF tool — Visit ToolifyPDF\'s Protect PDF page in any web browser.',
-              'Upload your PDF file — Click the upload area or drag and drop your file. Supports PDFs up to 100 MB.',
+              'Upload your PDF file — Click the upload area or drag and drop your file. Supports PDFs up to 50 MB.',
               'Enter a strong password — Choose a secure password and confirm it in the second field.',
               'Click Protect PDF — The tool encrypts your document using AES-256 encryption.',
               'Wait for processing — Protection is applied within seconds.',
@@ -503,7 +503,7 @@ export default function ArticlePage() {
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Supports Large Files</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports PDF files up to 100 MB, suitable for large reports and documents.</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports PDF files up to 50 MB, suitable for large reports and documents.</p>
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Beginner-Friendly</h3>
@@ -586,7 +586,7 @@ export default function ArticlePage() {
               Locking and unlocking PDF files is an important part of managing digital documents securely. Password protection helps safeguard sensitive information, while password removal can make authorized documents easier to access and share.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              With ToolifyPDF, you can protect or unlock PDF files quickly and securely from any device. The process is simple, requires no registration, supports files up to 100 MB, and includes automatic file deletion after one hour for added privacy.
+              With ToolifyPDF, you can protect or unlock PDF files quickly and securely from any device. The process is simple, requires no registration, supports files up to 50 MB, and includes automatic file deletion after one hour for added privacy.
             </p>
           </section>
 
@@ -608,7 +608,7 @@ export default function ArticlePage() {
 
               <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-purple-100">
                 {[
-                  'Supports files up to 100 MB',
+                  'Supports files up to 50 MB',
                   'No sign-up required',
                   'Mobile-friendly',
                   'Fast processing',

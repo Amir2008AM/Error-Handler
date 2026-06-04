@@ -101,7 +101,7 @@ function IllustrationUploadCompress() {
       <polyline points="300,122 300,100" stroke="#e85d35" strokeWidth="3" strokeLinecap="round" />
       <polyline points="288,110 300,98 312,110" stroke="#e85d35" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       <text x="300" y="152" textAnchor="middle" fill="#374151" fontSize="13" fontWeight="600" fontFamily="system-ui">Drop your PDF here or click to upload</text>
-      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">Supports PDF up to 100 MB</text>
+      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">Supports PDF up to 50 MB</text>
       {/* Compress button */}
       <rect x="220" y="183" width="160" height="32" rx="16" fill="#e85d35" />
       <text x="300" y="204" textAnchor="middle" fill="white" fontSize="13" fontWeight="600" fontFamily="system-ui">Compress PDF</text>
@@ -369,7 +369,7 @@ export default function ArticlePage() {
 
             <StepList steps={[
               'Open a PDF Compression Tool — Visit ToolifyPDF\'s PDF Compression tool using any web browser on desktop or mobile.',
-              'Upload Your PDF — Click the upload button or drag and drop your PDF file into the tool. ToolifyPDF supports PDF files up to 100 MB, making it suitable for both small and large documents.',
+              'Upload Your PDF — Click the upload button or drag and drop your PDF file into the tool. ToolifyPDF supports PDF files up to 50 MB, making it suitable for both small and large documents.',
               'Start Compression — Click the Compress PDF button. The system automatically analyzes and optimizes your file for the best balance between quality and size.',
               'Download Your Compressed PDF — Once processing is complete, download the optimized PDF file to your device. Your document will now be easier to upload, share, and store.',
             ]} />
@@ -415,7 +415,7 @@ export default function ArticlePage() {
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Supports Large Files</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports uploads up to 100 MB — more than enough for most business documents, reports, and scanned PDFs.</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports uploads up to 50 MB — more than enough for most business documents, reports, and scanned PDFs.</p>
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Preserves Quality</h3>
@@ -503,7 +503,7 @@ export default function ArticlePage() {
               Compressing PDF files online is one of the easiest ways to improve document sharing, reduce storage usage, and speed up uploads.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              With a reliable PDF compressor, you can significantly reduce file size while preserving readability and document quality. ToolifyPDF makes the process simple by offering fast compression, support for files up to 100 MB, mobile-friendly access, secure processing, and automatic file deletion after one hour — all without requiring registration.
+              With a reliable PDF compressor, you can significantly reduce file size while preserving readability and document quality. ToolifyPDF makes the process simple by offering fast compression, support for files up to 50 MB, mobile-friendly access, secure processing, and automatic file deletion after one hour — all without requiring registration.
             </p>
           </section>
 
@@ -525,7 +525,7 @@ export default function ArticlePage() {
 
               <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-orange-100">
                 {[
-                  'Supports files up to 100 MB',
+                  'Supports files up to 50 MB',
                   'No sign-up required',
                   'Mobile-friendly',
                   'Fast compression',

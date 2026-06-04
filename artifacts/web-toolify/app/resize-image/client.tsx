@@ -19,6 +19,8 @@ interface ResizeResult {
   outputSize: number
 }
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function ResizeImageClient() {
   const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -282,6 +284,7 @@ export function ResizeImageClient() {
               </div>
             </div>
           )}
+          {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>
       )}
     </div>

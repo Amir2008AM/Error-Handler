@@ -187,6 +187,8 @@ function LanguageSelector({
   )
 }
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function OcrImageClient() {
   const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -546,6 +548,7 @@ export function OcrImageClient() {
                 </p>
               </Card>
             )}
+            {extractedText && <TrustpilotReview />}
           </div>
         )}
       </div>

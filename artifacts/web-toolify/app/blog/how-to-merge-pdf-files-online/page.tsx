@@ -398,7 +398,7 @@ export default function ArticlePage() {
 
             <StepList steps={[
               'Open the Merge PDF Tool — Visit the ToolifyPDF Merge PDF tool from any web browser on desktop or mobile.',
-              'Upload Your PDF Files — Select the PDF files you want to combine. ToolifyPDF supports files up to 100 MB, allowing you to merge large documents without hassle.',
+              'Upload Your PDF Files — Select the PDF files you want to combine. ToolifyPDF supports files up to 50 MB, allowing you to merge large documents without hassle.',
               'Arrange the Files — Place the PDFs in the desired order. Drag and drop files to rearrange them before merging.',
               'Start the Merge Process — Click the Merge PDF button. The system will combine your files into a single PDF document.',
               'Download Your Merged PDF — Once processing is complete, download the new PDF file to your device. Your combined document is ready to share, print, store, or edit.',
@@ -445,7 +445,7 @@ export default function ArticlePage() {
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Supports Large Files</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports files up to 100 MB — suitable for reports, manuals, presentations, and large document collections.</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">ToolifyPDF supports files up to 50 MB — suitable for reports, manuals, presentations, and large document collections.</p>
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Mobile-Friendly Experience</h3>
@@ -534,7 +534,7 @@ export default function ArticlePage() {
               Merging PDF files is one of the easiest ways to organize documents, simplify sharing, and create professional-looking files. Whether you&apos;re combining reports, contracts, presentations, or scanned documents, an online PDF merger can save time and reduce file management headaches.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              ToolifyPDF makes the process fast and straightforward. With support for files up to 100 MB, secure processing, mobile compatibility, and automatic file deletion after one hour, it&apos;s an efficient solution for combining PDFs from any device.
+              ToolifyPDF makes the process fast and straightforward. With support for files up to 50 MB, secure processing, mobile compatibility, and automatic file deletion after one hour, it&apos;s an efficient solution for combining PDFs from any device.
             </p>
           </section>
 
@@ -550,7 +550,7 @@ export default function ArticlePage() {
             </p>
             <ul className="text-blue-100 text-sm space-y-1 mb-7 inline-block text-left">
               {[
-                'Supports files up to 100 MB',
+                'Supports files up to 50 MB',
                 'No sign-up required',
                 'Mobile-friendly',
                 'Fast processing',

@@ -22,6 +22,8 @@ interface CropArea {
   height: number
 }
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function CropImageClient() {
   const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -326,6 +328,7 @@ export function CropImageClient() {
               </div>
             </div>
           )}
+          {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>
       )}
     </div>

@@ -12,6 +12,8 @@ import { getToolBySlug } from '@/lib/tools'
 
 const tool = getToolBySlug('pdf-to-ppt')!
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function PdfToPptClient() {
   const [file, setFile] = useState<File | null>(null)
   const progress        = useRealProgress()
@@ -106,7 +108,7 @@ export function PdfToPptClient() {
                 <div>
                   <p className="font-semibold text-lg">Upload PDF</p>
                   <p className="text-sm text-muted-foreground">
-                    Supports .pdf files up to 100 MB
+                    Supports .pdf files up to 50 MB
                   </p>
                 </div>
               </div>
@@ -164,6 +166,7 @@ export function PdfToPptClient() {
                 showMessage={true}
                 autoHide={false}
               />
+              {progress.status === 'completed' && <TrustpilotReview />}
             </div>
           </div>
         )}

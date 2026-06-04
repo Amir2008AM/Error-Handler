@@ -23,6 +23,8 @@ const formats: { value: string; label: string; descKey: TranslationKey }[] = [
   { value: 'avif', label: 'AVIF', descKey: 'convert.nextGen' },
 ]
 
+import { TrustpilotReview } from '@/components/trustpilot-review'
+
 export function ConvertImageClient() {
   const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
@@ -209,6 +211,7 @@ export function ConvertImageClient() {
               </div>
             </div>
           )}
+          {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>
       )}
     </div>

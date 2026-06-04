@@ -95,7 +95,7 @@ function IllustrationUpload() {
       <polyline points="300,122 300,100" stroke="#3b6ef5" strokeWidth="3" strokeLinecap="round" />
       <polyline points="288,110 300,98 312,110" stroke="#3b6ef5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       <text x="300" y="152" textAnchor="middle" fill="#374151" fontSize="13" fontWeight="600" fontFamily="system-ui">Drop your PDF here or click to upload</text>
-      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">Supports PDF up to 100 MB</text>
+      <text x="300" y="170" textAnchor="middle" fill="#9ca3af" fontSize="11" fontFamily="system-ui">Supports PDF up to 50 MB</text>
       {/* Convert button */}
       <rect x="230" y="183" width="140" height="32" rx="16" fill="#3b6ef5" />
       <text x="300" y="204" textAnchor="middle" fill="white" fontSize="13" fontWeight="600" fontFamily="system-ui">Convert to Word</text>
@@ -367,7 +367,7 @@ export default function ArticlePage() {
             </div>
 
             <p className="text-muted-foreground leading-relaxed mb-6">
-              ToolifyPDF supports PDF files up to 100 MB, making it suitable for larger documents that many free online converters cannot handle. If your PDF exceeds the size limit, consider compressing or splitting the file before conversion.
+              ToolifyPDF supports PDF files up to 50 MB, making it suitable for larger documents that many free online converters cannot handle. If your PDF exceeds the size limit, consider compressing or splitting the file before conversion.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-6">
               For additional privacy, ToolifyPDF uses secure HTTPS encryption during file transfers. Uploaded files are automatically deleted from the server after approximately one hour, helping protect your documents and personal information.
@@ -378,7 +378,7 @@ export default function ArticlePage() {
               <BulletList items={[
                 'No registration required.',
                 'Works directly in your browser.',
-                'Supports large files up to 100 MB.',
+                'Supports large files up to 50 MB.',
                 'Fast conversion process.',
                 'Automatic file deletion after approximately one hour.',
                 'Suitable for desktop and mobile devices.',
@@ -552,7 +552,7 @@ export default function ArticlePage() {
               {/* Benefits */}
               <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-blue-100">
                 {[
-                  'Supports files up to 100 MB',
+                  'Supports files up to 50 MB',
                   'No registration required',
                   'Fast conversion process',
                   'Automatic file deletion after approximately 1 hour',
