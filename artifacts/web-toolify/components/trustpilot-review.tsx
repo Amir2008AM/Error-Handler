@@ -79,27 +79,20 @@ export function TrustpilotReview() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '7px' }}>
               <div
                 style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   backgroundColor: TP_GREEN,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  padding: '5px 10px',
                 }}
               >
-                <TrustpilotStar size={16} />
+                <img
+                  src="/logo-white.svg"
+                  alt="ToolifyPDF"
+                  style={{ height: '18px', width: 'auto', display: 'block' }}
+                />
               </div>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  color: TP_GREEN,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Trustpilot
-              </span>
             </div>
 
             <div style={{ display: 'flex', gap: '2px' }}>
