@@ -124,7 +124,6 @@ export default async function RootLayout({
             </Script>
           </>
         )}
-        <RouteProgress />
         <DisconnectBeacon />
         <HeartbeatBeacon />
         <I18nProvider initialLang={initialLang}>

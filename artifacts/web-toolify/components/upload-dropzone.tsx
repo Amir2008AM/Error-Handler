@@ -117,24 +117,14 @@ export function UploadDropzone({
     try {
       const { pickFromGoogleDrive, isGoogleDriveConfigured } = await import('@/lib/upload/google-drive')
       if (!isGoogleDriveConfigured()) {
-        setGdError(
-          'Google Drive is not connected. Add NEXT_PUBLIC_GOOGLE_API_KEY, NEXT_PUBLIC_GOOGLE_CLIENT_ID, and NEXT_PUBLIC_GOOGLE_APP_ID to your environment secrets.',
-        )
+        setGdError('Google Drive غير مفعّل. تواصل مع المشرف لإعداده.')
         return
       }
       const files = await pickFromGoogleDrive({ accept, multiple })
-      if (files.length > 0) {
-        onFilesSelected(files)
-      }
+      if (files.length > 0) onFilesSelected(files)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Google Drive failed'
-      if (msg === 'GOOGLE_DRIVE_NOT_CONFIGURED') {
-        setGdError(
-          'Google Drive is not connected. Add your Google API credentials to your environment secrets to enable this feature.',
-        )
-      } else {
-        setGdError(msg)
-      }
+      setGdError(msg === 'GOOGLE_DRIVE_NOT_CONFIGURED' ? 'Google Drive غير مفعّل.' : msg)
     } finally {
       setGdLoading(false)
     }
