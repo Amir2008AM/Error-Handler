@@ -1,12 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
+
   images: {
     unoptimized: true,
   },
 
   serverExternalPackages: [
     'pdf-parse', 'sharp', 'canvas',
-    'tesseract.js', 'franc', 'nanoid',
+    'pdfjs-dist', 'tesseract.js', 'franc', 'nanoid',
     'bullmq', 'ioredis',
   ],
 
@@ -59,17 +61,21 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'X-Content-Type-Options',  value: 'nosniff' },
-          { key: 'X-XSS-Protection',        value: '1; mode=block' },
-          { key: 'Referrer-Policy',          value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options',         value: 'nosniff' },
+          { key: 'X-XSS-Protection',               value: '1; mode=block' },
+          { key: 'Referrer-Policy',                 value: 'strict-origin-when-cross-origin' },
+          { key: 'Cross-Origin-Resource-Policy',    value: 'cross-origin' },
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
           ...(isProd
             ? [
-                { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-                { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+                { key: 'X-Frame-Options',               value: 'SAMEORIGIN' },
+                { key: 'Cross-Origin-Opener-Policy',     value: 'same-origin-allow-popups' },
+                // credentialless allows cross-origin resources (AdSense, Google fonts)
+                // without requiring them to set CORP headers
+                { key: 'Cross-Origin-Embedder-Policy',  value: 'credentialless' },
               ]
             : []),
           ...(isProd
