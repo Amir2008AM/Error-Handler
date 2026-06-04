@@ -7,9 +7,10 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Upload, Download, Loader2, Copy, Check, ScanText, Search,
+  Download, Loader2, Copy, Check, ScanText, Search,
   Languages, AlertCircle, ChevronDown,
 } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -224,9 +225,9 @@ export function OcrImageClient() {
     }
   }, [])
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFile = e.target.files?.[0]
+  const handleFilesSelected = useCallback(
+    (files: File[]) => {
+      const selectedFile = files[0]
       if (selectedFile && selectedFile.type.startsWith('image/')) {
         setFile(selectedFile)
         setExtractedText('')
@@ -332,25 +333,12 @@ export function OcrImageClient() {
         <BackButton />
 
         {!file ? (
-          <label className="block">
-            <input type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{t('ocr.uploadImage')}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('ocr.supportedFormats')}
-                  </p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('ocr.supportedLanguages')}
-                </p>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept="image/*"
+            onFilesSelected={handleFilesSelected}
+            label={t('ocr.uploadImage')}
+            sublabel={t('ocr.supportedFormats')}
+          />
         ) : (
           <div className="space-y-5">
             <div className="grid gap-5 md:grid-cols-2">

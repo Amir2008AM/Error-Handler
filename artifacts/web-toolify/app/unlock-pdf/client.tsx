@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Download, Loader2, FileText, Unlock, Eye, EyeOff } from 'lucide-react'
+import { Download, Loader2, FileText, Eye, EyeOff } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { ProcessedFileCard } from '@/components/processed-file-card'
@@ -31,9 +32,9 @@ export function UnlockPdfClient() {
   const [result, setResult] = useState<UnlockResult | null>(null)
   const progress = useRealProgress()
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile && selectedFile.type === 'application/pdf') {
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selectedFile = files[0]
+    if (selectedFile) {
       setFile(selectedFile)
       setResult(null)
       progress.reset()
@@ -89,25 +90,12 @@ export function UnlockPdfClient() {
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Unlock className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{t(lang, 'unlock.uploadTitle')}</p>
-                  <p className="text-sm text-muted-foreground">{t(lang, 'unlock.clickOrDrag')}</p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pdf,application/pdf"
+            onFilesSelected={handleFilesSelected}
+            label={t(lang, 'unlock.uploadTitle')}
+            sublabel={t(lang, 'unlock.clickOrDrag')}
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

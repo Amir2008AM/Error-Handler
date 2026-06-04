@@ -5,9 +5,10 @@ import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
-  Upload, Download, Loader2, FileSpreadsheet, ScanSearch,
+  Download, Loader2, FileSpreadsheet, ScanSearch,
   FileText, CheckCircle2, Layers, AlignCenter, Globe, Shield,
 } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 import { BackButton } from '@/components/back-button'
@@ -62,27 +63,14 @@ export function PdfToExcelClient() {
   const [done, setDone]           = useState(false)
   const { startLoading, stopLoading } = useLoadingBar()
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0]
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selected = files[0]
     if (!selected) return
     if (!selected.name.toLowerCase().endsWith('.pdf')) {
       setError('Please upload a PDF file.')
       return
     }
     setFile(selected)
-    setError(null)
-    setDone(false)
-  }, [])
-
-  const handleDrop = useCallback((e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault()
-    const dropped = e.dataTransfer.files[0]
-    if (!dropped) return
-    if (!dropped.name.toLowerCase().endsWith('.pdf')) {
-      setError('Please drop a PDF file.')
-      return
-    }
-    setFile(dropped)
     setError(null)
     setDone(false)
   }, [])
@@ -130,41 +118,12 @@ export function PdfToExcelClient() {
         <BackButton />
 
         {!file ? (
-          <label
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            className="block cursor-pointer"
-          >
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">Upload a PDF</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Drag &amp; drop or click to browse — up to 50 MB
-                  </p>
-                </div>
-                <div className="flex flex-wrap justify-center gap-2 mt-1">
-                  {['Text PDF', 'Scanned PDF', 'Arabic / RTL', 'Multi-page tables'].map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 py-0.5"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pdf,application/pdf"
+            onFilesSelected={handleFilesSelected}
+            label="Upload a PDF"
+            sublabel="Drag & drop or click to browse — up to 50 MB"
+          />
         ) : (
           <div className="space-y-4">
             {/* File card */}

@@ -4,7 +4,8 @@ import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Upload, Download, Loader2, FileText } from 'lucide-react'
+import { Download, Loader2, FileText } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
@@ -18,21 +19,16 @@ export function PdfToPptClient() {
   const [file, setFile] = useState<File | null>(null)
   const progress        = useRealProgress()
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selected = e.target.files?.[0]
-      if (!selected) return
-
-      if (!selected.name.toLowerCase().endsWith('.pdf')) {
-        progress.fail('Please upload a PDF file (.pdf)')
-        return
-      }
-      setFile(selected)
-      progress.reset()
-      e.target.value = ''
-    },
-    [progress]
-  )
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selected = files[0]
+    if (!selected) return
+    if (!selected.name.toLowerCase().endsWith('.pdf')) {
+      progress.fail('Please upload a PDF file (.pdf)')
+      return
+    }
+    setFile(selected)
+    progress.reset()
+  }, [progress])
 
   const handleConvert = async () => {
     if (!file) return
@@ -93,27 +89,12 @@ export function PdfToPptClient() {
         <BackButton />
 
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">Upload PDF</p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports .pdf files up to 50 MB
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pdf,application/pdf"
+            onFilesSelected={handleFilesSelected}
+            label="Upload PDF"
+            sublabel="Supports .pdf files up to 50 MB"
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import { Upload, Download, Loader2, FileText, Image, Info } from 'lucide-react'
+import { Download, Loader2, FileText, Image, Info } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -30,11 +31,9 @@ export function PdfToJpgClient() {
   const [dpi, setDpi] = useState(150)
   const { startLoading, stopLoading } = useLoadingBar()
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile && selectedFile.type === 'application/pdf') {
-      setFile(selectedFile)
-    }
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selectedFile = files[0]
+    if (selectedFile) setFile(selectedFile)
   }, [])
 
   const handleConvert = async () => {
@@ -107,25 +106,12 @@ export function PdfToJpgClient() {
           </div>
         </Card>
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{t(lang, 'pdfToJpg.uploadTitle')}</p>
-                  <p className="text-sm text-muted-foreground">{t(lang, 'pdfToJpg.clickOrDrag')}</p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pdf,application/pdf"
+            onFilesSelected={handleFilesSelected}
+            label={t(lang, 'pdfToJpg.uploadTitle')}
+            sublabel={t(lang, 'pdfToJpg.clickOrDrag')}
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

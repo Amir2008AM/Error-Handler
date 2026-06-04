@@ -4,7 +4,8 @@ import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Upload, Download, Loader2, Presentation } from 'lucide-react'
+import { Download, Loader2, Presentation } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
@@ -18,10 +19,9 @@ export function PptToPdfClient() {
   const [file, setFile]     = useState<File | null>(null)
   const progress            = useRealProgress()
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0]
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selected = files[0]
     if (!selected) return
-
     const name = selected.name.toLowerCase()
     if (!name.endsWith('.pptx') && !name.endsWith('.ppt')) {
       progress.fail('Please upload a PowerPoint file (.pptx or .ppt)')
@@ -29,8 +29,6 @@ export function PptToPdfClient() {
     }
     setFile(selected)
     progress.reset()
-    // Reset the input so the same file can be re-selected
-    e.target.value = ''
   }, [progress])
 
   const handleConvert = async () => {
@@ -91,27 +89,12 @@ export function PptToPdfClient() {
         <BackButton />
 
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">Upload PowerPoint</p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports .pptx and .ppt files up to 50 MB
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+            onFilesSelected={handleFilesSelected}
+            label="Upload PowerPoint"
+            sublabel="Supports .pptx and .ppt files up to 50 MB"
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

@@ -4,7 +4,8 @@ import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Upload, Download, Loader2, FileText, TrendingDown, CheckCircle2 } from 'lucide-react'
+import { Download, Loader2, FileText, TrendingDown, CheckCircle2 } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -56,8 +57,8 @@ export function CompressPdfClient() {
     return t('compress.maximumDesc')
   }
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selectedFile = files[0]
     if (selectedFile) {
       setFile(selectedFile)
       setResult(null)
@@ -119,25 +120,12 @@ export function CompressPdfClient() {
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{t('common.uploadPdf')}</p>
-                  <p className="text-sm text-muted-foreground">{t('common.clickOrDragPdf')}</p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pdf,application/pdf"
+            onFilesSelected={handleFilesSelected}
+            label={t('common.uploadPdf')}
+            sublabel={t('common.clickOrDragPdf')}
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

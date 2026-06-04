@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Upload, Download, Loader2, FileText, Settings } from 'lucide-react'
+import { Download, Loader2, FileText, Settings } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -25,8 +26,8 @@ export function WordToPdfClient() {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const progress = useRealProgress()
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selectedFile = files[0]
     if (selectedFile) {
       const ext = selectedFile.name.toLowerCase()
       if (ext.endsWith('.docx') || ext.endsWith('.doc')) {
@@ -95,27 +96,12 @@ export function WordToPdfClient() {
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{t(lang, 'wordToPdf.uploadTitle')}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t(lang, 'wordToPdf.supportedFormats')}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+            onFilesSelected={handleFilesSelected}
+            label={t(lang, 'wordToPdf.uploadTitle')}
+            sublabel={t(lang, 'wordToPdf.supportedFormats')}
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

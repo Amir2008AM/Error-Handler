@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Upload, Download, Loader2, FileText } from 'lucide-react'
+import { Download, Loader2, FileText } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
@@ -39,8 +40,8 @@ export function PageNumbersClient() {
     { value: 'page-of-total', label: 'Page 1 of 10' },
   ]
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selectedFile = files[0]
     if (selectedFile) {
       setFile(selectedFile)
       progress.reset()
@@ -101,25 +102,12 @@ export function PageNumbersClient() {
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{t(lang, 'common.uploadPdf')}</p>
-                  <p className="text-sm text-muted-foreground">{t(lang, 'common.clickOrDragPdf')}</p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pdf,application/pdf"
+            onFilesSelected={handleFilesSelected}
+            label={t(lang, 'common.uploadPdf')}
+            sublabel={t(lang, 'common.clickOrDragPdf')}
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-4">

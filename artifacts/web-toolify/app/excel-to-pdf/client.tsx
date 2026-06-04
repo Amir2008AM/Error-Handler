@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Upload, Download, Loader2, Table, Settings } from 'lucide-react'
+import { Download, Loader2, Table, Settings } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 import { BackButton } from '@/components/back-button'
@@ -24,8 +25,8 @@ export function ExcelToPdfClient() {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('landscape')
   const { startLoading, stopLoading } = useLoadingBar()
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selectedFile = files[0]
     if (selectedFile) {
       const ext = selectedFile.name.toLowerCase()
       if (ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.csv')) {
@@ -92,27 +93,12 @@ export function ExcelToPdfClient() {
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">Upload Excel File</p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports .xlsx, .xls, and .csv files
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+            onFilesSelected={handleFilesSelected}
+            label="Upload Excel File"
+            sublabel="Supports .xlsx, .xls, and .csv files"
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

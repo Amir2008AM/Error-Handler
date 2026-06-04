@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, Download, Loader2, FileText, Lock, Eye, EyeOff } from 'lucide-react'
+import { Download, Loader2, FileText, Eye, EyeOff } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { ProcessedFileCard } from '@/components/processed-file-card'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -28,8 +29,8 @@ export function ProtectPdfClient() {
   const [result, setResult] = useState<ProtectResult | null>(null)
   const progress = useRealProgress()
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  const handleFilesSelected = useCallback((files: File[]) => {
+    const selectedFile = files[0]
     if (selectedFile) {
       setFile(selectedFile)
       setError('')
@@ -98,25 +99,12 @@ export function ProtectPdfClient() {
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
-          <label className="block">
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-                  <Lock className="w-8 h-8 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-lg">{t('protect.uploadTitle')}</p>
-                  <p className="text-sm text-muted-foreground">{t('common.clickOrDragPdf')}</p>
-                </div>
-              </div>
-            </Card>
-          </label>
+          <UploadDropzone
+            accept=".pdf,application/pdf"
+            onFilesSelected={handleFilesSelected}
+            label={t('protect.uploadTitle')}
+            sublabel={t('common.clickOrDragPdf')}
+          />
         ) : (
           <div className="space-y-6">
             <Card className="p-6">

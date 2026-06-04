@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState, useMemo } from 'react'
-import { Upload, AlertCircle } from 'lucide-react'
+import { Upload, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UploadDropzoneProps {
@@ -21,6 +21,27 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
+function GoogleDriveIcon() {
+  return (
+    <svg className="w-4 h-4 shrink-0" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+      <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+      <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+      <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+      <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+      <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+      <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+    </svg>
+  )
+}
+
+function DropboxIcon() {
+  return (
+    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 2L0 6l6 4 6-4L6 2zm12 0l-6 4 6 4 6-4-6-4zM0 14l6 4 6-4-6-4-6 4zm18-4l-6 4 6 4 6-4-6-4zM6 19.5L12 23l6-3.5-6-4-6 4z" fill="#0061FF"/>
+    </svg>
+  )
+}
+
 export function UploadDropzone({
   accept,
   multiple = false,
@@ -33,6 +54,8 @@ export function UploadDropzone({
 }: UploadDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [sizeError, setSizeError] = useState<string | null>(null)
+  const [gdLoading, setGdLoading] = useState(false)
+  const [gdError, setGdError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const maxTotalBytes = maxTotalSizeMB * 1024 * 1024
@@ -46,6 +69,7 @@ export function UploadDropzone({
     (fileList: FileList | null) => {
       if (!fileList) return
       setSizeError(null)
+      setGdError(null)
 
       const maxPerFile = maxSizeMB * 1024 * 1024
       const validFiles: File[] = []
@@ -86,6 +110,35 @@ export function UploadDropzone({
   const handleClick = () => {
     inputRef.current?.click()
   }
+
+  const handleGoogleDrive = useCallback(async () => {
+    setGdError(null)
+    setGdLoading(true)
+    try {
+      const { pickFromGoogleDrive, isGoogleDriveConfigured } = await import('@/lib/upload/google-drive')
+      if (!isGoogleDriveConfigured()) {
+        setGdError(
+          'Google Drive is not connected. Add NEXT_PUBLIC_GOOGLE_API_KEY, NEXT_PUBLIC_GOOGLE_CLIENT_ID, and NEXT_PUBLIC_GOOGLE_APP_ID to your environment secrets.',
+        )
+        return
+      }
+      const files = await pickFromGoogleDrive({ accept, multiple })
+      if (files.length > 0) {
+        onFilesSelected(files)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google Drive failed'
+      if (msg === 'GOOGLE_DRIVE_NOT_CONFIGURED') {
+        setGdError(
+          'Google Drive is not connected. Add your Google API credentials to your environment secrets to enable this feature.',
+        )
+      } else {
+        setGdError(msg)
+      }
+    } finally {
+      setGdLoading(false)
+    }
+  }, [accept, multiple, onFilesSelected])
 
   return (
     <div className="space-y-3">
@@ -183,6 +236,42 @@ export function UploadDropzone({
           className="hidden"
           onChange={(e) => { handleFiles(e.target.files); e.target.value = '' }}
         />
+      </div>
+
+      <div className="space-y-2 pt-1">
+        <div className="relative flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground px-1 shrink-0">or import from</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleGoogleDrive}
+            disabled={gdLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background hover:bg-muted/60 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {gdLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            ) : (
+              <GoogleDriveIcon />
+            )}
+            Google Drive
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Dropbox integration coming soon"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-muted/30 text-sm font-medium text-muted-foreground cursor-not-allowed opacity-60"
+          >
+            <DropboxIcon />
+            Dropbox
+            <span className="text-xs opacity-70">(soon)</span>
+          </button>
+        </div>
+        {gdError && (
+          <p className="text-xs text-destructive leading-relaxed">{gdError}</p>
+        )}
       </div>
     </div>
   )

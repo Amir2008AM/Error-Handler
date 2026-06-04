@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Upload, Download, Loader2, Code, FileCode, Settings } from 'lucide-react'
+import { Download, Loader2, Code, FileCode, Settings } from 'lucide-react'
+import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { useLoadingBar } from '@/components/global-loading-bar'
 import { BackButton } from '@/components/back-button'
@@ -28,8 +29,8 @@ export function HtmlToPdfClient() {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const { startLoading, stopLoading } = useLoadingBar()
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  const handleFilesSelected = (files: File[]) => {
+    const selectedFile = files[0]
     if (selectedFile) {
       const ext = selectedFile.name.toLowerCase()
       if (ext.endsWith('.html') || ext.endsWith('.htm')) {
@@ -135,27 +136,12 @@ export function HtmlToPdfClient() {
 
           <TabsContent value="file" className="mt-4">
             {!file ? (
-              <label className="block">
-                <input
-                  type="file"
-                  accept=".html,.htm,text/html"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <Card className="p-12 border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Upload className="w-8 h-8 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-lg">Upload HTML File</p>
-                      <p className="text-sm text-muted-foreground">
-                        Supports .html and .htm files
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              </label>
+              <UploadDropzone
+                accept=".html,.htm,text/html"
+                onFilesSelected={handleFilesSelected}
+                label="Upload HTML File"
+                sublabel="Supports .html and .htm files"
+              />
             ) : (
               <Card className="p-6">
                 <div className="flex items-center gap-4">
