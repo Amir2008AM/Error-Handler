@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { X, GripVertical, AlertTriangle } from 'lucide-react'
+import { X, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ImageItem {
@@ -14,7 +13,6 @@ export interface ImageItem {
 interface ImageGalleryProps {
   images: ImageItem[]
   onRemove: (id: string) => void
-  onReorder: (fromId: string, toId: string) => void
   onToggleOrder?: (id: string) => void
   isProcessing?: boolean
   maxTotalSizeMB?: number
@@ -37,72 +35,15 @@ export function getIsSizeExceeded(images: ImageItem[], maxTotalSizeMB?: number):
 export function ImageGallery({
   images,
   onRemove,
-  onReorder,
   onToggleOrder,
   isProcessing = false,
   maxTotalSizeMB,
   showOrderBadges = false,
   clickToToggleLabel,
 }: ImageGalleryProps) {
-  const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
-  const touchRef = useRef<{ id: string } | null>(null)
-
   const totalSize = images.reduce((sum, img) => sum + img.file.size, 0)
   const maxTotalBytes = maxTotalSizeMB ? maxTotalSizeMB * 1024 * 1024 : Infinity
   const isSizeExceeded = maxTotalSizeMB ? totalSize > maxTotalBytes : false
-
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    if (isProcessing) return
-    e.dataTransfer.effectAllowed = 'move'
-    setDraggedId(id)
-  }
-
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault()
-    if (isProcessing) return
-    setDragOverId(id)
-  }
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault()
-    if (!draggedId || draggedId === targetId || isProcessing) return
-    onReorder(draggedId, targetId)
-    setDraggedId(null)
-    setDragOverId(null)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedId(null)
-    setDragOverId(null)
-  }
-
-  const handleTouchStart = (e: React.TouchEvent, id: string) => {
-    if (isProcessing) return
-    touchRef.current = { id }
-    setDraggedId(id)
-  }
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchRef.current || isProcessing) return
-    e.preventDefault()
-    const touch = e.touches[0]
-    const el = document.elementFromPoint(touch.clientX, touch.clientY)
-    const card = el?.closest('[data-gallery-id]')
-    const targetId = card?.getAttribute('data-gallery-id') ?? null
-    setDragOverId(targetId)
-  }, [isProcessing])
-
-  const handleTouchEnd = useCallback(() => {
-    if (!touchRef.current) return
-    const fromId = touchRef.current.id
-    if (dragOverId && dragOverId !== fromId) {
-      onReorder(fromId, dragOverId)
-    }
-    touchRef.current = null
-    setDraggedId(null)
-    setDragOverId(null)
-  }, [dragOverId, onReorder])
 
   return (
     <div className="space-y-3">
@@ -124,24 +65,12 @@ export function ImageGallery({
         {images.map((img) => (
           <div
             key={img.id}
-            data-gallery-id={img.id}
-            draggable={!isProcessing}
-            onDragStart={(e) => handleDragStart(e, img.id)}
-            onDragOver={(e) => handleDragOver(e, img.id)}
-            onDrop={(e) => handleDrop(e, img.id)}
-            onDragEnd={handleDragEnd}
-            onTouchStart={(e) => handleTouchStart(e, img.id)}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{ touchAction: 'none' }}
             className={cn(
               'relative group rounded-xl overflow-hidden border-2 transition-all select-none',
-              onToggleOrder ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+              onToggleOrder ? 'cursor-pointer' : 'cursor-default',
               showOrderBadges && img.order != null
                 ? 'border-primary shadow-md ring-2 ring-primary/20'
                 : 'border-border hover:border-primary/40',
-              dragOverId === img.id && draggedId !== img.id && 'border-primary scale-105 shadow-lg',
-              draggedId === img.id && 'opacity-40 scale-95',
               isProcessing && 'pointer-events-none opacity-60',
             )}
             onClick={() => !isProcessing && onToggleOrder?.(img.id)}
@@ -159,10 +88,6 @@ export function ImageGallery({
                 {img.order}
               </div>
             )}
-
-            <div className="absolute top-2 right-8 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <GripVertical className="w-4 h-4 text-white drop-shadow" />
-            </div>
 
             <button
               onClick={(e) => { e.stopPropagation(); onRemove(img.id) }}

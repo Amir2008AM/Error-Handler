@@ -5,6 +5,7 @@ import { UploadDropzone } from '@/components/upload-dropzone'
 import { ImageGallery, getIsSizeExceeded } from '@/components/image-gallery'
 import type { ImageItem } from '@/components/image-gallery'
 import { Download, Loader2, CheckCircle2, RotateCcw, AlertTriangle } from 'lucide-react'
+
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
@@ -115,18 +116,6 @@ export function ImageToPdfClient() {
     )
   }
 
-  const handleReorder = useCallback((fromId: string, toId: string) => {
-    setImages((prev) => {
-      const arr     = [...prev]
-      const fromIdx = arr.findIndex((i) => i.id === fromId)
-      const toIdx   = arr.findIndex((i) => i.id === toId)
-      if (fromIdx === -1 || toIdx === -1) return prev
-      const [moved] = arr.splice(fromIdx, 1)
-      arr.splice(toIdx, 0, moved)
-      return arr
-    })
-    setDownloadUrl(null)
-  }, [])
 
   const toggleOrder = useCallback((id: string) => {
     setImages((prev) => {
@@ -293,7 +282,6 @@ export function ImageToPdfClient() {
           <ImageGallery
             images={images}
             onRemove={removeImage}
-            onReorder={handleReorder}
             onToggleOrder={toggleOrder}
             isProcessing={isProcessing}
             maxTotalSizeMB={MAX_TOTAL_SIZE_MB}
