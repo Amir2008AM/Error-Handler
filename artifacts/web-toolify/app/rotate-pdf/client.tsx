@@ -1,4 +1,6 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
+import { formatBytes } from '@/lib/utils/format-bytes'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -9,13 +11,7 @@ import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-}
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function RotatePdfClient() {
   const { t } = useI18n()
@@ -35,6 +31,7 @@ export function RotatePdfClient() {
   }, [progress])
 
   const handleRotate = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
     setError(null)
     setResult(null)

@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -23,7 +24,6 @@ const formats: { value: string; label: string; descKey: TranslationKey }[] = [
   { value: 'avif', label: 'AVIF', descKey: 'convert.nextGen' },
 ]
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function ConvertImageClient() {
   const { t } = useI18n()
@@ -45,6 +45,7 @@ export function ConvertImageClient() {
   }, [progress])
 
   const handleConvert = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
 
     setError(null)

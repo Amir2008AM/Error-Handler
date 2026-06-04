@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
@@ -17,7 +18,6 @@ import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('word-to-pdf')!
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function WordToPdfClient() {
   const { lang } = useI18n()
@@ -40,6 +40,7 @@ export function WordToPdfClient() {
   }, [progress])
 
   const handleConvert = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
 
     progress.startProcessing('Uploading document...')

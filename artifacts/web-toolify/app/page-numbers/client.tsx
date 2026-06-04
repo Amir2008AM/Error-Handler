@@ -49,6 +49,7 @@ export function PageNumbersClient() {
   }, [progress])
 
   const handleProcess = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
 
     progress.startProcessing('Uploading PDF...')

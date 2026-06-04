@@ -42,6 +42,7 @@ export function UnlockPdfClient() {
   }, [progress])
 
   const handleUnlock = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
 
     progress.startProcessing('Uploading PDF...')

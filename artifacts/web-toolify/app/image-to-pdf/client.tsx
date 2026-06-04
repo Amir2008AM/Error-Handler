@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -84,7 +85,6 @@ async function pollJobUntilDone(
   throw new Error('PDF generation timed out — please try with fewer images or try again.')
 }
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function ImageToPdfClient() {
   const { lang } = useI18n()
@@ -134,6 +134,8 @@ export function ImageToPdfClient() {
 
   const selectAll = () => setImages((prev) => prev.map((img, idx) => ({ ...img, order: idx + 1 })))
 
+  const deselectAll = () => setImages((prev) => prev.map((img) => ({ ...img, order: null })))
+
   const clearAll = () => {
     images.forEach((img) => URL.revokeObjectURL(img.preview))
     setImages([])
@@ -150,6 +152,7 @@ export function ImageToPdfClient() {
   const isProcessing   = progress.status === 'processing'
 
   const handleConvert = async () => {
+    if (progress.status === 'processing') return
     if (selectedImages.length === 0) {
       setError(t(lang, 'imageToPdf.selectImages'))
       return
@@ -268,7 +271,7 @@ export function ImageToPdfClient() {
               </button>
               <span className="text-muted-foreground text-xs">|</span>
               <button
-                onClick={clearAll}
+                onClick={deselectAll}
                 disabled={isProcessing}
                 className="text-xs text-destructive font-medium hover:underline disabled:opacity-50"
               >

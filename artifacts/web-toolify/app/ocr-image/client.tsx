@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
@@ -188,7 +189,6 @@ function LanguageSelector({
   )
 }
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function OcrImageClient() {
   const { t } = useI18n()
@@ -247,6 +247,7 @@ export function OcrImageClient() {
   )
 
   const handleExtract = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
 
     if (!language) {

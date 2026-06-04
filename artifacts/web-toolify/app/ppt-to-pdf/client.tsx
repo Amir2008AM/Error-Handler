@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
@@ -13,7 +14,6 @@ import { getToolBySlug } from '@/lib/tools'
 
 const tool = getToolBySlug('ppt-to-pdf')!
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function PptToPdfClient() {
   const [file, setFile]     = useState<File | null>(null)
@@ -32,6 +32,7 @@ export function PptToPdfClient() {
   }, [progress])
 
   const handleConvert = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
 
     progress.startProcessing('Uploading presentation...')

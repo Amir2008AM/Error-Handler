@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -20,7 +21,6 @@ interface PageItem {
 
 let idCounter = 0
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function OrganizePdfClient() {
   const [file,        setFile]        = useState<File | null>(null)
@@ -99,6 +99,7 @@ export function OrganizePdfClient() {
   // ── Generate PDF ─────────────────────────────────────────────────────────
 
   const handleProcess = async () => {
+    if (progress.status === 'processing') return
     if (!file || pages.length === 0) return
 
     setError(null)
@@ -122,7 +123,7 @@ export function OrganizePdfClient() {
       const bytes = await outDoc.save()
       const blob  = new Blob([bytes], { type: 'application/pdf' })
 
-      setDownloadUrl(URL.createObjectURL(blob))
+      setDownloadUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
       progress.stageDone(`Done — ${pages.length} page${pages.length !== 1 ? 's' : ''} in new order`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to organize PDF'
@@ -134,7 +135,7 @@ export function OrganizePdfClient() {
   const reset = () => {
     setFile(null)
     setPages([])
-    setDownloadUrl(null)
+    setDownloadUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
     setError(null)
     progress.reset()
   }

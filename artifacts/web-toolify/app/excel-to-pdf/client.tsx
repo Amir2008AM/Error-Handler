@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
@@ -14,7 +15,6 @@ import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('excel-to-pdf')!
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function ExcelToPdfClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -39,6 +39,7 @@ export function ExcelToPdfClient() {
   }, [])
 
   const handleConvert = async () => {
+    if (processing) return
     if (!file) return
 
     setProcessing(true)

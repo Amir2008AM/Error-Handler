@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -19,7 +20,6 @@ interface ResizeResult {
   outputSize: number
 }
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function ResizeImageClient() {
   const { lang } = useI18n()
@@ -73,6 +73,7 @@ export function ResizeImageClient() {
   }
 
   const handleResize = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
     const w = parseInt(width, 10)
     const h = parseInt(height, 10)

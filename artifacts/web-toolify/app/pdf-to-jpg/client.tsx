@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
@@ -18,7 +19,6 @@ import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('pdf-to-jpg')!
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function PdfToJpgClient() {
   const { lang } = useI18n()
@@ -37,6 +37,7 @@ export function PdfToJpgClient() {
   }, [])
 
   const handleConvert = async () => {
+    if (processing) return
     if (!file) return
 
     setProcessing(true)

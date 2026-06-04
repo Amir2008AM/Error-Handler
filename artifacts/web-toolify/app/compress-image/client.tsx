@@ -1,4 +1,6 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
+import { formatBytes } from '@/lib/utils/format-bytes'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -16,13 +18,7 @@ interface CompressedResult {
   savings: number
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-}
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function CompressImageClient() {
   const [file, setFile] = useState<File | null>(null)
@@ -44,6 +40,7 @@ export function CompressImageClient() {
   }, [progress])
 
   const handleCompress = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
     setError(null)
     setResult(null)

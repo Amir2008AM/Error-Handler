@@ -1,4 +1,5 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState } from 'react'
 import { ToolPageLayout } from '@/components/tool-page-layout'
@@ -16,7 +17,6 @@ import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('html-to-pdf')!
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function HtmlToPdfClient() {
   const [mode, setMode] = useState<'file' | 'paste'>('paste')
@@ -43,6 +43,7 @@ export function HtmlToPdfClient() {
   }
 
   const handleConvert = async () => {
+    if (processing) return
     if (mode === 'file' && !file) return
     if (mode === 'paste' && !htmlContent.trim()) return
 

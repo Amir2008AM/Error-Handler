@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import { cookies } from 'next/headers'
 import { LoadingBarProvider } from '@/components/global-loading-bar'
+import { RouteProgress } from '@/components/route-progress'
 import { I18nProvider } from '@/lib/i18n/context'
 import DisconnectBeacon from '@/components/disconnect-beacon'
 import HeartbeatBeacon from '@/components/heartbeat-beacon'
@@ -123,6 +124,7 @@ export default async function RootLayout({
             </Script>
           </>
         )}
+        <RouteProgress />
         <DisconnectBeacon />
         <HeartbeatBeacon />
         <I18nProvider initialLang={initialLang}>

@@ -1,5 +1,27 @@
 'use client'
 
+interface PickerBuilderInstance {
+  setAppId: (id: string) => PickerBuilderInstance
+  setOAuthToken: (token: string) => PickerBuilderInstance
+  setDeveloperKey: (key: string) => PickerBuilderInstance
+  addView: (view: unknown) => PickerBuilderInstance
+  setTitle: (title: string) => PickerBuilderInstance
+  enableFeature: (feature: string) => PickerBuilderInstance
+  setCallback: (cb: (data: PickerCallbackData) => void) => PickerBuilderInstance
+  build: () => { setVisible: (v: boolean) => void }
+}
+
+interface PickerDoc {
+  id: string
+  name: string
+  mimeType: string
+}
+
+interface PickerCallbackData {
+  action: string
+  docs?: PickerDoc[]
+}
+
 declare global {
   interface Window {
     gapi: {
@@ -20,16 +42,7 @@ declare global {
         }
       }
       picker: {
-        PickerBuilder: new () => {
-          setAppId: (id: string) => ReturnType<typeof _pickerBuilder>
-          setOAuthToken: (token: string) => ReturnType<typeof _pickerBuilder>
-          setDeveloperKey: (key: string) => ReturnType<typeof _pickerBuilder>
-          addView: (view: unknown) => ReturnType<typeof _pickerBuilder>
-          setTitle: (title: string) => ReturnType<typeof _pickerBuilder>
-          enableFeature: (feature: string) => ReturnType<typeof _pickerBuilder>
-          setCallback: (cb: (data: PickerCallbackData) => void) => ReturnType<typeof _pickerBuilder>
-          build: () => { setVisible: (v: boolean) => void }
-        }
+        PickerBuilder: new () => PickerBuilderInstance
         DocsView: new () => {
           setMimeTypes: (types: string) => unknown
           setIncludeFolders: (v: boolean) => unknown
@@ -39,19 +52,6 @@ declare global {
       }
     }
   }
-}
-
-type _pickerBuilder = Window['google']['picker']['PickerBuilder']
-
-interface PickerDoc {
-  id: string
-  name: string
-  mimeType: string
-}
-
-interface PickerCallbackData {
-  action: string
-  docs?: PickerDoc[]
 }
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY ?? ''

@@ -1,0 +1,2 @@
+- [Dynamic imports miss static grep](dynamic-import-blind-spot.md) — `grep` for unused files misses `await import(...)` calls; always check for dynamic imports before deleting lib files.
+- [Next.js stale validator](nextjs-stale-validator.md) — deleting an API route leaves a stale reference in `.next/types/validator.ts`; delete that file to keep `tsc --noEmit` clean.

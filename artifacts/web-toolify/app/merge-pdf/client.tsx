@@ -1,4 +1,6 @@
 'use client'
+import { TrustpilotReview } from '@/components/trustpilot-review'
+import { formatBytes } from '@/lib/utils/format-bytes'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -20,13 +22,7 @@ interface PdfEntry {
 
 let idCounter = 0
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-}
 
-import { TrustpilotReview } from '@/components/trustpilot-review'
 
 export function MergePdfClient() {
   const { t } = useI18n()
@@ -96,6 +92,7 @@ export function MergePdfClient() {
   }
 
   const handleMerge = async () => {
+    if (progress.status === 'processing') return
     if (pdfs.length < 2) {
       setError(t('merge.minFilesError'))
       return
@@ -125,7 +122,7 @@ export function MergePdfClient() {
       const mergedPdfBytes = await mergedPdf.save()
 
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
-      setDownloadUrl(URL.createObjectURL(blob))
+      setDownloadUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
 
       progress.stageDone(t('merge.successTitle'))
     } catch (err: any) {

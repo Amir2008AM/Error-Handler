@@ -40,6 +40,7 @@ export function ProtectPdfClient() {
   }, [progress])
 
   const handleProtect = async () => {
+    if (progress.status === 'processing') return
     if (!file) return
 
     if (password.length < 4) {
