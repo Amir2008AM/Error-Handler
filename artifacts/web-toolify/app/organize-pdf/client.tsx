@@ -10,7 +10,6 @@ import {
 import { cn } from '@/lib/utils'
 import { PDFDocument } from 'pdf-lib'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
-import { BackButton } from '@/components/back-button'
 
 interface PageItem {
   /** position in the reordered list (0-based) */
@@ -145,8 +144,6 @@ export function OrganizePdfClient() {
 
   return (
     <div className="space-y-6">
-      <BackButton />
-
       <UploadDropzone
         accept="application/pdf"
         multiple={false}

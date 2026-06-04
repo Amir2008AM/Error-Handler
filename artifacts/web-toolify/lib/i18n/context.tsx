@@ -52,6 +52,21 @@ async function loadLocale(code: string): Promise<TranslationMap> {
   }
 }
 
+function readLangCookie(): string {
+  if (typeof document === 'undefined') return DEFAULT_LANGUAGE
+  const match = document.cookie.match(/(?:^|;\s*)toolify_lang=([^;]+)/)
+  if (match) {
+    const code = match[1]
+    const supported = WEBSITE_LANGUAGES.map((l) => l.code)
+    if (supported.includes(code)) return code
+  }
+  try {
+    const stored = localStorage.getItem(LANG_KEY)
+    if (stored && WEBSITE_LANGUAGES.some((l) => l.code === stored)) return stored
+  } catch {}
+  return DEFAULT_LANGUAGE
+}
+
 export function I18nProvider({
   children,
   initialLang = DEFAULT_LANGUAGE,
@@ -62,6 +77,14 @@ export function I18nProvider({
   const [lang, setLangState] = useState<string>(initialLang)
   const [map, setMap] = useState<TranslationMap>(en)
   const cache = useRef<Record<string, TranslationMap>>({ en })
+
+  // On first client mount, restore language from cookie/localStorage
+  // This replaces the server-side cookies() call so the layout can be static
+  useEffect(() => {
+    const saved = readLangCookie()
+    if (saved !== initialLang) setLangState(saved)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const lang_obj = WEBSITE_LANGUAGES.find((l) => l.code === lang)
