@@ -4,73 +4,55 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { en, t as translate, type TranslationKey, type TranslationMap } from './translations'
 import { WEBSITE_LANGUAGES, DEFAULT_LANGUAGE, type WebsiteLanguage } from './website-languages'
 
-import ar    from './locales/ar'
-import bn    from './locales/bn'
-import cs    from './locales/cs'
-import da    from './locales/da'
-import de    from './locales/de'
-import el    from './locales/el'
-import es    from './locales/es'
-import fa    from './locales/fa'
-import fi    from './locales/fi'
-import fr    from './locales/fr'
-import hi    from './locales/hi'
-import hu    from './locales/hu'
-import id    from './locales/id'
-import it    from './locales/it'
-import ja    from './locales/ja'
-import ko    from './locales/ko'
-import nl    from './locales/nl'
-import no    from './locales/no'
-import pl    from './locales/pl'
-import pt    from './locales/pt'
-import ro    from './locales/ro'
-import ru    from './locales/ru'
-import sv    from './locales/sv'
-import th    from './locales/th'
-import tr    from './locales/tr'
-import uk    from './locales/uk'
-import vi    from './locales/vi'
-import zh    from './locales/zh'
-import zhTW  from './locales/zh-TW'
-
 const LANG_KEY = 'toolify_lang'
 
-const LOCALE_MAP: Record<string, TranslationMap> = {
-  ar:    ar    as unknown as TranslationMap,
-  bn:    bn    as unknown as TranslationMap,
-  cs:    cs    as unknown as TranslationMap,
-  da:    da    as unknown as TranslationMap,
-  de:    de    as unknown as TranslationMap,
-  el:    el    as unknown as TranslationMap,
-  en,
-  es:    es    as unknown as TranslationMap,
-  fa:    fa    as unknown as TranslationMap,
-  fi:    fi    as unknown as TranslationMap,
-  fr:    fr    as unknown as TranslationMap,
-  hi:    hi    as unknown as TranslationMap,
-  hu:    hu    as unknown as TranslationMap,
-  id:    id    as unknown as TranslationMap,
-  it:    it    as unknown as TranslationMap,
-  ja:    ja    as unknown as TranslationMap,
-  ko:    ko    as unknown as TranslationMap,
-  nl:    nl    as unknown as TranslationMap,
-  no:    no    as unknown as TranslationMap,
-  pl:    pl    as unknown as TranslationMap,
-  pt:    pt    as unknown as TranslationMap,
-  ro:    ro    as unknown as TranslationMap,
-  ru:    ru    as unknown as TranslationMap,
-  sv:    sv    as unknown as TranslationMap,
-  th:    th    as unknown as TranslationMap,
-  tr:    tr    as unknown as TranslationMap,
-  uk:    uk    as unknown as TranslationMap,
-  vi:    vi    as unknown as TranslationMap,
-  zh:    zh    as unknown as TranslationMap,
-  'zh-TW': zhTW as unknown as TranslationMap,
+// Only 'en' is bundled — all other locales are loaded on demand
+const localeLoaders: Record<string, () => Promise<{ default: unknown }>> = {
+  ar:    () => import('./locales/ar'),
+  bn:    () => import('./locales/bn'),
+  cs:    () => import('./locales/cs'),
+  da:    () => import('./locales/da'),
+  de:    () => import('./locales/de'),
+  el:    () => import('./locales/el'),
+  es:    () => import('./locales/es'),
+  fa:    () => import('./locales/fa'),
+  fi:    () => import('./locales/fi'),
+  fr:    () => import('./locales/fr'),
+  hi:    () => import('./locales/hi'),
+  hu:    () => import('./locales/hu'),
+  id:    () => import('./locales/id'),
+  it:    () => import('./locales/it'),
+  ja:    () => import('./locales/ja'),
+  ko:    () => import('./locales/ko'),
+  nl:    () => import('./locales/nl'),
+  no:    () => import('./locales/no'),
+  pl:    () => import('./locales/pl'),
+  pt:    () => import('./locales/pt'),
+  ro:    () => import('./locales/ro'),
+  ru:    () => import('./locales/ru'),
+  sv:    () => import('./locales/sv'),
+  th:    () => import('./locales/th'),
+  tr:    () => import('./locales/tr'),
+  uk:    () => import('./locales/uk'),
+  vi:    () => import('./locales/vi'),
+  zh:    () => import('./locales/zh'),
+  'zh-TW': () => import('./locales/zh-TW'),
 }
 
-function loadLocale(code: string): TranslationMap {
-  return LOCALE_MAP[code] ?? en
+const localeCache: Record<string, TranslationMap> = { en }
+
+async function loadLocale(code: string): Promise<TranslationMap> {
+  if (localeCache[code]) return localeCache[code]
+  const loader = localeLoaders[code]
+  if (!loader) return en
+  try {
+    const mod = await loader()
+    const map = (mod.default as unknown) as TranslationMap
+    localeCache[code] = map
+    return map
+  } catch {
+    return en
+  }
 }
 
 interface I18nContextValue {
@@ -106,30 +88,32 @@ export function I18nProvider({
   initialLang?: string
 }) {
   const [lang, setLangState] = useState<string>(initialLang)
-  const [map, setMap] = useState<TranslationMap>(loadLocale(initialLang))
-  const cache = useRef<Record<string, TranslationMap>>(LOCALE_MAP)
+  const [map, setMap] = useState<TranslationMap>(en)
+  const mountedRef = useRef(false)
 
-  // On first client mount, restore language from cookie/localStorage
+  // On first client mount, load the user's saved language
   useEffect(() => {
     const saved = readLangCookie()
-    if (saved !== lang) {
+    if (saved === 'en') return
+    loadLocale(saved).then((locale) => {
       setLangState(saved)
-      setMap(loadLocale(saved))
-    }
+      setMap(locale)
+      const lang_obj = WEBSITE_LANGUAGES.find((l) => l.code === saved)
+      document.documentElement.setAttribute('dir', lang_obj?.rtl ? 'rtl' : 'ltr')
+      document.documentElement.setAttribute('lang', saved)
+    })
+    mountedRef.current = true
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    const lang_obj = WEBSITE_LANGUAGES.find((l) => l.code === lang)
-    document.documentElement.setAttribute('dir', lang_obj?.rtl ? 'rtl' : 'ltr')
-    document.documentElement.setAttribute('lang', lang)
-    const locale = loadLocale(lang)
-    cache.current[lang] = locale
-    setMap(locale)
-  }, [lang])
-
   const setLang = useCallback((code: string) => {
-    setLangState(code)
+    loadLocale(code).then((locale) => {
+      setLangState(code)
+      setMap(locale)
+      const lang_obj = WEBSITE_LANGUAGES.find((l) => l.code === code)
+      document.documentElement.setAttribute('dir', lang_obj?.rtl ? 'rtl' : 'ltr')
+      document.documentElement.setAttribute('lang', code)
+    })
     try {
       document.cookie = `${LANG_KEY}=${code}; max-age=31536000; path=/; samesite=lax`
       localStorage.setItem(LANG_KEY, code)
