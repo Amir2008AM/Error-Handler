@@ -7,6 +7,7 @@ import { UploadDropzone } from '@/components/upload-dropzone'
 import {
   Download, Loader2, CheckCircle2, RotateCcw, X,
   FilePlus2, GripVertical, FileText, ArrowUp, ArrowDown,
+  Lock, AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PDFDocument } from 'pdf-lib'
@@ -18,11 +19,22 @@ interface PdfEntry {
   id: string
   file: File
   size: number
+  encrypted: boolean
+  checking: boolean
 }
 
 let idCounter = 0
 
-
+async function checkEncryption(file: File): Promise<boolean> {
+  try {
+    const buf = await file.arrayBuffer()
+    await PDFDocument.load(buf)
+    return false
+  } catch (err) {
+    if (err instanceof Error && err.message.toLowerCase().includes('encrypt')) return true
+    return false
+  }
+}
 
 export function MergePdfClient() {
   const { t } = useI18n()
@@ -41,8 +53,18 @@ export function MergePdfClient() {
       id: `pdf-${++idCounter}`,
       file,
       size: file.size,
+      encrypted: false,
+      checking: true,
     }))
     setPdfs((prev) => [...prev, ...newEntries])
+
+    for (const entry of newEntries) {
+      checkEncryption(entry.file).then((encrypted) => {
+        setPdfs((prev) =>
+          prev.map((p) => p.id === entry.id ? { ...p, encrypted, checking: false } : p)
+        )
+      })
+    }
   }, [progress])
 
   const remove = (id: string) => {
@@ -134,6 +156,9 @@ export function MergePdfClient() {
 
   const totalSize = pdfs.reduce((acc, p) => acc + p.size, 0)
   const isProcessing = progress.status === 'processing'
+  const encryptedCount = pdfs.filter((p) => p.encrypted).length
+  const hasEncrypted = encryptedCount > 0
+  const isChecking = pdfs.some((p) => p.checking)
 
   return (
     <div className="space-y-6">
@@ -164,6 +189,20 @@ export function MergePdfClient() {
             </button>
           </div>
 
+          {hasEncrypted && (
+            <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-red-500" />
+              <div>
+                <p className="font-semibold">
+                  {encryptedCount} ملف محمي بكلمة مرور — لا يمكن دمجه
+                </p>
+                <p className="text-red-700 mt-0.5 text-xs">
+                  احذف الملفات المحمية الموضّحة بالأحمر ثم أعد المحاولة.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-primary">
             {t('merge.reorderHint')}
           </div>
@@ -172,49 +211,89 @@ export function MergePdfClient() {
             {pdfs.map((pdf, idx) => (
               <div
                 key={pdf.id}
-                draggable={!isProcessing}
+                draggable={!isProcessing && !pdf.encrypted}
                 onDragStart={() => handleDragStart(pdf.id)}
                 onDragOver={(e) => handleDragOver(e, pdf.id)}
                 onDrop={(e) => handleDrop(e, pdf.id)}
                 onDragEnd={() => { setDraggedId(null); setDragOver(null) }}
                 className={cn(
-                  'flex items-center gap-3 bg-white border rounded-xl px-4 py-3 transition-all',
-                  dragOver === pdf.id ? 'border-primary bg-primary/5' : 'border-border',
+                  'flex items-center gap-3 border rounded-xl px-4 py-3 transition-all',
+                  pdf.encrypted
+                    ? 'bg-red-50 border-red-300'
+                    : dragOver === pdf.id
+                      ? 'bg-primary/5 border-primary'
+                      : 'bg-white border-border',
                   draggedId === pdf.id && 'opacity-50',
                   isProcessing && 'opacity-60'
                 )}
               >
-                <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
-                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                <GripVertical className={cn('w-4 h-4 shrink-0', pdf.encrypted ? 'text-red-300 cursor-not-allowed' : 'text-muted-foreground cursor-grab')} />
+                <div className={cn(
+                  'w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0',
+                  pdf.encrypted ? 'bg-red-100 text-red-600' : 'bg-primary/10 text-primary'
+                )}>
                   {idx + 1}
                 </div>
-                <FileText className="w-5 h-5 text-red-500 shrink-0" />
+
+                {pdf.encrypted ? (
+                  <Lock className="w-5 h-5 text-red-500 shrink-0" />
+                ) : (
+                  <FileText className="w-5 h-5 text-red-500 shrink-0" />
+                )}
+
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{pdf.file.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatBytes(pdf.size)}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={cn('text-sm font-medium truncate', pdf.encrypted ? 'text-red-700' : 'text-foreground')}>
+                      {pdf.file.name}
+                    </p>
+                    {pdf.checking && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        فحص...
+                      </span>
+                    )}
+                    {pdf.encrypted && !pdf.checking && (
+                      <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200 shrink-0">
+                        <Lock className="w-3 h-3" />
+                        محمي — لا يمكن دمجه
+                      </span>
+                    )}
+                  </div>
+                  <p className={cn('text-xs', pdf.encrypted ? 'text-red-500' : 'text-muted-foreground')}>
+                    {formatBytes(pdf.size)}
+                  </p>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    onClick={() => moveUp(idx)}
-                    disabled={idx === 0 || isProcessing}
-                    className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
-                    aria-label="Move up"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => moveDown(idx)}
-                    disabled={idx === pdfs.length - 1 || isProcessing}
-                    className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
-                    aria-label="Move down"
-                  >
-                    <ArrowDown className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+
+                {!pdf.encrypted && (
+                  <div className="flex gap-1 shrink-0">
+                    <button
+                      onClick={() => moveUp(idx)}
+                      disabled={idx === 0 || isProcessing}
+                      className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => moveDown(idx)}
+                      disabled={idx === pdfs.length - 1 || isProcessing}
+                      className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 <button
                   onClick={() => remove(pdf.id)}
                   disabled={isProcessing}
-                  className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0 disabled:opacity-30"
+                  className={cn(
+                    'p-1.5 rounded-lg transition-colors shrink-0 disabled:opacity-30',
+                    pdf.encrypted
+                      ? 'text-red-500 hover:bg-red-100 hover:text-red-700'
+                      : 'hover:bg-destructive/10 hover:text-destructive'
+                  )}
                   aria-label="Remove"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -236,11 +315,15 @@ export function MergePdfClient() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleMerge}
-              disabled={isProcessing || pdfs.length < 2}
+              disabled={isProcessing || pdfs.length < 2 || hasEncrypted || isChecking}
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isProcessing ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> {t('merge.processing')}</>
+              ) : isChecking ? (
+                <><Loader2 className="w-5 h-5 animate-spin" /> جارٍ الفحص...</>
+              ) : hasEncrypted ? (
+                <><Lock className="w-5 h-5" /> احذف الملفات المحمية أولاً</>
               ) : (
                 <><FilePlus2 className="w-5 h-5" /> {t('merge.action')} ({pdfs.length})</>
               )}

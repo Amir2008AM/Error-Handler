@@ -179,7 +179,7 @@ export class PDFProcessor extends BaseProcessor {
         // prevent memory spikes on large multi-file merges (e.g. 10 × 20MB).
         // copyPages must stay sequential because it mutates mergedPdf shared state.
         const loadedPdfs = await mapWithConcurrency(orderedFiles, 3, (buf) =>
-          PDFDocument.load(buf, { ignoreEncryption: true })
+          PDFDocument.load(buf)
         )
         for (const pdf of loadedPdfs) {
           const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
