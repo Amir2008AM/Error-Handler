@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Navbar } from '@/components/navbar'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { CompressImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
@@ -14,11 +13,8 @@ export const metadata: Metadata = {
 export default function CompressImagePage() {
   const tool = getToolBySlug('compress-image')!
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <ToolPageLayout tool={tool}>
-        <CompressImageClient />
-      </ToolPageLayout>
-    </div>
+    <ToolPageLayout tool={tool}>
+      <CompressImageClient />
+    </ToolPageLayout>
   )
 }

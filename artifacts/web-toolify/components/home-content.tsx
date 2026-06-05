@@ -6,7 +6,6 @@ import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } f
 import Link from 'next/link'
 import { LanguageSwitcher } from './language-switcher'
 import { ToolCard } from './tool-card'
-import { Navbar } from './navbar'
 import { tools, categories, categoryMeta, searchTools, type ToolCategory } from '@/lib/tools'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
@@ -49,8 +48,6 @@ export function HomeContent() {
 
   return (
     <main className="flex-1 bg-background">
-      <Navbar />
-
       {/* Hero Section */}
       <section className="bg-white border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16 text-center">

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Navbar } from '@/components/navbar'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { RotatePdfClient } from './client'
@@ -15,11 +14,8 @@ export default function RotatePdfPage() {
   if (!tool) notFound()
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <ToolPageLayout tool={tool}>
-        <RotatePdfClient />
-      </ToolPageLayout>
-    </div>
+    <ToolPageLayout tool={tool}>
+      <RotatePdfClient />
+    </ToolPageLayout>
   )
 }

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Navbar } from '@/components/navbar'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { AgeCalculatorClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
@@ -14,11 +13,8 @@ export const metadata: Metadata = {
 export default function AgeCalculatorPage() {
   const tool = getToolBySlug('age-calculator')!
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <ToolPageLayout tool={tool}>
-        <AgeCalculatorClient />
-      </ToolPageLayout>
-    </div>
+    <ToolPageLayout tool={tool}>
+      <AgeCalculatorClient />
+    </ToolPageLayout>
   )
 }

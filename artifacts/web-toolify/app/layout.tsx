@@ -6,6 +6,7 @@ import { I18nProvider } from '@/lib/i18n/context'
 import DisconnectBeacon from '@/components/disconnect-beacon'
 import HeartbeatBeacon from '@/components/heartbeat-beacon'
 import { MinimalFooter } from '@/components/minimal-footer'
+import { Navbar } from '@/components/navbar'
 import './globals.css'
 
 const inter = Inter({
@@ -121,6 +122,7 @@ export default function RootLayout({
         <HeartbeatBeacon />
         <I18nProvider>
           <LoadingBarProvider>
+            <Navbar />
             {children}
             <MinimalFooter />
           </LoadingBarProvider>

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Navbar } from '@/components/navbar'
 import { ToolPageLayout } from '@/components/tool-page-layout'
 import { PdfToWordClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
@@ -14,11 +13,8 @@ export const metadata: Metadata = {
 export default function PdfToWordPage() {
   const tool = getToolBySlug('pdf-to-word')!
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <ToolPageLayout tool={tool}>
-        <PdfToWordClient />
-      </ToolPageLayout>
-    </div>
+    <ToolPageLayout tool={tool}>
+      <PdfToWordClient />
+    </ToolPageLayout>
   )
 }
