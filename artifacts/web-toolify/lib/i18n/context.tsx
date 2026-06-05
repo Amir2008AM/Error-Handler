@@ -4,7 +4,74 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { en, t as translate, type TranslationKey, type TranslationMap } from './translations'
 import { WEBSITE_LANGUAGES, DEFAULT_LANGUAGE, type WebsiteLanguage } from './website-languages'
 
+import ar    from './locales/ar'
+import bn    from './locales/bn'
+import cs    from './locales/cs'
+import da    from './locales/da'
+import de    from './locales/de'
+import el    from './locales/el'
+import es    from './locales/es'
+import fa    from './locales/fa'
+import fi    from './locales/fi'
+import fr    from './locales/fr'
+import hi    from './locales/hi'
+import hu    from './locales/hu'
+import id    from './locales/id'
+import it    from './locales/it'
+import ja    from './locales/ja'
+import ko    from './locales/ko'
+import nl    from './locales/nl'
+import no    from './locales/no'
+import pl    from './locales/pl'
+import pt    from './locales/pt'
+import ro    from './locales/ro'
+import ru    from './locales/ru'
+import sv    from './locales/sv'
+import th    from './locales/th'
+import tr    from './locales/tr'
+import uk    from './locales/uk'
+import vi    from './locales/vi'
+import zh    from './locales/zh'
+import zhTW  from './locales/zh-TW'
+
 const LANG_KEY = 'toolify_lang'
+
+const LOCALE_MAP: Record<string, TranslationMap> = {
+  ar:    ar    as unknown as TranslationMap,
+  bn:    bn    as unknown as TranslationMap,
+  cs:    cs    as unknown as TranslationMap,
+  da:    da    as unknown as TranslationMap,
+  de:    de    as unknown as TranslationMap,
+  el:    el    as unknown as TranslationMap,
+  en,
+  es:    es    as unknown as TranslationMap,
+  fa:    fa    as unknown as TranslationMap,
+  fi:    fi    as unknown as TranslationMap,
+  fr:    fr    as unknown as TranslationMap,
+  hi:    hi    as unknown as TranslationMap,
+  hu:    hu    as unknown as TranslationMap,
+  id:    id    as unknown as TranslationMap,
+  it:    it    as unknown as TranslationMap,
+  ja:    ja    as unknown as TranslationMap,
+  ko:    ko    as unknown as TranslationMap,
+  nl:    nl    as unknown as TranslationMap,
+  no:    no    as unknown as TranslationMap,
+  pl:    pl    as unknown as TranslationMap,
+  pt:    pt    as unknown as TranslationMap,
+  ro:    ro    as unknown as TranslationMap,
+  ru:    ru    as unknown as TranslationMap,
+  sv:    sv    as unknown as TranslationMap,
+  th:    th    as unknown as TranslationMap,
+  tr:    tr    as unknown as TranslationMap,
+  uk:    uk    as unknown as TranslationMap,
+  vi:    vi    as unknown as TranslationMap,
+  zh:    zh    as unknown as TranslationMap,
+  'zh-TW': zhTW as unknown as TranslationMap,
+}
+
+function loadLocale(code: string): TranslationMap {
+  return LOCALE_MAP[code] ?? en
+}
 
 interface I18nContextValue {
   lang: string
@@ -17,48 +84,12 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null)
 
-async function loadLocale(code: string): Promise<TranslationMap> {
-  switch (code) {
-    case 'ar':    return (await import('./locales/ar')).default as unknown as TranslationMap
-    case 'bn':    return (await import('./locales/bn')).default as unknown as TranslationMap
-    case 'cs':    return (await import('./locales/cs')).default as unknown as TranslationMap
-    case 'da':    return (await import('./locales/da')).default as unknown as TranslationMap
-    case 'de':    return (await import('./locales/de')).default as unknown as TranslationMap
-    case 'el':    return (await import('./locales/el')).default as unknown as TranslationMap
-    case 'es':    return (await import('./locales/es')).default as unknown as TranslationMap
-    case 'fa':    return (await import('./locales/fa')).default as unknown as TranslationMap
-    case 'fi':    return (await import('./locales/fi')).default as unknown as TranslationMap
-    case 'fr':    return (await import('./locales/fr')).default as unknown as TranslationMap
-    case 'hi':    return (await import('./locales/hi')).default as unknown as TranslationMap
-    case 'hu':    return (await import('./locales/hu')).default as unknown as TranslationMap
-    case 'id':    return (await import('./locales/id')).default as unknown as TranslationMap
-    case 'it':    return (await import('./locales/it')).default as unknown as TranslationMap
-    case 'ja':    return (await import('./locales/ja')).default as unknown as TranslationMap
-    case 'ko':    return (await import('./locales/ko')).default as unknown as TranslationMap
-    case 'nl':    return (await import('./locales/nl')).default as unknown as TranslationMap
-    case 'no':    return (await import('./locales/no')).default as unknown as TranslationMap
-    case 'pl':    return (await import('./locales/pl')).default as unknown as TranslationMap
-    case 'pt':    return (await import('./locales/pt')).default as unknown as TranslationMap
-    case 'ro':    return (await import('./locales/ro')).default as unknown as TranslationMap
-    case 'ru':    return (await import('./locales/ru')).default as unknown as TranslationMap
-    case 'sv':    return (await import('./locales/sv')).default as unknown as TranslationMap
-    case 'th':    return (await import('./locales/th')).default as unknown as TranslationMap
-    case 'tr':    return (await import('./locales/tr')).default as unknown as TranslationMap
-    case 'uk':    return (await import('./locales/uk')).default as unknown as TranslationMap
-    case 'vi':    return (await import('./locales/vi')).default as unknown as TranslationMap
-    case 'zh':    return (await import('./locales/zh')).default as unknown as TranslationMap
-    case 'zh-TW': return (await import('./locales/zh-TW')).default as unknown as TranslationMap
-    default:      return en
-  }
-}
-
 function readLangCookie(): string {
   if (typeof document === 'undefined') return DEFAULT_LANGUAGE
   const match = document.cookie.match(/(?:^|;\s*)toolify_lang=([^;]+)/)
   if (match) {
     const code = match[1]
-    const supported = WEBSITE_LANGUAGES.map((l) => l.code)
-    if (supported.includes(code)) return code
+    if (WEBSITE_LANGUAGES.some((l) => l.code === code)) return code
   }
   try {
     const stored = localStorage.getItem(LANG_KEY)
@@ -75,14 +106,16 @@ export function I18nProvider({
   initialLang?: string
 }) {
   const [lang, setLangState] = useState<string>(initialLang)
-  const [map, setMap] = useState<TranslationMap>(en)
-  const cache = useRef<Record<string, TranslationMap>>({ en })
+  const [map, setMap] = useState<TranslationMap>(loadLocale(initialLang))
+  const cache = useRef<Record<string, TranslationMap>>(LOCALE_MAP)
 
   // On first client mount, restore language from cookie/localStorage
-  // This replaces the server-side cookies() call so the layout can be static
   useEffect(() => {
     const saved = readLangCookie()
-    if (saved !== initialLang) setLangState(saved)
+    if (saved !== lang) {
+      setLangState(saved)
+      setMap(loadLocale(saved))
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -90,19 +123,9 @@ export function I18nProvider({
     const lang_obj = WEBSITE_LANGUAGES.find((l) => l.code === lang)
     document.documentElement.setAttribute('dir', lang_obj?.rtl ? 'rtl' : 'ltr')
     document.documentElement.setAttribute('lang', lang)
-
-    if (lang === 'en') {
-      setMap(en)
-      return
-    }
-    if (cache.current[lang]) {
-      setMap(cache.current[lang])
-      return
-    }
-    loadLocale(lang).then((m) => {
-      cache.current[lang] = m
-      setMap(m)
-    })
+    const locale = loadLocale(lang)
+    cache.current[lang] = locale
+    setMap(locale)
   }, [lang])
 
   const setLang = useCallback((code: string) => {

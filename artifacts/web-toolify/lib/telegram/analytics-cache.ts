@@ -442,17 +442,17 @@ export function startAnalyticsCache(): void {
   // Immediate first collect (all in parallel)
   void triggerAllCollectors()
 
-  t.system       = setInterval(() => { void collectSystem() },       8_000)
-  t.queue        = setInterval(() => { void collectQueue() },        6_000)
-  t.connectivity = setInterval(() => { void collectConnectivity() }, 20_000)
-  t.db           = setInterval(() => { void collectDbStats() },      15_000)
+  t.system       = setInterval(() => { void collectSystem() },       30_000)
+  t.queue        = setInterval(() => { void collectQueue() },        30_000)
+  t.connectivity = setInterval(() => { void collectConnectivity() }, 60_000)
+  t.db           = setInterval(() => { void collectDbStats() },      60_000)
   t.started      = true
 
   for (const iv of [t.system, t.queue, t.connectivity, t.db]) {
     if (iv && 'unref' in iv) (iv as NodeJS.Timeout).unref()
   }
 
-  console.log('[AC] Analytics cache started — system:8s queue:6s connect:20s db:15s')
+  console.log('[AC] Analytics cache started — system:30s queue:30s connect:60s db:60s')
 }
 
 export function stopAnalyticsCache(): void {

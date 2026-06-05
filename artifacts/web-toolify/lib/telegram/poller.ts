@@ -82,6 +82,7 @@ async function getUpdates(offset: number, signal: AbortSignal): Promise<Telegram
  * takes over. This prevents 409 conflicts on hot reloads.
  */
 export function startPolling(): void {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return
   const state = getState()
 
   // Abort any in-flight long-poll from a previous loop
