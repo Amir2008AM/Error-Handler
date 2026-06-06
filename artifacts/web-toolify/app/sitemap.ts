@@ -27,6 +27,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }))
 
+  const legalRoutes: MetadataRoute.Sitemap = [
+    { url: `${BASE_URL}/privacy-policy`,      lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${BASE_URL}/terms-and-conditions`, lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${BASE_URL}/cookies-policy`,      lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${BASE_URL}/disclaimer`,          lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.3 },
+  ]
+
   return [
     {
       url: BASE_URL,
@@ -42,5 +49,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...toolRoutes,
     ...blogRoutes,
+    ...legalRoutes,
   ]
 }

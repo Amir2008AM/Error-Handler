@@ -4,6 +4,10 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Disclaimer | Toolify',
   description: 'Disclaimer for Toolify — important information about the use of our free online tools.',
+  alternates: {
+    canonical: 'https://www.toolifypdf.online/disclaimer',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default function DisclaimerPage() {

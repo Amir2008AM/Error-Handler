@@ -4,6 +4,10 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Cookies Policy | Toolify',
   description: 'Cookies Policy for Toolify — learn how we use cookies and similar technologies.',
+  alternates: {
+    canonical: 'https://www.toolifypdf.online/cookies-policy',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default function CookiesPolicyPage() {

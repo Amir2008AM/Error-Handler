@@ -4,6 +4,10 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Privacy Policy | Toolify',
   description: 'Privacy Policy for Toolify — learn how we collect, use, and protect your information.',
+  alternates: {
+    canonical: 'https://www.toolifypdf.online/privacy-policy',
+  },
+  robots: { index: true, follow: true },
 }
 
 const sections_en = [

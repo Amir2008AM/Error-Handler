@@ -4,6 +4,10 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Terms of Use | Toolify',
   description: 'Terms of Use for Toolify — the rules and guidelines for using our free online tools.',
+  alternates: {
+    canonical: 'https://www.toolifypdf.online/terms-and-conditions',
+  },
+  robots: { index: true, follow: true },
 }
 
 const sections_en = [
