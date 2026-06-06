@@ -6,6 +6,7 @@ import {
   Expand, RefreshCw, Type, CaseSensitive, Percent,
   Calendar, AlignLeft, ArrowRightLeft, Calculator,
   ImageIcon, RotateCw, Droplets, Crop, Presentation,
+  Shield, LockOpen, ScanText, FileCode,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Tool } from '@/lib/tools'
@@ -33,6 +34,10 @@ const lucideIconMap: Record<string, React.ComponentType<{ className?: string }>>
   Droplets,
   Crop,
   Presentation,
+  Shield,
+  LockOpen,
+  ScanText,
+  FileCode,
 }
 
 interface ToolCardProps {
