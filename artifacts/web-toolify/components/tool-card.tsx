@@ -11,8 +11,9 @@ import { cn } from '@/lib/utils'
 import type { Tool } from '@/lib/tools'
 import { useI18n } from '@/lib/i18n/context'
 import type { TranslationKey } from '@/lib/i18n/translations'
+import { customIconMap } from '@/components/tool-icons'
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const lucideIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
   Image,
   Minimize2,
@@ -41,7 +42,8 @@ interface ToolCardProps {
 
 export function ToolCard({ tool, compact = false }: ToolCardProps) {
   const { t } = useI18n()
-  const Icon = iconMap[tool.icon] ?? FileText
+
+  const Icon = customIconMap[tool.icon] ?? lucideIconMap[tool.icon] ?? FileText
 
   const tk = (field: 'name' | 'desc') => {
     const key = `tools.${tool.id}.${field}` as TranslationKey
