@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -95,11 +94,7 @@ export function PageNumbersClient() {
   const isProcessing = progress.status === 'processing'
 
   return (
-    <ToolPageLayout
-      toolId="page-numbers"
-      title="Add Page Numbers"
-      description="Add professional page numbers to your PDF documents. Choose position, format, and starting number."
-    >
+    <>
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
@@ -235,6 +230,6 @@ export function PageNumbersClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }

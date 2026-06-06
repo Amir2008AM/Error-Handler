@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { PageNumbersClient } from './client'
 
 export const metadata: Metadata = {
@@ -6,6 +7,11 @@ export const metadata: Metadata = {
   description: 'Add page numbers to your PDF documents. Choose position, format (numeric, roman, page X of Y), and customize appearance. Free online tool.',
 }
 
-export default function PageNumbersPage() {
-  return <PageNumbersClient />
+export default function Page() {
+  return (
+    <ToolPageServerLayout toolId="page-numbers"
+      title="Add Page Numbers">
+      <PageNumbersClient />
+    </ToolPageServerLayout>
+  )
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { OrganizePdfClient } from './client'
-import { ToolPageLayout } from '@/components/tool-page-layout'
+import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 
 export const metadata: Metadata = {
   title: 'Organize PDF - Rearrange, Delete & Duplicate Pages | Toolify',
@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function OrganizePdfPage() {
   return (
-    <ToolPageLayout toolId="organize-pdf">
+    <ToolPageServerLayout toolId="organize-pdf">
       <OrganizePdfClient />
-    </ToolPageLayout>
+    </ToolPageServerLayout>
   )
 }

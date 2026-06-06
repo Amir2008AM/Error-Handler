@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { ToolPageLayout } from '@/components/tool-page-layout'
+import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { CompressImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 export default function CompressImagePage() {
   const tool = getToolBySlug('compress-image')!
   return (
-    <ToolPageLayout tool={tool}>
+    <ToolPageServerLayout tool={tool}>
       <CompressImageClient />
-    </ToolPageLayout>
+    </ToolPageServerLayout>
   )
 }

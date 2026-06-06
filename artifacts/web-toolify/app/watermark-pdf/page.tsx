@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { ToolPageLayout } from '@/components/tool-page-layout'
+import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { WatermarkPdfClient } from './client'
 import { notFound } from 'next/navigation'
@@ -14,8 +14,8 @@ export default function WatermarkPdfPage() {
   if (!tool) notFound()
 
   return (
-    <ToolPageLayout tool={tool}>
+    <ToolPageServerLayout tool={tool}>
       <WatermarkPdfClient />
-    </ToolPageLayout>
+    </ToolPageServerLayout>
   )
 }

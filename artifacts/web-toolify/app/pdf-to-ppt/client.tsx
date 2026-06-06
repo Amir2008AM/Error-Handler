@@ -2,7 +2,6 @@
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Download, Loader2, FileText } from 'lucide-react'
@@ -85,7 +84,7 @@ export function PdfToPptClient() {
   const isProcessing = progress.status === 'processing'
 
   return (
-    <ToolPageLayout tool={tool}>
+    <>
       <div className="max-w-2xl mx-auto">
         <BackButton />
 
@@ -153,6 +152,6 @@ export function PdfToPptClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }

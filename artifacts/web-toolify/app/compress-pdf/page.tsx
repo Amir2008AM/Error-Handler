@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { CompressPdfClient } from './client'
 
 export const metadata: Metadata = {
@@ -6,6 +7,11 @@ export const metadata: Metadata = {
   description: 'Compress PDF files to reduce file size while maintaining quality. Free online PDF compressor for easy sharing and storage.',
 }
 
-export default function CompressPdfPage() {
-  return <CompressPdfClient />
+export default function Page() {
+  return (
+    <ToolPageServerLayout toolId="compress-pdf"
+      title="Compress PDF">
+      <CompressPdfClient />
+    </ToolPageServerLayout>
+  )
 }

@@ -2,7 +2,6 @@
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
@@ -114,7 +113,7 @@ export function PdfToExcelClient() {
   }
 
   return (
-    <ToolPageLayout tool={tool}>
+    <>
       <div className="max-w-2xl mx-auto space-y-6">
         <BackButton />
 
@@ -214,6 +213,6 @@ export function PdfToExcelClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }

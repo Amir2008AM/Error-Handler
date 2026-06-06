@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { ToolPageLayout } from '@/components/tool-page-layout'
+import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { ResizeImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 export default function ResizeImagePage() {
   const tool = getToolBySlug('resize-image')!
   return (
-    <ToolPageLayout tool={tool}>
+    <ToolPageServerLayout tool={tool}>
       <ResizeImageClient />
-    </ToolPageLayout>
+    </ToolPageServerLayout>
   )
 }

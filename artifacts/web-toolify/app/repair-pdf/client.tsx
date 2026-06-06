@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Download, Loader2, FileText } from 'lucide-react'
@@ -71,11 +70,7 @@ export function RepairPdfClient() {
   const isProcessing = progress.status === 'processing'
 
   return (
-    <ToolPageLayout
-      toolId="repair-pdf"
-      title="Repair PDF"
-      description="Fix corrupted or damaged PDF files. Our tool attempts to recover and repair PDF documents that won't open properly."
-    >
+    <>
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
@@ -155,6 +150,6 @@ export function RepairPdfClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }

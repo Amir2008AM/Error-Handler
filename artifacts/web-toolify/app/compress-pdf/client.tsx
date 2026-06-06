@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Download, Loader2, FileText, TrendingDown, CheckCircle2 } from 'lucide-react'
@@ -113,11 +112,7 @@ export function CompressPdfClient() {
   const isProcessing = progress.status === 'processing'
 
   return (
-    <ToolPageLayout
-      toolId="compress-pdf"
-      title="Compress PDF"
-      description="Reduce the file size of your PDF documents. Already-optimized PDFs are detected automatically."
-    >
+    <>
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
@@ -249,6 +244,6 @@ export function CompressPdfClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }

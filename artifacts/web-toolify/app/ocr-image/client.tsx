@@ -2,7 +2,6 @@
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -329,7 +328,7 @@ export function OcrImageClient() {
   const isMixedSelection = selectedLangs.length > 1
 
   return (
-    <ToolPageLayout tool={tool}>
+    <>
       <div className="max-w-3xl mx-auto">
         <BackButton />
 
@@ -541,6 +540,6 @@ export function OcrImageClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }

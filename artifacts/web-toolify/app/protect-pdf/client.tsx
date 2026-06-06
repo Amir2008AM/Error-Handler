@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -92,11 +91,7 @@ export function ProtectPdfClient() {
   const isProcessing = progress.status === 'processing'
 
   return (
-    <ToolPageLayout
-      toolId="protect-pdf"
-      title="Protect PDF"
-      description="Add password protection to your PDF documents. Keep your sensitive files secure with encryption."
-    >
+    <>
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
@@ -206,6 +201,6 @@ export function ProtectPdfClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }

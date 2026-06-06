@@ -96,6 +96,27 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
       <head>
+        {/* JSON-LD — Website structured data for Google Search */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'Toolify',
+              url: 'https://www.toolifypdf.online',
+              description: 'Free online tools for PDF, images, text, and conversions. No sign-up required.',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: 'https://www.toolifypdf.online/?q={search_term_string}',
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
         {/* Critical CSS — applied immediately before any external stylesheet loads.
             Prevents the white flash that occurs while render-blocking CSS chunks download. */}
         <style dangerouslySetInnerHTML={{ __html: `

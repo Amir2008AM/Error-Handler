@@ -2,7 +2,6 @@
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -94,7 +93,7 @@ export function PdfToJpgClient() {
   }
 
   return (
-    <ToolPageLayout tool={tool}>
+    <>
       <div className="max-w-2xl mx-auto space-y-4">
         <BackButton />
         <Card className="p-4 bg-muted/40 border-muted-foreground/20">
@@ -215,6 +214,6 @@ export function PdfToJpgClient() {
         )}
       </div>
       {done && <TrustpilotReview />}
-    </ToolPageLayout>
+    </>
   )
 }

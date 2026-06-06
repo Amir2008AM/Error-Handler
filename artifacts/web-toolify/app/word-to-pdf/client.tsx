@@ -2,7 +2,6 @@
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
 import { useState, useCallback } from 'react'
-import { ToolPageLayout } from '@/components/tool-page-layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -93,7 +92,7 @@ export function WordToPdfClient() {
   const isProcessing = progress.status === 'processing'
 
   return (
-    <ToolPageLayout tool={tool}>
+    <>
       <div className="max-w-2xl mx-auto">
         <BackButton />
         {!file ? (
@@ -204,6 +203,6 @@ export function WordToPdfClient() {
           </div>
         )}
       </div>
-    </ToolPageLayout>
+    </>
   )
 }
