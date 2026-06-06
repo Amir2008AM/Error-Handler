@@ -95,13 +95,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
-      <head />
+      <head>
+        {/* Critical CSS — applied immediately before any external stylesheet loads.
+            Prevents the white flash that occurs while render-blocking CSS chunks download. */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          *,*::before,*::after{box-sizing:border-box}
+          html,body{margin:0;padding:0;background:#fefefe;min-height:100vh}
+          body{font-family:system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+          /* Reserve navbar height so content doesn't jump on paint */
+          body>div:first-of-type{display:flex;flex-direction:column;min-height:100vh}
+        ` }} />
+      </head>
       <body className="font-sans antialiased">
         {process.env.NODE_ENV === 'production' && (
           <>
             <Script
               src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
-              strategy="afterInteractive"
+              strategy="lazyOnload"
               crossOrigin="anonymous"
             />
             <Script
