@@ -3,6 +3,8 @@ import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { ProtectPdfClient } from './client'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/protect-pdf' },
+  robots: { index: true, follow: true },
   title: 'Protect PDF - Add Password Protection | Toolify',
   description: 'Add password protection to your PDF documents. Secure sensitive files with encryption. Free online PDF protection tool.',
 }

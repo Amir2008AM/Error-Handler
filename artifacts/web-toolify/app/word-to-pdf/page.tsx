@@ -4,6 +4,8 @@ import { getToolBySlug } from '@/lib/tools'
 import { WordToPdfClient } from './client'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/word-to-pdf' },
+  robots: { index: true, follow: true },
   title: 'Word to PDF - Convert DOCX to PDF | Toolify',
   description: 'Convert Microsoft Word documents (.docx, .doc) to PDF files. Free online Word to PDF converter with formatting preserved.',
 }

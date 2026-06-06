@@ -4,6 +4,8 @@ import { getToolBySlug } from '@/lib/tools'
 import { UnlockPdfClient } from './client'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/unlock-pdf' },
+  robots: { index: true, follow: true },
   title: 'Unlock PDF - Remove Password Protection | Toolify',
   description: 'Remove password restrictions from your PDF files. Unlock PDFs to enable printing, copying, and editing (requires original password).',
 }

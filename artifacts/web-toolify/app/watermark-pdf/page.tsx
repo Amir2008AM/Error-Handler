@@ -5,6 +5,8 @@ import { WatermarkPdfClient } from './client'
 import { notFound } from 'next/navigation'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/watermark-pdf' },
+  robots: { index: true, follow: true },
   title: 'Add Watermark to PDF — Toolify',
   description: 'Add text watermarks to your PDF documents. Customize position, opacity, and font size. Free online tool.',
 }

@@ -4,6 +4,8 @@ import { ConvertImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/convert-image' },
+  robots: { index: true, follow: true },
   title: 'Convert Image — JPG, PNG, WebP, AVIF Converter Online Free',
   description:
     'Convert images between JPG, PNG, WebP, and AVIF formats online for free. Fast, no registration, instant download.',

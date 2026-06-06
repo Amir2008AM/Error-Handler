@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: 'Toolify — All Tools in One Place',
   description:
     'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
+  alternates: {
+    canonical: 'https://www.toolifypdf.online',
+  },
+  robots: { index: true, follow: true },
 }
 
 function HomePageSkeleton() {

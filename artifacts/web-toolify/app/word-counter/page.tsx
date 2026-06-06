@@ -4,6 +4,8 @@ import { WordCounterClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/word-counter' },
+  robots: { index: true, follow: true },
   title: 'Word Counter — Count Words & Characters Online Free',
   description:
     'Count words, characters, sentences, and paragraphs in your text instantly. Free online word counter tool, no sign-up required.',

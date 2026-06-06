@@ -4,6 +4,8 @@ import { getToolBySlug } from '@/lib/tools'
 import { PptToPdfClient } from './client'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/ppt-to-pdf' },
+  robots: { index: true, follow: true },
   title: 'PPT to PDF - Convert PowerPoint to PDF | Toolify',
   description: 'Convert PowerPoint presentations (.pptx, .ppt) to PDF files. Free online PPT to PDF converter — preserves slides and formatting.',
 }

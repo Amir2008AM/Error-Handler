@@ -5,6 +5,8 @@ import { CropImageClient } from './client'
 import { notFound } from 'next/navigation'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/crop-image' },
+  robots: { index: true, follow: true },
   title: 'Crop Image Online — Toolify',
   description: 'Crop images to any size with precision controls. Free online image cropping tool with instant download.',
 }

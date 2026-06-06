@@ -4,6 +4,8 @@ import { MergePdfClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/merge-pdf' },
+  robots: { index: true, follow: true },
   title: 'Merge PDF — Combine Multiple PDFs Online Free',
   description:
     'Merge multiple PDF files into one online for free. Upload your PDFs, arrange their order, and download a single combined PDF. No sign-up, instant results.',

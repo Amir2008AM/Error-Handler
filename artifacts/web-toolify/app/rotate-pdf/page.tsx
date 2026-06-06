@@ -5,6 +5,8 @@ import { RotatePdfClient } from './client'
 import { notFound } from 'next/navigation'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/rotate-pdf' },
+  robots: { index: true, follow: true },
   title: 'Rotate PDF Pages — Toolify',
   description: 'Rotate PDF pages by 90, 180, or 270 degrees. Free online PDF rotation tool with instant processing.',
 }

@@ -4,6 +4,8 @@ import { ResizeImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
+  alternates: { canonical: 'https://www.toolifypdf.online/resize-image' },
+  robots: { index: true, follow: true },
   title: 'Resize Image — Change Image Dimensions Online Free',
   description:
     'Resize images to exact dimensions or by percentage online for free. Maintain aspect ratio or set custom width and height. No sign-up required.',
