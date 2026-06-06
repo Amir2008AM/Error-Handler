@@ -23,7 +23,17 @@ export async function register() {
     console.warn('[FileCleanup] Failed to init (non-fatal):', (err as Error).message)
   }
 
-  // ── All heavy background services delayed 5s so server responds immediately ──
+  // ── Pre-warm heavy native modules so first user request is instant ──────────
+  // Runs in background — never blocks startup
+  setTimeout(async () => {
+    try {
+      await import('./lib/processing/pdf-processor')
+      await import('./lib/processing/image-processor')
+      console.log('[Instrumentation] Heavy modules pre-warmed ✓')
+    } catch { /* non-fatal */ }
+  }, 0)
+
+  // ── All heavy background services delayed 2s so server responds immediately ──
   setTimeout(async () => {
 
     // ── 0. Analytics SQLite DB ────────────────────────────────────────────────
@@ -145,5 +155,5 @@ export async function register() {
       console.warn(`[TelegramBot] Failed to start polling: ${(err as Error).message} — bot disabled`)
     }
 
-  }, 5_000)
+  }, 2_000)
 }

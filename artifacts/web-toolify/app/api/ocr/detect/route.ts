@@ -26,7 +26,7 @@ import { streamUpload, validateStreamedFile, readFile } from '@/lib/stream-uploa
 import sharp from 'sharp'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 const execFileAsync = promisify(execFile)
 

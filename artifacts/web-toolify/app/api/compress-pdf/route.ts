@@ -9,7 +9,7 @@ import { acquireGuard } from '@/lib/concurrency-guard'
 import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 const VALID_LEVELS = ['low', 'medium', 'high'] as const
 type CompressionLevel = (typeof VALID_LEVELS)[number]

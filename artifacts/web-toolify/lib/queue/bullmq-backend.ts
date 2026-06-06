@@ -355,13 +355,20 @@ export function startWorkers(): void {
 /**
  * Check if Redis is reachable using a short-lived probe connection.
  *
- * We deliberately do NOT reuse the shared BullMQ connection here because it
- * is configured with `maxRetriesPerRequest: null`, which causes commands to
- * retry indefinitely and never throw — hanging the caller forever when Redis
- * is down. The probe uses `maxRetriesPerRequest: 0` and a 3-second timeout so
- * it fails fast and lets the app fall back to the in-memory queue.
+ * Result is cached for 60 seconds so every job-create request doesn't
+ * open a new TCP connection to Redis. On failure the cache TTL is 10 s
+ * so recovery is fast once Redis comes back.
  */
+let _redisAvailableCache: boolean | null = null
+let _redisAvailableCheckedAt = 0
+
 export async function isRedisAvailable(): Promise<boolean> {
+  const now = Date.now()
+  const ttl = _redisAvailableCache === false ? 10_000 : 60_000
+  if (_redisAvailableCache !== null && now - _redisAvailableCheckedAt < ttl) {
+    return _redisAvailableCache
+  }
+
   const url = process.env.REDIS_URL || 'redis://localhost:6379'
   const probe = new Redis(url, {
     maxRetriesPerRequest: 0,
@@ -377,8 +384,12 @@ export async function isRedisAvailable(): Promise<boolean> {
         setTimeout(() => reject(new Error('Redis probe timeout')), 3000)
       ),
     ])
+    _redisAvailableCache = true
+    _redisAvailableCheckedAt = Date.now()
     return true
   } catch {
+    _redisAvailableCache = false
+    _redisAvailableCheckedAt = Date.now()
     return false
   } finally {
     probe.disconnect()

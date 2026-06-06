@@ -9,7 +9,7 @@ import { acquireGuard } from '@/lib/concurrency-guard'
 import { recordToolEvent } from '@/lib/tool-registry'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 export async function POST(req: NextRequest) {
   const guard = getToolGuardResponse('pdf-to-word')
