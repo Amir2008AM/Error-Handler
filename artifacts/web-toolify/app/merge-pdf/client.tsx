@@ -194,10 +194,10 @@ export function MergePdfClient() {
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-red-500" />
               <div>
                 <p className="font-semibold">
-                  {encryptedCount} ملف محمي بكلمة مرور — لا يمكن دمجه
+                  {encryptedCount} password-protected file{encryptedCount !== 1 ? 's' : ''} — cannot be merged
                 </p>
                 <p className="text-red-700 mt-0.5 text-xs">
-                  احذف الملفات المحمية الموضّحة بالأحمر ثم أعد المحاولة.
+                  Remove the protected files highlighted in red, then try again.
                 </p>
               </div>
             </div>
@@ -249,13 +249,13 @@ export function MergePdfClient() {
                     {pdf.checking && (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <Loader2 className="w-3 h-3 animate-spin" />
-                        فحص...
+                        Checking...
                       </span>
                     )}
                     {pdf.encrypted && !pdf.checking && (
                       <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200 shrink-0">
                         <Lock className="w-3 h-3" />
-                        محمي — لا يمكن دمجه
+                        Protected — cannot merge
                       </span>
                     )}
                   </div>
@@ -321,9 +321,9 @@ export function MergePdfClient() {
               {isProcessing ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> {t('merge.processing')}</>
               ) : isChecking ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> جارٍ الفحص...</>
+                <><Loader2 className="w-5 h-5 animate-spin" /> Checking files...</>
               ) : hasEncrypted ? (
-                <><Lock className="w-5 h-5" /> احذف الملفات المحمية أولاً</>
+                <><Lock className="w-5 h-5" /> Remove protected files first</>
               ) : (
                 <><FilePlus2 className="w-5 h-5" /> {t('merge.action')} ({pdfs.length})</>
               )}

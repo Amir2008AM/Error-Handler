@@ -1,405 +1,405 @@
 /**
- * Custom tool icons inspired by the iLovePDF visual style.
- * Each icon shows a document silhouette + action-specific overlay.
- * All icons use `currentColor` so they inherit the tool's color.
- * Optimised: pure inline SVG, zero dependencies, retina-sharp.
+ * Tool icons — designed to read at 24–28 px.
+ * Pattern: ONE large document shape fills ~70 % of the canvas,
+ * with a bold badge or action overlay for instant recognition.
+ * No <text> nodes (font rendering is inconsistent at tiny sizes).
+ * Stroke width ≥ 2, filled shapes preferred.
  */
 
-import type { SVGProps } from 'react'
+type IconProps = { className?: string }
 
-type IconProps = SVGProps<SVGSVGElement> & { className?: string }
+/* ─── Reusable pieces ──────────────────────────────────────────────────────── */
 
-/* ─── Shared document base ──────────────────────────────────────────────────
-   Portrait page with a folded top-right corner (14×17 units, 24 viewBox).
-   The "fold" triangle is drawn separately so callers can colour it. */
-
-function DocBase({ stroke = 'currentColor', fill = 'none', ...rest }: SVGProps<SVGPathElement>) {
+/** Full-bleed document (portrait, folded top-right corner). */
+function Page({ fold = 5 }: { fold?: number }) {
   return (
     <>
-      {/* body */}
       <path
-        d="M4 2h10l5 5v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"
-        fill={fill}
-        stroke={stroke}
-        strokeWidth="1.5"
+        d={`M3 2 h${13 - fold} l${fold} ${fold} V22 H3 Z`}
+        fill="currentColor"
+        fillOpacity=".18"
+        stroke="currentColor"
+        strokeWidth="2"
         strokeLinejoin="round"
-        {...rest}
       />
-      {/* fold */}
       <path
-        d="M14 2v5h5"
+        d={`M${16 - fold} 2 v${fold} h${fold}`}
         fill="none"
-        stroke={stroke}
-        strokeWidth="1.5"
+        stroke="currentColor"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
     </>
   )
 }
 
-/* ─── 1. Merge PDF ──────────────────────────────────────────────────────────
-   Two pages converging with arrows pointing inward / a + badge */
+/** Filled corner badge (bottom-right), max 8×7 px slot. */
+function Badge({ children, color = 'currentColor' }: { children: React.ReactNode; color?: string }) {
+  return (
+    <g>
+      <rect x="14" y="14" width="9.5" height="8.5" rx="2" fill={color} />
+      {children}
+    </g>
+  )
+}
+
+/* ─── PDF Tools ──────────────────────────────────────────────────────────── */
+
+/** Merge PDF — two pages fanning out + down-merge arrow */
 export function MergePdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* left doc */}
-      <path d="M2 4h7l3 3v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M9 4v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      {/* right doc */}
-      <path d="M15 4h5l3 3v10a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1V7z" fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M20 4v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      {/* merge arrows */}
-      <path d="M8 20l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <line x1="12" y1="16" x2="12" y2="22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      {/* back page offset */}
+      <rect x="6" y="2" width="13" height="17" rx="1.5"
+        fill="currentColor" fillOpacity=".1" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      {/* front page */}
+      <rect x="2" y="4" width="13" height="17" rx="1.5"
+        fill="currentColor" fillOpacity=".22" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      {/* bold down-merge arrow */}
+      <path d="M18 14v6M15.5 17.5l2.5 2.5 2.5-2.5"
+        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-/* ─── 2. Split PDF ──────────────────────────────────────────────────────────
-   One page with a dashed split line and arrows pointing outward */
+/** Split PDF — single page with bold scissors across the middle */
 export function SplitPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
-      {/* dashed vertical split */}
-      <line x1="12" y1="7" x2="12" y2="19" stroke="currentColor" strokeWidth="1.4" strokeDasharray="2 1.5" strokeLinecap="round" />
-      {/* left arrow */}
-      <path d="M9 13l-3 3-3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* right arrow */}
-      <path d="M15 13l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <Page />
+      {/* scissor body — two circles + blades */}
+      <circle cx="7"  cy="12" r="2.2" fill="currentColor" fillOpacity=".35" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="13" cy="12" r="2.2" fill="currentColor" fillOpacity=".35" stroke="currentColor" strokeWidth="1.8" />
+      {/* blades opening across the doc */}
+      <line x1="8.5"  y1="10.8" x2="19" y2="6"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="8.5"  y1="13.2" x2="19" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="14.5" y1="10.8" x2="19" y2="6"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="14.5" y1="13.2" x2="19" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }
 
-/* ─── 3. Compress PDF ───────────────────────────────────────────────────────
-   Page with top/bottom arrows pushing toward center */
+/** Compress PDF — page with inward arrows */
 export function CompressPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
-      {/* down arrow from top */}
-      <path d="M12 6v4M10 8l2 2 2-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* up arrow from bottom */}
-      <path d="M12 18v-4M10 16l2-2 2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* center line */}
-      <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <Page />
+      {/* top arrow ↓ */}
+      <path d="M10 5v5M7.5 8l2.5 2.5 2.5-2.5"
+        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* bottom arrow ↑ */}
+      <path d="M10 19v-5M7.5 16l2.5-2.5 2.5 2.5"
+        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* centre bar */}
+      <line x1="6" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }
 
-/* ─── 4. Rotate PDF ─────────────────────────────────────────────────────────
-   Page with a circular rotation arrow overlaid */
+/** Rotate PDF — page with large circular arrow */
 export function RotatePdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
-      {/* rotation arc */}
-      <path d="M8 14a4 4 0 1 0 4-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      {/* arrowhead */}
-      <path d="M8 10l-2 2 2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <Page />
+      {/* large open arc */}
+      <path d="M6 16 A6 6 0 1 1 15.5 18"
+        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+      {/* arrowhead on arc end */}
+      <path d="M13 21l2.5-3-3.5-.5"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-/* ─── 5. Watermark PDF ──────────────────────────────────────────────────────
-   Page with diagonal "MARK" lines stamped on it */
+/** Watermark PDF — page with diagonal STAMP overlay */
 export function WatermarkPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
-      {/* diagonal watermark text lines */}
-      <line x1="7" y1="16" x2="15" y2="8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeOpacity=".45" />
-      <line x1="9" y1="18" x2="17" y2="10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeOpacity=".3" />
-      {/* stamp ring */}
-      <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.3" strokeDasharray="2 1.5" />
+      <Page />
+      {/* three diagonal watermark bars */}
+      <line x1="5"  y1="18" x2="15" y2="7"  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeOpacity=".55" />
+      <line x1="7"  y1="20" x2="17" y2="9"  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeOpacity=".35" />
+      <line x1="10" y1="20" x2="17" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeOpacity=".2" />
+      {/* stamp oval ring */}
+      <ellipse cx="10" cy="13" rx="4.5" ry="3.5"
+        stroke="currentColor" strokeWidth="1.8" strokeDasharray="3 2" />
     </svg>
   )
 }
 
-/* ─── 6. Page Numbers ───────────────────────────────────────────────────────
-   Page with numbered lines (1, 2, 3) */
+/** Page Numbers — page with content lines + badge "1" */
 export function PageNumbersIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
-      {/* line items with numbers */}
-      <rect x="8" y="9" width="7" height="1.5" rx=".75" fill="currentColor" />
-      <rect x="8" y="12.5" width="7" height="1.5" rx=".75" fill="currentColor" />
-      <rect x="8" y="16" width="5" height="1.5" rx=".75" fill="currentColor" />
-      {/* page number badge */}
-      <circle cx="18" cy="17" r="3" fill="currentColor" />
-      <text x="18" y="20" textAnchor="middle" fontSize="3.5" fill="white" fontWeight="bold" fontFamily="system-ui">2</text>
+      <Page />
+      {/* content lines */}
+      <line x1="6" y1="9"  x2="14" y2="9"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="6" y1="13" x2="14" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="6" y1="17" x2="11" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      {/* badge with "1" (a vertical bar) */}
+      <circle cx="19.5" cy="19" r="3.8" fill="currentColor" />
+      {/* numeral 1 — vertical line with serif */}
+      <line x1="19.5" y1="16.8" x2="19.5" y2="21.2" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="18" y1="17.8" x2="19.5" y2="16.8" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
 
-/* ─── 7. Organize PDF ───────────────────────────────────────────────────────
-   Three small pages being sorted with up/down arrows */
+/** Organize PDF — three pages fanned + up/down sort arrows */
 export function OrganizePdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* page 1 */}
-      <rect x="2" y="3" width="8" height="10" rx="1" fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="1.4" />
-      {/* page 2 (offset) */}
-      <rect x="7" y="6" width="8" height="10" rx="1" fill="currentColor" fillOpacity=".2" stroke="currentColor" strokeWidth="1.4" />
-      {/* page 3 (offset) */}
-      <rect x="12" y="9" width="8" height="10" rx="1" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="8"  y="1" width="10" height="14" rx="1.2"
+        fill="currentColor" fillOpacity=".1" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <rect x="4"  y="4" width="10" height="14" rx="1.2"
+        fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <rect x="1"  y="7" width="10" height="14" rx="1.2"
+        fill="currentColor" fillOpacity=".22" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       {/* sort arrows */}
-      <path d="M3 19.5l2-2 2 2M5 17.5v3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M19.5 19.5l-2-2-2 2M17.5 17.5v3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M19 3v8M17 6l2-3 2 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M19 21v-8M17 18l2 3 2-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-/* ─── 8. Repair PDF ─────────────────────────────────────────────────────────
-   Page with a wrench overlay */
+/** Repair PDF — page + bold wrench */
 export function RepairPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
-      {/* wrench */}
-      <path d="M14.5 8.5a3 3 0 0 0-4.1 4.1L7 16l1.5 1.5 3.4-3.4a3 3 0 0 0 4.1-4.1L14.5 11l-1.5-1.5 1.5-1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity=".1" />
+      <Page />
+      {/* bold wrench handle + head */}
+      <path d="M13.5 8.5 A3.5 3.5 0 0 0 8 13a3.5 3.5 0 0 0 3.5 3.5c.8 0 1.5-.26 2.1-.7L17 19.5a1.5 1.5 0 0 0 2.1-2.1L15.7 14a3.5 3.5 0 0 0 .8-3.8"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        fill="currentColor" fillOpacity=".12" />
+      <path d="M13.5 8.5l-1 1 1.5 1.5 1-1a3.5 3.5 0 0 0-1.5-1.5z"
+        fill="currentColor" fillOpacity=".5" />
     </svg>
   )
 }
 
-/* ─── 9. Protect PDF ────────────────────────────────────────────────────────
-   Page with a shield overlay */
+/** Protect PDF — page + bold filled shield with check */
 export function ProtectPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
+      <Page />
       {/* shield */}
-      <path d="M12 7l-4 1.5v4c0 2.5 1.8 4.5 4 5 2.2-.5 4-2.5 4-5v-4L12 7z" fill="currentColor" fillOpacity=".2" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      {/* check mark inside shield */}
-      <path d="M10.2 12.3l1.2 1.2 2.4-2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 6 L4.5 8.5v5C4.5 17 7 19.5 10 20.5c3-1 5.5-3.5 5.5-7v-5L10 6z"
+        fill="currentColor" fillOpacity=".4" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      {/* check mark */}
+      <path d="M7.5 13.5l1.8 1.8 3.2-3.2"
+        stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-/* ─── 10. Unlock PDF ────────────────────────────────────────────────────────
-   Page with an open padlock */
+/** Unlock PDF — page + open padlock */
 export function UnlockPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <DocBase fill="currentColor" fillOpacity=".12" />
-      {/* open shackle */}
-      <path d="M9 10V8a3 3 0 0 1 6 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <Page />
+      {/* shackle — open (arcs left away from body) */}
+      <path d="M14 11 V8 A4 4 0 0 0 6 8"
+        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none" />
       {/* lock body */}
-      <rect x="7.5" y="10" width="9" height="7" rx="1.2" fill="currentColor" fillOpacity=".2" stroke="currentColor" strokeWidth="1.4" />
-      {/* keyhole */}
-      <circle cx="12" cy="13" r="1" fill="currentColor" />
-      <line x1="12" y1="14" x2="12" y2="16" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <rect x="5" y="11" width="11" height="8" rx="2"
+        fill="currentColor" fillOpacity=".35" stroke="currentColor" strokeWidth="2" />
+      {/* keyhole dot + slot */}
+      <circle cx="10.5" cy="14.5" r="1.5" fill="white" />
+      <line x1="10.5" y1="16" x2="10.5" y2="18.5" stroke="white" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }
 
-/* ─── 11. PDF to Word ───────────────────────────────────────────────────────
-   PDF document → "W" badge */
+/* ─── Converter Tools ────────────────────────────────────────────────────── */
+
+/** PDF → Word: page + blue W badge */
 export function PdfToWordIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* source PDF page */}
-      <path d="M3 3h7l3 3v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M10 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="5" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
-      {/* arrow */}
-      <path d="M13.5 12l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <Page />
+      <line x1="6" y1="9"  x2="13" y2="9"  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="6" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       {/* W badge */}
-      <rect x="16" y="8" width="7" height="9" rx="1.2" fill="currentColor" />
-      <text x="19.5" y="15" textAnchor="middle" fontSize="6" fill="white" fontWeight="800" fontFamily="system-ui">W</text>
+      <Badge color="#2563eb">
+        {/* W as path: two V strokes */}
+        <path d="M16 16.5l1.5 4 1.5-3 1.5 3 1.5-4"
+          stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 12. Word to PDF ───────────────────────────────────────────────────────
-   "W" source → PDF page */
+/** Word → PDF: W badge + page */
 export function WordToPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* W source badge */}
-      <rect x="1" y="8" width="7" height="9" rx="1.2" fill="currentColor" />
-      <text x="4.5" y="15" textAnchor="middle" fontSize="6" fill="white" fontWeight="800" fontFamily="system-ui">W</text>
-      {/* arrow */}
-      <path d="M9.5 12l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* PDF page */}
-      <path d="M12.5 3h7l3 3v11a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M19.5 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="15" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
+      <Page />
+      <line x1="6" y1="9"  x2="13" y2="9"  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="6" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      {/* Word-to badge with arrow-in */}
+      <Badge color="#2563eb">
+        <path d="M16 16.5l1.5 4 1.5-3 1.5 3 1.5-4"
+          stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        {/* small arrow on badge edge */}
+        <path d="M14 18l-2-2" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M14 18l-.5-2.5 2.5.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 13. PDF to JPG ────────────────────────────────────────────────────────
-   PDF page → image frame with mountain icon */
+/** PDF → JPG: page + image-frame badge */
 export function PdfToJpgIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* source PDF page */}
-      <path d="M2 3h7l3 3v11a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M9 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="3.5" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
-      {/* arrow */}
-      <path d="M13 12l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* image frame */}
-      <rect x="15.5" y="7" width="8" height="10" rx="1.2" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
-      {/* mountain + sun in image */}
-      <circle cx="18" cy="10.5" r="1" fill="currentColor" />
-      <path d="M16.5 16l2.5-3.5 2 2.5 1-1.5 1.5 2.5H16.5z" fill="currentColor" fillOpacity=".5" stroke="currentColor" strokeWidth=".8" strokeLinejoin="round" />
+      <Page />
+      <line x1="6" y1="9"  x2="13" y2="9"  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="6" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <Badge color="#d97706">
+        {/* sun dot */}
+        <circle cx="16.8" cy="16.5" r="1" fill="white" />
+        {/* mountain */}
+        <path d="M14.5 22 l2.5-3.5 1.5 2 1-1.5 2 3H14.5z" fill="white" fillOpacity=".85" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 14. Image (JPG) to PDF ────────────────────────────────────────────────
-   Image frame → PDF page */
+/** Image (JPG) → PDF: image badge + page */
 export function ImageToPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* image frame */}
-      <rect x="0.5" y="7" width="8" height="10" rx="1.2" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="3" cy="10.5" r="1" fill="currentColor" />
-      <path d="M1.5 16l2.5-3.5 2 2.5 1-1.5 1.5 2.5H1.5z" fill="currentColor" fillOpacity=".5" stroke="currentColor" strokeWidth=".8" strokeLinejoin="round" />
-      {/* arrow */}
-      <path d="M10.5 12l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* PDF page */}
-      <path d="M13 3h7l3 3v11a1 1 0 0 1-1 1H13a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M20 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="14.5" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
+      <Page />
+      {/* small image frame on doc body */}
+      <rect x="5" y="7" width="9" height="7" rx="1"
+        fill="currentColor" fillOpacity=".22" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="7.2" cy="9.2" r="1" fill="currentColor" />
+      <path d="M5 13.5l2-2.5 1.8 2 1.5-2 3 3H5z" fill="currentColor" fillOpacity=".5" />
+      {/* badge: arrow indicating "to PDF" */}
+      <Badge color="#dc2626">
+        {/* bold right-pointing arrow */}
+        <path d="M16 18h5M18.5 15.5l3 2.5-3 2.5"
+          stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 15. Excel to PDF ──────────────────────────────────────────────────────
-   Spreadsheet grid → PDF page */
+/** Excel → PDF: spreadsheet grid on page + green X badge */
 export function ExcelToPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* spreadsheet source */}
-      <rect x="0.5" y="4" width="10" height="13" rx="1" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
-      <line x1="0.5" y1="8" x2="10.5" y2="8" stroke="currentColor" strokeWidth="1" />
-      <line x1="0.5" y1="11.5" x2="10.5" y2="11.5" stroke="currentColor" strokeWidth="1" />
-      <line x1="0.5" y1="15" x2="10.5" y2="15" stroke="currentColor" strokeWidth="1" />
-      <line x1="4.5" y1="4" x2="4.5" y2="17" stroke="currentColor" strokeWidth="1" />
-      <text x="5.5" y="4.5" fontSize="4.5" fill="currentColor" fontWeight="800" fontFamily="system-ui" dominantBaseline="hanging">X</text>
-      {/* arrow */}
-      <path d="M12.5 11.5l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* PDF page */}
-      <path d="M15 3h6l3 3v11a1 1 0 0 1-1 1H15a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M21 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="16.5" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
+      <Page />
+      {/* grid on page body */}
+      <line x1="5" y1="8"  x2="14" y2="8"  stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="5" y1="11" x2="14" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="5" y1="14" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="9" y1="6"  x2="9"  y2="16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <Badge color="#16a34a">
+        {/* X cross */}
+        <line x1="15.5" y1="15.5" x2="22" y2="22"   stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+        <line x1="22"   y1="15.5" x2="15.5" y2="22" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 16. PDF to Excel ──────────────────────────────────────────────────────
-   PDF page → spreadsheet grid */
+/** PDF → Excel: page with content + green grid badge */
 export function PdfToExcelIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* PDF page */}
-      <path d="M2 3h7l3 3v11a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M9 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="3.5" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
-      {/* arrow */}
-      <path d="M13 12l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* spreadsheet target */}
-      <rect x="15.5" y="4" width="8" height="13" rx="1" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
-      <line x1="15.5" y1="8" x2="23.5" y2="8" stroke="currentColor" strokeWidth="1" />
-      <line x1="15.5" y1="11.5" x2="23.5" y2="11.5" stroke="currentColor" strokeWidth="1" />
-      <line x1="15.5" y1="15" x2="23.5" y2="15" stroke="currentColor" strokeWidth="1" />
-      <line x1="19" y1="4" x2="19" y2="17" stroke="currentColor" strokeWidth="1" />
+      <Page />
+      <line x1="6" y1="9"  x2="13" y2="9"  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="6" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <Badge color="#16a34a">
+        {/* mini grid */}
+        <line x1="14" y1="17.5" x2="23.5" y2="17.5" stroke="white" strokeWidth="1.5" />
+        <line x1="14" y1="20.5" x2="23.5" y2="20.5" stroke="white" strokeWidth="1.5" />
+        <line x1="17.5" y1="14" x2="17.5" y2="22.5" stroke="white" strokeWidth="1.5" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 17. HTML to PDF ───────────────────────────────────────────────────────
-   HTML brackets → PDF page */
+/** HTML → PDF: code-bracket badge on page */
 export function HtmlToPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* HTML source box */}
-      <rect x="0.5" y="5" width="10" height="12" rx="1" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
-      {/* <> brackets */}
-      <path d="M3.5 9l-1.5 2 1.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7.5 9l1.5 2-1.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* slash between */}
-      <line x1="6" y1="9" x2="4.8" y2="13" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-      {/* arrow */}
-      <path d="M12.5 11l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* PDF page */}
-      <path d="M15 3h6l3 3v11a1 1 0 0 1-1 1H15a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M21 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="16.5" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
+      <Page />
+      {/* big <> on the page itself */}
+      <path d="M5.5 9 L3 12 5.5 15"
+        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.5 9 L13 12 10.5 15"
+        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="8.5" y1="8.5" x2="7" y2="15.5"
+        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <Badge color="#ea580c">
+        {/* tiny PDF lines */}
+        <line x1="15.5" y1="17.5" x2="22" y2="17.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="15.5" y1="20.5" x2="20"  y2="20.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 18. PowerPoint to PDF ─────────────────────────────────────────────────
-   Slide frame with "P" → PDF page */
+/** PowerPoint → PDF: slide shape on page + orange P badge */
 export function PptToPdfIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* slide frame (wider than tall) */}
-      <rect x="0.5" y="5" width="11" height="8.5" rx="1" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
-      {/* slide podium stand */}
-      <line x1="6" y1="13.5" x2="6" y2="16" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <line x1="3.5" y1="16" x2="8.5" y2="16" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      {/* P on slide */}
-      <text x="3" y="12" fontSize="7" fill="currentColor" fontWeight="800" fontFamily="system-ui">P</text>
-      {/* arrow */}
-      <path d="M13 11l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* PDF page */}
-      <path d="M15.5 3h6l3 3v11a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M21.5 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="17" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
+      <Page />
+      {/* presentation monitor shape */}
+      <rect x="4" y="7" width="11" height="8" rx="1"
+        fill="currentColor" fillOpacity=".25" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <line x1="9.5" y1="15" x2="9.5" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="7" y1="18" x2="12" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <Badge color="#ea580c">
+        {/* P shape: vertical line + half-circle cap */}
+        <line x1="16.5" y1="15" x2="16.5" y2="22.5" stroke="white" strokeWidth="2" strokeLinecap="round" />
+        <path d="M16.5 15 h2.5 a2 2 0 0 1 0 4 H16.5"
+          stroke="white" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── 19. PDF to PowerPoint ─────────────────────────────────────────────────
-   PDF page → slide frame */
+/** PDF → PowerPoint: page + slide/monitor badge */
 export function PdfToPptIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* PDF page */}
-      <path d="M2 3h7l3 3v11a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M9 3v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <text x="3.5" y="13" fontSize="5" fill="currentColor" fontWeight="700" fontFamily="system-ui">PDF</text>
-      {/* arrow */}
-      <path d="M13 11l1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {/* slide frame */}
-      <rect x="15.5" y="5" width="8" height="8.5" rx="1" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="1.4" />
-      <line x1="19.5" y1="13.5" x2="19.5" y2="16" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <line x1="17" y1="16" x2="22" y2="16" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      {/* P on slide */}
-      <text x="17" y="12" fontSize="7" fill="currentColor" fontWeight="800" fontFamily="system-ui">P</text>
+      <Page />
+      <line x1="6" y1="9"  x2="13" y2="9"  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="6" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <Badge color="#ea580c">
+        {/* slide (landscape) miniature */}
+        <rect x="14.5" y="15" width="8.5" height="5.5" rx="1"
+          fill="none" stroke="white" strokeWidth="1.6" strokeLinejoin="round" />
+        {/* stand */}
+        <line x1="18.5" y1="20.5" x2="18.5" y2="22.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="16.5" y1="22.5" x2="20.5" y2="22.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+      </Badge>
     </svg>
   )
 }
 
-/* ─── Icon Registry ─────────────────────────────────────────────────────────
-   Maps tool.icon string → custom SVG component.
-   Only covers tools that exist in both this project and the reference.
-   All other tools continue to use Lucide icons (see tool-card.tsx). */
-
+/* ─── Icon Registry ─────────────────────────────────────────────────────── */
 export const customIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  MergePdf: MergePdfIcon,
-  SplitPdf: SplitPdfIcon,
+  MergePdf:    MergePdfIcon,
+  SplitPdf:    SplitPdfIcon,
   CompressPdf: CompressPdfIcon,
-  RotatePdf: RotatePdfIcon,
+  RotatePdf:   RotatePdfIcon,
   WatermarkPdf: WatermarkPdfIcon,
-  PageNumbers: PageNumbersIcon,
-  OrganizePdf: OrganizePdfIcon,
-  RepairPdf: RepairPdfIcon,
-  ProtectPdf: ProtectPdfIcon,
-  UnlockPdf: UnlockPdfIcon,
-  PdfToWord: PdfToWordIcon,
-  WordToPdf: WordToPdfIcon,
-  PdfToJpg: PdfToJpgIcon,
-  ImageToPdf: ImageToPdfIcon,
-  ExcelToPdf: ExcelToPdfIcon,
-  PdfToExcel: PdfToExcelIcon,
-  HtmlToPdf: HtmlToPdfIcon,
-  PptToPdf: PptToPdfIcon,
-  PdfToPpt: PdfToPptIcon,
+  PageNumbers:  PageNumbersIcon,
+  OrganizePdf:  OrganizePdfIcon,
+  RepairPdf:    RepairPdfIcon,
+  ProtectPdf:   ProtectPdfIcon,
+  UnlockPdf:    UnlockPdfIcon,
+  PdfToWord:    PdfToWordIcon,
+  WordToPdf:    WordToPdfIcon,
+  PdfToJpg:     PdfToJpgIcon,
+  ImageToPdf:   ImageToPdfIcon,
+  ExcelToPdf:   ExcelToPdfIcon,
+  PdfToExcel:   PdfToExcelIcon,
+  HtmlToPdf:    HtmlToPdfIcon,
+  PptToPdf:     PptToPdfIcon,
+  PdfToPpt:     PdfToPptIcon,
 }
