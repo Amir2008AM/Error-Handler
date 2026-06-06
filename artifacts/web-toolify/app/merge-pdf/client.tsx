@@ -154,7 +154,9 @@ export function MergePdfClient() {
     }
   }
 
+  const MAX_TOTAL_BYTES = 100 * 1024 * 1024
   const totalSize = pdfs.reduce((acc, p) => acc + p.size, 0)
+  const isOverLimit = totalSize > MAX_TOTAL_BYTES
   const isProcessing = progress.status === 'processing'
   const encryptedCount = pdfs.filter((p) => p.encrypted).length
   const hasEncrypted = encryptedCount > 0
@@ -188,6 +190,18 @@ export function MergePdfClient() {
               {t('merge.clearAll')}
             </button>
           </div>
+
+          {isOverLimit && (
+            <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-red-500" />
+              <div>
+                <p className="font-semibold">الحجم الإجمالي تجاوز الحد المسموح (100 MB)</p>
+                <p className="text-red-700 mt-0.5 text-xs">
+                  يرجى حذف بعض الملفات حتى يصبح الحجم الإجمالي أقل من 100 MB، ثم حاول مجدداً.
+                </p>
+              </div>
+            </div>
+          )}
 
           {hasEncrypted && (
             <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm">
@@ -315,13 +329,15 @@ export function MergePdfClient() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleMerge}
-              disabled={isProcessing || pdfs.length < 2 || hasEncrypted || isChecking}
+              disabled={isProcessing || pdfs.length < 2 || hasEncrypted || isChecking || isOverLimit}
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isProcessing ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> {t('merge.processing')}</>
               ) : isChecking ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Checking files...</>
+              ) : isOverLimit ? (
+                <><AlertTriangle className="w-5 h-5" /> الحجم تجاوز 100 MB</>
               ) : hasEncrypted ? (
                 <><Lock className="w-5 h-5" /> Remove protected files first</>
               ) : (
