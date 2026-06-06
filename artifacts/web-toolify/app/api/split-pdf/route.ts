@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { pdf } from '@/lib/processing'
-import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
+import { enqueueOrFallback } from '@/lib/queue/enqueue-helper'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
-export const maxDuration = 300
+export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
   const guard = getToolGuardResponse('split-pdf')
@@ -30,42 +30,38 @@ export async function POST(req: NextRequest) {
     if (mode === 'range' && !rangeStr) {
       return NextResponse.json(
         { error: 'Please specify a page range (e.g. "1-3,5") when using range mode.' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    const buffer = await readFileAsArrayBuffer(file.path)
+    // Map client mode → job processor splitMode
+    const splitMode = mode === 'range' ? 'ranges' : 'all'
 
-    const result = await pdf.split({
-      file: buffer,
-      mode,
-      ranges: rangeStr,
+    const result = await enqueueOrFallback('split-pdf', [file], {
+      splitMode,
+      ranges: rangeStr || undefined,
     })
 
-    if (!result.success || !result.data) {
-      trackRouteRequest(req, { tool: 'split-pdf', fileSizeB: file.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'split failed' })
-      return NextResponse.json(
-        { error: result.error || 'Failed to split PDF' },
-        { status: 500 }
-      )
-    }
-
-    const isZip = result.metadata?.outputFormat === 'zip'
-    trackRouteRequest(req, { tool: 'split-pdf', fileSizeB: file.size, format: 'pdf', success: true, durationMs: Date.now() - start })
-
-    return new NextResponse(result.data, {
-      status: 200,
-      headers: {
-        'Content-Type': isZip ? 'application/zip' : 'application/pdf',
-        'Content-Disposition': `attachment; filename="toolify-split.${isZip ? 'zip' : 'pdf'}"`,
-        'X-Processing-Time': `${result.metadata?.processingTime ?? 0}ms`,
-        'Cache-Control': 'no-store',
-      },
+    trackRouteRequest(req, {
+      tool: 'split-pdf',
+      fileSizeB: file.size,
+      format: 'pdf',
+      success: true,
+      durationMs: Date.now() - start,
     })
+    return NextResponse.json(result)
   } catch (err) {
     console.error('[split-pdf]', err)
-    trackRouteRequest(req, { tool: 'split-pdf', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: err instanceof Error ? err.message : 'unknown' })
-    return NextResponse.json({ error: 'Failed to split PDF' }, { status: 500 })
+    trackRouteRequest(req, {
+      tool: 'split-pdf',
+      fileSizeB: files[0]?.size,
+      format: 'pdf',
+      success: false,
+      durationMs: Date.now() - start,
+      errorMsg: err instanceof Error ? err.message : 'unknown',
+    })
+    const msg = err instanceof Error ? err.message : 'Failed to split PDF'
+    return NextResponse.json({ error: msg }, { status: (err as { _status?: number })._status ?? 500 })
   } finally {
     await cleanup()
   }
