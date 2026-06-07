@@ -1,10 +1,10 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
 import { formatBytes } from '@/lib/utils/format-bytes'
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, FileText } from 'lucide-react'
-import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { RealProgressBar, useJobProgress } from '@/components/real-progress-bar'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 import { t } from '@/lib/i18n/translations'
@@ -16,143 +16,49 @@ export function PdfToWordClient() {
   const [file, setFile] = useState<File | null>(null)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [filename, setFilename] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const progress = useRealProgress()
 
-  // ── Background pre-upload state ──────────────────────────────────────────
-  // Holds the Promise that resolves to { uploadId } once the silent upload finishes.
-  // We never show any indicator — the upload runs completely in the background.
-  const preUploadRef = useRef<Promise<{ uploadId: string | null }> | null>(null)
-  const preUploadAbortRef = useRef<AbortController | null>(null)
+  const job = useJobProgress(800)
 
-  // Cancel any in-flight pre-upload (called when user picks a new file or resets)
-  const cancelPreUpload = useCallback(() => {
-    preUploadAbortRef.current?.abort()
-    preUploadAbortRef.current = null
-    preUploadRef.current = null
-  }, [])
-
-  // Start uploading the file silently as soon as it is selected
-  const startPreUpload = useCallback((f: File) => {
-    cancelPreUpload()
-
-    const ac = new AbortController()
-    preUploadAbortRef.current = ac
-
-    const formData = new FormData()
-    formData.append('file', f)
-
-    const promise = fetch('/api/preupload', {
-      method: 'POST',
-      body: formData,
-      signal: ac.signal,
-    })
-      .then((r) => r.json() as Promise<{ uploadId: string }>)
-      .catch(() => ({ uploadId: null }))
-
-    preUploadRef.current = promise
-  }, [cancelPreUpload])
+  // Build the download URL once the job completes and a fileId is available
+  useEffect(() => {
+    if (job.status === 'completed' && job.result) {
+      const fileId: string | undefined =
+        job.result.fileId ?? job.result.id ?? job.result.file_id
+      if (fileId) {
+        setDownloadUrl(`/api/files/${fileId}`)
+      }
+    }
+  }, [job.status, job.result])
 
   const handleFileSelected = useCallback((files: File[]) => {
     const f = files[0]
     if (!f) return
 
     if (f.size > MAX_FILE_BYTES) {
-      setError(`الملف كبير جداً (${(f.size / 1024 / 1024).toFixed(1)} MB). الحد الأقصى 25 MB لضمان اكتمال التحويل في أقل من 30 ثانية.`)
       return
     }
 
     setFile(f)
     setDownloadUrl(null)
-    setError(null)
-    progress.reset()
+    setFilename(`${f.name.replace(/\.pdf$/i, '')}.docx`)
+    job.reset()
+  }, [job])
 
-    // Start background upload immediately — user doesn't see this
-    startPreUpload(f)
-  }, [progress, startPreUpload])
-
-  const handleConvert = async () => {
-    if (progress.status === 'processing') return
-    if (!file) return
-    setError(null)
+  const handleConvert = useCallback(async () => {
+    if (job.status === 'processing' || !file) return
     setDownloadUrl(null)
-
-    progress.startProcessing('جاري التحضير...')
-
-    try {
-      // Wait for the background pre-upload (usually already done by now)
-      let uploadId: string | null = null
-      if (preUploadRef.current) {
-        const result = await preUploadRef.current
-        uploadId = result.uploadId
-      }
-
-      if (uploadId) {
-        // ── Fast path: file already uploaded, just trigger conversion ────────
-        progress.stageProcessing(undefined, ['جاري تحليل المستند...', 'جاري استخراج المحتوى...', 'جاري بناء ملف Word...', 'يكاد ينتهي...'])
-
-        const res = await fetch('/api/pdf-to-word', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uploadId }),
-        })
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Conversion failed' }))
-          throw new Error(err.error ?? 'Conversion failed')
-        }
-
-        const blob = await res.blob()
-        setDownloadUrl(URL.createObjectURL(blob))
-        setFilename(`${file.name.replace(/\.pdf$/i, '')}.docx`)
-        progress.stageDone('تم التحويل بنجاح!')
-      } else {
-        // ── Fallback: upload + convert in one request ─────────────────────────
-        progress.stageUpload(0, 'جاري رفع الملف...')
-
-        const formData = new FormData()
-        formData.append('pdf', file)
-
-        const { xhrUpload } = await import('@/lib/utils/xhr-upload')
-        const res = await xhrUpload({
-          url: '/api/pdf-to-word',
-          formData,
-          onUploadProgress: (pct) => progress.stageUpload(pct, 'جاري رفع الملف...'),
-        })
-
-        progress.stageProcessing(undefined, ['جاري استخراج المحتوى...', 'جاري بناء ملف Word...', 'يكاد ينتهي...'])
-
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.error ?? 'Conversion failed')
-        }
-
-        const blob = await res.blob()
-        setDownloadUrl(URL.createObjectURL(blob))
-        setFilename(`${file.name.replace(/\.pdf$/i, '')}.docx`)
-        progress.stageDone('تم التحويل بنجاح!')
-      }
-    } catch (err: any) {
-      const message = err.message ?? 'حدث خطأ غير متوقع'
-      setError(message)
-      progress.fail(message)
-    }
-  }
+    await job.startJob('pdf-to-word', [file], {})
+  }, [file, job])
 
   const reset = useCallback(() => {
-    cancelPreUpload()
     if (downloadUrl) URL.revokeObjectURL(downloadUrl)
     setFile(null)
     setDownloadUrl(null)
-    setError(null)
     setFilename('')
-    progress.reset()
-  }, [cancelPreUpload, downloadUrl, progress])
+    job.reset()
+  }, [downloadUrl, job])
 
-  // Cleanup on unmount
-  useEffect(() => () => { cancelPreUpload() }, [cancelPreUpload])
-
-  const isProcessing = progress.status === 'processing'
+  const isProcessing = job.status === 'processing'
 
   return (
     <div className="space-y-6">
@@ -167,6 +73,7 @@ export function PdfToWordClient() {
         />
       ) : (
         <div className="space-y-5">
+          {/* File card */}
           <div className="flex items-center gap-3 bg-white border border-border rounded-xl px-4 py-3">
             <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-indigo-600" />
@@ -184,16 +91,19 @@ export function PdfToWordClient() {
             </button>
           </div>
 
+          {/* Info note */}
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 text-sm text-indigo-700">
             <strong>Note:</strong> {t(lang, 'pdfToWord.note')}
           </div>
 
-          {error && (
+          {/* Error */}
+          {job.error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
-              {error}
+              {job.error}
             </div>
           )}
 
+          {/* Actions + progress */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row gap-3">
               <button
@@ -217,10 +127,10 @@ export function PdfToWordClient() {
             </div>
 
             <RealProgressBar
-              status={progress.status}
-              progress={progress.progress}
-              message={progress.message}
-              error={progress.error}
+              status={job.status === 'error' ? 'error' : job.status}
+              progress={job.progress}
+              message={job.message}
+              error={job.error}
               className="w-full"
               showPercentage={true}
               showMessage={true}
@@ -228,7 +138,8 @@ export function PdfToWordClient() {
             />
           </div>
 
-          {downloadUrl && progress.status === 'completed' && (
+          {/* Download card */}
+          {downloadUrl && job.status === 'completed' && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
@@ -249,7 +160,7 @@ export function PdfToWordClient() {
               </a>
             </div>
           )}
-          {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
+          {downloadUrl && job.status === 'completed' && <TrustpilotReview />}
         </div>
       )}
     </div>

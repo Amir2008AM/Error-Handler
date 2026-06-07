@@ -33,12 +33,32 @@ async function getPdfjs(): Promise<PdfjsModule> {
   if (!_pdfjs) {
     try {
       // pdfjs-dist is an ES Module (.mjs) — must use dynamic import(), NOT require().
-      // It is listed in serverExternalPackages so Next.js/Turbopack will NOT bundle
-      // it, making the import path safe to evaluate at runtime.
+      // Listed in serverExternalPackages so Next.js/Turbopack will NOT bundle it.
       // DO NOT use require.resolve() — bundlers replace it with an internal chunk ID.
       const mod = await import(/* webpackIgnore: true */ 'pdfjs-dist/legacy/build/pdf.mjs')
       _pdfjs = mod as unknown as PdfjsModule
-      ;(_pdfjs as PdfjsModule).GlobalWorkerOptions.workerSrc = ''
+
+      // Resolve the worker file path at runtime (safe — no bundler interception).
+      // Setting workerSrc='' causes "fake worker failed" in pdfjs v5.
+      // We must point to the actual .mjs worker file using a file:// URL.
+      try {
+        const { resolve: pathResolve } = await import('node:path')
+        const { existsSync } = await import('node:fs')
+        const candidates = [
+          // pnpm workspace — node_modules hoisted to repo root (2 levels up)
+          pathResolve(process.cwd(), '../../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'),
+          // npm/yarn — node_modules next to package.json
+          pathResolve(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'),
+          // Docker / Railway (/app is the repo root)
+          '/app/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
+        ]
+        const workerFile = candidates.find(existsSync)
+        if (workerFile) {
+          ;(_pdfjs as PdfjsModule).GlobalWorkerOptions.workerSrc = `file://${workerFile}`
+        }
+      } catch {
+        // If worker resolution fails pdfjs will try to self-recover — non-fatal.
+      }
     } catch (importErr) {
       throw new Error(
         `pdfjs-dist legacy build failed to load: ${importErr instanceof Error ? importErr.message : String(importErr)}`
