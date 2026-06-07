@@ -8,6 +8,7 @@ import type { ImageItem } from '@/components/image-gallery'
 import { Download, Loader2, CheckCircle2, RotateCcw, AlertTriangle } from 'lucide-react'
 
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 import { t } from '@/lib/i18n/translations'
@@ -226,14 +227,15 @@ export function ImageToPdfClient() {
 
     try {
       const total = selectedImages.length
-      const blobs: Blob[] = []
-      for (let i = 0; i < total; i++) {
-        progress.stageUpload(
-          Math.round((i / total) * 40),
-          `Compressing image ${i + 1} of ${total}…`,
-        )
-        blobs.push(await compressForUpload(selectedImages[i].file))
-      }
+
+      // ── Parallel compression ───────────────────────────────────────────────
+      // All images are compressed simultaneously instead of one-by-one.
+      // Sequential (old): 30 images × ~300 ms = ~9 s before upload starts.
+      // Parallel  (new):  bottleneck = slowest single image ≈ ~300–500 ms.
+      progress.stageUpload(5, `Compressing ${total} image${total !== 1 ? 's' : ''}…`)
+      const blobs: Blob[] = await Promise.all(
+        selectedImages.map((img) => compressForUpload(img.file)),
+      )
 
       const totalBytes = blobs.reduce((s, b) => s + b.size, 0)
       if (totalBytes > MAX_UPLOAD_BYTES) {
@@ -243,8 +245,6 @@ export function ImageToPdfClient() {
         )
       }
 
-      progress.stageUpload(50, `Uploading ${total} image${total !== 1 ? 's' : ''}…`)
-
       const formData = new FormData()
       formData.append('type', 'image-to-pdf')
       formData.append('options', JSON.stringify({
@@ -253,25 +253,32 @@ export function ImageToPdfClient() {
         imageQuality: 78,
         maxWidthPx:   1600,
       }))
-
       blobs.forEach((blob, idx) => {
         const name = selectedImages[idx].file.name.replace(/\.[^.]+$/, '.jpg')
         formData.append(`file${idx}`, blob, name)
       })
 
-      progress.stageUpload(80, 'Sending to server…')
-
-      const createResp = await fetch('/api/jobs/create', {
-        method: 'POST',
-        body:   formData,
+      // ── Real upload progress via XHR ───────────────────────────────────────
+      // Plain fetch() gives no upload progress — bar would freeze until server
+      // responds. xhrUpload() fires onUploadProgress as bytes are sent so the
+      // bar moves smoothly from ~10 % to 50 % during the network transfer.
+      const res = await xhrUpload({
+        url:      '/api/jobs/create',
+        formData,
+        responseType: 'json',
+        onUploadProgress: (pct) => {
+          // Map XHR upload 0→100 % into the stageUpload 10→50 % band.
+          const overall = 10 + Math.round((pct / 100) * 40)
+          progress.stageUpload(overall, `Uploading images… ${pct}%`)
+        },
       })
 
-      if (!createResp.ok) {
-        const errData = await createResp.json().catch(() => ({})) as { error?: string }
-        throw new Error(errData.error || `Upload failed (${createResp.status})`)
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(errData.error || `Upload failed (${res.status})`)
       }
 
-      const createData = await createResp.json() as {
+      const createData = await res.json() as {
         id:      string
         status:  string
         result?: { downloadUrl: string }
