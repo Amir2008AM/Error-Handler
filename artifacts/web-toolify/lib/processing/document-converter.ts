@@ -109,34 +109,61 @@ export class DocumentConverter {
    * Fallback:    mammoth raw text + pdf-lib                     (basic quality)
    */
   async wordToPdf(
-    docxBuffer: Buffer,
+    wordBuffer: Buffer,
     options: ConversionOptions = {}
   ): Promise<ConversionResult> {
-    const isDocx = docxBuffer[0] === 0x50 && docxBuffer[1] === 0x4b // PK magic
-    const inputExt = isDocx ? '.docx' : '.doc'
+    const { pageSize = 'a4', orientation = 'portrait' } = options
 
-    // ── Fast path: mammoth HTML + wkhtmltopdf ───────────────────────────────
-    if (isDocx) {
-      try {
-        const result = await this.mammothWkHtmlToPdf(docxBuffer, options)
-        if (result) return result
-      } catch (err) {
-        console.warn('[DocumentConverter] mammoth+wkhtmltopdf failed, trying LibreOffice:',
-          err instanceof Error ? err.message : String(err))
+    return withTempDir('word-pdf-', async (dir) => {
+      const inFile = join(dir, 'input.docx')
+      await writeFile(inFile, wordBuffer)
+
+      const args = [
+        '--headless',
+        '--norestore',
+        '--nofirststartwizard',
+        '--convert-to', 'pdf',
+        '--outdir', dir,
+        inFile,
+      ]
+
+      const result = await runCli('soffice', args, {
+        timeoutMs: 120_000,
+        env: {
+          ...process.env as Record<string, string>,
+          HOME: dir,
+          TMPDIR: dir,
+          SAL_USE_VCLPLUGIN: 'svp',
+          FONTCONFIG_PATH: '/etc/fonts',
+        },
+      })
+
+      if (result.code !== 0) {
+        throw new Error(
+          `LibreOffice exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(0, 400)}`
+        )
       }
-    }
 
-    // ── Slow path: LibreOffice ──────────────────────────────────────────────
-    if (await binaryExists('soffice')) {
-      try {
-        return await this.libreOfficeConvert(docxBuffer, inputExt, 'docx')
-      } catch (err) {
-        console.warn('[DocumentConverter] LibreOffice Word→PDF failed, using fallback:',
-          err instanceof Error ? err.message : String(err))
+      const outFile = join(dir, 'input.pdf')
+      const pdfBuffer = await fsReadFile(outFile)
+
+      if (pdfBuffer.length < 100) {
+        throw new Error('LibreOffice produced an empty PDF')
       }
-    }
 
-    return this.wordToPdfFallback(docxBuffer, options)
+      let pageCount = 1
+      try {
+        const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+        pageCount = pdfDoc.getPageCount()
+      } catch { /* best-effort */ }
+
+      return {
+        buffer:         pdfBuffer,
+        pageCount,
+        originalFormat: 'docx',
+        engine:         'libreoffice',
+      }
+    })
   }
 
   /** Fast Word→PDF via mammoth (HTML) + wkhtmltopdf */
@@ -813,78 +840,52 @@ export class DocumentConverter {
       throw new Error('File is not a valid PDF')
     }
 
-    if (await binaryExists('soffice')) {
-      return withTempDir('lo-pdf-word-', async (dir) => {
-        const inFile  = join(dir, 'input.pdf')
-        const outFile = join(dir, 'input.docx')
-        await writeFile(inFile, pdfBuffer)
+    return withTempDir('pdf-word-', async (dir) => {
+      const inFile  = join(dir, 'input.pdf')
+      const outFile = join(dir, 'output.docx')
 
-        // ── Fast path: pdf2docx (pure Python, no LibreOffice startup) ──────────
-        try {
-          const pdf2docxOk = await runPdf2Docx(inFile, outFile, 90_000)
-          if (pdf2docxOk && existsSync(outFile)) {
-            const docxBuffer = await fsReadFile(outFile)
-            if (docxBuffer.length >= 100) {
-              let pageCount = 1
-              try {
-                const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
-                pageCount = pdfDoc.getPageCount()
-              } catch { /* best-effort */ }
-              return { buffer: docxBuffer, pageCount, originalFormat: 'pdf', engine: 'pdf2docx' }
-            }
-          }
-        } catch { /* fall through to LibreOffice */ }
+      await writeFile(inFile, pdfBuffer)
 
-        // ── Slow path: cold soffice spawn (fallback) ─────────────────────────
-        const loRelease = await acquireGuard('libreoffice')
-        let result: Awaited<ReturnType<typeof runCli>>
-        try {
-          result = await runCli(
-            'soffice',
-            [
-              '--headless',
-              '--norestore',
-              '--nofirststartwizard',
-              '--infilter=writer_pdf_import',
-              '--convert-to', 'docx',
-              '--outdir', dir,
-              inFile,
-            ],
-            {
-              timeoutMs: 120_000,
-              env: { HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' },
-            }
-          )
-        } finally {
-          loRelease()
-        }
+      // Locate pdf_to_word.py across deployment layouts
+      const scriptCandidates = [
+        join(process.cwd(), 'lib/processing/pdf_to_word.py'),
+        join(process.cwd(), 'artifacts/web-toolify/lib/processing/pdf_to_word.py'),
+        join(__dirname, 'pdf_to_word.py'),
+        '/app/lib/processing/pdf_to_word.py',
+        '/app/artifacts/web-toolify/lib/processing/pdf_to_word.py',
+      ]
+      const script = scriptCandidates.find(p => existsSync(p))
+      if (!script) throw new Error('pdf_to_word.py not found')
 
-        if (result.code !== 0) {
-          throw new Error(
-            `LibreOffice exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(0, 400)}`
-          )
-        }
+      const result = await runCli(
+        'python3',
+        [script, inFile, outFile],
+        { timeoutMs: 120_000, env: { PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' } }
+      )
 
-        const docxBuffer = await fsReadFile(outFile)
+      let parsed: { success: boolean; engine: string; pageCount: number; error?: string }
+      try {
+        parsed = JSON.parse(result.stdout.trim())
+      } catch {
+        throw new Error(`Script output parse error: ${result.stdout.slice(0, 200)}`)
+      }
 
-        if (docxBuffer.length < 4) {
-          throw new Error('LibreOffice produced an empty or invalid Word file')
-        }
+      if (!parsed.success) {
+        throw new Error(parsed.error ?? 'Conversion failed')
+      }
 
-        let pageCount = 1
-        try {
-          const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
-          pageCount = pdfDoc.getPageCount()
-        } catch { /* best-effort */ }
+      const docxBuffer = await fsReadFile(outFile)
+      if (docxBuffer.length < 100) {
+        throw new Error('Output file is too small — conversion likely failed')
+      }
 
-        return { buffer: docxBuffer, pageCount, originalFormat: 'pdf', engine: 'libreoffice' }
-      })
-    }
-
-    throw new Error(
-      'LibreOffice (soffice) is required to convert PDF to Word. ' +
-      'Please ensure it is installed on the server.'
-    )
+      return {
+        buffer:         docxBuffer,
+        pageCount:      parsed.pageCount ?? 1,
+        originalFormat: 'pdf',
+        engine:         parsed.engine,
+      }
+    })
   }
 
   // ── PDF → PowerPoint ──────────────────────────────────────────────────
