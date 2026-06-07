@@ -19,6 +19,44 @@ const POLL_TIMEOUT_MS  = 5 * 60 * 1000
 const CLIENT_MAX_PX = 1600
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 const MAX_TOTAL_SIZE_MB = 50
+const THUMBNAIL_MAX_PX = 300
+
+/**
+ * Generate a small JPEG thumbnail for gallery display.
+ * Keeps GPU memory usage low: a 300px thumbnail decoded bitmap is ~360 KB
+ * vs ~46 MB for a full-resolution 4000×3000 photo.
+ * Falls back to a temporary object URL (revoked after decode) on canvas failure.
+ */
+async function generateThumbnail(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, THUMBNAIL_MAX_PX / Math.max(img.width, img.height, 1))
+      const w = Math.max(1, Math.round(img.width  * scale))
+      const h = Math.max(1, Math.round(img.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width  = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        resolve(URL.createObjectURL(file))
+        return
+      }
+      ctx.drawImage(img, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', 0.75))
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(URL.createObjectURL(file))
+    }
+
+    img.src = url
+  })
+}
 
 async function compressForUpload(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -85,6 +123,20 @@ async function pollJobUntilDone(
   throw new Error('PDF generation timed out — please try with fewer images or try again.')
 }
 
+/**
+ * Renumber order badges without creating new object references for items
+ * whose order value hasn't changed. This lets React.memo on ImageCard skip
+ * re-renders for cards that weren't affected by a remove/toggle operation.
+ */
+function reorderImages(imgs: ImageItem[]): ImageItem[] {
+  let counter = 1
+  return imgs.map((img) => {
+    if (img.order == null) return img
+    const newOrder = counter++
+    if (img.order === newOrder) return img
+    return { ...img, order: newOrder }
+  })
+}
 
 export function ImageToPdfClient() {
   const { lang } = useI18n()
@@ -93,31 +145,32 @@ export function ImageToPdfClient() {
   const [error,       setError]       = useState<string | null>(null)
   const progress = useRealProgress()
 
-  const handleFilesSelected = useCallback((files: File[]) => {
+  // Stable references from the progress hook so callbacks below don't
+  // re-create every render (avoids UploadDropzone re-renders).
+  const { reset: progressReset } = progress
+
+  const handleFilesSelected = useCallback(async (files: File[]) => {
     setDownloadUrl(null)
     setError(null)
-    progress.reset()
-    const newEntries: ImageItem[] = files.map((file) => ({
-      id:      `img-${++idCounter}`,
-      file,
-      preview: URL.createObjectURL(file),
-      order:   null,
-    }))
+    progressReset()
+
+    // Generate small thumbnails in parallel — keeps GPU memory low in gallery.
+    // Original File objects are preserved for upload compression later.
+    const newEntries: ImageItem[] = await Promise.all(
+      files.map(async (file) => ({
+        id:      `img-${++idCounter}`,
+        file,
+        preview: await generateThumbnail(file),
+        order:   null,
+      })),
+    )
     setImages((prev) => [...prev, ...newEntries])
-  }, [progress])
+  }, [progressReset])
 
   const removeImage = useCallback((id: string) => {
     setImages((prev) => reorderImages(prev.filter((img) => img.id !== id)))
     setDownloadUrl(null)
   }, [])
-
-  const reorderImages = (imgs: ImageItem[]): ImageItem[] => {
-    let counter = 1
-    return imgs.map((img) =>
-      img.order != null ? { ...img, order: counter++ } : img,
-    )
-  }
-
 
   const toggleOrder = useCallback((id: string) => {
     setImages((prev) => {
@@ -132,17 +185,26 @@ export function ImageToPdfClient() {
     setDownloadUrl(null)
   }, [])
 
-  const selectAll = () => setImages((prev) => prev.map((img, idx) => ({ ...img, order: idx + 1 })))
+  const selectAll = useCallback(() => {
+    setImages((prev) => prev.map((img, idx) => ({ ...img, order: idx + 1 })))
+  }, [])
 
-  const deselectAll = () => setImages((prev) => prev.map((img) => ({ ...img, order: null })))
+  const deselectAll = useCallback(() => {
+    setImages((prev) => prev.map((img) => ({ ...img, order: null })))
+  }, [])
 
-  const clearAll = () => {
-    images.forEach((img) => URL.revokeObjectURL(img.preview))
-    setImages([])
+  const clearAll = useCallback(() => {
+    setImages((prev) => {
+      prev.forEach((img) => {
+        // Only revoke if it's a blob/object URL, not a data URL
+        if (img.preview.startsWith('blob:')) URL.revokeObjectURL(img.preview)
+      })
+      return []
+    })
     setDownloadUrl(null)
     setError(null)
-    progress.reset()
-  }
+    progressReset()
+  }, [progressReset])
 
   const isSizeExceeded = getIsSizeExceeded(images, MAX_TOTAL_SIZE_MB)
   const selectedImages = images
