@@ -24,6 +24,45 @@ const formats: { value: string; label: string; descKey: TranslationKey }[] = [
   { value: 'avif', label: 'AVIF', descKey: 'convert.nextGen' },
 ]
 
+const BROWSER_MIME: Record<string, string> = {
+  jpeg: 'image/jpeg',
+  png:  'image/png',
+  webp: 'image/webp',
+  avif: 'image/avif',
+}
+
+/**
+ * Try to convert the image entirely in the browser using Canvas.
+ * Returns a Blob on success, or null if the browser can't handle it
+ * (e.g. AVIF encode not supported, or canvas tainted).
+ */
+async function convertInBrowser(file: File, targetFormat: string, quality = 0.9): Promise<Blob | null> {
+  const mime = BROWSER_MIME[targetFormat]
+  if (!mime) return null
+
+  try {
+    const bitmap = await createImageBitmap(file)
+
+    const canvas = document.createElement('canvas')
+    canvas.width  = bitmap.width
+    canvas.height = bitmap.height
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(bitmap, 0, 0)
+    bitmap.close()
+
+    return await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(
+        (blob) => resolve(blob),
+        mime,
+        targetFormat === 'png' ? undefined : quality,
+      )
+    })
+  } catch {
+    return null
+  }
+}
 
 export function ConvertImageClient() {
   const { t } = useI18n()
@@ -50,9 +89,27 @@ export function ConvertImageClient() {
 
     setError(null)
     setResult(null)
-    progress.startProcessing('Uploading image...')
+    progress.startProcessing('Converting...')
 
     try {
+      const ext      = targetFormat === 'jpeg' ? 'jpg' : targetFormat
+      const filename = `${file.name.replace(/\.[^/.]+$/, '')}.${ext}`
+
+      // ── Fast path: convert entirely in the browser ────────────────────────
+      const browserBlob = await convertInBrowser(file, targetFormat)
+      if (browserBlob) {
+        progress.stageDone(`${t('convert.successPrefix')} ${targetFormat.toUpperCase()}!`)
+        setResult({
+          downloadUrl: URL.createObjectURL(browserBlob),
+          filename,
+          format: targetFormat.toUpperCase(),
+        })
+        return
+      }
+
+      // ── Slow path: upload to server (AVIF or unsupported browser) ─────────
+      progress.startProcessing('Uploading image...')
+
       const formData = new FormData()
       formData.append('image', file)
       formData.append('quality', '90')
@@ -66,20 +123,15 @@ export function ConvertImageClient() {
         },
       })
 
-      progress.stageValidation('Validating image...')
+      progress.stageProcessing(undefined, ['Converting format...', 'Almost done...'])
 
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Conversion failed')
       }
 
-      progress.stageProcessing(undefined, ['Converting format...', 'Almost done...'])
-
       const blob = await res.blob()
-      const ext = targetFormat === 'jpeg' ? 'jpg' : targetFormat
-      const filename = `${file.name.replace(/\.[^/.]+$/, '')}.${ext}`
       setResult({ downloadUrl: URL.createObjectURL(blob), filename, format: targetFormat.toUpperCase() })
-
       progress.stageDone(`${t('convert.successPrefix')} ${targetFormat.toUpperCase()}!`)
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong'
