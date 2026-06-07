@@ -9,10 +9,10 @@ import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
 import { recordToolEvent } from '@/lib/tool-registry'
 import { rm } from 'node:fs/promises'
 
-const PDF_TO_WORD_MAX_BYTES = 25 * 1024 * 1024 // 25 MB
-
 export const runtime = 'nodejs'
 export const maxDuration = 300
+
+const MAX_BYTES = 25 * 1024 * 1024 // 25 MB
 
 export async function POST(req: NextRequest) {
   const guard = getToolGuardResponse('pdf-to-word')
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') ?? ''
   const start = Date.now()
 
-  // ── Path A: pre-uploaded file (JSON body with uploadId) ──────────────────
+  // ── Path A: pre-uploaded file ─────────────────────────────────────────────
   if (contentType.includes('application/json')) {
     let uploadId = ''
     try {
@@ -44,10 +44,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const cleanupStored = () => rm(stored.dir, { recursive: true, force: true }).catch(() => {})
+    const cleanup = () => rm(stored.dir, { recursive: true, force: true }).catch(() => {})
 
     try {
-      if (stored.size > PDF_TO_WORD_MAX_BYTES) {
+      if (stored.size > MAX_BYTES) {
         return NextResponse.json(
           { error: `File too large. Maximum 25 MB. Your file is ${(stored.size / 1024 / 1024).toFixed(1)} MB.` },
           { status: 413 }
@@ -57,7 +57,6 @@ export async function POST(req: NextRequest) {
       const buffer = await readFileAsArrayBuffer(stored.path)
       const title  = safeFilename(stored.filename.replace(/\.pdf$/i, ''))
       const result = await pdf.toWord({ file: buffer })
-
       const durationMs = Date.now() - start
 
       if (!result.success || !result.data) {
@@ -86,11 +85,11 @@ export async function POST(req: NextRequest) {
       recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: stored.size, engine: 'pdf2docx', error: msg })
       return NextResponse.json({ error: msg }, { status: 500 })
     } finally {
-      await cleanupStored()
+      await cleanup()
     }
   }
 
-  // ── Path B: regular multipart upload ─────────────────────────────────────
+  // ── Path B: multipart upload ──────────────────────────────────────────────
   const { files, cleanup } = await streamUpload(req).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
@@ -102,7 +101,7 @@ export async function POST(req: NextRequest) {
     const validationError = await validateStreamedFile(file, 'pdf')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
-    if (file.size > PDF_TO_WORD_MAX_BYTES) {
+    if (file.size > MAX_BYTES) {
       return NextResponse.json(
         { error: `File too large. Maximum 25 MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
         { status: 413 }
@@ -112,11 +111,10 @@ export async function POST(req: NextRequest) {
     const title  = safeFilename(file.filename.replace(/\.pdf$/i, ''))
     const buffer = await readFileAsArrayBuffer(file.path)
     const result = await pdf.toWord({ file: buffer })
-
     const durationMs = Date.now() - start
 
     if (!result.success || !result.data) {
-      trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: false, durationMs, errorMsg: result.error ?? 'pdf-to-word failed' })
+      trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: false, durationMs, errorMsg: result.error ?? 'failed' })
       recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: file.size, engine: 'pdf2docx', error: result.error ?? 'failed' })
       return NextResponse.json({ error: result.error || 'Failed to convert PDF to Word' }, { status: 500 })
     }

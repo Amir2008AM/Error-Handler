@@ -538,10 +538,12 @@ export class PDFProcessor extends BaseProcessor {
   }
 
   /**
-   * Convert PDF to Word document.
-   * Primary: LibreOffice headless (soffice --convert-to docx) — highest fidelity,
-   *   preserves text, layout, fonts, tables, and RTL/Arabic content correctly.
-   * Fallback: pdfjs text extraction + docx rebuild — used only if LibreOffice fails.
+   * Convert PDF to Word (.docx).
+   *
+   * Engine order:
+   *   1. pdf2docx Python script  — best layout fidelity, tables, columns
+   *   2. LibreOffice headless    — good quality fallback
+   *   3. pdfjs + docx rebuild    — text-only last resort
    */
   async toWord(options: PDFToWordOptions): Promise<ProcessingResult<Buffer>> {
     try {
@@ -550,130 +552,105 @@ export class PDFProcessor extends BaseProcessor {
       const { result, time } = await this.measureTime(async () => {
         const pdfBuffer = Buffer.from(options.file)
 
-        // ── Primary: LibreOffice ──────────────────────────────────────────
+        // ── 1. pdf2docx (Python) ──────────────────────────────────────────
         try {
-          const { DocumentConverter } = await import('./document-converter')
-          const converter = new DocumentConverter()
-          const conversion = await converter.pdfToWord(pdfBuffer)
-          return conversion.buffer
-        } catch (loErr) {
-          console.warn(
-            '[pdf-processor] LibreOffice PDF→Word failed, using pdfjs fallback:',
-            loErr instanceof Error ? loErr.message : String(loErr)
-          )
-        }
-
-        // ── Fallback: pdfjs text extraction + docx ────────────────────────
-        const pdfjs = await getPdfjs()
-        const loadingTask = pdfjs.getDocument({
-          data: new Uint8Array(options.file),
-          verbosity: 0,
-        })
-        const pdfDocument = await loadingTask.promise
-        const pageCount = pdfDocument.numPages
-
-        interface TextItem {
-          str: string
-          x: number
-          y: number
-          fontSize: number
-        }
-
-        const allPageItems: TextItem[][] = []
-
-        for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-          const page = await pdfDocument.getPage(pageNum)
-          const textContent = await page.getTextContent()
-          const viewport = page.getViewport({ scale: 1 })
-
-          const items: TextItem[] = []
-          for (const item of textContent.items as Array<{
-            str: string
-            transform: number[]
-            width: number
-            height: number
-          }>) {
-            if (!item.str.trim()) continue
-            const x = item.transform[4]
-            const y = viewport.height - item.transform[5]
-            const fontSize = Math.abs(item.transform[3])
-            items.push({ str: item.str, x, y, fontSize })
+          const { mkdtemp, writeFile: wf, readFile: rf, rm } = await import('node:fs/promises')
+          const { join } = await import('node:path')
+          const { tmpdir } = await import('node:os')
+          const { runPdf2Docx } = await import('../lo-server')
+          const dir = await mkdtemp(join(tmpdir(), 'pdf2word-'))
+          try {
+            const srcPath = join(dir, 'input.pdf')
+            const dstPath = join(dir, 'output.docx')
+            await wf(srcPath, pdfBuffer)
+            const ok = await runPdf2Docx(srcPath, dstPath, 90_000)
+            if (ok) {
+              const docxBuf = await rf(dstPath)
+              if (docxBuf.length > 100) return docxBuf
+            }
+          } finally {
+            await rm(dir, { recursive: true, force: true }).catch(() => {})
           }
-          allPageItems.push(items)
+        } catch (e) {
+          console.warn('[pdf-processor] pdf2docx failed:', e instanceof Error ? e.message : String(e))
         }
 
-        const allFontSizes = allPageItems.flat().map((i) => i.fontSize)
-        const sortedSizes = [...allFontSizes].sort((a, b) => a - b)
-        const medianFontSize = sortedSizes[Math.floor(sortedSizes.length / 2)] ?? 12
+        // ── 2. LibreOffice headless ───────────────────────────────────────
+        try {
+          const { mkdtemp, writeFile: wf, readFile: rf, rm } = await import('node:fs/promises')
+          const { join } = await import('node:path')
+          const { tmpdir } = await import('node:os')
+          const { spawn } = await import('node:child_process')
+          const dir = await mkdtemp(join(tmpdir(), 'lo-pdf2word-'))
+          try {
+            const inFile = join(dir, 'input.pdf')
+            await wf(inFile, pdfBuffer)
+            await new Promise<void>((resolve, reject) => {
+              const proc = spawn('soffice', [
+                '--headless', '--norestore', '--nofirststartwizard',
+                '--convert-to', 'docx', '--outdir', dir, inFile,
+              ], { stdio: 'ignore', env: { ...process.env, HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' } })
+              const t = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('soffice timed out')) }, 90_000)
+              proc.on('close', (code) => { clearTimeout(t); code === 0 ? resolve() : reject(new Error(`soffice exited ${code}`)) })
+              proc.on('error', (err) => { clearTimeout(t); reject(err) })
+            })
+            const outFile = join(dir, 'input.docx')
+            const docxBuf = await rf(outFile)
+            if (docxBuf.length > 100) return docxBuf
+          } finally {
+            await rm(dir, { recursive: true, force: true }).catch(() => {})
+          }
+        } catch (e) {
+          console.warn('[pdf-processor] LibreOffice PDF→Word failed:', e instanceof Error ? e.message : String(e))
+        }
 
+        // ── 3. pdfjs + docx rebuild (text-only fallback) ─────────────────
+        const pdfjs = await getPdfjs()
+        const pdfDoc = await pdfjs.getDocument({ data: new Uint8Array(options.file), verbosity: 0 }).promise
+        const pageCount = pdfDoc.numPages
         const docChildren: (Paragraph | Table)[] = []
 
-        for (let p = 0; p < allPageItems.length; p++) {
-          const items = allPageItems[p]
-          if (p > 0) {
-            docChildren.push(new Paragraph({ text: '', spacing: { before: 400 } }))
-          }
+        for (let pn = 1; pn <= pageCount; pn++) {
+          if (pn > 1) docChildren.push(new Paragraph({ text: '', spacing: { before: 400 } }))
+          const page = await pdfDoc.getPage(pn)
+          const content = await page.getTextContent()
+          const viewport = page.getViewport({ scale: 1 })
 
-          const lines: TextItem[][] = []
-          for (const item of items) {
-            const existingLine = lines.find((line) => Math.abs(line[0].y - item.y) <= 5)
-            if (existingLine) existingLine.push(item)
-            else lines.push([item])
+          interface TItem { str: string; x: number; y: number; fs: number }
+          const items: TItem[] = (content.items as Array<{ str: string; transform: number[] }>)
+            .filter((it) => it.str.trim())
+            .map((it) => ({
+              str: it.str,
+              x: it.transform[4],
+              y: viewport.height - it.transform[5],
+              fs: Math.abs(it.transform[3]),
+            }))
+
+          const lines: TItem[][] = []
+          for (const it of items) {
+            const existing = lines.find((l) => Math.abs(l[0].y - it.y) <= 5)
+            if (existing) existing.push(it)
+            else lines.push([it])
           }
           lines.sort((a, b) => a[0].y - b[0].y)
-          for (const line of lines) line.sort((a, b) => a.x - b.x)
+          for (const l of lines) l.sort((a, b) => a.x - b.x)
 
-          const isTableLine = (lineA: TextItem[], lineB: TextItem[]): boolean => {
-            if (lineA.length < 2 || lineB.length < 2) return false
-            return lineA.filter((a) => lineB.some((b) => Math.abs(a.x - b.x) <= 10)).length >= 2
-          }
+          const sizes = items.map((i) => i.fs).sort((a, b) => a - b)
+          const median = sizes[Math.floor(sizes.length / 2)] ?? 12
 
-          let i = 0
-          while (i < lines.length) {
-            let tableEnd = i + 1
-            while (tableEnd < lines.length && isTableLine(lines[tableEnd - 1], lines[tableEnd])) {
-              tableEnd++
-            }
-
-            if (tableEnd - i >= 3) {
-              const tableLines = lines.slice(i, tableEnd)
-              const maxCols = Math.max(...tableLines.map((l) => l.length))
-              const rows = tableLines.map((line) => {
-                const cells = Array.from({ length: maxCols }, (_, ci) => {
-                  const cell = line[ci]
-                  return new TableCell({
-                    children: [new Paragraph({ children: [new TextRun({ text: cell?.str ?? '' })] })],
-                    borders: {
-                      top: { style: BorderStyle.SINGLE, size: 1 },
-                      bottom: { style: BorderStyle.SINGLE, size: 1 },
-                      left: { style: BorderStyle.SINGLE, size: 1 },
-                      right: { style: BorderStyle.SINGLE, size: 1 },
-                    },
-                  })
-                })
-                return new TableRow({ children: cells })
-              })
-              docChildren.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }))
-              i = tableEnd
-            } else {
-              const line = lines[i]
-              const lineText = line.map((item) => item.str).join(' ').trim()
-              const avgFontSize = line.reduce((s, item) => s + item.fontSize, 0) / line.length
-              let heading: (typeof HeadingLevel)[keyof typeof HeadingLevel] | undefined
-              if (avgFontSize >= medianFontSize * 1.8) heading = HeadingLevel.HEADING_1
-              else if (avgFontSize >= medianFontSize * 1.4) heading = HeadingLevel.HEADING_2
-              else if (avgFontSize >= medianFontSize * 1.2) heading = HeadingLevel.HEADING_3
-
-              if (lineText) {
-                docChildren.push(new Paragraph({
-                  ...(heading ? { heading } : {}),
-                  children: [new TextRun({ text: lineText, bold: !!heading, size: Math.round(Math.min(avgFontSize * 2, 72)) })],
-                  spacing: { after: 100 },
-                  alignment: AlignmentType.LEFT,
-                }))
-              }
-              i++
-            }
+          for (const line of lines) {
+            const text = line.map((i) => i.str).join(' ').trim()
+            if (!text) continue
+            const avgFs = line.reduce((s, i) => s + i.fs, 0) / line.length
+            let heading: (typeof HeadingLevel)[keyof typeof HeadingLevel] | undefined
+            if (avgFs >= median * 1.8) heading = HeadingLevel.HEADING_1
+            else if (avgFs >= median * 1.4) heading = HeadingLevel.HEADING_2
+            else if (avgFs >= median * 1.2) heading = HeadingLevel.HEADING_3
+            docChildren.push(new Paragraph({
+              ...(heading ? { heading } : {}),
+              children: [new TextRun({ text, bold: !!heading, size: Math.round(Math.min(avgFs * 2, 72)) })],
+              spacing: { after: 100 },
+            }))
           }
         }
 
@@ -681,8 +658,8 @@ export class PDFProcessor extends BaseProcessor {
           docChildren.push(new Paragraph({ children: [new TextRun({ text: 'No extractable text found in this PDF.' })] }))
         }
 
-        const doc = new Document({ sections: [{ properties: {}, children: docChildren }] })
-        return Buffer.from(await Packer.toBuffer(doc))
+        const wordDoc = new Document({ sections: [{ properties: {}, children: docChildren }] })
+        return Buffer.from(await Packer.toBuffer(wordDoc))
       })
 
       return this.success(result, {

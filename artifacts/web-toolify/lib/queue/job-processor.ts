@@ -114,7 +114,7 @@ const processors: Partial<Record<JobType, ProcessorFunction>> = {
   'unlock-pdf':      processUnlockPdf,
   'sign-pdf':        processSignPdf,
   'pdf-to-jpg':      processPdfToJpg,
-  'pdf-to-word':     processPdfToWord,
+  'pdf-to-word':     processPdfToWordFresh,
   'ocr-image':       processOcrImage,
   'ocr-pdf':         processOcrPdf,
   'compress-image':  processCompressImage,
@@ -645,13 +645,13 @@ async function processPdfToJpg(job: Job): Promise<SingleResult | BatchResult> {
   return { buffer: zipBuffer, fileName: `${baseName}-pages.zip`, mimeType: 'application/zip' }
 }
 
-async function processPdfToWord(job: Job): Promise<SingleResult> {
+async function processPdfToWordFresh(job: Job): Promise<SingleResult> {
   const processor = new PDFProcessor()
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(
     processor.toWord({ file: toArrayBuffer(job.files[0].buffer) }),
-    TIMEOUTS.pdfHeavy,
+    TIMEOUTS.jobOverall,
     'pdf.toWord'
   )
   manager.updateJobProgress(job.id, 90)
@@ -659,8 +659,7 @@ async function processPdfToWord(job: Job): Promise<SingleResult> {
   return {
     buffer: unwrap(result),
     fileName: `${baseName}.docx`,
-    mimeType:
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   }
 }
 

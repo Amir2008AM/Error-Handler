@@ -72,7 +72,7 @@ const _registry: ToolMeta[] = [
   { slug: 'pdf-to-jpg',      name: 'PDF to JPG',        engine: 'node-canvas',      guard: 'pdfjs',        rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 300, p95Sec: 90,  spawnsProcess: false },
   { slug: 'pdf-to-text',     name: 'PDF to Text',       engine: 'pdfjs',            guard: 'pdfjs',        rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 60,  p95Sec: 15,  spawnsProcess: false },
   { slug: 'pdf-to-excel',    name: 'PDF to Excel',      engine: 'python-reportlab', guard: 'python',       rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 180, p95Sec: 60,  spawnsProcess: true  },
-  { slug: 'pdf-to-word',     name: 'PDF to Word',       engine: 'libreoffice',      guard: 'libreoffice',  rateTier: 'heavy',  workerGroup: 'pdf-heavy', maxDurationSec: 120, p95Sec: 45,  spawnsProcess: true  },
+  { slug: 'pdf-to-word',     name: 'PDF to Word',       engine: 'pdf2docx',         guard: 'libreoffice',  rateTier: 'heavy',  workerGroup: 'pdf-heavy', maxDurationSec: 300, p95Sec: 60,  spawnsProcess: true  },
   { slug: 'pdf-to-ppt',      name: 'PDF to PPT',        engine: 'libreoffice',      guard: 'libreoffice',  rateTier: 'heavy',  workerGroup: 'document', maxDurationSec: 120, p95Sec: 60,  spawnsProcess: true  },
 
   // ── Document → PDF (LibreOffice) ──────────────────────────────────────────
