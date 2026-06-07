@@ -26,7 +26,7 @@ export type EngineLabel =
   | 'node-canvas'
   | 'hybrid'
 
-export type WorkerGroup = 'pdf' | 'image' | 'ocr' | 'document' | 'direct'
+export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'ocr' | 'document' | 'direct'
 
 export interface ToolMeta {
   /** Unique slug used in URLs and internal references */
@@ -52,31 +52,25 @@ export interface ToolMeta {
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 const _registry: ToolMeta[] = [
-  // ── PDF manipulation (pdf-lib / qpdf — fast, in-process) ──────────────────
-  { slug: 'merge-pdf',       name: 'Merge PDF',         engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 15,  spawnsProcess: false },
-  { slug: 'split-pdf',       name: 'Split PDF',         engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 10,  spawnsProcess: false },
-  { slug: 'rotate-pdf',      name: 'Rotate PDF',        engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: false },
-  { slug: 'watermark-pdf',   name: 'Watermark PDF',     engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 8,   spawnsProcess: false },
-  { slug: 'protect-pdf',     name: 'Protect PDF',       engine: 'qpdf',             guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: true  },
-  { slug: 'unlock-pdf',      name: 'Unlock PDF',        engine: 'qpdf',             guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: true  },
-  { slug: 'sign-pdf',        name: 'Sign PDF',          engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 8,   spawnsProcess: false },
-  { slug: 'delete-pages',    name: 'Delete Pages',      engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: false },
-  { slug: 'organize-pdf',    name: 'Organize PDF',      engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: false },
-  { slug: 'page-numbers',    name: 'Page Numbers',      engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 8,   spawnsProcess: false },
-  { slug: 'repair-pdf',      name: 'Repair PDF',        engine: 'ghostscript',      guard: 'ghostscript',  rateTier: 'medium', workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 20,  spawnsProcess: true  },
+  // ── PDF-FAST: quick in-process ops — typically <2 s ───────────────────────
+  { slug: 'rotate-pdf',      name: 'Rotate PDF',        engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: false },
+  { slug: 'watermark-pdf',   name: 'Watermark PDF',     engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 8,   spawnsProcess: false },
+  { slug: 'protect-pdf',     name: 'Protect PDF',       engine: 'qpdf',             guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: true  },
+  { slug: 'unlock-pdf',      name: 'Unlock PDF',        engine: 'qpdf',             guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: true  },
+  { slug: 'sign-pdf',        name: 'Sign PDF',          engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 8,   spawnsProcess: false },
+  { slug: 'delete-pages',    name: 'Delete Pages',      engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: false },
+  { slug: 'organize-pdf',    name: 'Organize PDF',      engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: false },
+  { slug: 'page-numbers',    name: 'Page Numbers',      engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 8,   spawnsProcess: false },
 
-  // ── PDF compression (Ghostscript — heavy subprocess) ──────────────────────
-  { slug: 'compress-pdf',    name: 'Compress PDF',      engine: 'ghostscript',      guard: 'ghostscript',  rateTier: 'medium', workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 60,  spawnsProcess: true  },
-
-  // ── PDF → images (pdfjs + node-canvas — memory-intensive) ─────────────────
-  { slug: 'pdf-to-jpg',      name: 'PDF to JPG',        engine: 'node-canvas',      guard: 'pdfjs',        rateTier: 'medium', workerGroup: 'pdf',      maxDurationSec: 300, p95Sec: 90,  spawnsProcess: false },
-
-  // ── PDF → text / data ────────────────────────────────────────────────────
-  { slug: 'pdf-to-text',     name: 'PDF to Text',       engine: 'pdfjs',            guard: 'pdfjs',        rateTier: 'medium', workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 15,  spawnsProcess: false },
-  { slug: 'pdf-to-excel',    name: 'PDF to Excel',      engine: 'python-reportlab', guard: 'python',       rateTier: 'medium', workerGroup: 'pdf',      maxDurationSec: 180, p95Sec: 60,  spawnsProcess: true  },
-
-  // ── PDF → document (LibreOffice — most expensive) ─────────────────────────
-  { slug: 'pdf-to-word',     name: 'PDF to Word',       engine: 'libreoffice',      guard: 'libreoffice',  rateTier: 'heavy',  workerGroup: 'pdf',      maxDurationSec: 60,  p95Sec: 45,  spawnsProcess: true  },
+  // ── PDF-HEAVY: CPU-intensive or multi-step ops — 2 s to 3 min ─────────────
+  { slug: 'merge-pdf',       name: 'Merge PDF',         engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-heavy', maxDurationSec: 120, p95Sec: 15,  spawnsProcess: false },
+  { slug: 'split-pdf',       name: 'Split PDF',         engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-heavy', maxDurationSec: 120, p95Sec: 10,  spawnsProcess: false },
+  { slug: 'repair-pdf',      name: 'Repair PDF',        engine: 'ghostscript',      guard: 'ghostscript',  rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 120, p95Sec: 20,  spawnsProcess: true  },
+  { slug: 'compress-pdf',    name: 'Compress PDF',      engine: 'ghostscript',      guard: 'ghostscript',  rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 120, p95Sec: 60,  spawnsProcess: true  },
+  { slug: 'pdf-to-jpg',      name: 'PDF to JPG',        engine: 'node-canvas',      guard: 'pdfjs',        rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 300, p95Sec: 90,  spawnsProcess: false },
+  { slug: 'pdf-to-text',     name: 'PDF to Text',       engine: 'pdfjs',            guard: 'pdfjs',        rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 60,  p95Sec: 15,  spawnsProcess: false },
+  { slug: 'pdf-to-excel',    name: 'PDF to Excel',      engine: 'python-reportlab', guard: 'python',       rateTier: 'medium', workerGroup: 'pdf-heavy', maxDurationSec: 180, p95Sec: 60,  spawnsProcess: true  },
+  { slug: 'pdf-to-word',     name: 'PDF to Word',       engine: 'libreoffice',      guard: 'libreoffice',  rateTier: 'heavy',  workerGroup: 'pdf-heavy', maxDurationSec: 120, p95Sec: 45,  spawnsProcess: true  },
   { slug: 'pdf-to-ppt',      name: 'PDF to PPT',        engine: 'libreoffice',      guard: 'libreoffice',  rateTier: 'heavy',  workerGroup: 'document', maxDurationSec: 120, p95Sec: 60,  spawnsProcess: true  },
 
   // ── Document → PDF (LibreOffice) ──────────────────────────────────────────

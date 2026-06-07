@@ -8,7 +8,7 @@
 import { Queue } from 'bullmq'
 import { Redis } from 'ioredis'
 
-const QUEUE_NAMES = ['toolify-pdf', 'toolify-image', 'toolify-ocr', 'toolify-document']
+const QUEUE_NAMES = ['toolify-pdf-fast', 'toolify-pdf-heavy', 'toolify-image', 'toolify-ocr', 'toolify-document']
 
 let _redis: Redis | null = null
 function getRedis(): Redis | null {

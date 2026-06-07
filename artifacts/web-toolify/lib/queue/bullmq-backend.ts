@@ -6,14 +6,19 @@
  *   Worker → load files from TempStorage → process → store result → update job state
  *   Poll   → /api/jobs/:id → query BullMQ job state + result
  *
- * Worker Groups (separate queues for independent concurrency):
- *   toolify-pdf      → PDF processing  (Ghostscript + pdf-lib)
- *   toolify-image    → Image processing (Sharp)
- *   toolify-ocr      → OCR             (Tesseract)
- *   toolify-document → Document conv.  (LibreOffice)
+ * Worker Groups — 5 independent queues so fast tools never block behind slow ones:
+ *
+ *   toolify-pdf-fast   → Quick PDF ops (rotate, watermark, protect…) — concurrency 4
+ *   toolify-pdf-heavy  → Slow PDF ops (merge, compress, pdf→jpg…)    — concurrency 2
+ *   toolify-image      → Image processing (Sharp)                     — concurrency 4
+ *   toolify-ocr        → OCR (Tesseract)                              — concurrency 2
+ *   toolify-document   → Document conv. (LibreOffice)                 — concurrency 2
  *
  * File data NEVER enters Redis — only file IDs stored in TempStorage.
  * BullMQ handles: persistence, retries, TTL cleanup, progress tracking.
+ *
+ * Per-stage timing is embedded in every completed job's returnvalue.metadata._timings
+ * and surfaced in the status API as { timings: { queueWaitMs, fileLoadMs, engineMs, totalMs } }.
  */
 
 import { Queue, Worker, Job as BullJob, UnrecoverableError } from 'bullmq'
@@ -23,7 +28,7 @@ import { cpus } from 'node:os'
 import { getTempStorage } from '../storage'
 import { getJobManager } from './job-manager'
 import { processJob } from './job-processor'
-import type { JobType, JobResult, JobOptions, JobStatusResponse } from './types'
+import type { JobType, JobResult, JobOptions, JobStatusResponse, JobTimings } from './types'
 import { reportError } from '../telegram/error-monitor'
 import { emitEvent, emitWorkerStatus } from '../monitoring/emitter'
 
@@ -36,39 +41,71 @@ const PROGRESS_POLL_MS     = 300              // how often to bridge in-memory p
 
 // ── Worker group routing ─────────────────────────────────────────────────────
 
-const PDF_TYPES = new Set<JobType>([
-  'merge-pdf', 'split-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
-  'protect-pdf', 'unlock-pdf', 'sign-pdf', 'pdf-to-jpg', 'pdf-to-word',
-  'add-page-numbers', 'organize-pdf', 'extract-pages', 'delete-pages', 'repair-pdf',
+/**
+ * PDF-FAST: quick in-process operations — typically <2 seconds.
+ * These must never wait behind compress-pdf or merge-pdf jobs.
+ */
+const PDF_FAST_TYPES = new Set<JobType>([
+  'rotate-pdf', 'watermark-pdf', 'add-page-numbers', 'organize-pdf',
+  'protect-pdf', 'unlock-pdf', 'sign-pdf',
+  'extract-pages', 'delete-pages',
 ])
+
+/**
+ * PDF-HEAVY: CPU-intensive or multi-step ops — 2 s to 3 min.
+ * Isolated so they don't starve the fast queue.
+ */
+const PDF_HEAVY_TYPES = new Set<JobType>([
+  'merge-pdf', 'split-pdf', 'compress-pdf', 'repair-pdf',
+  'pdf-to-jpg', 'pdf-to-word', 'pdf-to-excel',
+])
+
 const IMAGE_TYPES = new Set<JobType>([
   'compress-image', 'resize-image', 'convert-image', 'crop-image', 'image-to-pdf',
 ])
-const OCR_TYPES = new Set<JobType>(['ocr-image', 'ocr-pdf'])
-const DOCUMENT_TYPES = new Set<JobType>(['word-to-pdf', 'excel-to-pdf', 'html-to-pdf', 'ppt-to-pdf'])
 
-type WorkerGroup = 'pdf' | 'image' | 'ocr' | 'document'
+const OCR_TYPES = new Set<JobType>(['ocr-image', 'ocr-pdf'])
+
+/**
+ * DOCUMENT: LibreOffice-based conversions — includes pdf-to-ppt which was
+ * previously (incorrectly) falling through to the pdf queue.
+ */
+const DOCUMENT_TYPES = new Set<JobType>([
+  'word-to-pdf', 'excel-to-pdf', 'html-to-pdf', 'ppt-to-pdf', 'pdf-to-ppt',
+])
+
+export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'ocr' | 'document'
 
 export function getWorkerGroup(type: JobType): WorkerGroup {
-  if (PDF_TYPES.has(type))      return 'pdf'
-  if (IMAGE_TYPES.has(type))    return 'image'
-  if (OCR_TYPES.has(type))      return 'ocr'
-  if (DOCUMENT_TYPES.has(type)) return 'document'
-  return 'pdf'
+  if (PDF_FAST_TYPES.has(type))     return 'pdf-fast'
+  if (PDF_HEAVY_TYPES.has(type))    return 'pdf-heavy'
+  if (IMAGE_TYPES.has(type))        return 'image'
+  if (OCR_TYPES.has(type))          return 'ocr'
+  if (DOCUMENT_TYPES.has(type))     return 'document'
+  // Safe default — unclassified PDF-like types go to heavy queue
+  return 'pdf-heavy'
 }
 
 const QUEUE_NAMES: Record<WorkerGroup, string> = {
-  pdf:      'toolify-pdf',
-  image:    'toolify-image',
-  ocr:      'toolify-ocr',
-  document: 'toolify-document',
+  'pdf-fast':  'toolify-pdf-fast',
+  'pdf-heavy': 'toolify-pdf-heavy',
+  image:       'toolify-image',
+  ocr:         'toolify-ocr',
+  document:    'toolify-document',
 }
 
 const CONCURRENCY: Record<WorkerGroup, number> = {
-  pdf:      Math.max(1, Math.floor(cpus().length / 2)),
-  image:    Math.max(2, cpus().length),
-  ocr:      Math.max(1, Math.floor(cpus().length / 2)),
-  document: 1, // LibreOffice must NOT run concurrently
+  // Fast PDF ops — no expensive spawns, pure JS — use all CPUs
+  'pdf-fast':  Math.max(2, cpus().length),
+  // Heavy PDF ops — Ghostscript/pdf-lib — cap at half CPUs to avoid RAM/CPU saturation
+  'pdf-heavy': Math.max(1, Math.floor(cpus().length / 2)),
+  // Sharp (libvips, async/non-blocking) — use all CPUs
+  image:       Math.max(2, cpus().length),
+  // Tesseract — LSTM is CPU+RAM heavy — cap at half CPUs
+  ocr:         Math.max(1, Math.floor(cpus().length / 2)),
+  // LibreOffice — each process uses 200–600 MB RAM.
+  // Two concurrent conversions are safe on ≥4 GB available RAM.
+  document:    2,
 }
 
 // ── Job payload (what goes into Redis — must be small) ───────────────────────
@@ -80,6 +117,8 @@ export interface BullMQPayload {
   fileNames: string[]
   fileMimeTypes: string[]
   options: JobOptions
+  /** Unix ms — when the job was enqueued (for accurate queue-wait measurement) */
+  enqueuedAt: number
 }
 
 // ── Redis connection factory ─────────────────────────────────────────────────
@@ -128,7 +167,7 @@ function getQueue(group: WorkerGroup): Queue {
 
 /**
  * Push a job to the appropriate queue.
- * Returns a prefixed jobId: `bq-${group}-${bullJobId}` (e.g. `bq-pdf-abc123`)
+ * Returns a prefixed jobId: `bq-<group>-<bullJobId>` (e.g. `bq-pdf-fast-abc123`)
  */
 export async function enqueueJob(
   type: JobType,
@@ -141,17 +180,25 @@ export async function enqueueJob(
   const queue = getQueue(group)
   const customId = nanoid(12)
 
-  const payload: BullMQPayload = { type, inputFileIds, fileNames, fileMimeTypes, options }
+  const payload: BullMQPayload = {
+    type, inputFileIds, fileNames, fileMimeTypes, options,
+    enqueuedAt: Date.now(),
+  }
 
   const bullJob = await queue.add(type, payload, { jobId: customId })
-  // Return a prefixed ID so the status route knows which queue to query
   return `bq-${group}-${bullJob.id!}`
 }
 
 // ── Status query ─────────────────────────────────────────────────────────────
 
 /**
- * Parse a prefixed job ID (e.g. `bq-pdf-abc123`) and fetch its BullMQ status.
+ * Ordered group name list for ID parsing — longer names must come first so
+ * 'pdf-fast' is matched before 'pdf' would be (if 'pdf' were still present).
+ */
+const KNOWN_GROUPS: WorkerGroup[] = ['pdf-fast', 'pdf-heavy', 'image', 'ocr', 'document']
+
+/**
+ * Parse a prefixed job ID (e.g. `bq-pdf-fast-abc123`) and fetch its BullMQ status.
  * Returns null if not found or if the ID is not a BullMQ job.
  */
 export async function getBullMQJobStatus(
@@ -159,21 +206,24 @@ export async function getBullMQJobStatus(
 ): Promise<JobStatusResponse | null> {
   if (!prefixedId.startsWith('bq-')) return null
 
-  // Format: bq-<group>-<bullId>
-  const rest = prefixedId.slice(3)
-  const dashIdx = rest.indexOf('-')
-  if (dashIdx === -1) return null
+  const rest = prefixedId.slice(3) // remove 'bq-'
 
-  const group = rest.slice(0, dashIdx) as WorkerGroup
-  const bullId = rest.slice(dashIdx + 1)
+  let group: WorkerGroup | null = null
+  let bullId: string | null = null
+  for (const g of KNOWN_GROUPS) {
+    if (rest.startsWith(g + '-')) {
+      group = g
+      bullId = rest.slice(g.length + 1)
+      break
+    }
+  }
+  if (!group || !bullId) return null
 
-  if (!QUEUE_NAMES[group]) return null
-
-  const queue = getQueue(group)
+  const queue   = getQueue(group)
   const bullJob = await queue.getJob(bullId)
   if (!bullJob) return null
 
-  const state = await bullJob.getState()
+  const state    = await bullJob.getState()
   const progress = typeof bullJob.progress === 'number' ? bullJob.progress : 0
 
   const statusMap: Record<string, JobStatusResponse['status']> = {
@@ -187,7 +237,7 @@ export async function getBullMQJobStatus(
 
   const status: JobStatusResponse['status'] = statusMap[state] ?? 'failed'
 
-  const result: JobStatusResponse = {
+  const response: JobStatusResponse = {
     id: prefixedId,
     status,
     progress: status === 'completed' ? 100 : progress,
@@ -197,13 +247,29 @@ export async function getBullMQJobStatus(
   }
 
   if (state === 'completed' && bullJob.returnvalue) {
-    result.result = bullJob.returnvalue as JobResult
-  }
-  if (state === 'failed') {
-    result.error = bullJob.failedReason || 'Job failed'
+    const rv = bullJob.returnvalue as JobResult
+    response.result = rv
+
+    // Extract per-stage timings embedded by executeBullMQJob
+    const embedded = rv.metadata?._timings as Record<string, number> | undefined
+    const timings: JobTimings = {
+      queueWaitMs: bullJob.processedOn != null
+        ? bullJob.processedOn - bullJob.timestamp
+        : undefined,
+      fileLoadMs:  embedded?.fileLoadMs,
+      engineMs:    embedded?.engineMs,
+      totalMs:     bullJob.finishedOn != null
+        ? bullJob.finishedOn - bullJob.timestamp
+        : undefined,
+    }
+    response.timings = timings
   }
 
-  return result
+  if (state === 'failed') {
+    response.error = bullJob.failedReason || 'Job failed'
+  }
+
+  return response
 }
 
 // ── Worker processor ─────────────────────────────────────────────────────────
@@ -212,25 +278,26 @@ export async function getBullMQJobStatus(
  * Core processing function executed inside each BullMQ worker.
  *
  * Flow:
- *   1. Load input files from TempStorage into Buffers
- *   2. Register a temporary in-memory job (using BullMQ job ID) so existing
- *      job-processor.ts can run without changes
+ *   1. Load input files from TempStorage into Buffers          → fileLoadMs
+ *   2. Register temporary in-memory job (BullMQ job ID)
  *   3. Bridge progress: poll in-memory job → push to BullMQ
- *   4. Run processJob() which handles engines + internal retries
- *   5. Extract result → return as BullMQ job returnvalue
- *   6. Cleanup: delete input files from TempStorage
+ *   4. Run processJob()                                        → engineMs
+ *   5. Embed timings into result.metadata._timings
+ *   6. Return result as BullMQ job returnvalue
+ *   7. Cleanup: delete input files from TempStorage
  */
 async function executeBullMQJob(bullJob: BullJob<BullMQPayload>): Promise<JobResult> {
   const payload = bullJob.data
   const storage  = getTempStorage()
   const manager  = getJobManager()
 
-  // ── 1. Load input files ──
+  // ── 1. Load input files ─────────────────────────────────────────────────
+  const t0 = Date.now()
+
   const files: Array<{ name: string; buffer: Buffer; type: string }> = []
   for (let i = 0; i < payload.inputFileIds.length; i++) {
     const stored = await storage.get(payload.inputFileIds[i])
     if (!stored) {
-      // File missing from TempStorage (TTL expired or storage cleared)
       throw new UnrecoverableError(
         `Input file "${payload.fileNames[i]}" is no longer available (expired). Please re-upload.`
       )
@@ -242,11 +309,14 @@ async function executeBullMQJob(bullJob: BullJob<BullMQPayload>): Promise<JobRes
     })
   }
 
-  // ── 2. Register temporary in-memory job with BullMQ's job ID ──
+  const t1 = Date.now()
+  const fileLoadMs = t1 - t0
+
+  // ── 2. Register temporary in-memory job ─────────────────────────────────
   const inMemId = bullJob.id!
   manager.registerJobWithId(inMemId, payload.type, files, payload.options)
 
-  // ── 3. Progress bridge ──
+  // ── 3. Progress bridge ──────────────────────────────────────────────────
   const progressPoller = setInterval(() => {
     const s = manager.getJobStatus(inMemId)
     if (s?.progress != null) {
@@ -255,29 +325,37 @@ async function executeBullMQJob(bullJob: BullJob<BullMQPayload>): Promise<JobRes
   }, PROGRESS_POLL_MS)
 
   try {
-    // ── 4. Process (engines + retries all handled inside processJob) ──
+    // ── 4. Process ──────────────────────────────────────────────────────
     await processJob(inMemId)
+
+    const t2 = Date.now()
+    const engineMs = t2 - t1
 
     const status = manager.getJobStatus(inMemId)
     if (!status?.result) {
       throw new Error(status?.error ?? 'Processing produced no result')
     }
 
-    // ── 5. Return result as BullMQ returnvalue ──
-    return status.result
+    // ── 5. Embed per-stage timings ────────────────────────────────────────
+    const queueWaitMs = payload.enqueuedAt > 0 ? t1 - payload.enqueuedAt : undefined
+    const result: JobResult = {
+      ...status.result,
+      metadata: {
+        ...status.result.metadata,
+        _timings: { fileLoadMs, engineMs, queueWaitMs },
+      },
+    }
+
+    // ── 6. Return result ──────────────────────────────────────────────────
+    return result
 
   } finally {
     clearInterval(progressPoller)
 
-    // ── 6. Cleanup input files (result file stays in TempStorage) ──
+    // ── 7. Cleanup input files (result stays in TempStorage) ──────────────
     for (const fileId of payload.inputFileIds) {
       storage.delete(fileId).catch(() => {})
     }
-
-    // Release in-memory buffers (result is safe in TempStorage)
-    // We intentionally do NOT call manager.deleteJob() here because that
-    // would also delete the TempStorage result file. The in-memory entry
-    // will be evicted by the normal TTL cleanup.
   }
 }
 
@@ -291,20 +369,19 @@ export function startWorkers(): void {
   if (workersStarted) return
   workersStarted = true
 
-  const groups: WorkerGroup[] = ['pdf', 'image', 'ocr', 'document']
+  const groups: WorkerGroup[] = ['pdf-fast', 'pdf-heavy', 'image', 'ocr', 'document']
 
   for (const group of groups) {
     const worker = new Worker(
       QUEUE_NAMES[group],
       executeBullMQJob,
       {
-        connection:  getRedis() as never,
-        concurrency: CONCURRENCY[group],
+        connection:   getRedis() as never,
+        concurrency:  CONCURRENCY[group],
         lockDuration: JOB_TIMEOUT_MS + 30_000, // must be > job timeout
       }
     )
 
-    // Register worker in Supabase monitoring (fire-and-forget)
     emitWorkerStatus({ worker_id: group, worker_type: group, status: 'idle' })
 
     worker.on('active', (job) => {
@@ -319,7 +396,7 @@ export function startWorkers(): void {
       const jobType = job?.name ?? 'unknown'
       console.error(`[Worker:${group}] Job ${job?.id} (${jobType}) failed:`, err.message)
       reportError({
-        service:  `${group.charAt(0).toUpperCase() + group.slice(1)} Worker`,
+        service:  `${group} worker`,
         location: `lib/queue/bullmq-backend.ts → worker.on('failed')`,
         error:    err,
         jobType,
@@ -330,7 +407,7 @@ export function startWorkers(): void {
     worker.on('error', (err) => {
       console.error(`[Worker:${group}] Worker error:`, err.message)
       reportError({
-        service:  `${group.charAt(0).toUpperCase() + group.slice(1)} Worker`,
+        service:  `${group} worker`,
         location: `lib/queue/bullmq-backend.ts → worker.on('error')`,
         error:    err,
       })
@@ -354,10 +431,7 @@ export function startWorkers(): void {
 
 /**
  * Check if Redis is reachable using a short-lived probe connection.
- *
- * Result is cached for 60 seconds so every job-create request doesn't
- * open a new TCP connection to Redis. On failure the cache TTL is 10 s
- * so recovery is fast once Redis comes back.
+ * Result cached 60 s (10 s on failure).
  */
 let _redisAvailableCache: boolean | null = null
 let _redisAvailableCheckedAt = 0

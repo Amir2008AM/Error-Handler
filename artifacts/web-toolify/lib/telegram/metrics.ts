@@ -29,7 +29,7 @@ function getRedis(): Redis | null {
   return _redis
 }
 
-const QUEUE_NAMES = ['toolify-pdf', 'toolify-image', 'toolify-ocr', 'toolify-document']
+const QUEUE_NAMES = ['toolify-pdf-fast', 'toolify-pdf-heavy', 'toolify-image', 'toolify-ocr', 'toolify-document']
 
 // ── CPU Usage (sampled over 200 ms) ─────────────────────────────────────────
 export async function getCpuPercent(): Promise<number> {

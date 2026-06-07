@@ -130,6 +130,22 @@ export interface CreateJobRequest {
   options?: JobOptions
 }
 
+/**
+ * Per-stage timing breakdown returned with every completed job.
+ * All values are milliseconds.  Missing fields mean the stage data was
+ * not yet available when the snapshot was taken.
+ */
+export interface JobTimings {
+  /** Time the job waited in the Redis queue before a worker picked it up */
+  queueWaitMs?: number
+  /** Time to load input files from TempStorage into memory */
+  fileLoadMs?: number
+  /** Time spent inside the processing engine (Ghostscript / pdf-lib / sharp …) */
+  engineMs?: number
+  /** Total wall-clock time from enqueue to completion */
+  totalMs?: number
+}
+
 export interface JobStatusResponse {
   id: string
   status: JobStatus
@@ -139,6 +155,8 @@ export interface JobStatusResponse {
   createdAt: number
   startedAt?: number
   completedAt?: number
+  /** Available on completed BullMQ jobs — per-stage timing breakdown */
+  timings?: JobTimings
 }
 
 // Queue configuration

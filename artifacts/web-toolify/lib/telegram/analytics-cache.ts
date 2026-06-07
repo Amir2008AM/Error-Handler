@@ -167,7 +167,7 @@ function getRedis(): Redis | null {
   return _redis
 }
 
-const QUEUE_NAMES = ['toolify-pdf', 'toolify-image', 'toolify-ocr', 'toolify-document']
+const QUEUE_NAMES = ['toolify-pdf-fast', 'toolify-pdf-heavy', 'toolify-image', 'toolify-ocr', 'toolify-document']
 
 // ── System collector ──────────────────────────────────────────────────────────
 

@@ -24,7 +24,7 @@ export default function HeartbeatBeacon() {
   useEffect(() => {
     sendHeartbeat()
 
-    const id = setInterval(sendHeartbeat, 5_000)
+    const id = setInterval(sendHeartbeat, 30_000)
 
     return () => clearInterval(id)
   }, [])

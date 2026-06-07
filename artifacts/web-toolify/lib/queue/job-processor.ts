@@ -139,6 +139,35 @@ export async function processJob(jobId: string): Promise<JobResult | null> {
     throw new Error(`No processor available for job type: ${job.type}`)
   }
 
+  // ── PDF size guard ─────────────────────────────────────────────────────────
+  // pdf-lib loads entire PDFs into the JS heap; oversized inputs cause OOM on
+  // servers without swap.  These caps are enforced before any processing starts.
+  const MERGE_TOTAL_LIMIT_MB  = 200  // sum of all inputs for merge
+  const SINGLE_PDF_LIMIT_MB   = 150  // single-file limit for other PDF ops
+  const HEAVY_PDF_TYPES_SET = new Set<JobType>([
+    'merge-pdf', 'split-pdf', 'repair-pdf', 'compress-pdf',
+    'pdf-to-jpg', 'pdf-to-word', 'pdf-to-excel',
+    'rotate-pdf', 'watermark-pdf', 'add-page-numbers', 'organize-pdf',
+    'protect-pdf', 'unlock-pdf', 'extract-pages', 'delete-pages',
+  ])
+  if (HEAVY_PDF_TYPES_SET.has(job.type)) {
+    if (job.type === 'merge-pdf') {
+      const totalMB = job.files.reduce((s, f) => s + f.size, 0) / (1024 * 1024)
+      if (totalMB > MERGE_TOTAL_LIMIT_MB) {
+        const msg = `Total upload size ${totalMB.toFixed(0)} MB exceeds the ${MERGE_TOTAL_LIMIT_MB} MB limit for merge operations.`
+        manager.setJobError(jobId, msg)
+        throw new Error(msg)
+      }
+    } else {
+      const fileMB = (job.files[0]?.size ?? 0) / (1024 * 1024)
+      if (fileMB > SINGLE_PDF_LIMIT_MB) {
+        const msg = `File size ${fileMB.toFixed(0)} MB exceeds the ${SINGLE_PDF_LIMIT_MB} MB limit for this operation.`
+        manager.setJobError(jobId, msg)
+        throw new Error(msg)
+      }
+    }
+  }
+
   manager.startProcessing()
   manager.updateJobStatus(jobId, 'processing', 0)
 
