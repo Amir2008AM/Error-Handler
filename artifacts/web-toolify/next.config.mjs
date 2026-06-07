@@ -8,7 +8,7 @@ const nextConfig = {
 
   serverExternalPackages: [
     'pdf-parse', 'sharp', 'canvas',
-    'tesseract.js', 'franc', 'nanoid',
+    'pdfjs-dist', 'tesseract.js', 'franc', 'nanoid',
     'bullmq', 'ioredis',
   ],
 
