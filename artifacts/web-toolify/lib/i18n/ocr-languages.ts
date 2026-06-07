@@ -5,7 +5,7 @@ export interface OcrLanguage {
   rtl?: boolean
 }
 
-export const OCR_LANGUAGES: OcrLanguage[] = [
+const SORTED_LANGUAGES: OcrLanguage[] = [
   { code: 'afr', name: 'Afrikaans', script: 'latin' },
   { code: 'amh', name: 'Amharic', script: 'ethiopic' },
   { code: 'ara', name: 'Arabic', script: 'arabic', rtl: true },
@@ -121,6 +121,11 @@ export const OCR_LANGUAGES: OcrLanguage[] = [
   { code: 'yor', name: 'Yoruba', script: 'latin' },
   { code: 'zul', name: 'Zulu', script: 'latin' },
 ].sort((a, b) => a.name.localeCompare(b.name))
+
+export const OCR_LANGUAGES: OcrLanguage[] = [
+  { code: 'auto', name: '🔍 Auto Detect (Recommended)', script: 'latin' },
+  ...SORTED_LANGUAGES,
+]
 
 export const OCR_LANGUAGE_MAP = new Map(OCR_LANGUAGES.map((l) => [l.code, l]))
 

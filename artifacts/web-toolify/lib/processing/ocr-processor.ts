@@ -11,6 +11,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { writeFile, unlink } from 'fs/promises'
+import { existsSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { nanoid } from 'nanoid'
@@ -20,6 +21,47 @@ import { OCR_LANGUAGES, type OcrLanguage } from '../i18n/ocr-languages'
 
 const execFileAsync = promisify(execFile)
 const OCR_TIMEOUT_MS = 90_000
+
+// ---------------------------------------------------------------------------
+// PaddleOCR Python runner
+// ---------------------------------------------------------------------------
+
+interface PaddleOcrResult {
+  success: boolean
+  text?: string
+  confidence?: number
+  wordCount?: number
+  engine?: string
+  language?: string
+  error?: string
+}
+
+function getPaddleScript(): string | null {
+  const candidates = [
+    join(process.cwd(), 'artifacts/web-toolify/lib/processing/paddle_ocr.py'),
+    join(process.cwd(), 'lib/processing/paddle_ocr.py'),
+    join(__dirname, 'paddle_ocr.py'),
+  ]
+  return candidates.find((p) => existsSync(p)) ?? null
+}
+
+async function runPaddleOcr(imagePath: string, lang: string): Promise<PaddleOcrResult | null> {
+  const script = getPaddleScript()
+  if (!script) return null
+
+  const langArg = lang === 'auto' ? '--auto-detect' : lang
+
+  try {
+    const { stdout } = await execFileAsync('python3', [script, imagePath, langArg], {
+      timeout: 60_000,
+      maxBuffer: 20 * 1024 * 1024,
+    })
+    const parsed: PaddleOcrResult = JSON.parse(stdout.trim())
+    return parsed
+  } catch {
+    return null
+  }
+}
 
 export interface OCROptions {
   language?: string
@@ -189,15 +231,28 @@ export class OCRProcessor {
 
     try {
       await writeFile(tmpFile, processed)
-      const result = await runNativeTesseract(tmpFile, language)
-      result.text = cleanOcrText(result.text, language)
+
+      // --- Primary: PaddleOCR (80+ languages, higher accuracy) ---
+      const paddleResult = await runPaddleOcr(tmpFile, language)
+      if (paddleResult?.success && paddleResult.text && (paddleResult.confidence ?? 0) >= 0.55) {
+        return {
+          text: paddleResult.text,
+          confidence: (paddleResult.confidence ?? 0) * 100,
+          words: [],
+        }
+      }
+
+      // --- Fallback: Native Tesseract 5 ---
+      const tessLang = language === 'auto' ? 'eng' : language
+      const result = await runNativeTesseract(tmpFile, tessLang)
+      result.text = cleanOcrText(result.text, tessLang)
 
       // Retry with aggressive preprocessing if the first pass is poor
       if (result.confidence < 35 || result.text.trim().length < 5) {
         const altBuffer = await preprocessImageAlt(imageBuffer)
         await writeFile(tmpFile, altBuffer)
-        const altResult = await runNativeTesseract(tmpFile, language)
-        altResult.text = cleanOcrText(altResult.text, language)
+        const altResult = await runNativeTesseract(tmpFile, tessLang)
+        altResult.text = cleanOcrText(altResult.text, tessLang)
 
         const altIsBetter =
           altResult.confidence > result.confidence + 5 ||

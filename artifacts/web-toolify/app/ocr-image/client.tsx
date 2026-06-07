@@ -193,7 +193,7 @@ export function OcrImageClient() {
   const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [language, setLanguage] = useState('')
+  const [language, setLanguage] = useState('auto')
   const [extractedText, setExtractedText] = useState('')
   const [copied, setCopied] = useState(false)
   const [showLangError, setShowLangError] = useState(false)
