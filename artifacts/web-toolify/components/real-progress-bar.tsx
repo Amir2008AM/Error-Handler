@@ -632,6 +632,36 @@ export function useJobProgress(pollInterval: number = 500) {
     }
   }, [pollStatus, pollInterval])
 
+  /**
+   * Start polling an already-created job (e.g. after an external XHR upload
+   * that tracked its own upload-progress separately).
+   */
+  const startPolling = useCallback((id: string) => {
+    if (pollingRef.current) clearInterval(pollingRef.current)
+    setJobId(id)
+    setState({
+      status: 'processing',
+      progress: 0,
+      message: 'Waiting in queue...',
+    })
+    pollingRef.current = setInterval(() => {
+      pollStatus(id)
+    }, pollInterval)
+    pollStatus(id)
+  }, [pollStatus, pollInterval])
+
+  /**
+   * Update the progress bar directly — used to reflect upload progress
+   * before polling begins.
+   */
+  const setUploadProgress = useCallback((pct: number, message?: string) => {
+    setState({
+      status: 'processing',
+      progress: pct,
+      message: message ?? `Uploading… ${pct}%`,
+    })
+  }, [])
+
   const reset = useCallback(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current)
@@ -659,6 +689,8 @@ export function useJobProgress(pollInterval: number = 500) {
     jobId,
     result,
     startJob,
+    startPolling,
+    setUploadProgress,
     reset,
   }
 }

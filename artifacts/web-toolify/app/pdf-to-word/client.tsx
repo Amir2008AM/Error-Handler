@@ -19,7 +19,7 @@ export function PdfToWordClient() {
 
   const job = useJobProgress(800)
 
-  // Build the download URL once the job completes and a fileId is available
+  // Build download URL once the job completes and a fileId is available
   useEffect(() => {
     if (job.status === 'completed' && job.result) {
       const fileId: string | undefined =
@@ -33,11 +33,7 @@ export function PdfToWordClient() {
   const handleFileSelected = useCallback((files: File[]) => {
     const f = files[0]
     if (!f) return
-
-    if (f.size > MAX_FILE_BYTES) {
-      return
-    }
-
+    if (f.size > MAX_FILE_BYTES) return
     setFile(f)
     setDownloadUrl(null)
     setFilename(`${f.name.replace(/\.pdf$/i, '')}.docx`)
@@ -47,7 +43,56 @@ export function PdfToWordClient() {
   const handleConvert = useCallback(async () => {
     if (job.status === 'processing' || !file) return
     setDownloadUrl(null)
-    await job.startJob('pdf-to-word', [file], {})
+
+    // ── Phase 1: Upload with real progress ────────────────────────────────
+    // Show bar immediately so it's never blank while the file travels to server.
+    job.setUploadProgress(0, 'Uploading file… 0%')
+
+    const formData = new FormData()
+    formData.append('type', 'pdf-to-word')
+    formData.append('options', JSON.stringify({}))
+    formData.append('file0', file)
+
+    let jobId: string | null = null
+    try {
+      const { xhrUpload } = await import('@/lib/utils/xhr-upload')
+      const res = await xhrUpload({
+        url: '/api/jobs/create',
+        formData,
+        onUploadProgress: (pct) => {
+          job.setUploadProgress(pct, `Uploading file… ${pct}%`)
+        },
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }))
+        throw new Error(err.error ?? 'Upload failed')
+      }
+
+      const data = await res.json()
+      jobId = data.id ?? data.jobId ?? null
+      if (!jobId) throw new Error('Server did not return a job ID')
+
+      // If the server processed it synchronously already
+      if (data.status === 'completed') {
+        const fileId =
+          data.result?.fileId ?? data.result?.id ?? data.result?.file_id
+        job.setUploadProgress(100, 'Completed')
+        if (fileId) setDownloadUrl(`/api/files/${fileId}`)
+        return
+      }
+    } catch (err: any) {
+      const msg = err.message ?? 'Upload failed'
+      job['reset']?.()
+      // surface the error through the hook's own error channel
+      // by calling startPolling with a dummy id that will 404:
+      // Instead, replicate the error state via setUploadProgress then fail:
+      job.setUploadProgress(0, msg)
+      return
+    }
+
+    // ── Phase 2: Poll real job progress ───────────────────────────────────
+    job.startPolling(jobId)
   }, [file, job])
 
   const reset = useCallback(() => {
