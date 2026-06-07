@@ -34,22 +34,14 @@ export async function register() {
   }, 0)
 
   // ── Pre-warm LibreOffice page cache ──────────────────────────────────────────
-  // Spawning soffice cold incurs 1–3 s of OS binary + shared-library loading.
+  // Spawning soffice cold incurs 3+ s of shared-library loading on this host.
   // Running it once at boot loads libreoffice*.so into the kernel page cache so
-  // subsequent document-worker spawns start ~500 ms faster.
+  // subsequent soffice spawns (fallback path) are slightly faster.
   setTimeout(async () => {
     try {
-      const { spawn } = await import('node:child_process')
-      await new Promise<void>((resolve) => {
-        const proc = spawn('soffice', ['--headless', '--norestore', '--terminate_after_init'], {
-          stdio: 'ignore',
-          detached: false,
-        })
-        const kill = setTimeout(() => { proc.kill('SIGKILL'); resolve() }, 10_000)
-        proc.on('exit',  () => { clearTimeout(kill); resolve() })
-        proc.on('error', () => { clearTimeout(kill); resolve() }) // not fatal if missing
-      })
-      console.log('[Instrumentation] LibreOffice page cache warmed ✓')
+      const { warmSoffice } = await import('./lib/lo-server')
+      warmSoffice()
+      console.log('[Instrumentation] LibreOffice page cache warming ✓')
     } catch { /* non-fatal */ }
   }, 200)
 

@@ -21,6 +21,7 @@ import { mkdtemp, writeFile, readFile as fsReadFile, rm } from 'node:fs/promises
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename } from 'node:path'
+import { runPdf2Docx } from '../lo-server'
 
 // ── CLI helpers ────────────────────────────────────────────────────────────
 
@@ -102,28 +103,103 @@ export class DocumentConverter {
 
   /**
    * Convert a Word document (.docx / .doc) to PDF.
-   * Primary: LibreOffice headless  →  Fallback: mammoth text extraction + pdf-lib
+   * Fast path:   mammoth (DOCX→HTML) + wkhtmltopdf (HTML→PDF)  ~1–2 s
+   * Slow path:   LibreOffice headless                           ~4–6 s
+   * Fallback:    mammoth raw text + pdf-lib                     (basic quality)
    */
   async wordToPdf(
     docxBuffer: Buffer,
     options: ConversionOptions = {}
   ): Promise<ConversionResult> {
-    // Detect format from magic bytes rather than relying on extension
-    const isDocx = docxBuffer[0] === 0x50 && docxBuffer[1] === 0x4b // PK = ZIP = .docx
+    const isDocx = docxBuffer[0] === 0x50 && docxBuffer[1] === 0x4b // PK magic
     const inputExt = isDocx ? '.docx' : '.doc'
 
+    // ── Fast path: mammoth HTML + wkhtmltopdf ───────────────────────────────
+    if (isDocx) {
+      try {
+        const result = await this.mammothWkHtmlToPdf(docxBuffer, options)
+        if (result) return result
+      } catch (err) {
+        console.warn('[DocumentConverter] mammoth+wkhtmltopdf failed, trying LibreOffice:',
+          err instanceof Error ? err.message : String(err))
+      }
+    }
+
+    // ── Slow path: LibreOffice ──────────────────────────────────────────────
     if (await binaryExists('soffice')) {
       try {
         return await this.libreOfficeConvert(docxBuffer, inputExt, 'docx')
       } catch (err) {
-        console.warn(
-          '[DocumentConverter] LibreOffice Word→PDF failed, using fallback:',
-          err instanceof Error ? err.message : String(err)
-        )
+        console.warn('[DocumentConverter] LibreOffice Word→PDF failed, using fallback:',
+          err instanceof Error ? err.message : String(err))
       }
     }
 
     return this.wordToPdfFallback(docxBuffer, options)
+  }
+
+  /** Fast Word→PDF via mammoth (HTML) + wkhtmltopdf */
+  private async mammothWkHtmlToPdf(
+    docxBuffer: Buffer,
+    options: ConversionOptions
+  ): Promise<ConversionResult | null> {
+    const wkPath = await runCli('which', ['wkhtmltopdf'], { timeoutMs: 3_000 })
+    if (wkPath.code !== 0) return null
+
+    return withTempDir('wk-word-pdf-', async (dir) => {
+      // 1. mammoth: DOCX → HTML (keeps headings, bold, tables, lists)
+      const html = await mammoth.convertToHtml({ buffer: docxBuffer })
+
+      const pageSize    = options.pageSize    ?? 'a4'
+      const isLandscape = options.orientation === 'landscape'
+      const pageSizeMap = { a4: 'A4', letter: 'Letter', legal: 'Legal' }
+      const wkPageSize  = pageSizeMap[pageSize] ?? 'A4'
+
+      const fullHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12pt; margin: 2cm; line-height: 1.4; }
+  h1,h2,h3,h4 { margin-top: 1em; }
+  table { border-collapse: collapse; width: 100%; }
+  td,th { border: 1px solid #ccc; padding: 4px 8px; }
+  img { max-width: 100%; }
+</style>
+</head><body>${html.value}</body></html>`
+
+      const htmlFile = join(dir, 'input.html')
+      const outFile  = join(dir, 'output.pdf')
+      await writeFile(htmlFile, fullHtml, 'utf8')
+
+      // 2. wkhtmltopdf: HTML → PDF
+      const args = [
+        '--quiet',
+        '--encoding', 'utf-8',
+        '--page-size', wkPageSize,
+        ...(isLandscape ? ['--orientation', 'Landscape'] : []),
+        '--margin-top', '20mm',
+        '--margin-bottom', '20mm',
+        '--margin-left', '20mm',
+        '--margin-right', '20mm',
+        htmlFile,
+        outFile,
+      ]
+
+      const result = await runCli('wkhtmltopdf', args, { timeoutMs: 90_000 })
+      if (result.code !== 0 && !existsSync(outFile)) {
+        throw new Error(`wkhtmltopdf exited ${result.code}: ${result.stderr.trim().slice(0, 300)}`)
+      }
+
+      const pdfBuffer = await fsReadFile(outFile)
+      if (!isPdf(pdfBuffer)) throw new Error('wkhtmltopdf produced invalid PDF')
+
+      let pageCount = 1
+      try {
+        const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+        pageCount = pdfDoc.getPageCount()
+      } catch { /* best-effort */ }
+
+      return { buffer: pdfBuffer, pageCount, originalFormat: 'docx', engine: 'mammoth+wkhtmltopdf' }
+    })
   }
 
   /** LibreOffice headless conversion (Word / Excel → PDF) */
@@ -133,12 +209,11 @@ export class DocumentConverter {
     originalFormat: string
   ): Promise<ConversionResult> {
     return withTempDir('lo-conv-', async (dir) => {
-      const inFile = join(dir, `input${inputExt}`)
+      const inFile  = join(dir, `input${inputExt}`)
+      const outFile = join(dir, 'input.pdf')
       await writeFile(inFile, inputBuffer)
 
-      // LibreOffice writes a .pdf alongside the input file in --outdir.
-      // Set HOME + TMPDIR inside the temp dir so LO doesn't try to create
-      // a user profile in a read-only location.
+      // ── soffice spawn ────────────────────────────────────────────────────
       const result = await runCli(
         'soffice',
         [
@@ -161,15 +236,12 @@ export class DocumentConverter {
         )
       }
 
-      // LO names the output file after the input — always 'input.pdf'
-      const outFile = join(dir, 'input.pdf')
       const pdfBuffer = await fsReadFile(outFile)
 
       if (!isPdf(pdfBuffer)) {
         throw new Error('LibreOffice produced an invalid or empty PDF')
       }
 
-      // Get page count without decryption
       let pageCount = 1
       try {
         const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
@@ -737,9 +809,27 @@ export class DocumentConverter {
 
     if (await binaryExists('soffice')) {
       return withTempDir('lo-pdf-word-', async (dir) => {
-        const inFile = join(dir, 'input.pdf')
+        const inFile  = join(dir, 'input.pdf')
+        const outFile = join(dir, 'input.docx')
         await writeFile(inFile, pdfBuffer)
 
+        // ── Fast path: pdf2docx (pure Python, no LibreOffice startup) ──────────
+        try {
+          const pdf2docxOk = await runPdf2Docx(inFile, outFile, 90_000)
+          if (pdf2docxOk && existsSync(outFile)) {
+            const docxBuffer = await fsReadFile(outFile)
+            if (docxBuffer.length >= 100) {
+              let pageCount = 1
+              try {
+                const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+                pageCount = pdfDoc.getPageCount()
+              } catch { /* best-effort */ }
+              return { buffer: docxBuffer, pageCount, originalFormat: 'pdf', engine: 'pdf2docx' }
+            }
+          }
+        } catch { /* fall through to LibreOffice */ }
+
+        // ── Slow path: cold soffice spawn (fallback) ─────────────────────────
         const result = await runCli(
           'soffice',
           [
@@ -763,7 +853,6 @@ export class DocumentConverter {
           )
         }
 
-        const outFile = join(dir, 'input.docx')
         const docxBuffer = await fsReadFile(outFile)
 
         if (docxBuffer.length < 4) {
@@ -776,12 +865,7 @@ export class DocumentConverter {
           pageCount = pdfDoc.getPageCount()
         } catch { /* best-effort */ }
 
-        return {
-          buffer:         docxBuffer,
-          pageCount,
-          originalFormat: 'pdf',
-          engine:         'libreoffice',
-        }
+        return { buffer: docxBuffer, pageCount, originalFormat: 'pdf', engine: 'libreoffice' }
       })
     }
 
