@@ -155,17 +155,25 @@ export function ImageToPdfClient() {
     setError(null)
     progressReset()
 
-    // Generate small thumbnails in parallel — keeps GPU memory low in gallery.
-    // Original File objects are preserved for upload compression later.
-    const newEntries: ImageItem[] = await Promise.all(
-      files.map(async (file) => ({
-        id:      `img-${++idCounter}`,
-        file,
-        preview: await generateThumbnail(file),
-        order:   null,
-      })),
-    )
+    // Step 1: add entries immediately with empty preview so the grid
+    // appears at once — no waiting for any Canvas work.
+    const newEntries: ImageItem[] = files.map((file) => ({
+      id:      `img-${++idCounter}`,
+      file,
+      preview: '',   // skeleton shown while thumbnail generates
+      order:   null,
+    }))
     setImages((prev) => [...prev, ...newEntries])
+
+    // Step 2: generate each thumbnail independently in the background.
+    // Each one updates only its own card as soon as it's ready, so
+    // thumbnails pop in progressively instead of all-at-once after a delay.
+    newEntries.forEach(async (entry) => {
+      const thumbnail = await generateThumbnail(entry.file)
+      setImages((prev) =>
+        prev.map((img) => img.id === entry.id ? { ...img, preview: thumbnail } : img),
+      )
+    })
   }, [progressReset])
 
   const removeImage = useCallback((id: string) => {

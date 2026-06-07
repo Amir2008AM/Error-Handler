@@ -62,15 +62,21 @@ const ImageCard = memo(function ImageCard({
       )}
       onClick={() => !isProcessing && onToggleOrder?.(img.id)}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={img.preview}
-        alt={img.file.name}
-        className="w-full aspect-square object-cover"
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-      />
+      {img.preview ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={img.preview}
+          alt={img.file.name}
+          className="w-full aspect-square object-cover"
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+        />
+      ) : (
+        <div className="w-full aspect-square bg-muted animate-pulse flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      )}
 
       {showOrderBadges && img.order != null && (
         <div className="absolute top-2 left-2 w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shadow">
