@@ -1,7 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
-
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -10,13 +9,12 @@ import { Download, Loader2, FileText, Settings } from 'lucide-react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
-import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 import { t } from '@/lib/i18n/translations'
 
 const tool = getToolBySlug('word-to-pdf')!
-
+const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
 
 export function WordToPdfClient() {
   const { lang } = useI18n()
@@ -25,69 +23,137 @@ export function WordToPdfClient() {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const progress = useRealProgress()
 
-  const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
+  // ── Background pre-upload state ──────────────────────────────────────────
+  const preUploadRef = useRef<Promise<{ uploadId: string | null }> | null>(null)
+  const preUploadAbortRef = useRef<AbortController | null>(null)
+
+  const cancelPreUpload = useCallback(() => {
+    preUploadAbortRef.current?.abort()
+    preUploadAbortRef.current = null
+    preUploadRef.current = null
+  }, [])
+
+  const startPreUpload = useCallback((f: File) => {
+    cancelPreUpload()
+    const ac = new AbortController()
+    preUploadAbortRef.current = ac
+
+    const formData = new FormData()
+    formData.append('file', f)
+
+    preUploadRef.current = fetch('/api/preupload', {
+      method: 'POST',
+      body: formData,
+      signal: ac.signal,
+    })
+      .then((r) => r.json() as Promise<{ uploadId: string }>)
+      .catch(() => ({ uploadId: null }))
+  }, [cancelPreUpload])
 
   const handleFilesSelected = useCallback((files: File[]) => {
     const selectedFile = files[0]
-    if (selectedFile) {
-      if (selectedFile.size > MAX_FILE_BYTES) {
-        progress.fail(`الملف كبير جداً (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB). الحد الأقصى 25 MB لضمان اكتمال التحويل في أقل من 30 ثانية.`)
-        return
-      }
-      const ext = selectedFile.name.toLowerCase()
-      if (ext.endsWith('.docx') || ext.endsWith('.doc')) {
-        setFile(selectedFile)
-        progress.reset()
-      } else {
-        progress.fail('Please upload a Word document (.docx or .doc)')
-      }
+    if (!selectedFile) return
+
+    if (selectedFile.size > MAX_FILE_BYTES) {
+      progress.fail(`الملف كبير جداً (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB). الحد الأقصى 25 MB لضمان اكتمال التحويل في أقل من 30 ثانية.`)
+      return
     }
-  }, [progress])
+
+    const ext = selectedFile.name.toLowerCase()
+    if (!ext.endsWith('.docx') && !ext.endsWith('.doc')) {
+      progress.fail('Please upload a Word document (.docx or .doc)')
+      return
+    }
+
+    setFile(selectedFile)
+    progress.reset()
+
+    // Start background upload immediately — user sees nothing
+    startPreUpload(selectedFile)
+  }, [progress, startPreUpload])
 
   const handleConvert = async () => {
     if (progress.status === 'processing') return
     if (!file) return
 
-    progress.startProcessing('Uploading document...')
-    
+    progress.startProcessing('جاري التحضير...')
+
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('pageSize', pageSize)
-      formData.append('orientation', orientation)
-
-      const response = await xhrUpload({
-        url: '/api/word-to-pdf',
-        formData,
-        onUploadProgress: (pct) => {
-          progress.stageUpload(pct, 'Uploading document...')
-        },
-      })
-
-      progress.stageValidation('Validating document...')
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Conversion failed')
+      // Await the silent background upload (usually already resolved)
+      let uploadId: string | null = null
+      if (preUploadRef.current) {
+        const result = await preUploadRef.current
+        uploadId = result.uploadId
       }
 
-      progress.stageProcessing(undefined, ['Converting to PDF...', 'Almost done...'])
+      if (uploadId) {
+        // ── Fast path: file already on server, only conversion needed ────────
+        progress.stageProcessing(undefined, ['جاري تحويل المستند...', 'جاري بناء ملف PDF...', 'يكاد ينتهي...'])
 
-      const blob = await response.blob()
+        const res = await fetch('/api/word-to-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uploadId, pageSize, orientation }),
+        })
 
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = file.name.replace(/\.(docx?|doc)$/i, '.pdf')
-      a.click()
-      URL.revokeObjectURL(url)
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Conversion failed' }))
+          throw new Error(err.error || 'Conversion failed')
+        }
 
-      progress.stageDone('Conversion complete!')
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name.replace(/\.(docx?|doc)$/i, '.pdf')
+        a.click()
+        URL.revokeObjectURL(url)
+        progress.stageDone('تم التحويل بنجاح!')
+      } else {
+        // ── Fallback: upload + convert in one request ─────────────────────────
+        progress.stageUpload(0, 'جاري رفع الملف...')
+
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('pageSize', pageSize)
+        formData.append('orientation', orientation)
+
+        const { xhrUpload } = await import('@/lib/utils/xhr-upload')
+        const response = await xhrUpload({
+          url: '/api/word-to-pdf',
+          formData,
+          onUploadProgress: (pct) => progress.stageUpload(pct, 'جاري رفع الملف...'),
+        })
+
+        progress.stageProcessing(undefined, ['جاري تحويل المستند...', 'يكاد ينتهي...'])
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Conversion failed')
+        }
+
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name.replace(/\.(docx?|doc)$/i, '.pdf')
+        a.click()
+        URL.revokeObjectURL(url)
+        progress.stageDone('تم التحويل بنجاح!')
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to convert document'
       progress.fail(message)
     }
   }
+
+  const handleReset = useCallback(() => {
+    cancelPreUpload()
+    setFile(null)
+    progress.reset()
+  }, [cancelPreUpload, progress])
+
+  useEffect(() => () => { cancelPreUpload() }, [cancelPreUpload])
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -119,10 +185,10 @@ export function WordToPdfClient() {
                   <p className="font-medium">{file.name}</p>
                   <p className="text-sm text-muted-foreground">{formatSize(file.size)}</p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => { setFile(null); progress.reset() }}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReset}
                   disabled={isProcessing}
                 >
                   {t(lang, 'common.change')}
@@ -139,8 +205,8 @@ export function WordToPdfClient() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="pageSize">{t(lang, 'wordToPdf.pageSize')}</Label>
-                  <Select 
-                    value={pageSize} 
+                  <Select
+                    value={pageSize}
                     onValueChange={(v) => setPageSize(v as typeof pageSize)}
                     disabled={isProcessing}
                   >
@@ -157,8 +223,8 @@ export function WordToPdfClient() {
 
                 <div className="space-y-2">
                   <Label htmlFor="orientation">{t(lang, 'wordToPdf.orientation')}</Label>
-                  <Select 
-                    value={orientation} 
+                  <Select
+                    value={orientation}
                     onValueChange={(v) => setOrientation(v as typeof orientation)}
                     disabled={isProcessing}
                   >
@@ -193,7 +259,7 @@ export function WordToPdfClient() {
                   </>
                 )}
               </Button>
-              
+
               <RealProgressBar
                 status={progress.status}
                 progress={progress.progress}

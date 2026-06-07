@@ -25,6 +25,8 @@ export type EngineLabel =
   | 'python-reportlab'
   | 'node-canvas'
   | 'hybrid'
+  | 'pdf2docx'
+  | 'mammoth+wkhtmltopdf'
 
 export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'ocr' | 'document' | 'direct'
 

@@ -1,17 +1,15 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
 import { formatBytes } from '@/lib/utils/format-bytes'
-
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { Download, Loader2, CheckCircle2, RotateCcw, X, FileText } from 'lucide-react'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
-import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 import { t } from '@/lib/i18n/translations'
 
-
+const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
 
 export function PdfToWordClient() {
   const { lang } = useI18n()
@@ -21,19 +19,57 @@ export function PdfToWordClient() {
   const [error, setError] = useState<string | null>(null)
   const progress = useRealProgress()
 
-  const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
+  // ── Background pre-upload state ──────────────────────────────────────────
+  // Holds the Promise that resolves to { uploadId } once the silent upload finishes.
+  // We never show any indicator — the upload runs completely in the background.
+  const preUploadRef = useRef<Promise<{ uploadId: string | null }> | null>(null)
+  const preUploadAbortRef = useRef<AbortController | null>(null)
+
+  // Cancel any in-flight pre-upload (called when user picks a new file or resets)
+  const cancelPreUpload = useCallback(() => {
+    preUploadAbortRef.current?.abort()
+    preUploadAbortRef.current = null
+    preUploadRef.current = null
+  }, [])
+
+  // Start uploading the file silently as soon as it is selected
+  const startPreUpload = useCallback((f: File) => {
+    cancelPreUpload()
+
+    const ac = new AbortController()
+    preUploadAbortRef.current = ac
+
+    const formData = new FormData()
+    formData.append('file', f)
+
+    const promise = fetch('/api/preupload', {
+      method: 'POST',
+      body: formData,
+      signal: ac.signal,
+    })
+      .then((r) => r.json() as Promise<{ uploadId: string }>)
+      .catch(() => ({ uploadId: null }))
+
+    preUploadRef.current = promise
+  }, [cancelPreUpload])
 
   const handleFileSelected = useCallback((files: File[]) => {
     const f = files[0]
-    if (f && f.size > MAX_FILE_BYTES) {
+    if (!f) return
+
+    if (f.size > MAX_FILE_BYTES) {
       setError(`الملف كبير جداً (${(f.size / 1024 / 1024).toFixed(1)} MB). الحد الأقصى 25 MB لضمان اكتمال التحويل في أقل من 30 ثانية.`)
       return
     }
+
     setFile(f)
     setDownloadUrl(null)
     setError(null)
     progress.reset()
-  }, [progress])
+
+    // Start background upload immediately — user doesn't see this
+    startPreUpload(f)
+  }, [progress, startPreUpload])
 
   const handleConvert = async () => {
     if (progress.status === 'processing') return
@@ -41,59 +77,80 @@ export function PdfToWordClient() {
     setError(null)
     setDownloadUrl(null)
 
-    const fileMB = file.size / (1024 * 1024)
-    const uploadMsg = fileMB > 10
-      ? `Uploading PDF… (${fileMB.toFixed(0)} MB — may take a moment)`
-      : 'Uploading PDF...'
-
-    progress.startProcessing(uploadMsg)
+    progress.startProcessing('جاري التحضير...')
 
     try {
-      const formData = new FormData()
-      formData.append('pdf', file)
-
-      const res = await xhrUpload({
-        url: '/api/pdf-to-word',
-        formData,
-        onUploadProgress: (pct) => {
-          progress.stageUpload(pct, uploadMsg)
-        },
-      })
-
-      progress.stageValidation('Analysing document structure...')
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error ?? 'Conversion failed')
+      // Wait for the background pre-upload (usually already done by now)
+      let uploadId: string | null = null
+      if (preUploadRef.current) {
+        const result = await preUploadRef.current
+        uploadId = result.uploadId
       }
 
-      const convMsgs = fileMB > 20
-        ? ['Extracting text & layout…', 'Rebuilding pages…', 'Finalising Word document…', 'Almost done…']
-        : ['Extracting content...', 'Building document...', 'Almost done...']
+      if (uploadId) {
+        // ── Fast path: file already uploaded, just trigger conversion ────────
+        progress.stageProcessing(undefined, ['جاري تحليل المستند...', 'جاري استخراج المحتوى...', 'جاري بناء ملف Word...', 'يكاد ينتهي...'])
 
-      progress.stageProcessing(undefined, convMsgs)
+        const res = await fetch('/api/pdf-to-word', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uploadId }),
+        })
 
-      const blob = await res.blob()
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Conversion failed' }))
+          throw new Error(err.error ?? 'Conversion failed')
+        }
 
-      setDownloadUrl(URL.createObjectURL(blob))
-      setFilename(`${file.name.replace(/\.pdf$/i, '')}.docx`)
+        const blob = await res.blob()
+        setDownloadUrl(URL.createObjectURL(blob))
+        setFilename(`${file.name.replace(/\.pdf$/i, '')}.docx`)
+        progress.stageDone('تم التحويل بنجاح!')
+      } else {
+        // ── Fallback: upload + convert in one request ─────────────────────────
+        progress.stageUpload(0, 'جاري رفع الملف...')
 
-      progress.stageDone('Conversion complete!')
+        const formData = new FormData()
+        formData.append('pdf', file)
+
+        const { xhrUpload } = await import('@/lib/utils/xhr-upload')
+        const res = await xhrUpload({
+          url: '/api/pdf-to-word',
+          formData,
+          onUploadProgress: (pct) => progress.stageUpload(pct, 'جاري رفع الملف...'),
+        })
+
+        progress.stageProcessing(undefined, ['جاري استخراج المحتوى...', 'جاري بناء ملف Word...', 'يكاد ينتهي...'])
+
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error ?? 'Conversion failed')
+        }
+
+        const blob = await res.blob()
+        setDownloadUrl(URL.createObjectURL(blob))
+        setFilename(`${file.name.replace(/\.pdf$/i, '')}.docx`)
+        progress.stageDone('تم التحويل بنجاح!')
+      }
     } catch (err: any) {
-      const message = err.message ?? 'Something went wrong'
+      const message = err.message ?? 'حدث خطأ غير متوقع'
       setError(message)
       progress.fail(message)
     }
   }
 
-  const reset = () => {
+  const reset = useCallback(() => {
+    cancelPreUpload()
     if (downloadUrl) URL.revokeObjectURL(downloadUrl)
     setFile(null)
     setDownloadUrl(null)
     setError(null)
     setFilename('')
     progress.reset()
-  }
+  }, [cancelPreUpload, downloadUrl, progress])
+
+  // Cleanup on unmount
+  useEffect(() => () => { cancelPreUpload() }, [cancelPreUpload])
 
   const isProcessing = progress.status === 'processing'
 
@@ -118,8 +175,8 @@ export function PdfToWordClient() {
               <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
               <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
             </div>
-            <button 
-              onClick={reset} 
+            <button
+              onClick={reset}
               disabled={isProcessing}
               className="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
             >

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { consumePreUpload } from '@/lib/preupload-store'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
 import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
 import { recordToolEvent } from '@/lib/tool-registry'
+import { rm } from 'node:fs/promises'
 
 const PDF_TO_WORD_MAX_BYTES = 25 * 1024 * 1024 // 25 MB
 
@@ -19,11 +21,79 @@ export async function POST(req: NextRequest) {
   const rateLimited = applyToolRateLimit(req, 'pdf-to-word')
   if (rateLimited) return rateLimited
 
+  const contentType = req.headers.get('content-type') ?? ''
+  const start = Date.now()
+
+  // ── Path A: pre-uploaded file (JSON body with uploadId) ──────────────────
+  if (contentType.includes('application/json')) {
+    let uploadId = ''
+    try {
+      const body = await req.json()
+      uploadId = body.uploadId ?? ''
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    if (!uploadId) return NextResponse.json({ error: 'Missing uploadId' }, { status: 400 })
+
+    const stored = consumePreUpload(uploadId)
+    if (!stored) {
+      return NextResponse.json(
+        { error: 'Upload expired or not found. Please select the file again.' },
+        { status: 400 }
+      )
+    }
+
+    const cleanupStored = () => rm(stored.dir, { recursive: true, force: true }).catch(() => {})
+
+    try {
+      if (stored.size > PDF_TO_WORD_MAX_BYTES) {
+        return NextResponse.json(
+          { error: `File too large. Maximum 25 MB. Your file is ${(stored.size / 1024 / 1024).toFixed(1)} MB.` },
+          { status: 413 }
+        )
+      }
+
+      const buffer = await readFileAsArrayBuffer(stored.path)
+      const title  = safeFilename(stored.filename.replace(/\.pdf$/i, ''))
+      const result = await pdf.toWord({ file: buffer })
+
+      const durationMs = Date.now() - start
+
+      if (!result.success || !result.data) {
+        trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: stored.size, format: 'pdf', success: false, durationMs, errorMsg: result.error ?? 'failed' })
+        recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: stored.size, engine: 'pdf2docx', error: result.error ?? 'failed' })
+        return NextResponse.json({ error: result.error || 'Failed to convert PDF to Word' }, { status: 500 })
+      }
+
+      trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: stored.size, format: 'pdf', success: true, durationMs })
+      recordToolEvent('pdf-to-word', { ts: Date.now(), success: true, durationMs, fileSizeB: stored.size, engine: 'pdf2docx' })
+
+      return new NextResponse(result.data, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'Content-Disposition': `attachment; filename="${title}.docx"`,
+          'X-Processing-Time': `${result.metadata?.processingTime ?? 0}ms`,
+          'Cache-Control': 'no-store',
+        },
+      })
+    } catch (err) {
+      const durationMs = Date.now() - start
+      const msg = err instanceof Error ? err.message : 'Failed to convert PDF to Word'
+      console.error('[pdf-to-word]', err)
+      trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: stored.size, format: 'pdf', success: false, durationMs, errorMsg: msg })
+      recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: stored.size, engine: 'pdf2docx', error: msg })
+      return NextResponse.json({ error: msg }, { status: 500 })
+    } finally {
+      await cleanupStored()
+    }
+  }
+
+  // ── Path B: regular multipart upload ─────────────────────────────────────
   const { files, cleanup } = await streamUpload(req).catch((err) => {
     throw Object.assign(err, { _status: 400 })
   })
-
-  const start = Date.now()
 
   try {
     const file = files.find((f) => f.fieldname === 'pdf')
@@ -34,31 +104,25 @@ export async function POST(req: NextRequest) {
 
     if (file.size > PDF_TO_WORD_MAX_BYTES) {
       return NextResponse.json(
-        { error: `File too large. Maximum size is 25 MB for PDF to Word conversion. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
+        { error: `File too large. Maximum 25 MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
         { status: 413 }
       )
     }
 
     const title  = safeFilename(file.filename.replace(/\.pdf$/i, ''))
     const buffer = await readFileAsArrayBuffer(file.path)
-
-    // Guard is acquired inside the LibreOffice fallback only — pdf2docx doesn't need it.
-    let result: Awaited<ReturnType<typeof pdf.toWord>>
-    result = await pdf.toWord({ file: buffer })
-
-    if (!result.success || !result.data) {
-      const durationMs = Date.now() - start
-      trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: false, durationMs, errorMsg: result.error ?? 'pdf-to-word failed' })
-      recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: file.size, engine: 'libreoffice', error: result.error ?? 'failed' })
-      return NextResponse.json(
-        { error: result.error || 'Failed to convert PDF to Word' },
-        { status: 500 }
-      )
-    }
+    const result = await pdf.toWord({ file: buffer })
 
     const durationMs = Date.now() - start
+
+    if (!result.success || !result.data) {
+      trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: false, durationMs, errorMsg: result.error ?? 'pdf-to-word failed' })
+      recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: file.size, engine: 'pdf2docx', error: result.error ?? 'failed' })
+      return NextResponse.json({ error: result.error || 'Failed to convert PDF to Word' }, { status: 500 })
+    }
+
     trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: file.size, format: 'pdf', success: true, durationMs })
-    recordToolEvent('pdf-to-word', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'libreoffice' })
+    recordToolEvent('pdf-to-word', { ts: Date.now(), success: true, durationMs, fileSizeB: file.size, engine: 'pdf2docx' })
 
     return new NextResponse(result.data, {
       status: 200,
@@ -75,7 +139,7 @@ export async function POST(req: NextRequest) {
     const msg = err instanceof Error ? err.message : 'Failed to convert PDF to Word'
     console.error('[pdf-to-word]', err)
     trackRouteRequest(req, { tool: 'pdf-to-word', fileSizeB: files[0]?.size, format: 'pdf', success: false, durationMs, errorMsg: msg })
-    recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'libreoffice', error: msg })
+    recordToolEvent('pdf-to-word', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'pdf2docx', error: msg })
     return NextResponse.json({ error: msg }, { status })
   } finally {
     await cleanup()
