@@ -32,12 +32,11 @@ let _pdfjs: PdfjsModule | null = null
 async function getPdfjs(): Promise<PdfjsModule> {
   if (!_pdfjs) {
     try {
-      // MUST use the legacy build in Node.js environments.
-      // The standard pdfjs-dist build references DOMMatrix and other browser globals
-      // at module-init time, crashing the Node.js process immediately on import.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const legacyPath = require.resolve('pdfjs-dist/legacy/build/pdf.mjs')
-      const mod = await import(/* webpackIgnore: true */ legacyPath)
+      // pdfjs-dist is an ES Module (.mjs) — must use dynamic import(), NOT require().
+      // It is listed in serverExternalPackages so Next.js/Turbopack will NOT bundle
+      // it, making the import path safe to evaluate at runtime.
+      // DO NOT use require.resolve() — bundlers replace it with an internal chunk ID.
+      const mod = await import(/* webpackIgnore: true */ 'pdfjs-dist/legacy/build/pdf.mjs')
       _pdfjs = mod as unknown as PdfjsModule
       ;(_pdfjs as PdfjsModule).GlobalWorkerOptions.workerSrc = ''
     } catch (importErr) {
