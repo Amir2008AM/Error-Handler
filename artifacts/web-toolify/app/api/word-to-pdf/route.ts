@@ -5,8 +5,9 @@ import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
 import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
-import { acquireGuard } from '@/lib/concurrency-guard'
 import { recordToolEvent } from '@/lib/tool-registry'
+
+const WORD_TO_PDF_MAX_BYTES = 25 * 1024 * 1024 // 25 MB
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -36,20 +37,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (file.size > WORD_TO_PDF_MAX_BYTES) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is 25 MB for Word to PDF conversion. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
+        { status: 413 }
+      )
+    }
+
     const pageSize    = (fields['pageSize']    as 'a4' | 'letter' | 'legal') ?? 'a4'
     const orientation = (fields['orientation'] as 'portrait' | 'landscape')  ?? 'portrait'
     const fontSize    = parseInt(fields['fontSize'] ?? '12') || 12
 
     const buffer = await readFile(file.path)
 
-    const release = await acquireGuard('libreoffice')
-    let result: Awaited<ReturnType<DocumentConverter['wordToPdf']>>
-    try {
-      const converter = new DocumentConverter()
-      result = await converter.wordToPdf(buffer, { pageSize, orientation, fontSize })
-    } finally {
-      release()
-    }
+    // Guard is acquired inside the LibreOffice fallback only — mammoth+wkhtmltopdf doesn't need it.
+    const converter = new DocumentConverter()
+    const result = await converter.wordToPdf(buffer, { pageSize, orientation, fontSize })
 
     const durationMs = Date.now() - start
     const baseName = safeFilename(file.filename.replace(/\.(docx?|doc)$/i, ''))

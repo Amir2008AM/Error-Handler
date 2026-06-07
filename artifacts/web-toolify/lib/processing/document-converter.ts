@@ -22,6 +22,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename } from 'node:path'
 import { runPdf2Docx } from '../lo-server'
+import { acquireGuard } from '../concurrency-guard'
 
 // ── CLI helpers ────────────────────────────────────────────────────────────
 
@@ -208,6 +209,8 @@ export class DocumentConverter {
     inputExt: string,
     originalFormat: string
   ): Promise<ConversionResult> {
+    const release = await acquireGuard('libreoffice')
+    try {
     return withTempDir('lo-conv-', async (dir) => {
       const inFile  = join(dir, `input${inputExt}`)
       const outFile = join(dir, 'input.pdf')
@@ -250,6 +253,9 @@ export class DocumentConverter {
 
       return { buffer: pdfBuffer, pageCount, originalFormat, engine: 'libreoffice' }
     })
+    } finally {
+      release()
+    }
   }
 
   /** Fallback: mammoth (text extraction) + pdf-lib */
@@ -830,22 +836,28 @@ export class DocumentConverter {
         } catch { /* fall through to LibreOffice */ }
 
         // ── Slow path: cold soffice spawn (fallback) ─────────────────────────
-        const result = await runCli(
-          'soffice',
-          [
-            '--headless',
-            '--norestore',
-            '--nofirststartwizard',
-            '--infilter=writer_pdf_import',
-            '--convert-to', 'docx',
-            '--outdir', dir,
-            inFile,
-          ],
-          {
-            timeoutMs: 120_000,
-            env: { HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' },
-          }
-        )
+        const loRelease = await acquireGuard('libreoffice')
+        let result: Awaited<ReturnType<typeof runCli>>
+        try {
+          result = await runCli(
+            'soffice',
+            [
+              '--headless',
+              '--norestore',
+              '--nofirststartwizard',
+              '--infilter=writer_pdf_import',
+              '--convert-to', 'docx',
+              '--outdir', dir,
+              inFile,
+            ],
+            {
+              timeoutMs: 120_000,
+              env: { HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' },
+            }
+          )
+        } finally {
+          loRelease()
+        }
 
         if (result.code !== 0) {
           throw new Error(

@@ -25,9 +25,15 @@ export function WordToPdfClient() {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const progress = useRealProgress()
 
+  const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
+
   const handleFilesSelected = useCallback((files: File[]) => {
     const selectedFile = files[0]
     if (selectedFile) {
+      if (selectedFile.size > MAX_FILE_BYTES) {
+        progress.fail(`الملف كبير جداً (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB). الحد الأقصى 25 MB لضمان اكتمال التحويل في أقل من 30 ثانية.`)
+        return
+      }
       const ext = selectedFile.name.toLowerCase()
       if (ext.endsWith('.docx') || ext.endsWith('.doc')) {
         setFile(selectedFile)

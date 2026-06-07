@@ -21,8 +21,15 @@ export function PdfToWordClient() {
   const [error, setError] = useState<string | null>(null)
   const progress = useRealProgress()
 
+  const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
+
   const handleFileSelected = useCallback((files: File[]) => {
-    setFile(files[0])
+    const f = files[0]
+    if (f && f.size > MAX_FILE_BYTES) {
+      setError(`الملف كبير جداً (${(f.size / 1024 / 1024).toFixed(1)} MB). الحد الأقصى 25 MB لضمان اكتمال التحويل في أقل من 30 ثانية.`)
+      return
+    }
+    setFile(f)
     setDownloadUrl(null)
     setError(null)
     progress.reset()
@@ -33,7 +40,13 @@ export function PdfToWordClient() {
     if (!file) return
     setError(null)
     setDownloadUrl(null)
-    progress.startProcessing('Uploading PDF...')
+
+    const fileMB = file.size / (1024 * 1024)
+    const uploadMsg = fileMB > 10
+      ? `Uploading PDF… (${fileMB.toFixed(0)} MB — may take a moment)`
+      : 'Uploading PDF...'
+
+    progress.startProcessing(uploadMsg)
 
     try {
       const formData = new FormData()
@@ -43,18 +56,22 @@ export function PdfToWordClient() {
         url: '/api/pdf-to-word',
         formData,
         onUploadProgress: (pct) => {
-          progress.stageUpload(pct, 'Uploading PDF...')
+          progress.stageUpload(pct, uploadMsg)
         },
       })
 
-      progress.stageValidation('Validating PDF...')
+      progress.stageValidation('Analysing document structure...')
 
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error ?? 'Conversion failed')
       }
 
-      progress.stageProcessing(undefined, ['Extracting content...', 'Building document...', 'Almost done...'])
+      const convMsgs = fileMB > 20
+        ? ['Extracting text & layout…', 'Rebuilding pages…', 'Finalising Word document…', 'Almost done…']
+        : ['Extracting content...', 'Building document...', 'Almost done...']
+
+      progress.stageProcessing(undefined, convMsgs)
 
       const blob = await res.blob()
 

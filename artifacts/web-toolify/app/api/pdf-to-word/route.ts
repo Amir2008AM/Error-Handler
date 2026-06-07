@@ -5,8 +5,9 @@ import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
 import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
-import { acquireGuard } from '@/lib/concurrency-guard'
 import { recordToolEvent } from '@/lib/tool-registry'
+
+const PDF_TO_WORD_MAX_BYTES = 25 * 1024 * 1024 // 25 MB
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -31,16 +32,19 @@ export async function POST(req: NextRequest) {
     const validationError = await validateStreamedFile(file, 'pdf')
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
+    if (file.size > PDF_TO_WORD_MAX_BYTES) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is 25 MB for PDF to Word conversion. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
+        { status: 413 }
+      )
+    }
+
     const title  = safeFilename(file.filename.replace(/\.pdf$/i, ''))
     const buffer = await readFileAsArrayBuffer(file.path)
 
-    const release = await acquireGuard('libreoffice')
+    // Guard is acquired inside the LibreOffice fallback only — pdf2docx doesn't need it.
     let result: Awaited<ReturnType<typeof pdf.toWord>>
-    try {
-      result = await pdf.toWord({ file: buffer })
-    } finally {
-      release()
-    }
+    result = await pdf.toWord({ file: buffer })
 
     if (!result.success || !result.data) {
       const durationMs = Date.now() - start
