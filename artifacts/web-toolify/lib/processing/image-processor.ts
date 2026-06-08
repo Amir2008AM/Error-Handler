@@ -68,19 +68,29 @@ export class ImageProcessor extends BaseProcessor {
     switch (format) {
       case 'jpeg':
       case 'jpg':
-        return s.jpeg({ quality, mozjpeg: false, trellisQuantisation: true })
+        // mozjpeg: true enables the Mozilla JPEG encoder — ~15% better
+        // compression at the same perceptual quality versus libjpeg-turbo.
+        // trellisQuantisation is superseded by mozjpeg's internal optimizer.
+        return s.jpeg({ quality, mozjpeg: true, progressive: true })
       case 'png':
-        return s.png({ compressionLevel: 6, palette: true })
+        // palette: true forces colour-quantisation to ≤256 colours, which is
+        // destructive for photographic images and often INCREASES file size.
+        // compressionLevel 9 = maximum zlib compression (lossless, CPU only).
+        return s.png({ compressionLevel: 9 })
       case 'webp':
-        return s.webp({ quality, effort: 4 })
+        // effort 6 (was 4) gives ~5-10% better compression for a ~20% CPU
+        // increase — worth it because WebP encoding is still fast.
+        return s.webp({ quality, effort: 6, smartSubsample: true })
       case 'avif':
-        return s.avif({ quality, effort: 4 })
+        // effort 4 is the sweet-spot for AVIF: better than default (2) but
+        // not as slow as max (9). chromaSubsampling 4:2:0 is standard.
+        return s.avif({ quality, effort: 4, chromaSubsampling: '4:2:0' })
       case 'gif':
         return s.gif()
       case 'tiff':
         return s.tiff({ quality, compression: 'lzw' })
       default:
-        return s.jpeg({ quality, mozjpeg: false })
+        return s.jpeg({ quality, mozjpeg: true })
     }
   }
 
@@ -144,13 +154,22 @@ export class ImageProcessor extends BaseProcessor {
   }
 
   private async runCompress(options: ImageCompressOptions) {
-    // Single decode pass that yields both metadata and pixels.
-    const pipeline = this.open(options.file)
-    const inputMeta = await pipeline.metadata()
-    const inputFormat = (inputMeta.format as ImageFormat) ?? 'jpeg'
+    const buf = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+
+    // Detect input format only when the caller requests 'same' output.
+    // Using a separate lightweight metadata() call means the encode pipeline
+    // below always starts from a clean Sharp instance — no shared state.
+    let inputFormat: ImageFormat = 'jpeg'
+    if (!options.format || options.format === 'same') {
+      const meta = await sharp(buf, { failOn: 'error' }).metadata()
+      inputFormat = (meta.format as ImageFormat) ?? 'jpeg'
+    }
+
     const outputFormat: ImageFormat =
       options.format === 'same' || !options.format ? inputFormat : options.format
-    const final = await this.finalize(pipeline, {
+
+    // Fresh pipeline — avoids reusing an instance that already ran metadata().
+    const final = await this.finalize(this.open(buf), {
       format: outputFormat,
       quality: options.quality ?? 80,
     })
@@ -184,10 +203,12 @@ export class ImageProcessor extends BaseProcessor {
   }
 
   private async runResize(options: ImageResizeOptions) {
-    let pipeline = this.open(options.file)
-    const meta = await pipeline.metadata()
+    const buf = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+    // Separate metadata read so the encode pipeline starts clean.
+    const meta = await sharp(buf, { failOn: 'error' }).metadata()
     const origWidth = meta.width ?? 0
     const origHeight = meta.height ?? 0
+    let pipeline = this.open(buf)
 
     let targetWidth: number | undefined
     let targetHeight: number | undefined
@@ -250,9 +271,9 @@ export class ImageProcessor extends BaseProcessor {
   }
 
   private async runConvert(options: ImageConvertOptions) {
-    const pipeline = this.open(options.file)
-    const meta = await pipeline.metadata()
-    const final = await this.finalize(pipeline, {
+    const buf = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+    const meta = await sharp(buf, { failOn: 'error' }).metadata()
+    const final = await this.finalize(this.open(buf), {
       format: options.targetFormat,
       quality: options.quality ?? 90,
     })
@@ -283,8 +304,8 @@ export class ImageProcessor extends BaseProcessor {
   }
 
   private async runCrop(options: ImageCropOptions) {
-    let pipeline = this.open(options.file)
-    const meta = await pipeline.metadata()
+    const buf = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+    const meta = await sharp(buf, { failOn: 'error' }).metadata()
     const imgWidth = meta.width ?? 0
     const imgHeight = meta.height ?? 0
     if (
@@ -295,7 +316,7 @@ export class ImageProcessor extends BaseProcessor {
     ) {
       throw new Error('Crop region exceeds image boundaries')
     }
-    pipeline = pipeline.extract({
+    let pipeline = this.open(buf).extract({
       left: Math.round(options.left),
       top: Math.round(options.top),
       width: Math.round(options.width),
@@ -331,18 +352,17 @@ export class ImageProcessor extends BaseProcessor {
   }
 
   private async runRotate(options: ImageRotateOptions) {
-    let pipeline = this.open(options.file)
-    const meta = await pipeline.metadata()
+    const buf = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+    const meta = await sharp(buf, { failOn: 'error' }).metadata()
     const background = options.background ?? { r: 255, g: 255, b: 255, alpha: 1 }
-    pipeline = pipeline.rotate(options.angle, { background })
     const outputFormat: ImageFormat =
       options.format === 'same' || !options.format
         ? ((meta.format as ImageFormat) ?? 'jpeg')
         : options.format
-    const final = await this.finalize(pipeline, {
-      format: outputFormat,
-      quality: options.quality ?? 90,
-    })
+    const final = await this.finalize(
+      this.open(buf).rotate(options.angle, { background }),
+      { format: outputFormat, quality: options.quality ?? 90 }
+    )
     return { data: final.data, width: final.width, height: final.height }
   }
 
@@ -365,8 +385,9 @@ export class ImageProcessor extends BaseProcessor {
   }
 
   private async runFlip(options: ImageFlipOptions) {
-    let pipeline = this.open(options.file)
-    const meta = await pipeline.metadata()
+    const buf = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+    const meta = await sharp(buf, { failOn: 'error' }).metadata()
+    let pipeline = this.open(buf)
     if (options.direction === 'horizontal' || options.direction === 'both') {
       pipeline = pipeline.flop()
     }

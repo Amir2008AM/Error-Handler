@@ -179,8 +179,8 @@ export function CompressImageClient() {
               {/* Format */}
               <div>
                 <label className="text-sm font-semibold text-foreground block mb-2">Output Format</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['same', 'jpeg', 'png', 'webp'].map((fmt) => (
+                <div className="grid grid-cols-5 gap-2">
+                  {['same', 'jpeg', 'png', 'webp', 'avif'].map((fmt) => (
                     <button
                       key={fmt}
                       onClick={() => { setFormat(fmt); setResult(null) }}
