@@ -222,13 +222,18 @@ export function HomeContent() {
                 ))}
               </ul>
             </div>
-            {/* Blog */}
+            {/* Blog & Help */}
             <div>
               <h3 className="text-white font-semibold text-sm mb-4">{t('home.footer.blogCol')}</h3>
               <ul className="space-y-3">
                 <li>
                   <Link href="/blog" style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
                     {t('home.footer.allArticles')}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/faq" style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
+                    FAQ
                   </Link>
                 </li>
               </ul>

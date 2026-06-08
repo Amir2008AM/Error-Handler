@@ -635,15 +635,19 @@ export function ToolSeoContent({ slug }: { slug: string }) {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section>
-        <h2 className="text-xl font-bold text-foreground mb-5">Frequently Asked Questions</h2>
-        <div className="space-y-2">
-          {data.faqs.map((faq, i) => (
-            <FaqItem key={i} q={faq.q} a={faq.a} />
-          ))}
+      {/* FAQ link */}
+      <div className="rounded-xl border border-border bg-muted/30 px-5 py-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Have a question about this tool?</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Find answers to all common PDF tool questions in one place.</p>
         </div>
-      </section>
+        <a
+          href="/faq"
+          className="shrink-0 text-xs font-semibold text-primary hover:underline whitespace-nowrap"
+        >
+          Visit FAQ →
+        </a>
+      </div>
     </div>
   )
 }
