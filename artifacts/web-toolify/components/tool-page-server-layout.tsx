@@ -13,6 +13,7 @@ import { ToolCard } from './tool-card'
 import { AdBanner } from './ad-banner'
 import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
+import { ToolSeoContent } from './tool-seo-content'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText, Image, Minimize2, FilePlus2, Scissors,
@@ -162,6 +163,9 @@ export function ToolPageServerLayout(props: Props) {
         {children}
 
         <AdBanner slot="6978025975" format="horizontal" className="mt-8" />
+
+        {/* SEO Content — How It Works, Features, FAQ */}
+        <ToolSeoContent slug={tool.slug} />
 
         {/* Related Tools — server-rendered for SEO */}
         {relatedTools.length > 0 && (
