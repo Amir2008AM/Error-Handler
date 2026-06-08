@@ -70,7 +70,7 @@ export default function CookiesPolicyPage() {
 
         {/* ── Arabic ───────────────────────────────────────────────────── */}
         <div dir="rtl">
-          <h1 className="text-3xl font-bold mb-8">سياسة ملفات تعريف الارتباط (Cookies Policy)</h1>
+          <h2 className="text-3xl font-bold mb-8">سياسة ملفات تعريف الارتباط (Cookies Policy)</h2>
 
           <div className="space-y-8">
             <section>

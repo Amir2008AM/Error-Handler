@@ -148,7 +148,7 @@ export default function TermsAndConditionsPage() {
 
         {/* ── Arabic ───────────────────────────────────────────────────── */}
         <div dir="rtl">
-          <h1 className="text-3xl font-bold mb-1">شروط الاستخدام</h1>
+          <h2 className="text-3xl font-bold mb-1">شروط الاستخدام</h2>
           <p className="text-muted-foreground leading-relaxed mb-8">
             يوفر موقع ToolifyPDF أدوات مجانية لمعالجة ملفات PDF.
           </p>

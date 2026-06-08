@@ -188,7 +188,7 @@ export default function PrivacyPolicyPage() {
 
         {/* ── Arabic ───────────────────────────────────────────────────── */}
         <div dir="rtl">
-          <h1 className="text-3xl font-bold mb-1">سياسة الخصوصية</h1>
+          <h2 className="text-3xl font-bold mb-1">سياسة الخصوصية</h2>
           <p className="text-muted-foreground text-sm mb-2">آخر تحديث: مايو 2026</p>
           <p className="text-muted-foreground leading-relaxed mb-8">
             يُدير موقع ToolifyPDF (&quot;نحن&quot;، &quot;لنا&quot;) الموقع الإلكتروني{' '}

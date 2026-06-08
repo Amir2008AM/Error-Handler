@@ -37,7 +37,7 @@ export default function DisclaimerPage() {
 
         {/* ── Arabic ───────────────────────────────────────────────────── */}
         <div dir="rtl">
-          <h1 className="text-3xl font-bold mb-8">إخلاء المسؤولية</h1>
+          <h2 className="text-3xl font-bold mb-8">إخلاء المسؤولية</h2>
 
           <ul className="list-disc text-muted-foreground space-y-3 mr-5">
             <li className="leading-relaxed">يتم تقديم الخدمة لأغراض معلوماتية عامة فقط.</li>
