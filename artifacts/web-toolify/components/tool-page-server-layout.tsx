@@ -164,9 +164,6 @@ export function ToolPageServerLayout(props: Props) {
 
         <AdBanner slot="6978025975" format="horizontal" className="mt-8" />
 
-        {/* SEO Content — How It Works, Features, FAQ */}
-        <ToolSeoContent slug={tool.slug} />
-
         {/* Related Tools — server-rendered for SEO */}
         {relatedTools.length > 0 && (
           <section aria-label="Related tools" className="mt-10">
