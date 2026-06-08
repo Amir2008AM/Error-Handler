@@ -1,7 +1,7 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { ImageGallery, getIsSizeExceeded } from '@/components/image-gallery'
 import type { ImageItem } from '@/components/image-gallery'
@@ -146,6 +146,11 @@ export function ImageToPdfClient() {
   const [error,       setError]       = useState<string | null>(null)
   const progress = useRealProgress()
 
+  // Pre-compressed blobs keyed by image ID.
+  // Compression starts immediately when images are added so it's ready
+  // by the time the user clicks Convert.
+  const precompressedRef = useRef<Map<string, Promise<Blob>>>(new Map())
+
   // Stable references from the progress hook so callbacks below don't
   // re-create every render (avoids UploadDropzone re-renders).
   const { reset: progressReset } = progress
@@ -165,7 +170,15 @@ export function ImageToPdfClient() {
     }))
     setImages((prev) => [...prev, ...newEntries])
 
-    // Step 2: generate each thumbnail independently in the background.
+    // Step 2: kick off background pre-compression for every new image
+    // immediately — silently, without affecting the UI.  By the time the
+    // user clicks Convert the blobs are already ready, so that step is
+    // effectively instant.
+    newEntries.forEach((entry) => {
+      precompressedRef.current.set(entry.id, compressForUpload(entry.file))
+    })
+
+    // Step 3: generate each thumbnail independently in the background.
     // Each one updates only its own card as soon as it's ready, so
     // thumbnails pop in progressively instead of all-at-once after a delay.
     newEntries.forEach(async (entry) => {
@@ -177,6 +190,7 @@ export function ImageToPdfClient() {
   }, [progressReset])
 
   const removeImage = useCallback((id: string) => {
+    precompressedRef.current.delete(id)
     setImages((prev) => reorderImages(prev.filter((img) => img.id !== id)))
     setDownloadUrl(null)
   }, [])
@@ -203,6 +217,7 @@ export function ImageToPdfClient() {
   }, [])
 
   const clearAll = useCallback(() => {
+    precompressedRef.current.clear()
     setImages((prev) => {
       prev.forEach((img) => {
         // Only revoke if it's a blob/object URL, not a data URL
@@ -236,13 +251,17 @@ export function ImageToPdfClient() {
     try {
       const total = selectedImages.length
 
-      // ── Parallel compression ───────────────────────────────────────────────
-      // All images are compressed simultaneously instead of one-by-one.
-      // Sequential (old): 30 images × ~300 ms = ~9 s before upload starts.
-      // Parallel  (new):  bottleneck = slowest single image ≈ ~300–500 ms.
-      progress.stageUpload(5, `Compressing ${total} image${total !== 1 ? 's' : ''}…`)
+      // ── Use pre-compressed blobs (already running since images were added) ──
+      // Compression started in the background as soon as the user selected
+      // images, so by now it's usually already done.  We just await the cached
+      // promises — if they're resolved this is instant; if not, we wait for the
+      // remaining work.  Falls back to fresh compression for any image whose
+      // promise is missing (e.g. added via a code path that skipped pre-compress).
+      progress.stageUpload(5, `Preparing ${total} image${total !== 1 ? 's' : ''}…`)
       const blobs: Blob[] = await Promise.all(
-        selectedImages.map((img) => compressForUpload(img.file)),
+        selectedImages.map((img) =>
+          precompressedRef.current.get(img.id) ?? compressForUpload(img.file),
+        ),
       )
 
       const totalBytes = blobs.reduce((s, b) => s + b.size, 0)
