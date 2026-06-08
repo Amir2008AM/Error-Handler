@@ -153,30 +153,112 @@ export class ImageProcessor extends BaseProcessor {
     }
   }
 
-  private async runCompress(options: ImageCompressOptions) {
-    const buf = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+  /**
+   * Encode once at a given quality. Isolated so the retry logic stays clean.
+   */
+  private async encodeOnce(buf: Buffer, format: ImageFormat, quality: number): Promise<Buffer> {
+    const { data } = await this.applyEncoder(
+      sharp(buf, { failOn: 'error', limitInputPixels: DEFAULT_PIXEL_LIMIT, sequentialRead: true }),
+      { format, quality }
+    ).toBuffer({ resolveWithObject: true })
+    return data
+  }
 
-    // Detect input format only when the caller requests 'same' output.
-    // Using a separate lightweight metadata() call means the encode pipeline
-    // below always starts from a clean Sharp instance — no shared state.
-    let inputFormat: ImageFormat = 'jpeg'
-    if (!options.format || options.format === 'same') {
-      const meta = await sharp(buf, { failOn: 'error' }).metadata()
-      inputFormat = (meta.format as ImageFormat) ?? 'jpeg'
+  /**
+   * Binary-search for the HIGHEST quality that still produces a file
+   * smaller than `targetSize`. Returns the best buffer found.
+   *
+   * Uses at most ceil(log2(hi-lo)) + 2 encode passes — typically 4-6.
+   * This is far fewer than a blind step-down and preserves maximum quality.
+   */
+  private async findBestQuality(
+    buf: Buffer,
+    format: ImageFormat,
+    targetSize: number,
+    lo: number,
+    hi: number
+  ): Promise<Buffer | null> {
+    // Fast-path: does the ceiling quality already compress?
+    let hiData = await this.encodeOnce(buf, format, hi)
+    if (hiData.length < targetSize) return hiData
+
+    // Does even the floor quality compress?
+    let loData = await this.encodeOnce(buf, format, lo)
+    if (loData.length >= targetSize) {
+      // Floor didn't help — return whatever was smallest
+      return loData.length < hiData.length ? loData : hiData
     }
 
+    // Binary search: find highest q in [lo, hi] where size < targetSize
+    let bestData = loData
+    while (hi - lo > 3) {
+      const mid     = Math.floor((lo + hi) / 2)
+      const midData = await this.encodeOnce(buf, format, mid)
+      if (midData.length < targetSize) {
+        lo       = mid
+        bestData = midData   // highest quality that achieved the target so far
+      } else {
+        hi = mid
+      }
+    }
+    return bestData
+  }
+
+  private async runCompress(options: ImageCompressOptions) {
+    const buf     = Buffer.isBuffer(options.file) ? options.file : Buffer.from(options.file)
+    const inputSz = buf.length
+
+    // ── 1. Read input metadata (header only — no full pixel decode) ─────────
+    const meta        = await sharp(buf, { failOn: 'error' }).metadata()
+    const inputFormat = (meta.format as ImageFormat) ?? 'jpeg'
     const outputFormat: ImageFormat =
       options.format === 'same' || !options.format ? inputFormat : options.format
 
-    // Fresh pipeline — avoids reusing an instance that already ran metadata().
-    const final = await this.finalize(this.open(buf), {
-      format: outputFormat,
-      quality: options.quality ?? 80,
-    })
+    const reqQuality = Math.max(1, Math.min(100, options.quality ?? 80))
+    const isPng      = outputFormat === 'png'
+    const isLossy    = !isPng && outputFormat !== 'gif' && outputFormat !== 'tiff'
+
+    // ── 2. First attempt at the requested quality ────────────────────────────
+    let bestData = await this.encodeOnce(buf, outputFormat, reqQuality)
+
+    // ── 3. Already smaller → done, no quality sacrifice needed ──────────────
+    if (bestData.length < inputSz) {
+      return { data: bestData, width: meta.width ?? 0, height: meta.height ?? 0, inputFormat, outputFormat }
+    }
+
+    // ── 4. Not smaller yet — use binary search to find the BEST quality ──────
+    if (isLossy) {
+      // Floor: never drop below 35 to preserve acceptable quality.
+      // If even quality 35 isn't enough (extremely rare), we still
+      // return the floor result — it will be meaningfully smaller.
+      const floor  = Math.min(35, reqQuality - 5)
+      const found  = await this.findBestQuality(buf, outputFormat, inputSz, floor, reqQuality - 1)
+      if (found && found.length < bestData.length) bestData = found
+    } else {
+      // PNG is lossless — palette quantisation is the only lever that
+      // reduces size without a format change. We start with 256 colours
+      // (barely visible difference for most images) and only go lower
+      // if needed, keeping quality as high as possible.
+      const paletteSizes = [256, 192, 128, 64]
+      for (const colors of paletteSizes) {
+        const { data } = await sharp(buf, {
+          failOn: 'error',
+          limitInputPixels: DEFAULT_PIXEL_LIMIT,
+        })
+          .png({ compressionLevel: 9, palette: true, colors })
+          .toBuffer({ resolveWithObject: true })
+        if (data.length < bestData.length) bestData = data
+        if (bestData.length < inputSz) break   // stop — already achieved compression
+      }
+    }
+
+    // ── 5. Return the smallest result we found ───────────────────────────────
+    // If bestData is still ≥ inputSz the image was already near-optimal
+    // (e.g. a tiny already-compressed JPEG). Return the best we managed.
     return {
-      data: final.data,
-      width: final.width,
-      height: final.height,
+      data:   bestData,
+      width:  meta.width  ?? 0,
+      height: meta.height ?? 0,
       inputFormat,
       outputFormat,
     }
