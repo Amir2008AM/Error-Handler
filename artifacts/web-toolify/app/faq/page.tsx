@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ChevronDown, ArrowRight } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'FAQ — Frequently Asked Questions | Toolify',
@@ -22,11 +22,12 @@ export const metadata: Metadata = {
 
 type QA = { q: string; a: string; tool?: string; toolSlug?: string }
 
-const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
+const SECTIONS: { id: string; label: string; icon: string; color: string; items: QA[] }[] = [
   {
     id: 'general',
     label: 'General Questions',
     icon: '💡',
+    color: 'from-amber-400 to-orange-400',
     items: [
       {
         q: 'Is Toolify completely free to use?',
@@ -65,10 +66,11 @@ const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
     id: 'compress-pdf',
     label: 'Compress PDF',
     icon: '⚡',
+    color: 'from-green-400 to-emerald-500',
     items: [
       {
         q: 'What compression levels does the Compress PDF tool offer?',
-        a: 'Toolify\'s Compress PDF tool offers three levels: Light (highest quality, smallest reduction), Medium (balanced quality and size), and Strong (smallest file size, may reduce image resolution). Choose Light for documents you will print, and Strong for email attachments or web uploads.',
+        a: "Toolify's Compress PDF tool offers three levels: Light (highest quality, smallest reduction), Medium (balanced quality and size), and Strong (smallest file size, may reduce image resolution). Choose Light for documents you will print, and Strong for email attachments or web uploads.",
         tool: 'Compress PDF',
         toolSlug: 'compress-pdf',
       },
@@ -103,6 +105,7 @@ const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
     id: 'merge-split',
     label: 'Merge & Split PDF',
     icon: '🔀',
+    color: 'from-blue-400 to-indigo-500',
     items: [
       {
         q: 'How many PDF files can I merge at once on Toolify?',
@@ -147,10 +150,11 @@ const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
     id: 'security',
     label: 'PDF Security — Protect & Unlock',
     icon: '🔒',
+    color: 'from-rose-400 to-red-500',
     items: [
       {
         q: 'What encryption does the Protect PDF tool use?',
-        a: 'Toolify\'s Protect PDF tool encrypts your file using AES-128 or AES-256 encryption depending on your settings. AES-256 is the same encryption standard used in banking and government applications and is considered unbreakable with current technology when a strong password is used.',
+        a: "Toolify's Protect PDF tool encrypts your file using AES-128 or AES-256 encryption depending on your settings. AES-256 is the same encryption standard used in banking and government applications and is considered unbreakable with current technology when a strong password is used.",
         tool: 'Protect PDF',
         toolSlug: 'protect-pdf',
       },
@@ -197,6 +201,7 @@ const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
     id: 'edit',
     label: 'Edit, Organize & Watermark',
     icon: '✏️',
+    color: 'from-violet-400 to-purple-500',
     items: [
       {
         q: 'Does the Rotate PDF tool rotate all pages or can I choose specific pages?',
@@ -235,6 +240,7 @@ const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
     id: 'convert-pdf',
     label: 'PDF Conversion',
     icon: '🔄',
+    color: 'from-cyan-400 to-sky-500',
     items: [
       {
         q: 'Will the formatting be perfectly preserved when converting PDF to Word?',
@@ -309,9 +315,10 @@ const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
     id: 'image',
     label: 'Image Tools',
     icon: '🖼️',
+    color: 'from-pink-400 to-fuchsia-500',
     items: [
       {
-        q: 'How does Toolify\'s Compress Image tool decide the output quality?',
+        q: "How does Toolify's Compress Image tool decide the output quality?",
         a: 'The tool uses a smart binary-search algorithm that automatically finds the highest quality setting that still produces a file smaller than the original. This guarantees the output is always smaller while preserving maximum visual quality. The quality floor is set at 35% to prevent unusable results.',
         tool: 'Compress Image',
         toolSlug: 'compress-image',
@@ -347,9 +354,10 @@ const SECTIONS: { id: string; label: string; icon: string; items: QA[] }[] = [
     id: 'ocr-text',
     label: 'OCR & Text Tools',
     icon: '🔍',
+    color: 'from-teal-400 to-cyan-500',
     items: [
       {
-        q: 'Which languages does Toolify\'s OCR tool recognise?',
+        q: "Which languages does Toolify's OCR tool recognise?",
         a: 'The Image to Text tool supports many languages including Arabic, English, French, Spanish, German, Chinese, Japanese, and more. Select the language that matches your document in the language selector before processing for the best accuracy.',
         tool: 'Image to Text (OCR)',
         toolSlug: 'ocr-image',
@@ -413,30 +421,39 @@ function buildFaqSchema() {
 function SectionBlock({ section }: { section: (typeof SECTIONS)[number] }) {
   return (
     <section id={section.id} className="scroll-mt-8">
-      <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2 pb-2 border-b border-border">
-        <span className="text-xl">{section.icon}</span>
-        {section.label}
-      </h2>
+      <div className="flex items-center gap-3 mb-5">
+        <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${section.color} flex items-center justify-center text-lg shadow-sm`}>
+          {section.icon}
+        </div>
+        <h2 className="text-lg font-bold text-foreground">{section.label}</h2>
+        <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+          {section.items.length}
+        </span>
+      </div>
+
       <div className="space-y-2">
         {section.items.map((item, i) => (
-          <details key={i} className="group border border-border rounded-xl overflow-hidden bg-white">
-            <summary className="flex items-start justify-between gap-4 px-5 py-4 cursor-pointer list-none select-none hover:bg-muted/30 transition-colors">
-              <h3 className="font-semibold text-foreground text-sm leading-snug pr-2">{item.q}</h3>
-              <svg
-                className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5 transition-transform group-open:rotate-180"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+          <details
+            key={i}
+            className="group bg-white border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <summary className="flex items-center justify-between gap-4 px-5 py-4 cursor-pointer list-none select-none">
+              <h3 className="font-semibold text-foreground text-sm leading-snug">{item.q}</h3>
+              <span className="shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center transition-transform duration-300 group-open:rotate-180 group-open:bg-primary/10">
+                <ChevronDown className="w-4 h-4 text-muted-foreground group-open:text-primary" />
+              </span>
             </summary>
-            <div className="px-5 pb-5 pt-2 border-t border-border bg-muted/10">
+
+            <div className="px-5 pb-5 pt-0">
+              <div className="h-px bg-border mb-4" />
               <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
               {item.tool && item.toolSlug && (
                 <Link
                   href={`/${item.toolSlug}`}
-                  className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-primary hover:underline"
+                  className="inline-flex items-center gap-1.5 mt-4 text-xs font-semibold text-primary bg-primary/8 hover:bg-primary/15 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  Open {item.tool} →
+                  Open {item.tool}
+                  <ArrowRight className="w-3 h-3" />
                 </Link>
               )}
             </div>
@@ -469,18 +486,38 @@ export default function FaqPage() {
       </div>
 
       {/* Hero */}
-      <div className="bg-gradient-to-b from-blue-50 to-background border-b border-border py-12 px-4">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full mb-4">
+      <div className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-indigo-50/50 to-background border-b border-border py-14 px-4">
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full bg-blue-100/60 blur-3xl" />
+          <div className="absolute -bottom-8 -left-8 w-56 h-56 rounded-full bg-indigo-100/40 blur-2xl" />
+        </div>
+        <div className="relative max-w-2xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-white border border-primary/20 px-4 py-1.5 rounded-full mb-5 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             {totalQuestions} questions — all specific to Toolify
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
-            Frequently Asked Questions
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight tracking-tight">
+            Frequently Asked<br />
+            <span className="text-primary">Questions</span>
           </h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
+          <p className="text-muted-foreground text-base leading-relaxed max-w-lg mx-auto">
             Precise answers about every tool on Toolify — real limits, real formats, and honest
             notes about what each tool can and cannot do.
           </p>
+
+          {/* Section pills */}
+          <div className="flex flex-wrap justify-center gap-2 mt-7">
+            {SECTIONS.map((s) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-white border border-border hover:border-primary/40 hover:text-primary px-3 py-1.5 rounded-full transition-colors shadow-sm"
+              >
+                <span>{s.icon}</span>
+                {s.label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -488,35 +525,41 @@ export default function FaqPage() {
         <div className="flex flex-col lg:flex-row gap-10">
 
           {/* Sidebar */}
-          <aside className="lg:w-52 shrink-0">
-            <div className="sticky top-6">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3 px-1">
-                Jump to
-              </p>
-              <nav className="flex flex-col gap-0.5">
-                {SECTIONS.map((s) => (
-                  <a
-                    key={s.id}
-                    href={`#${s.id}`}
-                    className="flex items-center gap-2 text-sm px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                  >
-                    <span>{s.icon}</span>
-                    <span className="leading-snug">{s.label}</span>
-                    <span className="ml-auto text-xs text-muted-foreground/50 shrink-0">{s.items.length}</span>
-                  </a>
-                ))}
-              </nav>
+          <aside className="lg:w-56 shrink-0">
+            <div className="sticky top-6 space-y-4">
+              <div className="bg-white border border-border rounded-2xl p-4 shadow-sm">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
+                  Jump to section
+                </p>
+                <nav className="flex flex-col gap-0.5">
+                  {SECTIONS.map((s) => (
+                    <a
+                      key={s.id}
+                      href={`#${s.id}`}
+                      className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                    >
+                      <span className="text-base leading-none">{s.icon}</span>
+                      <span className="leading-snug flex-1">{s.label}</span>
+                      <span className="text-[10px] text-muted-foreground/60 bg-muted rounded-full px-1.5 py-0.5 shrink-0">
+                        {s.items.length}
+                      </span>
+                    </a>
+                  ))}
+                </nav>
+              </div>
 
-              <div className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/10">
-                <p className="text-xs font-semibold text-foreground mb-1">Need a tool?</p>
-                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                  Browse all 25+ free PDF and image tools.
+              {/* Sidebar CTA */}
+              <div className="bg-gradient-to-br from-primary/90 to-blue-600 rounded-2xl p-4 text-white shadow-md">
+                <p className="text-sm font-bold mb-1">Need a tool?</p>
+                <p className="text-xs text-white/75 mb-4 leading-relaxed">
+                  Browse all 25+ free PDF and image tools — no account needed.
                 </p>
                 <Link
                   href="/"
-                  className="block text-center text-xs font-semibold text-white bg-primary rounded-lg py-2 px-3 hover:bg-primary/90 transition-colors"
+                  className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary bg-white rounded-xl py-2 px-3 hover:bg-white/90 transition-colors"
                 >
-                  All Tools →
+                  Browse All Tools
+                  <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
@@ -529,18 +572,52 @@ export default function FaqPage() {
             ))}
 
             {/* Bottom CTA */}
-            <section className="rounded-2xl bg-gradient-to-br from-primary to-blue-700 p-8 text-white text-center">
-              <h2 className="text-xl font-bold mb-2">Ready to get started?</h2>
-              <p className="text-white/80 text-sm mb-5 max-w-md mx-auto">
-                Over 25 free tools — compress, merge, split, convert, protect PDF files and more.
-                No account needed. Works on any device.
-              </p>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 bg-white text-primary font-semibold text-sm rounded-xl px-6 py-2.5 hover:bg-white/90 transition-colors"
-              >
-                Browse All Free Tools →
-              </Link>
+            <section
+              className="rounded-2xl p-8 md:p-12 text-center text-white overflow-hidden relative"
+              style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b6ef5 60%, #60a5fa 100%)' }}
+            >
+              <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+                <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/4" />
+                <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full bg-white/5 translate-y-1/2 -translate-x-1/4" />
+              </div>
+
+              <div className="relative">
+                {/* Animated bounce arrow */}
+                <div className="text-white/60 text-4xl mb-4 animate-bounce" aria-hidden="true">↓</div>
+
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                  Ready to get started?
+                </h2>
+                <p className="text-blue-100 leading-relaxed mb-8 max-w-md mx-auto text-sm">
+                  Over 25 free tools — compress, merge, split, convert, protect PDF files and
+                  images. No account needed. Works on any device.
+                </p>
+
+                <ul className="inline-flex flex-col items-start gap-2 mb-8 text-sm text-blue-100">
+                  {[
+                    'All tools completely free',
+                    'No registration required',
+                    'Works on desktop & mobile',
+                    'Files deleted after 20 minutes',
+                  ].map((b) => (
+                    <li key={b} className="flex items-center gap-2">
+                      <span className="text-green-300 font-bold text-base">✓</span>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+
+                <div>
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-base shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl active:scale-95"
+                    style={{ backgroundColor: 'white', color: '#1e40af' }}
+                  >
+                    Browse All Free Tools
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              </div>
             </section>
           </div>
         </div>
