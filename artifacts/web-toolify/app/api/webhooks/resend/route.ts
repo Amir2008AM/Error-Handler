@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend, type EmailReceivedEvent } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(req: NextRequest) {
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY ?? 'placeholder')
     const secret = process.env.RESEND_WEBHOOK_SECRET
     if (!secret) {
       console.error('[Webhook] RESEND_WEBHOOK_SECRET not set')
