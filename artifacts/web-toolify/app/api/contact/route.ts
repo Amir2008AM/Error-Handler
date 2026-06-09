@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>()
 const WINDOW_MS      = 60 * 60 * 1000
@@ -13,8 +14,8 @@ function getClientIp(req: NextRequest): string {
 }
 
 function isRateLimited(ip: string): boolean {
-  const now    = Date.now()
-  const entry  = RATE_LIMIT_MAP.get(ip)
+  const now   = Date.now()
+  const entry = RATE_LIMIT_MAP.get(ip)
 
   if (!entry || now > entry.resetAt) {
     RATE_LIMIT_MAP.set(ip, { count: 1, resetAt: now + WINDOW_MS })
@@ -63,33 +64,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is too long (max 5000 characters).' }, { status: 400 })
     }
 
-    const apiKey       = process.env.RESEND_API_KEY
-    const supportEmail = process.env.SUPPORT_EMAIL ?? 'contact@toolifypdf.online'
+    const apiKey = process.env.RESEND_API_KEY
 
-    if (apiKey) {
-      const res = await fetch('https://api.resend.com/emails', {
-        method:  'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({
-          from:    `ToolifyPDF Contact <noreply@toolifypdf.online>`,
-          to:      [supportEmail],
-          reply_to: email,
-          subject: `[Contact] New message from ${email}`,
-          text:    `From: ${email}\n\n${message}`,
-          html:    `<p><strong>From:</strong> ${email}</p><hr/><p>${message.replace(/\n/g, '<br/>')}</p>`,
-        }),
-      })
+    if (!apiKey) {
+      console.warn('[Contact] RESEND_API_KEY not set — logging message only')
+      console.log(`[Contact] From: ${email}\n${message}`)
+      return NextResponse.json({ ok: true })
+    }
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        console.error('[Contact] Resend error:', err)
-        return NextResponse.json({ error: 'Failed to send message. Please try again later.' }, { status: 502 })
-      }
-    } else {
-      console.log(`[Contact] Message from ${email} (no RESEND_API_KEY set):\n${message}`)
+    const resend        = new Resend(apiKey)
+    const supportEmail  = process.env.SUPPORT_EMAIL ?? 'contact@toolifypdf.online'
+
+    const { error } = await resend.emails.send({
+      from:     'ToolifyPDF Contact <onboarding@resend.dev>',
+      to:       [supportEmail],
+      replyTo:  email,
+      subject:  `[Contact] New message from ${email}`,
+      text:     `From: ${email}\n\n${message}`,
+      html:     `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+          <h2 style="color:#3b6ef5">New Contact Message</h2>
+          <p><strong>From:</strong> <a href="mailto:${email}">${email}</a></p>
+          <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
+          <p style="white-space:pre-wrap;line-height:1.6">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')}</p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[Contact] Resend error:', error)
+      return NextResponse.json(
+        { error: 'Failed to send message. Please try again later.' },
+        { status: 502 }
+      )
     }
 
     return NextResponse.json({ ok: true })
