@@ -90,8 +90,10 @@ export async function POST(req: NextRequest) {
 
     const supportEmail = process.env.SUPPORT_EMAIL ?? process.env.SMTP_USER!
 
+    const senderEmail = process.env.SENDER_EMAIL ?? process.env.SMTP_USER!
+
     await transporter.sendMail({
-      from:     `"Toolify Contact" <${process.env.SMTP_USER}>`,
+      from:     `"Toolify Contact" <${senderEmail}>`,
       to:       supportEmail,
       replyTo:  email,
       subject:  `[Contact] New message from ${email}`,
