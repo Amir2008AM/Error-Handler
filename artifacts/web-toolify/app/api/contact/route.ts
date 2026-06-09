@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     }
 
     const resend        = new Resend(apiKey)
-    const supportEmail  = process.env.SUPPORT_EMAIL ?? 'contact@toolifypdf.online'
+    const supportEmail  = process.env.SUPPORT_EMAIL ?? 'contact@loubami.resend.app'
 
     const { error } = await resend.emails.send({
       from:     'ToolifyPDF Contact <contact@loubami.resend.app>',
