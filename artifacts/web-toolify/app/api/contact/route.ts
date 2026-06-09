@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>()
 const WINDOW_MS      = 60 * 60 * 1000
@@ -64,41 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is too long (max 5000 characters).' }, { status: 400 })
     }
 
-    const apiKey = process.env.RESEND_API_KEY
-
-    if (!apiKey) {
-      console.warn('[Contact] RESEND_API_KEY not set — logging message only')
-      console.log(`[Contact] From: ${email}\n${message}`)
-      return NextResponse.json({ ok: true })
-    }
-
-    const resend        = new Resend(apiKey)
-    const supportEmail  = process.env.SUPPORT_EMAIL ?? 'contact@loubami.resend.app'
-
-    const { error } = await resend.emails.send({
-      from:     'ToolifyPDF Contact <contact@loubami.resend.app>',
-      to:       [supportEmail],
-      replyTo:  email,
-      subject:  `[Contact] New message from ${email}`,
-      text:     `From: ${email}\n\n${message}`,
-      html:     `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-          <h2 style="color:#3b6ef5">New Contact Message</h2>
-          <p><strong>From:</strong> <a href="mailto:${email}">${email}</a></p>
-          <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
-          <p style="white-space:pre-wrap;line-height:1.6">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')}</p>
-        </div>
-      `,
-    })
-
-    if (error) {
-      console.error('[Contact] Resend error:', error)
-      return NextResponse.json(
-        { error: 'Failed to send message. Please try again later.' },
-        { status: 502 }
-      )
-    }
-
+    console.log(`[Contact] From: ${email}\n${message}`)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[Contact] Unexpected error:', err)
