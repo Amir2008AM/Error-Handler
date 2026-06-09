@@ -68,4 +68,4 @@ DEV_ADMIN_KEY = "31d4304ef1bddf13670300186292faf3a06ca9c69bb7e3f4a4ca7e68fd16d95
 SMTP_HOST = "smtp-relay.brevo.com"
 SMTP_PORT = "587"
 SENDER_EMAIL = "support@toolifypdf.online"
-SUPPORT_EMAIL = "support@toolifypdf.online"
+SUPPORT_EMAIL = "amirsaleh098am@gmail.com"
