@@ -4,8 +4,8 @@ FROM node:24-bookworm-slim
 # ── System packages ────────────────────────────────────────────────────────────
 # Cache mount keeps apt lists + downloaded .deb files between builds.
 # After the first build these layers are served from cache — no re-download.
-RUN --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
       ghostscript \
       qpdf \
@@ -37,7 +37,7 @@ RUN --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-apt-cache,target=/var/cache/ap
 
 # ── Python packages ────────────────────────────────────────────────────────────
 # pip cache mount avoids re-downloading wheels that haven't changed.
-RUN --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-pip,target=/root/.cache/pip \
+RUN --mount=type=cache,target=/root/.cache/pip \
     pip3 install --break-system-packages \
       arabic-reshaper==3.0.0 \
       python-bidi==0.4.2 \
@@ -74,7 +74,7 @@ COPY artifacts/api-server/package.json    ./artifacts/api-server/package.json
 # ── Node modules ───────────────────────────────────────────────────────────────
 # pnpm store cache mount: packages are fetched once and reused across builds.
 # The layer itself is still rebuilt when lockfile changes, but download is free.
-RUN --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-pnpm-store,target=/root/.local/share/pnpm/store \
+RUN --mount=type=cache,id=toolify-pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
 # ── Full source ────────────────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ RUN test -f /app/pdf_table_extractor.py \
 # ── Next.js production build ───────────────────────────────────────────────────
 # .next/cache mount preserves Turbopack's incremental compilation cache.
 # Unchanged pages are not recompiled — huge win on repeated deploys.
-RUN --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-nextjs-cache,target=/app/artifacts/web-toolify/.next/cache \
+RUN --mount=type=cache,id=toolify-nextjs-cache,target=/app/artifacts/web-toolify/.next/cache \
     pnpm --filter @workspace/web-toolify run build
 
 # ── Validate CLI tools ─────────────────────────────────────────────────────────
