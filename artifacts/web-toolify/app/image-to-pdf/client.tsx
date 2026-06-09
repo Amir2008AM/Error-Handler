@@ -15,7 +15,7 @@ import { t } from '@/lib/i18n/translations'
 
 let idCounter = 0
 
-const POLL_INTERVAL_MS = 600
+const POLL_INTERVAL_MS = 200
 const POLL_TIMEOUT_MS  = 5 * 60 * 1000
 const CLIENT_MAX_PX = 1600
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -94,8 +94,18 @@ async function pollJobUntilDone(
   const deadline = Date.now() + POLL_TIMEOUT_MS
   const pollUrl  = `/api/jobs/${jobId}`
 
+  // First check is immediate (no initial wait) — fast jobs like single-image
+  // conversion are often done within ms of the upload response returning.
+  // Subsequent checks use a short interval so we catch completion quickly
+  // without hammering the server.
+  let firstPoll = true
+
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+    if (firstPoll) {
+      firstPoll = false
+    } else {
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+    }
 
     const res = await fetch(pollUrl)
     if (!res.ok) throw new Error(`Status check failed (${res.status})`)
