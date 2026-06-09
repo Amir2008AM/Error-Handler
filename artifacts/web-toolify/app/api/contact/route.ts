@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>()
 const WINDOW_MS      = 60 * 60 * 1000
@@ -25,6 +26,22 @@ function isRateLimited(ip: string): boolean {
 
   entry.count++
   return false
+}
+
+function createTransporter() {
+  const host = process.env.SMTP_HOST
+  const port = parseInt(process.env.SMTP_PORT ?? '587', 10)
+  const user = process.env.SMTP_USER
+  const pass = process.env.SMTP_PASS
+
+  if (!host || !user || !pass) return null
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: false,
+    auth: { user, pass },
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -63,7 +80,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is too long (max 5000 characters).' }, { status: 400 })
     }
 
-    console.log(`[Contact] From: ${email}\n${message}`)
+    const transporter = createTransporter()
+
+    if (!transporter) {
+      console.warn('[Contact] SMTP not configured — logging message only')
+      console.log(`[Contact] From: ${email}\n${message}`)
+      return NextResponse.json({ ok: true })
+    }
+
+    const supportEmail = process.env.SUPPORT_EMAIL ?? process.env.SMTP_USER!
+
+    await transporter.sendMail({
+      from:     `"Toolify Contact" <${process.env.SMTP_USER}>`,
+      to:       supportEmail,
+      replyTo:  email,
+      subject:  `[Contact] New message from ${email}`,
+      text:     `From: ${email}\n\n${message}`,
+      html:     `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+          <h2 style="color:#3b6ef5">New Contact Message</h2>
+          <p><strong>From:</strong> <a href="mailto:${email}">${email}</a></p>
+          <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
+          <p style="white-space:pre-wrap;line-height:1.6">${message
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br/>')}</p>
+        </div>
+      `,
+    })
+
+    console.log(`[Contact] Email sent from ${email}`)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[Contact] Unexpected error:', err)
