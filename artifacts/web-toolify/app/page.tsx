@@ -2,14 +2,49 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { HomeContent } from '@/components/home-content'
 
-export const metadata: Metadata = {
-  title: 'Toolify — All Tools in One Place',
-  description:
-    'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
-  alternates: {
-    canonical: 'https://www.toolifypdf.online',
-  },
-  robots: { index: true, follow: true },
+const CATEGORY_TITLES: Record<string, string> = {
+  'PDF Tools':      'Free PDF Tools — Merge, Split, Compress & Convert',
+  'Security Tools': 'PDF Security Tools — Protect, Unlock & Sign PDFs',
+  'Converters':     'File Converters — Word, Excel, PowerPoint to PDF & More',
+  'OCR Tools':      'OCR Tools — Extract Text from PDF & Images',
+  'Image Tools':    'Free Image Tools — Compress, Resize, Crop & Convert',
+  'Text Tools':     'Free Text Tools — Word Count, Case Converter & More',
+  'Calculators':    'Free Online Calculators',
+}
+
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  'PDF Tools':      'Merge, split, compress, rotate, watermark and more — free PDF tools with no registration.',
+  'Security Tools': 'Protect PDFs with passwords, unlock encrypted files, and add digital signatures — 100% free.',
+  'Converters':     'Convert Word, Excel, PowerPoint, HTML and images to PDF or between formats — fast and free.',
+  'OCR Tools':      'Extract text from scanned PDFs and images using AI-powered OCR technology.',
+  'Image Tools':    'Compress, resize, crop, rotate, and convert images between formats — no upload limit.',
+  'Text Tools':     'Count words, convert letter case, clean text and more — all free, no login needed.',
+  'Calculators':    'Free online calculators for everyday tasks.',
+}
+
+type Props = {
+  searchParams: Promise<{ category?: string; search?: string }>
+}
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { category } = await searchParams
+  const title = category && CATEGORY_TITLES[category]
+    ? CATEGORY_TITLES[category]
+    : 'Toolify — All Tools in One Place'
+  const description = category && CATEGORY_DESCRIPTIONS[category]
+    ? CATEGORY_DESCRIPTIONS[category]
+    : 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.'
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: category
+        ? `https://www.toolifypdf.online/?category=${encodeURIComponent(category)}`
+        : 'https://www.toolifypdf.online',
+    },
+    robots: { index: true, follow: true },
+  }
 }
 
 function HomePageSkeleton() {
@@ -39,9 +74,21 @@ function HomePageSkeleton() {
   )
 }
 
-export default function HomePage() {
+export default async function HomePage({ searchParams }: Props) {
+  const { category } = await searchParams
+
+  const h1Text = category && CATEGORY_TITLES[category]
+    ? CATEGORY_TITLES[category].split(' — ')[0]
+    : 'Online Tools for PDF & Image Lovers'
+
   return (
     <div className="flex flex-col min-h-screen">
+      {/*
+        Server-rendered H1 so crawlers always find a heading even before
+        the client-side HomeContent hydrates. sr-only hides it visually
+        since HomeContent renders its own visible H1 after hydration.
+      */}
+      <h1 className="sr-only">{h1Text}</h1>
       <Suspense fallback={<HomePageSkeleton />}>
         <HomeContent />
       </Suspense>
