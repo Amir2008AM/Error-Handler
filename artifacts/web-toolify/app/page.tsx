@@ -74,21 +74,9 @@ function HomePageSkeleton() {
   )
 }
 
-export default async function HomePage({ searchParams }: Props) {
-  const { category } = await searchParams
-
-  const h1Text = category && CATEGORY_TITLES[category]
-    ? CATEGORY_TITLES[category].split(' — ')[0]
-    : 'Online Tools for PDF & Image Lovers'
-
+export default async function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
-      {/*
-        Server-rendered H1 so crawlers always find a heading even before
-        the client-side HomeContent hydrates. sr-only hides it visually
-        since HomeContent renders its own visible H1 after hydration.
-      */}
-      <h1 className="sr-only">{h1Text}</h1>
       <Suspense fallback={<HomePageSkeleton />}>
         <HomeContent />
       </Suspense>
