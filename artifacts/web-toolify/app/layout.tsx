@@ -1,4 +1,3 @@
-import Script from 'next/script'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import { LoadingBarProvider } from '@/components/global-loading-bar'
@@ -7,6 +6,7 @@ import DisconnectBeacon from '@/components/disconnect-beacon'
 import HeartbeatBeacon from '@/components/heartbeat-beacon'
 import { MinimalFooter } from '@/components/minimal-footer'
 import { Navbar } from '@/components/navbar'
+import ThirdPartyScripts from '@/components/third-party-scripts'
 import './globals.css'
 
 const inter = Inter({
@@ -95,8 +95,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
-      <head>
-        {/* JSON-LD — Website structured data for Google Search */}
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -117,38 +116,7 @@ export default function RootLayout({
             }),
           }}
         />
-        {/* Critical CSS — applied immediately before any external stylesheet loads.
-            Prevents the white flash that occurs while render-blocking CSS chunks download. */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          *,*::before,*::after{box-sizing:border-box}
-          html,body{margin:0;padding:0;background:#fefefe;min-height:100vh}
-          body{font-family:system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-          /* Reserve navbar height so content doesn't jump on paint */
-          body>div:first-of-type{display:flex;flex-direction:column;min-height:100vh}
-        ` }} />
-      </head>
-      <body className="font-sans antialiased" suppressHydrationWarning>
-        {process.env.NODE_ENV === 'production' && (
-          <>
-            <Script
-              src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4805747941246928"
-              strategy="lazyOnload"
-              crossOrigin="anonymous"
-            />
-            <Script
-              src="https://www.googletagmanager.com/gtag/js?id=G-SVNB9EP5YP"
-              strategy="lazyOnload"
-            />
-            <Script id="ga" strategy="lazyOnload">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', 'G-SVNB9EP5YP');
-              `}
-            </Script>
-          </>
-        )}
+        {process.env.NODE_ENV === 'production' && <ThirdPartyScripts />}
         <DisconnectBeacon />
         <HeartbeatBeacon />
         <I18nProvider>

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sendAlert } from '@/lib/telegram/api'
+import { getAdminIds } from '@/lib/telegram/config'
+import { dbSaveContact } from '@/lib/telegram/db'
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>()
 const WINDOW_MS      = 60 * 60 * 1000
@@ -24,16 +27,15 @@ function isRateLimited(ip: string): boolean {
   return false
 }
 
-async function sendViaBrevoApi(email: string, message: string): Promise<void> {
-  const apiKey      = process.env.BREVO_API_KEY
-  const toEmail     = process.env.SUPPORT_EMAIL ?? 'amirsaleh098am@gmail.com'
-  const fromEmail   = process.env.SENDER_EMAIL  ?? 'support@toolifypdf.online'
-  const fromName    = 'Toolify Contact'
+async function sendViaBrevo(email: string, message: string): Promise<void> {
+  const apiKey    = process.env.BREVO_API_KEY
+  const toEmail   = process.env.SUPPORT_EMAIL ?? 'amirsaleh098am@gmail.com'
+  const fromEmail = process.env.SENDER_EMAIL  ?? 'support@toolifypdf.online'
 
-  if (!apiKey) throw new Error('BREVO_API_KEY not set')
+  if (!apiKey) throw new Error('BREVO_API_KEY not configured')
 
   const body = {
-    sender:      { name: fromName, email: fromEmail },
+    sender:      { name: 'Toolify Contact', email: fromEmail },
     to:          [{ email: toEmail }],
     replyTo:     { email },
     subject:     `[Contact] New message from ${email}`,
@@ -52,71 +54,98 @@ async function sendViaBrevoApi(email: string, message: string): Promise<void> {
     `,
   }
 
-  const controller = new AbortController()
-  const timeout    = setTimeout(() => controller.abort(), 10_000)
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+    body:    JSON.stringify(body),
+    signal:  AbortSignal.timeout(10_000),
+  })
 
-  try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key':      apiKey,
-      },
-      body:   JSON.stringify(body),
-      signal: controller.signal,
-    })
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      throw new Error(`Brevo API error ${res.status}: ${text}`)
-    }
-  } finally {
-    clearTimeout(timeout)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Brevo ${res.status}: ${text.slice(0, 200)}`)
   }
 }
 
+async function sendViaTelegram(email: string, message: string): Promise<boolean> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN
+  const adminIds = getAdminIds()
+  if (!botToken || adminIds.size === 0) return false
+
+  const safeEmail   = email.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')
+  const safeMessage = message.slice(0, 800).replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')
+  const text = `📬 *New Contact Message*\n\n*From:* ${safeEmail}\n\n${safeMessage}${message.length > 800 ? '…' : ''}`
+
+  await sendAlert(adminIds, text)
+  return true
+}
+
 export async function POST(req: NextRequest) {
-  try {
-    const ip = getClientIp(req)
+  const ip = getClientIp(req)
 
-    if (isRateLimited(ip)) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait before sending another message.' },
-        { status: 429 }
-      )
-    }
-
-    const body = await req.json().catch(() => null)
-    if (!body) {
-      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
-    }
-
-    const email   = typeof body.email   === 'string' ? body.email.trim()   : ''
-    const message = typeof body.message === 'string' ? body.message.trim() : ''
-
-    if (!email || !message) {
-      return NextResponse.json({ error: 'Email and message are required.' }, { status: 400 })
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 })
-    }
-
-    if (message.length < 10) {
-      return NextResponse.json({ error: 'Message is too short.' }, { status: 400 })
-    }
-
-    if (message.length > 5000) {
-      return NextResponse.json({ error: 'Message is too long (max 5000 characters).' }, { status: 400 })
-    }
-
-    await sendViaBrevoApi(email, message)
-    console.log(`[Contact] Email sent via Brevo API from ${email}`)
-
-    return NextResponse.json({ ok: true })
-  } catch (err) {
-    console.error('[Contact] Unexpected error:', err)
-    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 })
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait before sending another message.' },
+      { status: 429 }
+    )
   }
+
+  const body = await req.json().catch(() => null)
+  if (!body) {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
+  }
+
+  const email   = typeof body.email   === 'string' ? body.email.trim()   : ''
+  const message = typeof body.message === 'string' ? body.message.trim() : ''
+
+  if (!email || !message) {
+    return NextResponse.json({ error: 'Email and message are required.' }, { status: 400 })
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 })
+  }
+
+  if (message.length < 10) {
+    return NextResponse.json({ error: 'Message is too short.' }, { status: 400 })
+  }
+
+  if (message.length > 5000) {
+    return NextResponse.json({ error: 'Message is too long (max 5000 characters).' }, { status: 400 })
+  }
+
+  let delivered = false
+  let channel   = 'none'
+
+  if (process.env.BREVO_API_KEY) {
+    try {
+      await sendViaBrevo(email, message)
+      console.log(`[Contact] Delivered via Brevo from ${email}`)
+      delivered = true
+      channel   = 'brevo'
+    } catch (err) {
+      console.error('[Contact] Brevo failed, trying Telegram fallback:', (err as Error).message)
+    }
+  }
+
+  if (!delivered) {
+    try {
+      const sent = await sendViaTelegram(email, message)
+      if (sent) {
+        console.log(`[Contact] Delivered via Telegram from ${email}`)
+        delivered = true
+        channel   = 'telegram'
+      }
+    } catch (err) {
+      console.error('[Contact] Telegram fallback failed:', (err as Error).message)
+    }
+  }
+
+  dbSaveContact(email, message, ip, delivered, channel)
+
+  if (!delivered) {
+    console.warn(`[Contact] No delivery channel configured — message from ${email} saved to DB only`)
+  }
+
+  return NextResponse.json({ ok: true })
 }

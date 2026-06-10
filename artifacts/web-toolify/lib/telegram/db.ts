@@ -89,6 +89,17 @@ export function getDb(): DatabaseSync | null {
         created_at  INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_ed_created_at ON errors_detail(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        email       TEXT    NOT NULL,
+        message     TEXT    NOT NULL,
+        ip          TEXT    NOT NULL DEFAULT '',
+        delivered   INTEGER NOT NULL DEFAULT 0,
+        channel     TEXT    NOT NULL DEFAULT 'none',
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_cm_created_at ON contact_messages(created_at DESC);
     `)
 
     // Remove legacy user IDs written before the IP-hash fix.
@@ -143,6 +154,7 @@ let _stmtUpsertUser: StatementSync | null = null
 let _stmtInsertError: StatementSync | null = null
 let _stmtInsertFile: StatementSync | null = null
 let _stmtInsertDetailedError: StatementSync | null = null
+let _stmtInsertContact: StatementSync | null = null
 
 function _prepareStatements(db: DatabaseSync): void {
   if (_stmtInsertJob) return
@@ -171,6 +183,46 @@ function _prepareStatements(db: DatabaseSync): void {
       (service, location, error_type, raw_message, severity, diagnosis, root_cause, fix, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
+  _stmtInsertContact = db.prepare(`
+    INSERT INTO contact_messages (email, message, ip, delivered, channel, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `)
+}
+
+// ── Contact messages ──────────────────────────────────────────────────────────
+
+export function dbSaveContact(
+  email: string, message: string, ip: string,
+  delivered: boolean, channel: string,
+): void {
+  const db = getDb()
+  if (!db) return
+  try {
+    _prepareStatements(db)
+    _stmtInsertContact!.run(email, message, ip, delivered ? 1 : 0, channel, Date.now())
+  } catch (err) {
+    console.error('[Analytics DB] dbSaveContact failed:', (err as Error).message)
+  }
+}
+
+export interface ContactRow {
+  id: number
+  email: string
+  message: string
+  ip: string
+  delivered: number
+  channel: string
+  created_at: number
+}
+
+export function dbGetContacts(limit = 50): ContactRow[] {
+  try {
+    const db = getDb()
+    if (!db) return []
+    return db.prepare(
+      'SELECT id, email, message, ip, delivered, channel, created_at FROM contact_messages ORDER BY created_at DESC LIMIT ?'
+    ).all(limit) as unknown as ContactRow[]
+  } catch { return [] }
 }
 
 // ── Public write API (non-blocking — each write deferred via setImmediate) ───
