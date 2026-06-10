@@ -4,7 +4,7 @@ import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 
 export const metadata: Metadata = {
-  title: 'How to Lock and Unlock PDF Files Online for Free | Toolify Blog',
+  title: 'How to Lock and Unlock PDF Files Online for Free',
   description:
     'Learn how to lock and unlock PDF files online for free. Protect sensitive documents with passwords or remove passwords from PDFs you own using secure online tools.',
   alternates: {
