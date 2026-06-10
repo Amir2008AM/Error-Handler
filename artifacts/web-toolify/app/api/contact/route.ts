@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>()
 const WINDOW_MS      = 60 * 60 * 1000
 const MAX_PER_WINDOW = 5
-const SMTP_TIMEOUT_MS = 10_000
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -17,44 +15,64 @@ function getClientIp(req: NextRequest): string {
 function isRateLimited(ip: string): boolean {
   const now   = Date.now()
   const entry = RATE_LIMIT_MAP.get(ip)
-
   if (!entry || now > entry.resetAt) {
     RATE_LIMIT_MAP.set(ip, { count: 1, resetAt: now + WINDOW_MS })
     return false
   }
-
   if (entry.count >= MAX_PER_WINDOW) return true
-
   entry.count++
   return false
 }
 
-function createTransporter() {
-  const host = process.env.SMTP_HOST
-  const port = parseInt(process.env.SMTP_PORT ?? '587', 10)
-  const user = process.env.SMTP_USER
-  const pass = process.env.SMTP_PASS
+async function sendViaBrevoApi(email: string, message: string): Promise<void> {
+  const apiKey      = process.env.BREVO_API_KEY
+  const toEmail     = process.env.SUPPORT_EMAIL ?? 'amirsaleh098am@gmail.com'
+  const fromEmail   = process.env.SENDER_EMAIL  ?? 'support@toolifypdf.online'
+  const fromName    = 'Toolify Contact'
 
-  if (!host || !user || !pass) return null
+  if (!apiKey) throw new Error('BREVO_API_KEY not set')
 
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: false,
-    auth: { user, pass },
-    connectionTimeout: SMTP_TIMEOUT_MS,
-    greetingTimeout:   SMTP_TIMEOUT_MS,
-    socketTimeout:     SMTP_TIMEOUT_MS,
-  })
-}
+  const body = {
+    sender:      { name: fromName, email: fromEmail },
+    to:          [{ email: toEmail }],
+    replyTo:     { email },
+    subject:     `[Contact] New message from ${email}`,
+    textContent: `From: ${email}\n\n${message}`,
+    htmlContent: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+        <h2 style="color:#3b6ef5">New Contact Message</h2>
+        <p><strong>From:</strong> <a href="mailto:${email}">${email}</a></p>
+        <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
+        <p style="white-space:pre-wrap;line-height:1.6">${message
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br/>')}</p>
+      </div>
+    `,
+  }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
-    ),
-  ])
+  const controller = new AbortController()
+  const timeout    = setTimeout(() => controller.abort(), 10_000)
+
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key':      apiKey,
+      },
+      body:   JSON.stringify(body),
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Brevo API error ${res.status}: ${text}`)
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -93,44 +111,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is too long (max 5000 characters).' }, { status: 400 })
     }
 
-    const transporter = createTransporter()
-
-    if (!transporter) {
-      console.warn('[Contact] SMTP not configured — logging message only')
-      console.log(`[Contact] From: ${email}\n${message}`)
-      return NextResponse.json({ ok: true })
-    }
-
-    const supportEmail = process.env.SUPPORT_EMAIL ?? process.env.SMTP_USER!
-    const senderEmail  = process.env.SENDER_EMAIL  ?? process.env.SMTP_USER!
-
     try {
-      await withTimeout(
-        transporter.sendMail({
-          from:    `"Toolify Contact" <${senderEmail}>`,
-          to:      supportEmail,
-          replyTo: email,
-          subject: `[Contact] New message from ${email}`,
-          text:    `From: ${email}\n\n${message}`,
-          html:    `
-            <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-              <h2 style="color:#3b6ef5">New Contact Message</h2>
-              <p><strong>From:</strong> <a href="mailto:${email}">${email}</a></p>
-              <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
-              <p style="white-space:pre-wrap;line-height:1.6">${message
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\n/g, '<br/>')}</p>
-            </div>
-          `,
-        }),
-        SMTP_TIMEOUT_MS,
-        'SMTP sendMail'
-      )
-      console.log(`[Contact] Email sent from ${email}`)
-    } catch (smtpErr) {
-      console.error('[Contact] SMTP error — falling back to log:', smtpErr)
+      await sendViaBrevoApi(email, message)
+      console.log(`[Contact] Email sent via Brevo API from ${email}`)
+    } catch (err) {
+      console.error('[Contact] Brevo API failed:', err)
       console.log(`[Contact] Fallback log — From: ${email}\n${message}`)
     }
 
