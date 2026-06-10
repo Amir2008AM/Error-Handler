@@ -111,13 +111,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is too long (max 5000 characters).' }, { status: 400 })
     }
 
-    try {
-      await sendViaBrevoApi(email, message)
-      console.log(`[Contact] Email sent via Brevo API from ${email}`)
-    } catch (err) {
-      console.error('[Contact] Brevo API failed:', err)
-      console.log(`[Contact] Fallback log — From: ${email}\n${message}`)
-    }
+    await sendViaBrevoApi(email, message)
+    console.log(`[Contact] Email sent via Brevo API from ${email}`)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
