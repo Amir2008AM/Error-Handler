@@ -506,7 +506,7 @@ export function useRealProgress() {
 }
 
 // Hook for job-based progress with polling
-export function useJobProgress(pollInterval: number = 500) {
+export function useJobProgress(pollInterval: number = 250) {
   const [state, setState] = useState<ProgressState>({
     status: 'idle',
     progress: 0,

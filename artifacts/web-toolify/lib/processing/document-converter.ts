@@ -59,12 +59,21 @@ async function withTempDir<T>(prefix: string, fn: (dir: string) => Promise<T>): 
   }
 }
 
-/** Returns true if `cmd` resolves to an executable on PATH */
+/** Cache for binaryExists results — checked once, reused forever */
+const _binaryCache = new Map<string, boolean>()
+
+/** Returns true if `cmd` resolves to an executable on PATH. Result is cached. */
 async function binaryExists(cmd: string): Promise<boolean> {
+  if (_binaryCache.has(cmd)) return _binaryCache.get(cmd)!
   try {
     const r = await runCli('which', [cmd], { timeoutMs: 3_000 })
-    return r.code === 0
-  } catch { return false }
+    const exists = r.code === 0
+    _binaryCache.set(cmd, exists)
+    return exists
+  } catch {
+    _binaryCache.set(cmd, false)
+    return false
+  }
 }
 
 /** Validate the buffer looks like a real PDF (magic bytes) */
@@ -171,8 +180,7 @@ export class DocumentConverter {
     docxBuffer: Buffer,
     options: ConversionOptions
   ): Promise<ConversionResult | null> {
-    const wkPath = await runCli('which', ['wkhtmltopdf'], { timeoutMs: 3_000 })
-    if (wkPath.code !== 0) return null
+    if (!await binaryExists('wkhtmltopdf')) return null
 
     return withTempDir('wk-word-pdf-', async (dir) => {
       // 1. mammoth: DOCX → HTML (keeps headings, bold, tables, lists)

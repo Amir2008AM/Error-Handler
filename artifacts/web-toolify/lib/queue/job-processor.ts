@@ -33,6 +33,16 @@ const RETRY_BASE_DELAY_MS = 1_000
 
 const MIN_PDF_BYTES = 512
 
+// ── Singleton processors — reused across jobs to avoid re-initialization cost ──
+// Each processor is stateless (no per-job state stored on `this`), so a single
+// shared instance is safe even under concurrent calls.
+const _pdf        = new PDFProcessor()
+const _image      = new ImageProcessor()
+const _ocr        = new OCRProcessor()
+const _pdfSec     = new PDFSecurityProcessor()
+const _pdfToImg   = new PdfToImageConverter()
+const _docConv    = new DocumentConverter()
+
 const PDF_OUTPUT_TYPES = new Set<JobType>([
   'merge-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
   'protect-pdf', 'unlock-pdf', 'sign-pdf',
@@ -256,7 +266,7 @@ export async function processNextJob(): Promise<JobResult | null> {
 // ============================================================
 
 async function processMergePdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const files = job.files.map((f) => toArrayBuffer(f.buffer))
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
@@ -270,7 +280,7 @@ async function processMergePdf(job: Job): Promise<SingleResult> {
 }
 
 async function processSplitPdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
 
@@ -295,7 +305,7 @@ async function processSplitPdf(job: Job): Promise<SingleResult> {
 }
 
 async function processRotatePdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const rotation = ((job.options.rotation as number) || 90) as 90 | 180 | 270
@@ -310,7 +320,7 @@ async function processRotatePdf(job: Job): Promise<SingleResult> {
 }
 
 async function processCompressPdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(
@@ -323,7 +333,7 @@ async function processCompressPdf(job: Job): Promise<SingleResult> {
 }
 
 async function processWatermarkPdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(
@@ -343,7 +353,7 @@ async function processWatermarkPdf(job: Job): Promise<SingleResult> {
 }
 
 async function processAddPageNumbers(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(
@@ -369,7 +379,7 @@ async function processAddPageNumbers(job: Job): Promise<SingleResult> {
 }
 
 async function processOrganizePdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const pageOrder = job.options.pageOrder as number[]
@@ -386,7 +396,7 @@ async function processOrganizePdf(job: Job): Promise<SingleResult> {
 }
 
 async function processImageToPdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const images = job.files.map((f) => toArrayBuffer(f.buffer))
@@ -406,7 +416,7 @@ async function processImageToPdf(job: Job): Promise<SingleResult> {
 }
 
 async function processRepairPdf(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(
@@ -419,7 +429,7 @@ async function processRepairPdf(job: Job): Promise<SingleResult> {
 }
 
 async function processDeletePages(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
 
@@ -443,7 +453,7 @@ async function processDeletePages(job: Job): Promise<SingleResult> {
 }
 
 async function processExtractPages(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
 
@@ -482,7 +492,7 @@ async function processProtectPdf(job: Job): Promise<SingleResult> {
 
   const result = await withTimeout(
     withTempFile(job.files[0].buffer, 'pdf', async (inputPath) => {
-      const securityProcessor = new PDFSecurityProcessor()
+      const securityProcessor = _pdfSec
       return securityProcessor.protect(inputPath, {
         userPassword: password,
         ownerPassword,
@@ -518,7 +528,7 @@ async function processUnlockPdf(job: Job): Promise<SingleResult> {
 
   const result = await withTimeout(
     withTempFile(job.files[0].buffer, 'pdf', async (inputPath) => {
-      const securityProcessor = new PDFSecurityProcessor()
+      const securityProcessor = _pdfSec
       return securityProcessor.unlock(inputPath, { password })
     }),
     TIMEOUTS.pdfOp,
@@ -558,7 +568,7 @@ async function processSignPdf(job: Job): Promise<SingleResult> {
     default:            x = 595 - padding - boxWidth;      y = padding; break
   }
 
-  const securityProcessor = new PDFSecurityProcessor()
+  const securityProcessor = _pdfSec
   const result = await withTimeout(
     securityProcessor.addSignature(job.files[0].buffer, {
       signerName,
@@ -605,7 +615,7 @@ async function processPdfToJpg(job: Job): Promise<SingleResult | BatchResult> {
     }
   }
 
-  const converter = new PdfToImageConverter()
+  const converter = _pdfToImg
   const convertedPages = await withTimeout(
     converter.convert(job.files[0].buffer, { format, quality, dpi, pages }),
     TIMEOUTS.pdfHeavy,
@@ -646,7 +656,7 @@ async function processPdfToJpg(job: Job): Promise<SingleResult | BatchResult> {
 }
 
 async function processPdfToWordFresh(job: Job): Promise<SingleResult> {
-  const processor = new PDFProcessor()
+  const processor = _pdf
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(
@@ -672,7 +682,7 @@ async function processOcrImage(job: Job): Promise<SingleResult> {
   manager.updateJobProgress(job.id, 10)
 
   const language = (job.options.language as string) || 'eng'
-  const ocr = new OCRProcessor()
+  const ocr = _ocr
 
   const result = await withTimeout(
     ocr.recognizeImage(job.files[0].buffer, { language }),
@@ -695,7 +705,7 @@ async function processOcrPdf(job: Job): Promise<SingleResult> {
   manager.updateJobProgress(job.id, 10)
 
   const language = (job.options.language as string) || 'eng'
-  const ocr = new OCRProcessor()
+  const ocr = _ocr
 
   const result = await withTimeout(
     ocr.recognizePdf(job.files[0].buffer, { language }),
@@ -718,7 +728,7 @@ async function processOcrPdf(job: Job): Promise<SingleResult> {
 // ============================================================
 
 async function processCompressImage(job: Job): Promise<SingleResult | BatchResult> {
-  const processor = new ImageProcessor()
+  const processor = _image
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const quality = (job.options.quality as unknown as number) || 80
@@ -760,7 +770,7 @@ async function processCompressImage(job: Job): Promise<SingleResult | BatchResul
 }
 
 async function processResizeImage(job: Job): Promise<SingleResult> {
-  const processor = new ImageProcessor()
+  const processor = _image
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const width = job.options.width as number | undefined
@@ -781,7 +791,7 @@ async function processResizeImage(job: Job): Promise<SingleResult> {
 }
 
 async function processConvertImage(job: Job): Promise<SingleResult> {
-  const processor = new ImageProcessor()
+  const processor = _image
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const outputFormat =
@@ -807,7 +817,7 @@ async function processConvertImage(job: Job): Promise<SingleResult> {
 }
 
 async function processCropImage(job: Job): Promise<SingleResult> {
-  const processor = new ImageProcessor()
+  const processor = _image
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const { left, top, width, height } = job.options as {
@@ -833,7 +843,7 @@ async function processCropImage(job: Job): Promise<SingleResult> {
 }
 
 async function processPptToPdf(job: Job): Promise<SingleResult> {
-  const converter = new DocumentConverter()
+  const converter = _docConv
   const manager   = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(
@@ -851,7 +861,7 @@ async function processPptToPdf(job: Job): Promise<SingleResult> {
 }
 
 async function processPdfToPpt(job: Job): Promise<SingleResult> {
-  const converter = new DocumentConverter()
+  const converter = _docConv
   const manager   = getJobManager()
   manager.updateJobProgress(job.id, 10)
   const result = await withTimeout(

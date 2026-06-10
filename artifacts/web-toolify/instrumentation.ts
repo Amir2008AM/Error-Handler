@@ -28,10 +28,60 @@ export async function register() {
   setTimeout(async () => {
     try {
       await import('./lib/processing/pdf-processor')
-      await import('./lib/processing/image-processor')
+      // Actually run a tiny Sharp operation to force native binding init
+      const { default: sharp } = await import('sharp')
+      await sharp({
+        create: { width: 1, height: 1, channels: 3, background: { r: 0, g: 0, b: 0 } }
+      }).jpeg().toBuffer()
       console.log('[Instrumentation] Heavy modules pre-warmed ✓')
     } catch { /* non-fatal */ }
   }, 0)
+
+  // ── Pre-warm binary existence cache (soffice, wkhtmltopdf, python3) ──────────
+  // binaryExists() runs `which <cmd>` as a subprocess — cache results at boot
+  // so the first user conversion doesn't pay the subprocess-spawn cost.
+  setTimeout(async () => {
+    try {
+      const { spawn } = await import('node:child_process')
+      const checkBinary = (cmd: string) => new Promise<void>((resolve) => {
+        const p = spawn('which', [cmd], { stdio: 'ignore' })
+        p.on('close', resolve)
+        p.on('error', resolve)
+        setTimeout(() => { try { p.kill() } catch {} resolve() }, 3000)
+      })
+      await Promise.all([
+        checkBinary('soffice'),
+        checkBinary('wkhtmltopdf'),
+        checkBinary('python3'),
+        checkBinary('gs'),
+        checkBinary('qpdf'),
+      ])
+      // Trigger binaryExists cache population inside document-converter
+      const { DocumentConverter } = await import('./lib/processing/document-converter')
+      void new DocumentConverter()
+      console.log('[Instrumentation] Binary cache pre-warmed ✓')
+    } catch { /* non-fatal */ }
+  }, 100)
+
+  // ── Pre-warm Python module imports (pdf2docx, fitz) ─────────────────────────
+  // Each Python subprocess pays a 5-10s cold-start cost to import these libs.
+  // Running a no-op warm-up script once at boot loads .pyc files into the OS
+  // page cache so the first real pdf2docx conversion is significantly faster.
+  setTimeout(async () => {
+    try {
+      const { join } = await import('node:path')
+      const { spawn } = await import('node:child_process')
+      const warmupScript = join(process.cwd(), 'scripts', 'warmup.py')
+      const { existsSync } = await import('node:fs')
+      if (existsSync(warmupScript)) {
+        const child = spawn('python3', [warmupScript], { stdio: 'ignore' })
+        const kill = setTimeout(() => child.kill('SIGKILL'), 30_000)
+        child.on('exit', () => clearTimeout(kill))
+        child.on('error', () => clearTimeout(kill))
+        console.log('[Instrumentation] Python module warm-up started ✓')
+      }
+    } catch { /* non-fatal */ }
+  }, 300)
 
   // ── Pre-warm LibreOffice page cache ──────────────────────────────────────────
   // Spawning soffice cold incurs 3+ s of shared-library loading on this host.
