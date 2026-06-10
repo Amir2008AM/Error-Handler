@@ -127,7 +127,7 @@ export default function RootLayout({
           body>div:first-of-type{display:flex;flex-direction:column;min-height:100vh}
         ` }} />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         {process.env.NODE_ENV === 'production' && (
           <>
             <Script
