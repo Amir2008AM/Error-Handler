@@ -30,7 +30,7 @@ function isRateLimited(ip: string): boolean {
 async function sendViaBrevo(email: string, message: string): Promise<void> {
   const apiKey    = process.env.BREVO_API_KEY
   const toEmail   = process.env.SUPPORT_EMAIL ?? 'amirsaleh098am@gmail.com'
-  const fromEmail = process.env.SENDER_EMAIL  ?? 'support@toolifypdf.online'
+  const fromEmail = process.env.SENDER_EMAIL  ?? toEmail
 
   if (!apiKey) throw new Error('BREVO_API_KEY not configured')
 
