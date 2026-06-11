@@ -4,7 +4,7 @@ import { HomeContent } from '@/components/home-content'
 
 const CATEGORY_TITLES: Record<string, string> = {
   'PDF Tools':      'Free PDF Tools — Merge, Split, Compress & Convert',
-  'Security Tools': 'PDF Security Tools — Protect, Unlock & Sign PDFs',
+  'Security Tools': 'PDF Security Tools — Protect & Unlock PDFs',
   'Converters':     'File Converters — Word, Excel, PowerPoint to PDF & More',
   'OCR Tools':      'OCR Tools — Extract Text from PDF & Images',
   'Image Tools':    'Free Image Tools — Compress, Resize, Crop & Convert',
@@ -14,10 +14,10 @@ const CATEGORY_TITLES: Record<string, string> = {
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   'PDF Tools':      'Merge, split, compress, rotate, watermark and more — free PDF tools with no registration.',
-  'Security Tools': 'Protect PDFs with passwords, unlock encrypted files, and add digital signatures — 100% free.',
+  'Security Tools': 'Protect PDFs with passwords and unlock encrypted files — 100% free, no registration.',
   'Converters':     'Convert Word, Excel, PowerPoint, HTML and images to PDF or between formats — fast and free.',
   'OCR Tools':      'Extract text from scanned PDFs and images using AI-powered OCR technology.',
-  'Image Tools':    'Compress, resize, crop, rotate, and convert images between formats — no upload limit.',
+  'Image Tools':    'Compress, resize, crop, and convert images between formats — free, no account needed.',
   'Text Tools':     'Count words, convert letter case, clean text and more — all free, no login needed.',
   'Calculators':    'Free online calculators for everyday tasks.',
 }
