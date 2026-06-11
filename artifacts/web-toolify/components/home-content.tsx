@@ -153,29 +153,34 @@ export function HomeContent() {
       {/* Footer */}
       <footer style={{ backgroundColor: '#111111' }} className="py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 md:gap-10">
-            {/* Brand */}
-            <div>
+
+          {/* Main grid — 1 col mobile → 2 col sm → 5 col md+ */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-5 gap-x-6 gap-y-10">
+
+            {/* Brand — full width on mobile */}
+            <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
                   <Zap className="w-4 h-4 text-white" fill="currentColor" />
                 </div>
                 <span className="text-white text-lg font-bold">Toolify</span>
               </div>
-              <p style={{ color: '#9ca3af' }} className="text-sm leading-relaxed">
+              <p style={{ color: '#9ca3af' }} className="text-sm leading-relaxed max-w-xs">
                 {t('home.footer.brandDesc')}
               </p>
             </div>
 
             {/* PDF Tools */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">{t('home.pdfTools')}</h3>
+              <h3 className="text-white font-semibold text-xs uppercase tracking-wider mb-4">
+                {t('home.pdfTools')}
+              </h3>
               <ul className="space-y-3">
                 {[
                   { label: 'Image to PDF', href: '/image-to-pdf' },
-                  { label: 'Merge PDF', href: '/merge-pdf' },
-                  { label: 'Split PDF', href: '/split-pdf' },
-                  { label: 'PDF to Word', href: '/pdf-to-word' },
+                  { label: 'Merge PDF',    href: '/merge-pdf' },
+                  { label: 'Split PDF',    href: '/split-pdf' },
+                  { label: 'PDF to Word',  href: '/pdf-to-word' },
                 ].map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
@@ -188,12 +193,15 @@ export function HomeContent() {
 
             {/* Image Tools */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">{t('home.imageTools')}</h3>
+              <h3 className="text-white font-semibold text-xs uppercase tracking-wider mb-4">
+                {t('home.imageTools')}
+              </h3>
               <ul className="space-y-3">
                 {[
                   { label: 'Compress Image', href: '/compress-image' },
-                  { label: 'Resize Image', href: '/resize-image' },
-                  { label: 'Convert Image', href: '/convert-image' },
+                  { label: 'Resize Image',   href: '/resize-image' },
+                  { label: 'Convert Image',  href: '/convert-image' },
+                  { label: 'Crop Image',     href: '/crop-image' },
                 ].map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
@@ -204,15 +212,16 @@ export function HomeContent() {
               </ul>
             </div>
 
-            {/* Other Tools */}
+            {/* Company */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">{t('home.footer.otherTools')}</h3>
+              <h3 className="text-white font-semibold text-xs uppercase tracking-wider mb-4">
+                Company
+              </h3>
               <ul className="space-y-3">
                 {[
-                  { label: 'Word Counter', href: '/word-counter' },
-                  { label: 'Text Case Converter', href: '/text-case' },
-                  { label: 'Percentage Calculator', href: '/percentage-calculator' },
-                  { label: 'Age Calculator', href: '/age-calculator' },
+                  { label: 'About Us',   href: '/about' },
+                  { label: 'Contact Us', href: '/contact-us' },
+                  { label: 'Blog',       href: '/blog' },
                 ].map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
@@ -222,54 +231,37 @@ export function HomeContent() {
                 ))}
               </ul>
             </div>
-            {/* Blog & Help */}
+
+            {/* Legal */}
             <div>
-              <h3 className="text-white font-semibold text-sm mb-4">{t('home.footer.blogCol')}</h3>
+              <h3 className="text-white font-semibold text-xs uppercase tracking-wider mb-4">
+                Legal
+              </h3>
               <ul className="space-y-3">
-                <li>
-                  <Link href="/blog" style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
-                    {t('home.footer.allArticles')}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/faq" style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
-                    FAQ
-                  </Link>
-                </li>
+                {[
+                  { label: 'Privacy Policy',     href: '/privacy-policy' },
+                  { label: 'Terms & Conditions', href: '/terms-and-conditions' },
+                  { label: 'Cookies Policy',     href: '/cookies-policy' },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
+
           </div>
 
-          <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p style={{ color: '#6b7280' }} className="text-sm shrink-0">
-              © 2026 Toolify. All rights reserved.
+          {/* Bottom bar */}
+          <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p style={{ color: '#6b7280' }} className="text-xs text-center sm:text-left">
+              © 2026 ToolifyPDF. All rights reserved. Files are automatically deleted after processing.
             </p>
-            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-5 gap-y-2">
-              {[
-                { labelKey: 'footer.privacy' as const, href: '/privacy-policy' },
-                { labelKey: 'footer.terms' as const, href: '/terms-and-conditions' },
-                { labelKey: 'footer.cookies' as const, href: '/cookies-policy' },
-                { labelKey: 'footer.disclaimer' as const, href: '/disclaimer' },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  style={{ color: '#6b7280' }}
-                  className="text-sm hover:text-white transition-colors"
-                >
-                  {t(item.labelKey)}
-                </Link>
-              ))}
-              <Link
-                href="/contact-us"
-                style={{ color: '#6b7280' }}
-                className="text-sm hover:text-white transition-colors"
-              >
-                Contact Us
-              </Link>
-              <LanguageSwitcher variant="dark-footer" />
-            </div>
+            <LanguageSwitcher variant="dark-footer" />
           </div>
+
         </div>
       </footer>
     </main>
