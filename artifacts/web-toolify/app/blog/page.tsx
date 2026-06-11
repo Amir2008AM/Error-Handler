@@ -84,19 +84,117 @@ const articles = [
     color: '#0d9488',
     gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)',
   },
+  {
+    slug: 'how-to-split-pdf-online',
+    title: 'How to Split a PDF File Online for Free',
+    description:
+      'Extract individual pages, separate sections, or divide a large PDF into smaller files online in seconds — no software or account needed.',
+    date: 'June 6, 2026',
+    readTime: '8 min read',
+    category: 'PDF Guide',
+    color: '#16a34a',
+    gradient: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+  },
+  {
+    slug: 'how-to-reduce-image-file-size',
+    title: 'How to Reduce Image File Size Without Losing Quality',
+    description:
+      'Compress, resize, crop, and convert images to reduce file size without visible quality loss — practical methods for web, email, and storage.',
+    date: 'June 7, 2026',
+    readTime: '8 min read',
+    category: 'Image Guide',
+    color: '#db2777',
+    gradient: 'linear-gradient(135deg, #be185d 0%, #db2777 100%)',
+  },
+  {
+    slug: 'how-to-use-ocr-to-extract-text',
+    title: 'How to Use OCR to Extract Text from Images and Documents',
+    description:
+      'Learn how OCR technology works and how to extract text from scanned documents and image-based PDFs online — with tips for better accuracy.',
+    date: 'June 8, 2026',
+    readTime: '8 min read',
+    category: 'OCR Guide',
+    color: '#d97706',
+    gradient: 'linear-gradient(135deg, #b45309 0%, #d97706 100%)',
+  },
+  {
+    slug: 'pdf-vs-word-which-format-to-use',
+    title: 'PDF vs Word: Which Document Format Should You Use?',
+    description:
+      'A practical comparison of PDF and Word — their key differences, when each format is the right choice, and how to convert between them.',
+    date: 'June 9, 2026',
+    readTime: '8 min read',
+    category: 'Document Guide',
+    color: '#4f46e5',
+    gradient: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)',
+  },
+  {
+    slug: 'how-to-watermark-pdf-documents',
+    title: 'How to Add a Watermark to a PDF Document',
+    description:
+      'Mark PDFs as confidential, draft, or sample using a text watermark. Covers positioning, opacity, use cases, and step-by-step instructions.',
+    date: 'June 10, 2026',
+    readTime: '7 min read',
+    category: 'PDF Security',
+    color: '#0891b2',
+    gradient: 'linear-gradient(135deg, #0e7490 0%, #0891b2 100%)',
+  },
+  {
+    slug: 'how-to-convert-excel-to-pdf',
+    title: 'How to Convert Excel to PDF Online for Free',
+    description:
+      'Convert Excel spreadsheets to PDF for sharing, submission, and archiving. Covers formatting tips, common issues, and when PDF is better than XLS.',
+    date: 'June 11, 2026',
+    readTime: '8 min read',
+    category: 'Spreadsheet Guide',
+    color: '#e11d48',
+    gradient: 'linear-gradient(135deg, #be123c 0%, #e11d48 100%)',
+  },
+  {
+    slug: 'how-to-convert-powerpoint-to-pdf',
+    title: 'How to Convert PowerPoint to PDF Online for Free',
+    description:
+      'Share presentations in a universally readable format. Learn what gets preserved in conversion, what does not, and how to avoid common issues.',
+    date: 'June 12, 2026',
+    readTime: '7 min read',
+    category: 'Presentation Guide',
+    color: '#65a30d',
+    gradient: 'linear-gradient(135deg, #4d7c0f 0%, #65a30d 100%)',
+  },
+  {
+    slug: 'how-to-add-page-numbers-to-pdf',
+    title: 'How to Add Page Numbers to a PDF Online for Free',
+    description:
+      'Add page numbers to any PDF document in seconds. Covers positioning, alignment, starting number, and best practices by document type.',
+    date: 'June 13, 2026',
+    readTime: '7 min read',
+    category: 'PDF Guide',
+    color: '#7c3aed',
+    gradient: 'linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%)',
+  },
+  {
+    slug: 'how-to-protect-pdf-documents',
+    title: 'How to Protect PDF Documents with a Password',
+    description:
+      'Add password encryption to sensitive PDF files before sharing. Covers how PDF protection works, choosing strong passwords, and when to unlock files.',
+    date: 'June 14, 2026',
+    readTime: '8 min read',
+    category: 'PDF Security',
+    color: '#0284c7',
+    gradient: 'linear-gradient(135deg, #0369a1 0%, #0284c7 100%)',
+  },
+  {
+    slug: 'common-pdf-problems-and-solutions',
+    title: '8 Common PDF Problems and How to Fix Them',
+    description:
+      'Practical solutions to the most frequent PDF issues — files too large to send, forgotten passwords, unselectable text, corrupted files, and more.',
+    date: 'June 15, 2026',
+    readTime: '9 min read',
+    category: 'Troubleshooting',
+    color: '#059669',
+    gradient: 'linear-gradient(135deg, #047857 0%, #059669 100%)',
+  },
 ]
-
-function PdfIcon({ color }: { color: string }) {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="4" y="2" width="16" height="20" rx="3" fill="white" fillOpacity="0.25" />
-      <rect x="4" y="2" width="16" height="20" rx="3" stroke="white" strokeWidth="1.5" />
-      <path d="M8 8h8M8 12h8M8 16h5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-      <rect x="15" y="14" width="9" height="10" rx="2" fill="white" fillOpacity="0.9" />
-      <text x="19.5" y="21.5" textAnchor="middle" fontSize="5.5" fontWeight="800" fill={color} fontFamily="system-ui">PDF</text>
-    </svg>
-  )
-}
 
 function ArticleCard({ article }: { article: typeof articles[number] }) {
   return (
@@ -104,10 +202,15 @@ function ArticleCard({ article }: { article: typeof articles[number] }) {
       href={`/blog/${article.slug}`}
       className="group flex flex-col rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-250 hover:-translate-y-1 bg-white border border-border"
     >
-      {/* Colored header */}
       <div className="px-6 py-7 flex flex-col gap-4" style={{ background: article.gradient }}>
         <div className="flex items-start justify-between">
-          <PdfIcon color={article.color} />
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="4" y="2" width="16" height="20" rx="3" fill="white" fillOpacity="0.25" />
+            <rect x="4" y="2" width="16" height="20" rx="3" stroke="white" strokeWidth="1.5" />
+            <path d="M8 8h8M8 12h8M8 16h5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+            <rect x="15" y="14" width="9" height="10" rx="2" fill="white" fillOpacity="0.9" />
+            <text x="19.5" y="21.5" textAnchor="middle" fontSize="5.5" fontWeight="800" fill={article.color} fontFamily="system-ui">PDF</text>
+          </svg>
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-white">
             {article.category}
           </span>
@@ -117,7 +220,6 @@ function ArticleCard({ article }: { article: typeof articles[number] }) {
         </h2>
       </div>
 
-      {/* White lower section */}
       <div className="px-6 py-5 flex flex-col flex-1 gap-3">
         <p className="text-xs text-muted-foreground">
           {article.date} &middot; {article.readTime}
@@ -140,7 +242,6 @@ function ArticleCard({ article }: { article: typeof articles[number] }) {
 export default function BlogPage() {
   return (
     <main className="min-h-screen bg-background">
-      {/* Hero header */}
       <div className="bg-background border-b border-border py-14 px-4 text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">Blog</h1>
         <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
@@ -148,7 +249,6 @@ export default function BlogPage() {
         </p>
       </div>
 
-      {/* Grid */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map((article) => (
