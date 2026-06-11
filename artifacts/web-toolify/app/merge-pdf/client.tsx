@@ -123,34 +123,62 @@ export function MergePdfClient() {
 
     setError(null)
     setMergedBlob(null)
-    progress.startProcessing('Reading files...')
+    progress.startProcessing('Preparing files...')
 
     try {
-      progress.stageUpload(100, 'Reading files...')
-      progress.stageValidation('Validating PDFs...')
-      const mergedPdf = await PDFDocument.create()
-
+      // ── Build FormData ────────────────────────────────────────────────────
+      // We upload all files to the server so the merge + download happen as a
+      // normal HTTP response — this avoids the "Network error" Chrome on Android
+      // throws when downloading large blob:// URLs from device memory.
+      const form = new FormData()
       const totalFiles = pdfs.length
       for (let i = 0; i < totalFiles; i++) {
-        const { file } = pdfs[i]
-        const stagePct = (i / totalFiles) * 100
-        progress.stageProcessing(stagePct, `Merging file ${i + 1} of ${totalFiles}...`)
-
-        const arrayBuffer = await file.arrayBuffer()
-        const pdf = await PDFDocument.load(arrayBuffer)
-        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
-        copiedPages.forEach((page) => mergedPdf.addPage(page))
+        form.append(`pdf_${i}`, pdfs[i].file, pdfs[i].file.name)
       }
-      progress.stageProcessing(100, 'Finalizing document...')
-      const mergedPdfBytes = await mergedPdf.save()
 
-      // Store the Blob object directly — do NOT create an object URL here.
-      // Creating the URL on every download click (see handleDownload) avoids
-      // the "Network error" on mobile Chrome that happens when a long-lived
-      // blob URL gets invalidated mid-download by a React re-render or GC.
-      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
+      // ── Upload & merge on server ──────────────────────────────────────────
+      progress.stageUpload(0, `Uploading ${totalFiles} files…`)
+
+      const xhr = new XMLHttpRequest()
+      const blob: Blob = await new Promise((resolve, reject) => {
+        xhr.open('POST', '/api/merge-pdf')
+        xhr.responseType = 'blob'
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100)
+            progress.stageUpload(pct, `Uploading… ${pct}%`)
+          }
+        }
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            progress.stageProcessing(100, 'Finalizing…')
+            resolve(xhr.response as Blob)
+          } else {
+            // Try to read JSON error body from blob
+            const reader = new FileReader()
+            reader.onload = () => {
+              try {
+                const json = JSON.parse(reader.result as string)
+                reject(new Error(json.error ?? `Server error ${xhr.status}`))
+              } catch {
+                reject(new Error(`Server error ${xhr.status}`))
+              }
+            }
+            reader.readAsText(xhr.response)
+          }
+        }
+
+        xhr.onerror = () => reject(new Error('Upload failed — check your connection and try again'))
+        xhr.ontimeout = () => reject(new Error('Request timed out — try with fewer files'))
+        xhr.timeout = 300_000 // 5 min
+
+        xhr.send(form)
+      })
+
+      // ── Store blob & mark done ────────────────────────────────────────────
       setMergedBlob(blob)
-
       progress.stageDone(t('merge.successTitle'))
     } catch (err: any) {
       const message = err.message ?? 'Something went wrong during merge'
