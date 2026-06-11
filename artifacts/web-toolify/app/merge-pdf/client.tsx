@@ -176,7 +176,7 @@ export function MergePdfClient() {
     }, 60_000)
   }
 
-  const MAX_TOTAL_BYTES = 100 * 1024 * 1024
+  const MAX_TOTAL_BYTES = 50 * 1024 * 1024
   const totalSize = pdfs.reduce((acc, p) => acc + p.size, 0)
   const isOverLimit = totalSize > MAX_TOTAL_BYTES
   const isProcessing = progress.status === 'processing'
@@ -194,7 +194,7 @@ export function MergePdfClient() {
         label={t('merge.dropFiles')}
         sublabel={t('merge.subLabel')}
         maxSizeMB={50}
-        maxTotalSizeMB={100}
+        maxTotalSizeMB={50}
         currentTotalSize={totalSize}
       />
 
@@ -217,9 +217,9 @@ export function MergePdfClient() {
             <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-red-500" />
               <div>
-                <p className="font-semibold">الحجم الإجمالي تجاوز الحد المسموح (100 MB)</p>
+                <p className="font-semibold">الحجم الإجمالي تجاوز الحد المسموح (50 MB)</p>
                 <p className="text-red-700 mt-0.5 text-xs">
-                  يرجى حذف بعض الملفات حتى يصبح الحجم الإجمالي أقل من 100 MB، ثم حاول مجدداً.
+                  يرجى حذف بعض الملفات حتى يصبح الحجم الإجمالي أقل من 50 MB، ثم حاول مجدداً.
                 </p>
               </div>
             </div>
@@ -359,7 +359,7 @@ export function MergePdfClient() {
               ) : isChecking ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Checking files...</>
               ) : isOverLimit ? (
-                <><AlertTriangle className="w-5 h-5" /> الحجم تجاوز 100 MB</>
+                <><AlertTriangle className="w-5 h-5" /> الحجم تجاوز 50 MB</>
               ) : hasEncrypted ? (
                 <><Lock className="w-5 h-5" /> Remove protected files first</>
               ) : (
