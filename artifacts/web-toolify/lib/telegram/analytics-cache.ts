@@ -28,12 +28,10 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { Queue } from 'bullmq'
 import { Redis } from 'ioredis'
-import { fmtBytes, fmtUptime } from './metrics'
+import { fmtUptime } from './metrics'
 import { dbReadGlobalStats, dbReadToolStats, dbReadUserStats } from './db'
 import { getLiveActivity } from './analytics'
 import { pingSupabase } from '../monitoring/queries'
-import { sendAlert } from './api'
-import { getAdminIds, ALERT_COOLDOWN_MS } from './config'
 import { pushSseEvent } from '../monitoring/sse-bus'
 
 const execFileAsync = promisify(execFile)
@@ -99,7 +97,6 @@ const KEY_CONNECT  = Symbol.for('toolify.ac.connect')
 const KEY_DB       = Symbol.for('toolify.ac.db')
 const KEY_FAILURES = Symbol.for('toolify.ac.failures')
 const KEY_TIMERS   = Symbol.for('toolify.ac.timers')
-const KEY_COOLDOWN = Symbol.for('toolify.ac.alert_cooldown')
 
 type G = Record<symbol, unknown>
 
@@ -114,7 +111,6 @@ const _queue    = gs<QueueSnapshot | null>(KEY_QUEUE, null)
 const _connect  = gs<ConnectivitySnapshot | null>(KEY_CONNECT, null)
 const _db       = gs<DbSnapshot | null>(KEY_DB, null)
 const _failures = gs<FailureRecord[]>(KEY_FAILURES, [])
-const _cooldown = gs<Map<string, number>>(KEY_COOLDOWN, new Map())
 
 interface Timers {
   system?:      ReturnType<typeof setInterval>
@@ -211,8 +207,6 @@ export async function collectSystem(): Promise<void> {
       collectedAt: Date.now(),
     }
 
-    // Trigger alerts for high CPU / heap
-    void checkSystemAlerts(cpu, Math.round((heap.heapUsed / heap.heapTotal) * 100))
   } catch (err) {
     console.warn('[AC:system] Error (non-fatal):', (err as Error).message)
   }
@@ -259,8 +253,6 @@ export async function collectQueue(): Promise<void> {
 
     _queue.value = { waiting, active, completed, failed, delayed, byQueue, collectedAt: Date.now() }
 
-    // Check for queue stuck alert
-    void checkQueueAlerts(waiting)
   } catch (err) {
     console.warn('[AC:queue] Error (non-fatal):', (err as Error).message)
   }
@@ -285,12 +277,6 @@ export async function collectConnectivity(): Promise<void> {
     const prev = _connect.value
     _connect.value = { redisOk, dbOk, supabaseOk, collectedAt: Date.now() }
 
-    // Alert on transitions: OK → FAIL
-    if (prev) {
-      if (prev.redisOk && !redisOk)     void sendAlertThrottled('redis-down',    '🔴 *REDIS DISCONNECTED*\nBot queue backend is unreachable. Jobs will fail.')
-      if (!prev.redisOk && redisOk)     void sendAlertThrottled('redis-up',      '🟢 *REDIS RECONNECTED*\nQueue backend is back online.')
-      if (prev.supabaseOk && !supabaseOk) void sendAlertThrottled('supa-down',   '🔴 *SUPABASE UNREACHABLE*\nMonitoring data may be stale.')
-    }
   } catch (err) {
     console.warn('[AC:connectivity] Error (non-fatal):', (err as Error).message)
   }
@@ -330,21 +316,9 @@ export async function collectDbStats(): Promise<void> {
 // ── Failure tracker ───────────────────────────────────────────────────────────
 
 const MAX_FAILURES = 100
-const FAILURE_ALERT_COOLDOWN_MS = 2 * 60_000  // 2 min per tool
-
-function failureCooldownKey(tool: string): string { return `fail:${tool}` }
-
-function shouldSendFailureAlert(tool: string): boolean {
-  const key  = failureCooldownKey(tool)
-  const last = _cooldown.value.get(key) ?? 0
-  if (Date.now() - last < FAILURE_ALERT_COOLDOWN_MS) return false
-  _cooldown.value.set(key, Date.now())
-  return true
-}
 
 /**
- * Record a failed job — adds to ring buffer and immediately sends a
- * Telegram alert to all admins (rate-limited: 1 alert per tool per 2 min).
+ * Record a failed job — adds to ring buffer and pushes an SSE event.
  */
 export function recordFailure(failure: FailureRecord): void {
   _failures.value.push(failure)
@@ -354,24 +328,6 @@ export function recordFailure(failure: FailureRecord): void {
   try {
     pushSseEvent({ type: 'job_failed', ts: failure.ts, data: { tool: failure.tool, error: failure.error, severity: failure.severity, jobId: failure.jobId } })
   } catch {}
-
-  // Immediate Telegram alert (fire-and-forget)
-  if (shouldSendFailureAlert(failure.tool)) {
-    const ts      = new Date(failure.ts).toISOString().replace('T', ' ').slice(11, 19) + ' UTC'
-    const sevIcon = failure.severity === 'critical' ? '⛔'
-                  : failure.severity === 'high'     ? '🔴'
-                  : failure.severity === 'medium'   ? '🟡' : '🟢'
-    const msg = [
-      `🚨 *TOOL FAILURE ALERT*`,
-      '',
-      `${sevIcon} Severity: \`${failure.severity}\``,
-      `🔧 Tool:   \`${failure.tool}\``,
-      `💥 Error:  \`${failure.error.slice(0, 300)}\``,
-      `🕐 Time:   \`${ts}\``,
-      ...(failure.jobId ? [`🆔 Job ID: \`${failure.jobId}\``] : []),
-    ].join('\n')
-    void sendAlertToAdmins(msg)
-  }
 }
 
 /** Record a job timeout — separate severity. */
@@ -385,42 +341,6 @@ export function recordTimeout(tool: string, jobId: string, durationMs: number): 
   })
 }
 
-// ── Internal alert helpers ────────────────────────────────────────────────────
-
-const alertCooldowns = new Map<string, number>()
-
-async function sendAlertThrottled(key: string, msg: string): Promise<void> {
-  const last = alertCooldowns.get(key) ?? 0
-  if (Date.now() - last < ALERT_COOLDOWN_MS) return
-  alertCooldowns.set(key, Date.now())
-  await sendAlertToAdmins(msg)
-}
-
-async function sendAlertToAdmins(msg: string): Promise<void> {
-  try {
-    const ids = getAdminIds()
-    if (ids.size === 0) return
-    await sendAlert(ids, msg)
-  } catch (err) {
-    console.warn('[AC:alert] Failed to send (non-fatal):', (err as Error).message)
-  }
-}
-
-async function checkSystemAlerts(cpu: number, heapPct: number): Promise<void> {
-  if (cpu >= 90) {
-    await sendAlertThrottled('cpu', `🔴 *HIGH CPU ALERT*\nCPU usage: \`${cpu}%\``)
-    try { pushSseEvent({ type: 'cpu_alert', ts: Date.now(), data: { cpu } }) } catch {}
-  }
-  if (heapPct >= 85) await sendAlertThrottled('heap', `🧠 *HIGH MEMORY*\nJS Heap: \`${heapPct}%\``)
-}
-
-async function checkQueueAlerts(waiting: number): Promise<void> {
-  if (waiting >= 50) {
-    await sendAlertThrottled('queue', `⚠️ *QUEUE OVERLOAD*\nWaiting jobs: \`${waiting}\``)
-    try { pushSseEvent({ type: 'queue_overflow', ts: Date.now(), data: { waiting } }) } catch {}
-  }
-  if (waiting === 0) alertCooldowns.delete('queue')  // reset when clear
-}
 
 // ── Run all collectors once (for first-call bootstrap) ────────────────────────
 

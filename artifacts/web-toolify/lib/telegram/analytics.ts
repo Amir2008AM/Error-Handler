@@ -12,7 +12,6 @@
 
 import { dbWriteJob, dbWriteError, dbWriteFileStat } from './db'
 import { emitEvent, emitError } from '../monitoring/emitter'
-import { recordFailure } from './analytics-cache'
 import { pushSseEvent } from '../monitoring/sse-bus'
 import { csWriteJobResult, csWriteError } from '../monitoring/central-state'
 
@@ -83,22 +82,6 @@ export function recordJob(record: JobRecord): void {
     })
   } catch {}
 
-  // 6. Failure fast-path — immediate Telegram alert (fire-and-forget)
-  if (!record.success) {
-    const severity =
-      record.durationMs > 60_000          ? 'high'
-      : record.format === 'crash'         ? 'critical'
-      : record.type.includes('timeout')   ? 'high'
-      : 'medium'
-
-    recordFailure({
-      tool:     record.type,
-      error:    `Job failed after ${record.durationMs}ms (format: ${record.format})`,
-      jobId:    record.jobId,
-      severity,
-      ts:       record.ts,
-    })
-  }
 }
 
 export function recordError(tool: string, message: string, jobId?: string): void {
@@ -123,14 +106,6 @@ export function recordError(tool: string, message: string, jobId?: string): void
     severity,
   })
 
-  // Immediate Telegram alert (rate-limited)
-  recordFailure({
-    tool,
-    error:    message,
-    jobId,
-    severity: severity as 'low' | 'medium' | 'high' | 'critical',
-    ts:       Date.now(),
-  })
 }
 
 // ── Live read API (in-memory only) ────────────────────────────────────────────

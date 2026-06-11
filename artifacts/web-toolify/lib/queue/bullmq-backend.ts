@@ -29,7 +29,6 @@ import { getTempStorage } from '../storage'
 import { getJobManager } from './job-manager'
 import { processJob } from './job-processor'
 import type { JobType, JobResult, JobOptions, JobStatusResponse, JobTimings } from './types'
-import { reportError } from '../telegram/error-monitor'
 import { emitEvent, emitWorkerStatus } from '../monitoring/emitter'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -135,11 +134,6 @@ function getRedis(): Redis {
     })
     redisInstance.on('error', (err: Error) => {
       console.error('[BullMQ] Redis connection error:', err.message)
-      reportError({
-        service:  'Redis (BullMQ Connection)',
-        location: 'lib/queue/bullmq-backend.ts → getRedis()',
-        error:    err,
-      })
     })
   }
   return redisInstance
@@ -395,22 +389,11 @@ export function startWorkers(): void {
     worker.on('failed', (job, err) => {
       const jobType = job?.name ?? 'unknown'
       console.error(`[Worker:${group}] Job ${job?.id} (${jobType}) failed:`, err.message)
-      reportError({
-        service:  `${group} worker`,
-        location: `lib/queue/bullmq-backend.ts → worker.on('failed')`,
-        error:    err,
-        jobType,
-      })
       emitWorkerStatus({ worker_id: group, worker_type: group, status: 'idle', current_job: null })
       emitEvent({ event_type: 'job_failed', tool: jobType, worker_id: group, error_message: err.message.slice(0, 500) })
     })
     worker.on('error', (err) => {
       console.error(`[Worker:${group}] Worker error:`, err.message)
-      reportError({
-        service:  `${group} worker`,
-        location: `lib/queue/bullmq-backend.ts → worker.on('error')`,
-        error:    err,
-      })
       emitWorkerStatus({ worker_id: group, worker_type: group, status: 'crashed' })
       emitEvent({ event_type: 'worker_crashed', worker_id: group, error_message: err.message.slice(0, 500) })
     })

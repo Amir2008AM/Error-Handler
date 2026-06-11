@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sendAlert } from '@/lib/telegram/api'
-import { getAdminIds } from '@/lib/telegram/config'
 import { dbSaveContact } from '@/lib/telegram/db'
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>()
@@ -67,19 +65,6 @@ async function sendViaBrevo(email: string, message: string): Promise<void> {
   }
 }
 
-async function sendViaTelegram(email: string, message: string): Promise<boolean> {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
-  const adminIds = getAdminIds()
-  if (!botToken || adminIds.size === 0) return false
-
-  const safeEmail   = email.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')
-  const safeMessage = message.slice(0, 800).replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')
-  const text = `📬 *New Contact Message*\n\n*From:* ${safeEmail}\n\n${safeMessage}${message.length > 800 ? '…' : ''}`
-
-  await sendAlert(adminIds, text)
-  return true
-}
-
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
 
@@ -124,27 +109,14 @@ export async function POST(req: NextRequest) {
       delivered = true
       channel   = 'brevo'
     } catch (err) {
-      console.error('[Contact] Brevo failed, trying Telegram fallback:', (err as Error).message)
-    }
-  }
-
-  if (!delivered) {
-    try {
-      const sent = await sendViaTelegram(email, message)
-      if (sent) {
-        console.log(`[Contact] Delivered via Telegram from ${email}`)
-        delivered = true
-        channel   = 'telegram'
-      }
-    } catch (err) {
-      console.error('[Contact] Telegram fallback failed:', (err as Error).message)
+      console.error('[Contact] Brevo failed:', (err as Error).message)
     }
   }
 
   dbSaveContact(email, message, ip, delivered, channel)
 
   if (!delivered) {
-    console.warn(`[Contact] No delivery channel configured — message from ${email} saved to DB only`)
+    console.warn(`[Contact] No delivery channel available — message from ${email} saved to DB only`)
   }
 
   return NextResponse.json({ ok: true })
