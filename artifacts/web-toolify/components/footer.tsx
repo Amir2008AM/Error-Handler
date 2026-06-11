@@ -125,7 +125,6 @@ export function Footer() {
         <div className="border-t border-white/10 mt-10 pt-6 text-center">
           <p className="text-xs text-white/40">
             &copy; {new Date().getFullYear()} ToolifyPDF. All rights reserved.
-            Files are automatically deleted after processing.
           </p>
         </div>
 

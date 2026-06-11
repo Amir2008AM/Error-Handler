@@ -257,7 +257,7 @@ export function HomeContent() {
           {/* Bottom bar */}
           <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p style={{ color: '#6b7280' }} className="text-xs text-center sm:text-left">
-              © 2026 ToolifyPDF. All rights reserved. Files are automatically deleted after processing.
+              © 2026 ToolifyPDF. All rights reserved.
             </p>
             <LanguageSwitcher variant="dark-footer" />
           </div>
