@@ -13,22 +13,18 @@ export const metadata: Metadata = {
 
 const features = [
   {
-    icon: '🆓',
     title: 'Free and Accessible',
     body: 'Our tools are available online and can be used without creating an account.',
   },
   {
-    icon: '🌐',
     title: 'Browser-Based Processing',
     body: 'Most tasks can be completed directly through your web browser without installing additional software.',
   },
   {
-    icon: '🧰',
     title: 'Multiple Tools in One Place',
     body: 'Instead of using several different websites, users can access a wide range of document and image tools from a single platform.',
   },
   {
-    icon: '✨',
     title: 'Simple User Experience',
     body: 'We focus on providing a clean and straightforward interface that works across desktop and mobile devices.',
   },
@@ -97,8 +93,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {features.map((f) => (
               <div key={f.title} className="rounded-xl border border-border p-5 bg-card">
-                <div className="text-2xl mb-2">{f.icon}</div>
-                <h3 className="font-semibold mb-1">{f.title}</h3>
+                <h3 className="font-semibold mb-2">{f.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{f.body}</p>
               </div>
             ))}
