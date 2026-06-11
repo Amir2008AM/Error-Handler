@@ -153,27 +153,50 @@ export function MergePdfClient() {
     }
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!mergedBlob || downloadInProgress.current) return
     downloadInProgress.current = true
 
-    // Create a fresh object URL right at click time so it is always valid.
-    const url = URL.createObjectURL(mergedBlob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'toolify-merged.pdf'
-    // Must be in the DOM for Firefox/mobile to honour the download attribute.
-    a.style.display = 'none'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    try {
+      // File System Access API: writes directly to device storage — no blob
+      // URL size limit, no "Network error" on mobile Chrome.
+      if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: 'toolify-merged.pdf',
+            types: [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }],
+          })
+          const writable = await handle.createWritable()
+          await writable.write(mergedBlob)
+          await writable.close()
+          downloadInProgress.current = false
+          return
+        } catch (err: any) {
+          // User cancelled the picker — abort silently.
+          if (err.name === 'AbortError') {
+            downloadInProgress.current = false
+            return
+          }
+          // Any other error: fall through to blob-URL fallback below.
+        }
+      }
 
-    // Revoke after 60 s — long enough for any mobile browser to finish
-    // reading the blob before we release the memory.
-    setTimeout(() => {
-      URL.revokeObjectURL(url)
+      // Fallback: classic blob URL (works on desktop + older browsers).
+      const url = URL.createObjectURL(mergedBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'toolify-merged.pdf'
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+        downloadInProgress.current = false
+      }, 60_000)
+    } catch {
       downloadInProgress.current = false
-    }, 60_000)
+    }
   }
 
   const MAX_TOTAL_BYTES = 50 * 1024 * 1024
