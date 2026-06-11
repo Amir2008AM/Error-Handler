@@ -25,15 +25,16 @@ function isRateLimited(ip: string): boolean {
   return false
 }
 
+const VERIFIED_SENDER = 'amirsaleh098am@gmail.com'
+
 async function sendViaBrevo(email: string, message: string): Promise<void> {
-  const apiKey    = process.env.BREVO_API_KEY
-  const toEmail   = process.env.SUPPORT_EMAIL ?? 'amirsaleh098am@gmail.com'
-  const fromEmail = process.env.SENDER_EMAIL  ?? toEmail
+  const apiKey  = process.env.BREVO_API_KEY
+  const toEmail = process.env.SUPPORT_EMAIL ?? VERIFIED_SENDER
 
   if (!apiKey) throw new Error('BREVO_API_KEY not configured')
 
   const body = {
-    sender:      { name: 'Toolify Contact', email: fromEmail },
+    sender:      { name: 'Toolify Contact', email: VERIFIED_SENDER },
     to:          [{ email: toEmail }],
     replyTo:     { email },
     subject:     `[Contact] New message from ${email}`,
