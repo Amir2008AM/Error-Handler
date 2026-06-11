@@ -20,6 +20,7 @@ export function MinimalFooter() {
             <Link href="/terms-and-conditions" className="hover:text-foreground transition-colors">{t('footer.terms')}</Link>
             <Link href="/cookies-policy" className="hover:text-foreground transition-colors">{t('footer.cookies')}</Link>
             <Link href="/disclaimer" className="hover:text-foreground transition-colors">{t('footer.disclaimer')}</Link>
+            <Link href="/about" className="hover:text-foreground transition-colors">About Us</Link>
             <Link href="/contact-us" className="hover:text-foreground transition-colors">Contact Us</Link>
           </nav>
         </div>
