@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 const sections_en = [
   {
-    title: '1. Information We Do NOT Collect',
-    body: 'We do not collect personal information such as name, email address, or payment details.',
+    title: '1. Information We Collect',
+    body: 'We do not collect personal information except when users voluntarily submit it through the contact form. In that case, we collect only the email address and message content provided, solely to respond to your inquiry.\n\nWe do not collect your name, payment details, or any other personal information.',
   },
   {
     title: '2. Information We Process',
@@ -70,8 +70,8 @@ const sections_en = [
 
 const sections_ar = [
   {
-    title: '1. المعلومات التي لا نقوم بجمعها',
-    body: 'نحن لا نقوم بجمع معلومات شخصية مثل الاسم أو البريد الإلكتروني أو بيانات الدفع.',
+    title: '1. المعلومات التي نجمعها',
+    body: 'نحن لا نجمع معلومات شخصية إلا عندما يُقدّمها المستخدم طوعاً من خلال نموذج التواصل. في هذه الحالة، نجمع فقط عنوان البريد الإلكتروني ومحتوى الرسالة المُرسَلة، وذلك بهدف الرد على استفسارك فحسب.\n\nنحن لا نجمع اسمك أو بيانات الدفع أو أي معلومات شخصية أخرى.',
   },
   {
     title: '2. المعلومات التي نقوم بمعالجتها',
@@ -169,7 +169,7 @@ export default function PrivacyPolicyPage() {
 
         {/* ── English ─────────────────────────────────────────────────── */}
         <h1 className="text-3xl font-bold mb-1">Privacy Policy</h1>
-        <p className="text-muted-foreground text-sm mb-2">Last updated: May 2026</p>
+        <p className="text-muted-foreground text-sm mb-2">Last updated: June 2026</p>
         <p className="text-muted-foreground leading-relaxed mb-8">
           ToolifyPDF (&quot;we&quot;, &quot;us&quot;) operates the website{' '}
           <span className="text-foreground font-medium">toolifypdf.online</span>.
@@ -189,7 +189,7 @@ export default function PrivacyPolicyPage() {
         {/* ── Arabic ───────────────────────────────────────────────────── */}
         <div dir="rtl">
           <h2 className="text-3xl font-bold mb-1">سياسة الخصوصية</h2>
-          <p className="text-muted-foreground text-sm mb-2">آخر تحديث: مايو 2026</p>
+          <p className="text-muted-foreground text-sm mb-2">آخر تحديث: يونيو 2026</p>
           <p className="text-muted-foreground leading-relaxed mb-8">
             يُدير موقع ToolifyPDF (&quot;نحن&quot;، &quot;لنا&quot;) الموقع الإلكتروني{' '}
             <span className="text-foreground font-medium">toolifypdf.online</span>.
