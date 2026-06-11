@@ -2,7 +2,7 @@
 import { TrustpilotReview } from '@/components/trustpilot-review'
 import { formatBytes } from '@/lib/utils/format-bytes'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import {
   Download, Loader2, CheckCircle2, RotateCcw, X,
@@ -39,14 +39,15 @@ async function checkEncryption(file: File): Promise<boolean> {
 export function MergePdfClient() {
   const { t } = useI18n()
   const [pdfs, setPdfs] = useState<PdfEntry[]>([])
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [mergedBlob, setMergedBlob] = useState<Blob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const progress = useRealProgress()
+  const downloadInProgress = useRef(false)
 
   const handleFilesSelected = useCallback((files: File[]) => {
-    setDownloadUrl(null)
+    setMergedBlob(null)
     setError(null)
     progress.reset()
     const newEntries: PdfEntry[] = files.map((file) => ({
@@ -69,7 +70,7 @@ export function MergePdfClient() {
 
   const remove = (id: string) => {
     setPdfs((prev) => prev.filter((p) => p.id !== id))
-    setDownloadUrl(null)
+    setMergedBlob(null)
   }
 
   const moveUp = (idx: number) => {
@@ -79,7 +80,7 @@ export function MergePdfClient() {
       ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
       return arr
     })
-    setDownloadUrl(null)
+    setMergedBlob(null)
   }
 
   const moveDown = (idx: number) => {
@@ -89,7 +90,7 @@ export function MergePdfClient() {
       ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
       return arr
     })
-    setDownloadUrl(null)
+    setMergedBlob(null)
   }
 
   const handleDragStart = (id: string) => setDraggedId(id)
@@ -110,7 +111,7 @@ export function MergePdfClient() {
     })
     setDraggedId(null)
     setDragOver(null)
-    setDownloadUrl(null)
+    setMergedBlob(null)
   }
 
   const handleMerge = async () => {
@@ -121,7 +122,7 @@ export function MergePdfClient() {
     }
 
     setError(null)
-    setDownloadUrl(null)
+    setMergedBlob(null)
     progress.startProcessing('Reading files...')
 
     try {
@@ -143,8 +144,12 @@ export function MergePdfClient() {
       progress.stageProcessing(100, 'Finalizing document...')
       const mergedPdfBytes = await mergedPdf.save()
 
+      // Store the Blob object directly — do NOT create an object URL here.
+      // Creating the URL on every download click (see handleDownload) avoids
+      // the "Network error" on mobile Chrome that happens when a long-lived
+      // blob URL gets invalidated mid-download by a React re-render or GC.
       const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
-      setDownloadUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
+      setMergedBlob(blob)
 
       progress.stageDone(t('merge.successTitle'))
     } catch (err: any) {
@@ -152,6 +157,29 @@ export function MergePdfClient() {
       setError(message)
       progress.fail(message)
     }
+  }
+
+  const handleDownload = () => {
+    if (!mergedBlob || downloadInProgress.current) return
+    downloadInProgress.current = true
+
+    // Create a fresh object URL right at click time so it is always valid.
+    const url = URL.createObjectURL(mergedBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'toolify-merged.pdf'
+    // Must be in the DOM for Firefox/mobile to honour the download attribute.
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+
+    // Revoke after 60 s — long enough for any mobile browser to finish
+    // reading the blob before we release the memory.
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+      downloadInProgress.current = false
+    }, 60_000)
   }
 
   const MAX_TOTAL_BYTES = 100 * 1024 * 1024
@@ -183,7 +211,7 @@ export function MergePdfClient() {
               {pdfs.length} file{pdfs.length !== 1 ? 's' : ''} · {formatBytes(totalSize)} {t('merge.total')}
             </p>
             <button
-              onClick={() => { setPdfs([]); setDownloadUrl(null); progress.reset() }}
+              onClick={() => { setPdfs([]); setMergedBlob(null); progress.reset() }}
               className="text-xs text-destructive font-medium hover:underline"
               disabled={isProcessing}
             >
@@ -345,7 +373,7 @@ export function MergePdfClient() {
               )}
             </button>
             <button
-              onClick={() => { setPdfs([]); setDownloadUrl(null); setError(null); progress.reset() }}
+              onClick={() => { setPdfs([]); setMergedBlob(null); setError(null); progress.reset() }}
               disabled={isProcessing}
               className="flex items-center justify-center gap-2 border border-border px-5 py-3 rounded-xl text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
             >
@@ -366,7 +394,7 @@ export function MergePdfClient() {
         </div>
       )}
 
-      {downloadUrl && progress.status === 'completed' && (
+      {mergedBlob && progress.status === 'completed' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
@@ -377,17 +405,17 @@ export function MergePdfClient() {
               <p className="text-sm text-green-700">{pdfs.length} files combined into one PDF</p>
             </div>
           </div>
-          <a
-            href={downloadUrl}
-            download="toolify-merged.pdf"
+          <button
+            type="button"
+            onClick={handleDownload}
             className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
           >
             <Download className="w-4 h-4" />
             {t('merge.downloadPdf')}
-          </a>
+          </button>
         </div>
       )}
-      {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
+      {mergedBlob && progress.status === 'completed' && <TrustpilotReview />}
     </div>
   )
 }
