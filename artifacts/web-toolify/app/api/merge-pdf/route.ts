@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pdf } from '@/lib/processing'
 import { streamUpload, validateStreamedFile, readFileAsArrayBuffer } from '@/lib/stream-upload'
+import { getTempStorage } from '@/lib/storage'
 import { mapWithConcurrency } from '@/lib/processing/concurrency'
 import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
@@ -45,23 +46,20 @@ export async function POST(req: NextRequest) {
 
     if (!result.success || !result.data) {
       trackRouteRequest(req, { tool: 'merge-pdf', fileSizeB: totalSize, format: 'pdf', success: false, durationMs: Date.now() - start, errorMsg: result.error ?? 'merge failed' })
-      return NextResponse.json(
-        { error: result.error || 'Failed to merge PDFs' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: result.error || 'Failed to merge PDFs' }, { status: 500 })
     }
+
+    const storage = getTempStorage()
+    const fileId = await storage.store(result.data, 'toolify-merged.pdf', 'application/pdf')
 
     trackRouteRequest(req, { tool: 'merge-pdf', fileSizeB: totalSize, format: 'pdf', success: true, durationMs: Date.now() - start })
 
-    return new NextResponse(result.data, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="toolify-merged.pdf"',
-        'X-Page-Count': (result.metadata?.pageCount ?? 0).toString(),
-        'X-Processing-Time': `${result.metadata?.processingTime ?? 0}ms`,
-        'Cache-Control': 'no-store',
-      },
+    return NextResponse.json({
+      success: true,
+      fileId,
+      filename: 'toolify-merged.pdf',
+      pageCount: result.metadata?.pageCount ?? 0,
+      fileCount: pdfEntries.length,
     })
   } catch (err) {
     console.error('[merge-pdf]', err)

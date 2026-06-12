@@ -5,14 +5,15 @@ import { formatBytes } from '@/lib/utils/format-bytes'
 import { useState, useCallback, useRef } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import {
-  Download, Loader2, CheckCircle2, RotateCcw, X,
+  Loader2, CheckCircle2, RotateCcw, X,
   FilePlus2, GripVertical, FileText, ArrowUp, ArrowDown,
-  Lock, AlertTriangle,
+  Lock, AlertTriangle, Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PDFDocument } from 'pdf-lib'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { BackButton } from '@/components/back-button'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { useI18n } from '@/lib/i18n/context'
 
 interface PdfEntry {
@@ -21,6 +22,13 @@ interface PdfEntry {
   size: number
   encrypted: boolean
   checking: boolean
+}
+
+interface MergeResult {
+  fileId: string
+  filename: string
+  pageCount: number
+  fileCount: number
 }
 
 let idCounter = 0
@@ -36,18 +44,20 @@ async function checkEncryption(file: File): Promise<boolean> {
   }
 }
 
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024
+
 export function MergePdfClient() {
   const { t } = useI18n()
   const [pdfs, setPdfs] = useState<PdfEntry[]>([])
-  const [mergedBlob, setMergedBlob] = useState<Blob | null>(null)
+  const [result, setResult] = useState<MergeResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const progress = useRealProgress()
-  const downloadInProgress = useRef(false)
+  const uploadRef = useRef<{ cancel: () => void } | null>(null)
 
   const handleFilesSelected = useCallback((files: File[]) => {
-    setMergedBlob(null)
+    setResult(null)
     setError(null)
     progress.reset()
     const newEntries: PdfEntry[] = files.map((file) => ({
@@ -70,7 +80,7 @@ export function MergePdfClient() {
 
   const remove = (id: string) => {
     setPdfs((prev) => prev.filter((p) => p.id !== id))
-    setMergedBlob(null)
+    setResult(null)
   }
 
   const moveUp = (idx: number) => {
@@ -80,7 +90,7 @@ export function MergePdfClient() {
       ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
       return arr
     })
-    setMergedBlob(null)
+    setResult(null)
   }
 
   const moveDown = (idx: number) => {
@@ -90,7 +100,7 @@ export function MergePdfClient() {
       ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
       return arr
     })
-    setMergedBlob(null)
+    setResult(null)
   }
 
   const handleDragStart = (id: string) => setDraggedId(id)
@@ -111,7 +121,7 @@ export function MergePdfClient() {
     })
     setDraggedId(null)
     setDragOver(null)
-    setMergedBlob(null)
+    setResult(null)
   }
 
   const handleMerge = async () => {
@@ -122,88 +132,60 @@ export function MergePdfClient() {
     }
 
     setError(null)
-    setMergedBlob(null)
+    setResult(null)
     progress.startProcessing(`Uploading ${pdfs.length} files…`)
 
     try {
       const formData = new FormData()
       pdfs.forEach((p, i) => formData.append(`pdf_${i}`, p.file))
 
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
+      // Build cumulative sizes to estimate file number from bytes uploaded
+      const cumulative = pdfs.map(((acc => p => (acc += p.size))(0)))
 
-        // ── Upload progress (0 → 80%) ──────────────────────────────────────
-        const cumulative = pdfs.map(((acc => p => acc += p.size)(0)))
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const uploadPct = Math.round((e.loaded / e.total) * 80)
-            const fileNum = Math.min(
-              pdfs.length,
-              cumulative.findIndex(c => c >= e.loaded) + 1 || pdfs.length
-            )
-            progress.stageProcessing(
-              uploadPct,
-              `Uploading… ${fileNum} / ${pdfs.length} files`
-            )
-          }
-        })
-
-        // ── Response received ──────────────────────────────────────────────
-        xhr.addEventListener('load', () => {
-          if (xhr.status === 200) {
-            progress.stageProcessing(95, 'Finalizing document…')
-            resolve(xhr.response as Blob)
-          } else {
-            // On error the server returns JSON, but responseType is 'blob',
-            // so we read it as text via FileReader.
-            const reader = new FileReader()
-            reader.onload = () => {
-              let msg = `Server error ${xhr.status}`
-              try { msg = (JSON.parse(reader.result as string) as any).error ?? msg } catch {}
-              reject(new Error(msg))
-            }
-            reader.onerror = () => reject(new Error(`Server error ${xhr.status}`))
-            reader.readAsText(xhr.response as Blob)
-          }
-        })
-
-        xhr.addEventListener('error',   () => reject(new Error('Upload failed — check your connection')))
-        xhr.addEventListener('timeout', () => reject(new Error('Upload timed out — try fewer or smaller files')))
-
-        xhr.open('POST', '/api/merge-pdf')
-        xhr.responseType = 'blob'
-        xhr.timeout = 300_000   // 5 min
-        xhr.send(formData)
+      const upload = xhrUpload({
+        url: '/api/merge-pdf',
+        formData,
+        responseType: 'blob',
+        onUploadProgress: (pct) => {
+          const bytesUploaded = (pct / 100) * totalSize
+          const fileNum = Math.min(
+            pdfs.length,
+            (cumulative.findIndex(c => c >= bytesUploaded) + 1) || pdfs.length
+          )
+          progress.stageUpload(pct, `Uploading… ${fileNum} / ${pdfs.length} files`)
+        },
       })
 
-      setMergedBlob(blob)
+      uploadRef.current = { cancel: upload.cancel }
+      const response = await upload
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Merge failed' }))
+        throw new Error(data.error || 'Merge failed')
+      }
+
+      progress.stageProcessing(undefined, 'Merging PDFs…')
+      const data = await response.json() as MergeResult
+      setResult(data)
       progress.stageDone(t('merge.successTitle'))
     } catch (err: any) {
-      const message = err.message ?? 'Something went wrong during merge'
+      if (err?.message === 'Upload aborted') return
+      const message = err?.message ?? 'Something went wrong'
       setError(message)
       progress.fail(message)
+    } finally {
+      uploadRef.current = null
     }
   }
 
-  const handleDownload = () => {
-    if (!mergedBlob || downloadInProgress.current) return
-    downloadInProgress.current = true
-
-    const url = URL.createObjectURL(mergedBlob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'toolify-merged.pdf'
-    a.style.display = 'none'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => {
-      URL.revokeObjectURL(url)
-      downloadInProgress.current = false
-    }, 60_000)
+  const reset = () => {
+    uploadRef.current?.cancel()
+    setPdfs([])
+    setResult(null)
+    setError(null)
+    progress.reset()
   }
 
-  const MAX_TOTAL_BYTES = 50 * 1024 * 1024
   const totalSize = pdfs.reduce((acc, p) => acc + p.size, 0)
   const isOverLimit = totalSize > MAX_TOTAL_BYTES
   const isProcessing = progress.status === 'processing'
@@ -232,7 +214,7 @@ export function MergePdfClient() {
               {pdfs.length} file{pdfs.length !== 1 ? 's' : ''} · {formatBytes(totalSize)} {t('merge.total')}
             </p>
             <button
-              onClick={() => { setPdfs([]); setMergedBlob(null); progress.reset() }}
+              onClick={() => { setPdfs([]); setResult(null); progress.reset() }}
               className="text-xs text-destructive font-medium hover:underline"
               disabled={isProcessing}
             >
@@ -390,7 +372,7 @@ export function MergePdfClient() {
               )}
             </button>
             <button
-              onClick={() => { setPdfs([]); setMergedBlob(null); setError(null); progress.reset() }}
+              onClick={reset}
               disabled={isProcessing}
               className="flex items-center justify-center gap-2 border border-border px-5 py-3 rounded-xl text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
             >
@@ -411,7 +393,7 @@ export function MergePdfClient() {
         </div>
       )}
 
-      {mergedBlob && progress.status === 'completed' && (
+      {result && progress.status === 'completed' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
@@ -419,20 +401,20 @@ export function MergePdfClient() {
             </div>
             <div>
               <p className="font-semibold text-green-900">{t('merge.successTitle')}</p>
-              <p className="text-sm text-green-700">{pdfs.length} files combined into one PDF</p>
+              <p className="text-sm text-green-700">{result.fileCount} files combined into one PDF</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleDownload}
+          <a
+            href={`/api/files/${result.fileId}`}
+            download={result.filename}
             className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
           >
             <Download className="w-4 h-4" />
             {t('merge.downloadPdf')}
-          </button>
+          </a>
         </div>
       )}
-      {mergedBlob && progress.status === 'completed' && <TrustpilotReview />}
+      {result && progress.status === 'completed' && <TrustpilotReview />}
     </div>
   )
 }
