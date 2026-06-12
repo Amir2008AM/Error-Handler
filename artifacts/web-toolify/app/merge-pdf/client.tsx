@@ -263,10 +263,6 @@ export function MergePdfClient() {
             </div>
           )}
 
-          <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 text-sm text-primary">
-            {t('merge.reorderHint')}
-          </div>
-
           <div className="space-y-2">
             {pdfs.map((pdf, idx) => (
               <div
