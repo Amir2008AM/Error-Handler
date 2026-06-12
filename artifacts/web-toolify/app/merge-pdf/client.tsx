@@ -7,7 +7,7 @@ import { UploadDropzone } from '@/components/upload-dropzone'
 import {
   Loader2, CheckCircle2, RotateCcw, X,
   FilePlus2, GripVertical, FileText, ArrowUp, ArrowDown,
-  Lock, AlertTriangle, Download,
+  Lock, AlertTriangle, Download, Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PDFDocument } from 'pdf-lib'
@@ -15,6 +15,7 @@ import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar
 import { BackButton } from '@/components/back-button'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { useI18n } from '@/lib/i18n/context'
+import { PdfPreviewModal } from '@/components/pdf-preview-modal'
 
 interface PdfEntry {
   id: string
@@ -55,6 +56,7 @@ export function MergePdfClient() {
   const [dragOver, setDragOver] = useState<string | null>(null)
   const progress = useRealProgress()
   const uploadRef = useRef<{ cancel: () => void } | null>(null)
+  const [previewEntry, setPreviewEntry] = useState<PdfEntry | null>(null)
 
   const handleFilesSelected = useCallback((files: File[]) => {
     setResult(null)
@@ -323,6 +325,13 @@ export function MergePdfClient() {
                     >
                       <ArrowDown className="w-3.5 h-3.5" />
                     </button>
+                    <button
+                      onClick={() => setPreviewEntry(pdf)}
+                      className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
+                      aria-label="Preview PDF"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 )}
 
@@ -415,6 +424,14 @@ export function MergePdfClient() {
         </div>
       )}
       {result && progress.status === 'completed' && <TrustpilotReview />}
+
+      {previewEntry && (
+        <PdfPreviewModal
+          file={previewEntry.file}
+          filename={previewEntry.file.name}
+          onClose={() => setPreviewEntry(null)}
+        />
+      )}
     </div>
   )
 }
