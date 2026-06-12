@@ -123,27 +123,56 @@ export function MergePdfClient() {
 
     setError(null)
     setMergedBlob(null)
-    progress.startProcessing('Reading files...')
+    progress.startProcessing(`Uploading ${pdfs.length} files…`)
 
     try {
-      // ── Client-side merge using pdf-lib (no upload needed = instant) ──────
-      progress.stageValidation('Validating PDFs...')
-      const mergedPdf = await PDFDocument.create()
+      const formData = new FormData()
+      pdfs.forEach((p, i) => formData.append(`pdf_${i}`, p.file))
 
-      const totalFiles = pdfs.length
-      for (let i = 0; i < totalFiles; i++) {
-        const { file } = pdfs[i]
-        const stagePct = (i / totalFiles) * 100
-        progress.stageProcessing(stagePct, `Merging file ${i + 1} of ${totalFiles}...`)
-        const arrayBuffer = await file.arrayBuffer()
-        const pdf = await PDFDocument.load(arrayBuffer)
-        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
-        copiedPages.forEach((page) => mergedPdf.addPage(page))
-      }
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
 
-      progress.stageProcessing(100, 'Finalizing document...')
-      const mergedPdfBytes = await mergedPdf.save()
-      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
+        // ── Upload progress (0 → 80%) ──────────────────────────────────────
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const uploadPct = Math.round((e.loaded / e.total) * 80)
+            const humanLoaded = (e.loaded / 1024 / 1024).toFixed(1)
+            const humanTotal  = (e.total  / 1024 / 1024).toFixed(1)
+            progress.stageProcessing(
+              uploadPct,
+              `Uploading… ${humanLoaded} / ${humanTotal} MB`
+            )
+          }
+        })
+
+        // ── Response received ──────────────────────────────────────────────
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            progress.stageProcessing(95, 'Finalizing document…')
+            resolve(xhr.response as Blob)
+          } else {
+            // On error the server returns JSON, but responseType is 'blob',
+            // so we read it as text via FileReader.
+            const reader = new FileReader()
+            reader.onload = () => {
+              let msg = `Server error ${xhr.status}`
+              try { msg = (JSON.parse(reader.result as string) as any).error ?? msg } catch {}
+              reject(new Error(msg))
+            }
+            reader.onerror = () => reject(new Error(`Server error ${xhr.status}`))
+            reader.readAsText(xhr.response as Blob)
+          }
+        })
+
+        xhr.addEventListener('error',   () => reject(new Error('Upload failed — check your connection')))
+        xhr.addEventListener('timeout', () => reject(new Error('Upload timed out — try fewer or smaller files')))
+
+        xhr.open('POST', '/api/merge-pdf')
+        xhr.responseType = 'blob'
+        xhr.timeout = 300_000   // 5 min
+        xhr.send(formData)
+      })
+
       setMergedBlob(blob)
       progress.stageDone(t('merge.successTitle'))
     } catch (err: any) {

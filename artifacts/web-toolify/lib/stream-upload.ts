@@ -79,7 +79,7 @@ export async function streamUpload(request: NextRequest): Promise<StreamUploadRe
         headers: { 'content-type': contentType },
         limits: {
           fileSize: MAX_UPLOAD_BYTES,
-          files: 20,
+          files: 200,
           fields: 50,
         },
       })
