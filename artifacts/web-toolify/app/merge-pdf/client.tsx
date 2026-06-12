@@ -182,50 +182,22 @@ export function MergePdfClient() {
     }
   }
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!mergedBlob || downloadInProgress.current) return
     downloadInProgress.current = true
 
-    try {
-      // File System Access API: writes directly to device storage — no blob
-      // URL size limit, no "Network error" on mobile Chrome.
-      if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
-        try {
-          const handle = await (window as any).showSaveFilePicker({
-            suggestedName: 'toolify-merged.pdf',
-            types: [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }],
-          })
-          const writable = await handle.createWritable()
-          await writable.write(mergedBlob)
-          await writable.close()
-          downloadInProgress.current = false
-          return
-        } catch (err: any) {
-          // User cancelled the picker — abort silently.
-          if (err.name === 'AbortError') {
-            downloadInProgress.current = false
-            return
-          }
-          // Any other error: fall through to blob-URL fallback below.
-        }
-      }
-
-      // Fallback: classic blob URL (works on desktop + older browsers).
-      const url = URL.createObjectURL(mergedBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'toolify-merged.pdf'
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => {
-        URL.revokeObjectURL(url)
-        downloadInProgress.current = false
-      }, 60_000)
-    } catch {
+    const url = URL.createObjectURL(mergedBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'toolify-merged.pdf'
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
       downloadInProgress.current = false
-    }
+    }, 60_000)
   }
 
   const MAX_TOTAL_BYTES = 50 * 1024 * 1024
