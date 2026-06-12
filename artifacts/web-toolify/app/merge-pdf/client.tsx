@@ -133,14 +133,17 @@ export function MergePdfClient() {
         const xhr = new XMLHttpRequest()
 
         // ── Upload progress (0 → 80%) ──────────────────────────────────────
+        const cumulative = pdfs.map(((acc => p => acc += p.size)(0)))
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const uploadPct = Math.round((e.loaded / e.total) * 80)
-            const humanLoaded = (e.loaded / 1024 / 1024).toFixed(1)
-            const humanTotal  = (e.total  / 1024 / 1024).toFixed(1)
+            const fileNum = Math.min(
+              pdfs.length,
+              cumulative.findIndex(c => c >= e.loaded) + 1 || pdfs.length
+            )
             progress.stageProcessing(
               uploadPct,
-              `Uploading… ${humanLoaded} / ${humanTotal} MB`
+              `Uploading… ${fileNum} / ${pdfs.length} files`
             )
           }
         })
