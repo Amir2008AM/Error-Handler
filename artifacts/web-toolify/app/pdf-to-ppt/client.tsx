@@ -4,19 +4,17 @@ import { TrustpilotReview } from '@/components/trustpilot-review'
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Download, Loader2, FileText } from 'lucide-react'
+import { Download, Loader2, FileText, CheckCircle2 } from 'lucide-react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
-import { getToolBySlug } from '@/lib/tools'
-
-const tool = getToolBySlug('pdf-to-ppt')!
-
 
 export function PdfToPptClient() {
-  const [file, setFile] = useState<File | null>(null)
-  const progress        = useRealProgress()
+  const [file, setFile]               = useState<File | null>(null)
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [outputName, setOutputName]   = useState<string>('')
+  const progress                      = useRealProgress()
 
   const handleFilesSelected = useCallback((files: File[]) => {
     const selected = files[0]
@@ -25,13 +23,18 @@ export function PdfToPptClient() {
       progress.fail('Please upload a PDF file (.pdf)')
       return
     }
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
     setFile(selected)
     progress.reset()
-  }, [progress])
+  }, [progress, downloadUrl])
 
   const handleConvert = async () => {
     if (progress.status === 'processing') return
     if (!file) return
+
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
 
     progress.startProcessing('Uploading PDF...')
 
@@ -61,12 +64,10 @@ export function PdfToPptClient() {
 
       const blob = await response.blob()
       const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
-      a.href     = url
-      a.download = file.name.replace(/\.pdf$/i, '.pptx')
-      a.click()
-      URL.revokeObjectURL(url)
+      const name = file.name.replace(/\.pdf$/i, '.pptx')
 
+      setDownloadUrl(url)
+      setOutputName(name)
       progress.stageDone('Conversion complete!')
     } catch (error) {
       const message =
@@ -109,7 +110,12 @@ export function PdfToPptClient() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { setFile(null); progress.reset() }}
+                  onClick={() => {
+                    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+                    setDownloadUrl(null)
+                    setFile(null)
+                    progress.reset()
+                  }}
                   disabled={isProcessing}
                 >
                   Change
@@ -147,8 +153,33 @@ export function PdfToPptClient() {
                 showMessage={true}
                 autoHide={false}
               />
-              {progress.status === 'completed' && <TrustpilotReview />}
             </div>
+
+            {/* Download card */}
+            {downloadUrl && progress.status === 'completed' && (
+              <>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-900">Your file is ready!</p>
+                      <p className="text-sm text-green-700 truncate max-w-[180px]">{outputName}</p>
+                    </div>
+                  </div>
+                  <a
+                    href={downloadUrl}
+                    download={outputName}
+                    className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download .pptx
+                  </a>
+                </div>
+                <TrustpilotReview />
+              </>
+            )}
           </div>
         )}
       </div>
