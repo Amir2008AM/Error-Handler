@@ -899,10 +899,56 @@ export class DocumentConverter {
   // ── PDF → PowerPoint ──────────────────────────────────────────────────
 
   /**
-   * Convert a PDF document to a PowerPoint presentation (.pptx).
-   * Uses LibreOffice headless: soffice --convert-to pptx input.pdf
-   * Each PDF page is rendered as a slide in the output presentation.
+   * Normalize a PDF using Ghostscript before conversion.
+   *
+   * Merged PDFs often carry overlapping content layers from multiple source
+   * documents.  Ghostscript re-renders every page from scratch into a clean
+   * single-layer PDF, which eliminates the layer collisions that cause
+   * LibreOffice to produce overlapping text boxes in the PPTX output.
+   *
+   * Returns the normalised PDF buffer, or the original buffer if GS fails.
    */
+  private async normalizePdfWithGs(pdfBuffer: Buffer, dir: string): Promise<Buffer> {
+    if (!await binaryExists('gs')) return pdfBuffer
+
+    const inFile  = join(dir, 'gs-input.pdf')
+    const outFile = join(dir, 'gs-normalized.pdf')
+    await writeFile(inFile, pdfBuffer)
+
+    const result = await runCli(
+      'gs',
+      [
+        '-dBATCH',
+        '-dNOPAUSE',
+        '-dSAFER',
+        '-dQUIET',
+        '-sDEVICE=pdfwrite',
+        '-dCompatibilityLevel=1.6',
+        '-dPDFSETTINGS=/prepress',
+        '-dDetectDuplicateImages=true',
+        '-dCompressFonts=true',
+        `-sOutputFile=${outFile}`,
+        inFile,
+      ],
+      { timeoutMs: 90_000 }
+    )
+
+    if (result.code !== 0) {
+      console.warn('[pdfToPresentation] GS normalization failed, using original PDF:', result.stderr.trim().slice(0, 200))
+      return pdfBuffer
+    }
+
+    try {
+      const normalized = await fsReadFile(outFile)
+      if (isPdf(normalized) && normalized.length > 100) {
+        console.log('[pdfToPresentation] GS normalization ok — original:', pdfBuffer.length, 'normalized:', normalized.length)
+        return normalized
+      }
+    } catch { /* fall through */ }
+
+    return pdfBuffer
+  }
+
   async pdfToPresentation(
     pdfBuffer: Buffer
   ): Promise<ConversionResult> {
@@ -912,8 +958,15 @@ export class DocumentConverter {
 
     if (await binaryExists('soffice')) {
       return withTempDir('lo-pdf-ppt-', async (dir) => {
+        // Pre-process with Ghostscript to flatten/normalize the PDF.
+        // This is essential for merged PDFs: merging concatenates pages from
+        // multiple source documents whose overlapping content layers cause
+        // LibreOffice to produce colliding text boxes in the PPTX.
+        // GS re-renders each page as a clean single-layer PDF first.
+        const normalizedBuffer = await this.normalizePdfWithGs(pdfBuffer, dir)
+
         const inFile = join(dir, 'input.pdf')
-        await writeFile(inFile, pdfBuffer)
+        await writeFile(inFile, normalizedBuffer)
 
         const result = await runCli(
           'soffice',
