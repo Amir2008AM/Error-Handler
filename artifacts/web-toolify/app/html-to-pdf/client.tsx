@@ -1,17 +1,18 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Download, Loader2, Code, FileCode, Settings } from 'lucide-react'
+import { Download, Loader2, FileCode, Settings, CheckCircle2, RotateCcw } from 'lucide-react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
-import { useLoadingBar } from '@/components/global-loading-bar'
+import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 
 const tool = getToolBySlug('html-to-pdf')!
@@ -21,34 +22,36 @@ export function HtmlToPdfClient() {
   const [mode, setMode] = useState<'file' | 'paste'>('paste')
   const [file, setFile] = useState<File | null>(null)
   const [htmlContent, setHtmlContent] = useState('')
-  const [done, setDone] = useState(false)
-  const [processing, setProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4')
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
-  const { startLoading, stopLoading } = useLoadingBar()
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [downloadFilename, setDownloadFilename] = useState('')
+  const progress = useRealProgress()
 
-  const handleFilesSelected = (files: File[]) => {
+  const handleFilesSelected = useCallback((files: File[]) => {
     const selectedFile = files[0]
     if (selectedFile) {
       const ext = selectedFile.name.toLowerCase()
       if (ext.endsWith('.html') || ext.endsWith('.htm')) {
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+        setDownloadUrl(null)
         setFile(selectedFile)
-        setError(null)
+        progress.reset()
       } else {
-        setError('Please upload an HTML file (.html or .htm)')
+        progress.fail('Please upload an HTML file (.html or .htm)')
       }
     }
-  }
+  }, [downloadUrl, progress])
 
   const handleConvert = async () => {
-    if (processing) return
+    if (progress.status === 'processing') return
     if (mode === 'file' && !file) return
     if (mode === 'paste' && !htmlContent.trim()) return
 
-    setProcessing(true)
-    setError(null)
-    startLoading()
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
+    progress.startProcessing('Preparing HTML...')
+
     try {
       const formData = new FormData()
       
@@ -61,10 +64,15 @@ export function HtmlToPdfClient() {
       formData.append('pageSize', pageSize)
       formData.append('orientation', orientation)
 
-      const response = await fetch('/api/html-to-pdf', {
-        method: 'POST',
-        body: formData,
+      const response = await xhrUpload({
+        url: '/api/html-to-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.stageUpload(pct, 'Uploading HTML...')
+        },
       })
+
+      progress.stageProcessing(undefined, ['Rendering HTML...', 'Building PDF...', 'Almost done...'])
 
       if (!response.ok) {
         let message = 'Conversion failed'
@@ -78,20 +86,24 @@ export function HtmlToPdfClient() {
       }
 
       const blob = await response.blob()
+      const filename = file ? file.name.replace(/\.(html?|htm)$/i, '.pdf') : 'document.pdf'
       const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = file ? file.name.replace(/\.(html?|htm)$/i, '.pdf') : 'document.pdf'
-      a.click()
-      URL.revokeObjectURL(url)
-      setDone(true)
+
+      setDownloadUrl(url)
+      setDownloadFilename(filename)
+      progress.stageDone('Conversion complete!')
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to convert HTML')
-    } finally {
-      setProcessing(false)
-      stopLoading()
+      progress.fail(error instanceof Error ? error.message : 'Failed to convert HTML')
     }
   }
+
+  const handleReset = useCallback(() => {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
+    setFile(null)
+    setHtmlContent('')
+    progress.reset()
+  }, [downloadUrl, progress])
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -100,6 +112,7 @@ export function HtmlToPdfClient() {
   }
 
   const canConvert = mode === 'file' ? !!file : !!htmlContent.trim()
+  const isProcessing = progress.status === 'processing'
 
   return (
     <>
@@ -129,6 +142,7 @@ export function HtmlToPdfClient() {
                   value={htmlContent}
                   onChange={(e) => setHtmlContent(e.target.value)}
                   className="min-h-[300px] font-mono text-sm"
+                  disabled={isProcessing}
                 />
               </div>
             </Card>
@@ -152,7 +166,7 @@ export function HtmlToPdfClient() {
                     <p className="font-medium">{file.name}</p>
                     <p className="text-sm text-muted-foreground">{formatSize(file.size)}</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setFile(null)}>
+                  <Button variant="outline" size="sm" onClick={() => setFile(null)} disabled={isProcessing}>
                     Change
                   </Button>
                 </div>
@@ -170,7 +184,7 @@ export function HtmlToPdfClient() {
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pageSize">Page Size</Label>
-              <Select value={pageSize} onValueChange={(v) => setPageSize(v as typeof pageSize)}>
+              <Select value={pageSize} onValueChange={(v) => setPageSize(v as typeof pageSize)} disabled={isProcessing}>
                 <SelectTrigger id="pageSize">
                   <SelectValue />
                 </SelectTrigger>
@@ -184,7 +198,7 @@ export function HtmlToPdfClient() {
 
             <div className="space-y-2">
               <Label htmlFor="orientation">Orientation</Label>
-              <Select value={orientation} onValueChange={(v) => setOrientation(v as typeof orientation)}>
+              <Select value={orientation} onValueChange={(v) => setOrientation(v as typeof orientation)} disabled={isProcessing}>
                 <SelectTrigger id="orientation">
                   <SelectValue />
                 </SelectTrigger>
@@ -197,20 +211,14 @@ export function HtmlToPdfClient() {
           </div>
         </Card>
 
-        {error && (
-          <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-3">
           <Button
             size="lg"
             onClick={handleConvert}
-            disabled={processing || !canConvert}
+            disabled={isProcessing || !canConvert}
             className="min-w-[200px]"
           >
-            {processing ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Converting...
@@ -222,9 +230,49 @@ export function HtmlToPdfClient() {
               </>
             )}
           </Button>
+
+          <RealProgressBar
+            status={progress.status}
+            progress={progress.progress}
+            message={progress.message}
+            error={progress.error}
+            className="w-[280px]"
+            showPercentage={true}
+            showMessage={true}
+            autoHide={false}
+          />
         </div>
+
+        {downloadUrl && progress.status === 'completed' && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
+              <div>
+                <p className="font-semibold text-green-900">Conversion complete!</p>
+                <p className="text-sm text-green-700">{downloadFilename}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <a
+                href={downloadUrl}
+                download={downloadFilename}
+                className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </a>
+              <button
+                onClick={handleReset}
+                className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                New File
+              </button>
+            </div>
+          </div>
+        )}
+        {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
       </div>
-      {done && <TrustpilotReview />}
     </>
   )
 }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Download, Loader2, FileText, Settings } from 'lucide-react'
+import { Download, Loader2, FileText, Settings, CheckCircle2, RotateCcw } from 'lucide-react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
@@ -21,6 +21,8 @@ export function WordToPdfClient() {
   const [file, setFile] = useState<File | null>(null)
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4')
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [downloadFilename, setDownloadFilename] = useState('')
   const progress = useRealProgress()
 
   // ── Background pre-upload state ──────────────────────────────────────────
@@ -65,17 +67,21 @@ export function WordToPdfClient() {
       return
     }
 
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
     setFile(selectedFile)
     progress.reset()
 
     // Start background upload immediately — user sees nothing
     startPreUpload(selectedFile)
-  }, [progress, startPreUpload])
+  }, [progress, startPreUpload, downloadUrl])
 
   const handleConvert = async () => {
     if (progress.status === 'processing') return
     if (!file) return
 
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
     progress.startProcessing('جاري التحضير...')
 
     try {
@@ -85,6 +91,8 @@ export function WordToPdfClient() {
         const result = await preUploadRef.current
         uploadId = result.uploadId
       }
+
+      const filename = file.name.replace(/\.(docx?|doc)$/i, '.pdf')
 
       if (uploadId) {
         // ── Fast path: file already on server, only conversion needed ────────
@@ -103,11 +111,8 @@ export function WordToPdfClient() {
 
         const blob = await res.blob()
         const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = file.name.replace(/\.(docx?|doc)$/i, '.pdf')
-        a.click()
-        URL.revokeObjectURL(url)
+        setDownloadUrl(url)
+        setDownloadFilename(filename)
         progress.stageDone('تم التحويل بنجاح!')
       } else {
         // ── Fallback: upload + convert in one request ─────────────────────────
@@ -134,11 +139,8 @@ export function WordToPdfClient() {
 
         const blob = await response.blob()
         const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = file.name.replace(/\.(docx?|doc)$/i, '.pdf')
-        a.click()
-        URL.revokeObjectURL(url)
+        setDownloadUrl(url)
+        setDownloadFilename(filename)
         progress.stageDone('تم التحويل بنجاح!')
       }
     } catch (error) {
@@ -149,9 +151,11 @@ export function WordToPdfClient() {
 
   const handleReset = useCallback(() => {
     cancelPreUpload()
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
     setFile(null)
     progress.reset()
-  }, [cancelPreUpload, progress])
+  }, [cancelPreUpload, progress, downloadUrl])
 
   useEffect(() => () => { cancelPreUpload() }, [cancelPreUpload])
 
@@ -270,8 +274,37 @@ export function WordToPdfClient() {
                 showMessage={true}
                 autoHide={false}
               />
-              {progress.status === 'completed' && <TrustpilotReview />}
             </div>
+
+            {downloadUrl && progress.status === 'completed' && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-green-900">تم التحويل بنجاح!</p>
+                    <p className="text-sm text-green-700">{downloadFilename}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <a
+                    href={downloadUrl}
+                    download={downloadFilename}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    {t(lang, 'wordToPdf.action')}
+                  </a>
+                  <button
+                    onClick={handleReset}
+                    className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    {t(lang, 'common.change')}
+                  </button>
+                </div>
+              </div>
+            )}
+            {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>
         )}
       </div>

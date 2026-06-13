@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Download, Loader2, FileText } from 'lucide-react'
+import { Download, Loader2, FileText, CheckCircle2, RotateCcw } from 'lucide-react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -16,20 +16,26 @@ import { TrustpilotReview } from '@/components/trustpilot-review'
 export function RepairPdfClient() {
   const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [downloadFilename, setDownloadFilename] = useState('')
   const progress = useRealProgress()
 
   const handleFilesSelected = useCallback((files: File[]) => {
     const selectedFile = files[0]
     if (selectedFile) {
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+      setDownloadUrl(null)
       setFile(selectedFile)
       progress.reset()
     }
-  }, [progress])
+  }, [progress, downloadUrl])
 
   const handleRepair = async () => {
     if (progress.status === 'processing') return
     if (!file) return
 
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
     progress.startProcessing('Uploading PDF...')
     try {
       const formData = new FormData()
@@ -53,19 +59,24 @@ export function RepairPdfClient() {
       progress.stageProcessing(undefined, ['Repairing document...', 'Almost done...'])
 
       const blob = await response.blob()
+      const filename = `repaired-${file.name}`
       const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `repaired-${file.name}`
-      a.click()
-      URL.revokeObjectURL(url)
 
+      setDownloadUrl(url)
+      setDownloadFilename(filename)
       progress.stageDone('PDF repaired successfully!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to repair PDF. The file may be too damaged.'
       progress.fail(message)
     }
   }
+
+  const handleReset = useCallback(() => {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
+    setFile(null)
+    progress.reset()
+  }, [downloadUrl, progress])
 
   const isProcessing = progress.status === 'processing'
 
@@ -93,7 +104,7 @@ export function RepairPdfClient() {
                     {(file.size / 1024).toFixed(1)} KB
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => { setFile(null); progress.reset() }} disabled={isProcessing}>
+                <Button variant="outline" size="sm" onClick={handleReset} disabled={isProcessing}>
                   {t(lang, 'common.change')}
                 </Button>
               </div>
@@ -145,8 +156,37 @@ export function RepairPdfClient() {
                 showMessage={true}
                 autoHide={false}
               />
-              {progress.status === 'completed' && <TrustpilotReview />}
             </div>
+
+            {downloadUrl && progress.status === 'completed' && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-green-900">PDF repaired successfully!</p>
+                    <p className="text-sm text-green-700">{downloadFilename}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <a
+                    href={downloadUrl}
+                    download={downloadFilename}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Repaired PDF
+                  </a>
+                  <button
+                    onClick={handleReset}
+                    className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    New File
+                  </button>
+                </div>
+              </div>
+            )}
+            {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>
         )}
       </div>

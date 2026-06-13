@@ -7,10 +7,10 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import { Download, Loader2, FileText, Image, Info } from 'lucide-react'
+import { Download, Loader2, FileText, Image, Info, CheckCircle2, RotateCcw } from 'lucide-react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { getToolBySlug } from '@/lib/tools'
-import { useLoadingBar } from '@/components/global-loading-bar'
+import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
@@ -22,26 +22,31 @@ const tool = getToolBySlug('pdf-to-jpg')!
 export function PdfToJpgClient() {
   const { lang } = useI18n()
   const [file, setFile] = useState<File | null>(null)
-  const [processing, setProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [format, setFormat] = useState<'jpg' | 'png' | 'webp'>('jpg')
-  const [done, setDone] = useState(false)
   const [quality, setQuality] = useState(90)
   const [dpi, setDpi] = useState(150)
-  const { startLoading, stopLoading } = useLoadingBar()
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [downloadFilename, setDownloadFilename] = useState('')
+  const progress = useRealProgress()
 
   const handleFilesSelected = useCallback((files: File[]) => {
     const selectedFile = files[0]
-    if (selectedFile) setFile(selectedFile)
-  }, [])
+    if (selectedFile) {
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+      setDownloadUrl(null)
+      setFile(selectedFile)
+      progress.reset()
+    }
+  }, [downloadUrl, progress])
 
   const handleConvert = async () => {
-    if (processing) return
+    if (progress.status === 'processing') return
     if (!file) return
 
-    setProcessing(true)
-    setError(null)
-    startLoading()
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
+    progress.startProcessing('Uploading PDF...')
+
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -53,7 +58,12 @@ export function PdfToJpgClient() {
       const response = await xhrUpload({
         url: '/api/pdf-to-jpg',
         formData,
+        onUploadProgress: (pct) => {
+          progress.stageUpload(pct, 'Uploading PDF...')
+        },
       })
+
+      progress.stageProcessing(undefined, ['Converting pages...', 'Packaging images...', 'Almost done...'])
 
       if (!response.ok) {
         let message = 'Conversion failed'
@@ -69,28 +79,31 @@ export function PdfToJpgClient() {
       const blob = await response.blob()
       const contentDisposition = response.headers.get('Content-Disposition')
       const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/)
-      const filename = filenameMatch?.[1] || `${file.name.replace('.pdf', '')}-images.${format}`
+      const filename = filenameMatch?.[1] || `${file.name.replace('.pdf', '')}-images.zip`
 
       const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
-      setDone(true)
+      setDownloadUrl(url)
+      setDownloadFilename(filename)
+      progress.stageDone('Conversion complete!')
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to convert PDF to images')
-    } finally {
-      setProcessing(false)
-      stopLoading()
+      progress.fail(error instanceof Error ? error.message : 'Failed to convert PDF to images')
     }
   }
+
+  const handleReset = useCallback(() => {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
+    setFile(null)
+    progress.reset()
+  }, [downloadUrl, progress])
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
   }
+
+  const isProcessing = progress.status === 'processing'
 
   return (
     <>
@@ -125,7 +138,7 @@ export function PdfToJpgClient() {
                     {formatSize(file.size)}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setFile(null)}>
+                <Button variant="outline" size="sm" onClick={handleReset} disabled={isProcessing}>
                   {t(lang, 'common.change')}
                 </Button>
               </div>
@@ -140,7 +153,7 @@ export function PdfToJpgClient() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="format">{t(lang, 'pdfToJpg.outputFormat')}</Label>
-                  <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
+                  <Select value={format} onValueChange={(v) => setFormat(v as typeof format)} disabled={isProcessing}>
                     <SelectTrigger id="format">
                       <SelectValue />
                     </SelectTrigger>
@@ -154,7 +167,7 @@ export function PdfToJpgClient() {
 
                 <div className="space-y-2">
                   <Label htmlFor="dpi">{t(lang, 'pdfToJpg.resolution')}</Label>
-                  <Select value={dpi.toString()} onValueChange={(v) => setDpi(parseInt(v))}>
+                  <Select value={dpi.toString()} onValueChange={(v) => setDpi(parseInt(v))} disabled={isProcessing}>
                     <SelectTrigger id="dpi">
                       <SelectValue />
                     </SelectTrigger>
@@ -179,25 +192,20 @@ export function PdfToJpgClient() {
                     min={10}
                     max={100}
                     step={5}
+                    disabled={isProcessing}
                   />
                 </div>
               )}
             </Card>
 
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-3">
               <Button
                 size="lg"
                 onClick={handleConvert}
-                disabled={processing}
+                disabled={isProcessing}
                 className="min-w-[200px]"
               >
-                {processing ? (
+                {isProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     {t(lang, 'pdfToJpg.converting')}
@@ -209,11 +217,51 @@ export function PdfToJpgClient() {
                   </>
                 )}
               </Button>
+
+              <RealProgressBar
+                status={progress.status}
+                progress={progress.progress}
+                message={progress.message}
+                error={progress.error}
+                className="w-[280px]"
+                showPercentage={true}
+                showMessage={true}
+                autoHide={false}
+              />
             </div>
+
+            {downloadUrl && progress.status === 'completed' && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-green-900">Conversion complete!</p>
+                    <p className="text-sm text-green-700">{downloadFilename}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <a
+                    href={downloadUrl}
+                    download={downloadFilename}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Images
+                  </a>
+                  <button
+                    onClick={handleReset}
+                    className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    New File
+                  </button>
+                </div>
+              </div>
+            )}
+            {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>
         )}
       </div>
-      {done && <TrustpilotReview />}
     </>
   )
 }

@@ -4,7 +4,7 @@ import { TrustpilotReview } from '@/components/trustpilot-review'
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Download, Loader2, Presentation } from 'lucide-react'
+import { Download, Loader2, Presentation, CheckCircle2, RotateCcw } from 'lucide-react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
@@ -15,8 +15,10 @@ const tool = getToolBySlug('ppt-to-pdf')!
 
 
 export function PptToPdfClient() {
-  const [file, setFile]     = useState<File | null>(null)
-  const progress            = useRealProgress()
+  const [file, setFile]                     = useState<File | null>(null)
+  const [downloadUrl, setDownloadUrl]       = useState<string | null>(null)
+  const [downloadFilename, setDownloadFilename] = useState('')
+  const progress                            = useRealProgress()
 
   const handleFilesSelected = useCallback((files: File[]) => {
     const selected = files[0]
@@ -26,14 +28,18 @@ export function PptToPdfClient() {
       progress.fail('Please upload a PowerPoint file (.pptx or .ppt)')
       return
     }
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
     setFile(selected)
     progress.reset()
-  }, [progress])
+  }, [progress, downloadUrl])
 
   const handleConvert = async () => {
     if (progress.status === 'processing') return
     if (!file) return
 
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
     progress.startProcessing('Uploading presentation...')
 
     try {
@@ -62,18 +68,23 @@ export function PptToPdfClient() {
 
       const blob = await response.blob()
       const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
-      a.href     = url
-      a.download = file.name.replace(/\.pptx?$/i, '.pdf')
-      a.click()
-      URL.revokeObjectURL(url)
+      const filename = file.name.replace(/\.pptx?$/i, '.pdf')
 
+      setDownloadUrl(url)
+      setDownloadFilename(filename)
       progress.stageDone('Conversion complete!')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to convert presentation'
       progress.fail(message)
     }
   }
+
+  const handleReset = useCallback(() => {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
+    setDownloadUrl(null)
+    setFile(null)
+    progress.reset()
+  }, [downloadUrl, progress])
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -109,7 +120,7 @@ export function PptToPdfClient() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { setFile(null); progress.reset() }}
+                  onClick={handleReset}
                   disabled={isProcessing}
                 >
                   Change
@@ -147,8 +158,37 @@ export function PptToPdfClient() {
                 showMessage={true}
                 autoHide={false}
               />
-              {progress.status === 'completed' && <TrustpilotReview />}
             </div>
+
+            {downloadUrl && progress.status === 'completed' && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-green-900">Conversion complete!</p>
+                    <p className="text-sm text-green-700">{downloadFilename}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <a
+                    href={downloadUrl}
+                    download={downloadFilename}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download PDF
+                  </a>
+                  <button
+                    onClick={handleReset}
+                    className="flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    New File
+                  </button>
+                </div>
+              </div>
+            )}
+            {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>
         )}
       </div>
