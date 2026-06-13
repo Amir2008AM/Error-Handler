@@ -111,7 +111,6 @@ function envInt(key: string, fallback: number): number {
 const _guards: Record<string, Semaphore> = {
   libreoffice: new Semaphore('libreoffice', envInt('GUARD_LIBREOFFICE_MAX', 2)),
   ghostscript:  new Semaphore('ghostscript',  envInt('GUARD_GHOSTSCRIPT_MAX', 4)),
-  ocr:          new Semaphore('ocr',          envInt('GUARD_OCR_MAX',         2)),
   python:       new Semaphore('python',        envInt('GUARD_PYTHON_MAX',       3)),
   pdfjs:        new Semaphore('pdfjs',         envInt('GUARD_PDFJS_MAX',        3)),
 }

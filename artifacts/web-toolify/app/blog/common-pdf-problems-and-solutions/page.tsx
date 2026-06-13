@@ -127,8 +127,8 @@ export default function ArticlePage() {
               problem="You cannot select or copy text from the PDF"
               why="There are two reasons text in a PDF cannot be selected. First, the PDF may be an image-based or scanned PDF — each page is a flat image rather than a page containing real text data. Second, the PDF may have copy restrictions applied by its creator. Both situations prevent normal text selection."
               solution="For scanned PDFs, use an OCR (Optical Character Recognition) tool to extract the text. OCR analyses the image and identifies the characters, converting them into selectable text. For PDFs with copy restrictions, unlocking the file (if you have the right to do so) removes those restrictions."
-              toolLabel="OCR Image Tool"
-              toolHref="/ocr-image"
+              toolLabel="Compress PDF"
+              toolHref="/compress-pdf"
             />
 
             <AdBanner slot="6978025975" format="horizontal" className="my-6" />

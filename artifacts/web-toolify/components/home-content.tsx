@@ -22,7 +22,6 @@ const CATEGORY_KEY_MAP: Record<string, string> = {
   'PDF Tools': 'home.pdfTools',
   'Security Tools': 'home.securityTools',
   'Converters': 'home.converters',
-  'OCR Tools': 'home.ocrTools',
   'Image Tools': 'home.imageTools',
   'Text Tools': 'home.textTools',
   'Calculators': 'home.calculators',

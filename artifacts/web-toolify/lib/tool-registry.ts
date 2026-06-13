@@ -13,7 +13,7 @@
  */
 
 export type RateLimitTier = 'heavy' | 'medium' | 'light'
-export type GuardName = 'libreoffice' | 'ghostscript' | 'ocr' | 'python' | 'pdfjs' | 'none'
+export type GuardName = 'libreoffice' | 'ghostscript' | 'python' | 'pdfjs' | 'none'
 export type EngineLabel =
   | 'libreoffice'
   | 'ghostscript'
@@ -28,7 +28,7 @@ export type EngineLabel =
   | 'pdf2docx'
   | 'mammoth+wkhtmltopdf'
 
-export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'ocr' | 'document' | 'direct'
+export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'document' | 'direct'
 
 export interface ToolMeta {
   /** Unique slug used in URLs and internal references */
@@ -83,10 +83,6 @@ const _registry: ToolMeta[] = [
   // ── Excel → PDF (Python ReportLab) ───────────────────────────────────────
   { slug: 'excel-to-pdf',    name: 'Excel to PDF',      engine: 'python-reportlab', guard: 'python',       rateTier: 'heavy',  workerGroup: 'document', maxDurationSec: 120, p95Sec: 45,  spawnsProcess: true  },
 
-  // ── OCR (Tesseract) ───────────────────────────────────────────────────────
-  { slug: 'ocr',             name: 'OCR',               engine: 'tesseract',        guard: 'ocr',          rateTier: 'heavy',  workerGroup: 'ocr',      maxDurationSec: 300, p95Sec: 120, spawnsProcess: true  },
-  { slug: 'ocr-pdf',         name: 'OCR PDF',           engine: 'tesseract',        guard: 'ocr',          rateTier: 'heavy',  workerGroup: 'ocr',      maxDurationSec: 300, p95Sec: 180, spawnsProcess: true  },
-  { slug: 'ocr-image',       name: 'OCR Image',         engine: 'tesseract',        guard: 'ocr',          rateTier: 'heavy',  workerGroup: 'ocr',      maxDurationSec: 120, p95Sec: 60,  spawnsProcess: true  },
 
   // ── Image tools (Sharp — fast, in-process) ────────────────────────────────
   { slug: 'compress-image',  name: 'Compress Image',    engine: 'sharp',            guard: 'none',         rateTier: 'light',  workerGroup: 'image',    maxDurationSec: 60,  p95Sec: 10,  spawnsProcess: false },

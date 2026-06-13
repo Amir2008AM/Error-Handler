@@ -195,17 +195,7 @@ export const TOOL_CONFIGS: Record<string, ToolConfig> = {
     steps: ['UPLOAD', 'PREFLIGHT', 'SOFFICE_CONVERT', 'STORE'],
   },
 
-  // ── OCR Tools ──────────────────────────────────────────────────────────────
-  'ocr-image': {
-    label: 'Image to Text (OCR)', category: 'OCR Tools',
-    fileField: 'file', fileType: 'image',
-    endpoint: '/api/ocr/image', engine: 'Tesseract 5',
-    steps: ['UPLOAD', 'VALIDATION', 'PREFLIGHT', 'ENGINE_INIT', 'RECOGNITION', 'RESULT'],
-    params: [
-      { name: 'language',   type: 'select', label: 'Language',    options: ['eng', 'ara', 'fra', 'deu', 'spa', 'chi_sim', 'chi_tra', 'jpn', 'kor', 'rus'], default: 'eng' },
-      { name: 'outputType', type: 'select', label: 'Output Type', options: ['json', 'text'], default: 'json' },
-    ],
-  },
+
 
   // ── Image Tools ────────────────────────────────────────────────────────────
   'compress-image': {

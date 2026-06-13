@@ -352,22 +352,10 @@ const SECTIONS: { id: string; label: string; icon: string; color: string; items:
 
   {
     id: 'ocr-text',
-    label: 'OCR & Text Tools',
+    label: 'Text Tools',
     icon: '🔍',
     color: 'from-teal-400 to-cyan-500',
     items: [
-      {
-        q: "Which languages does Toolify's OCR tool recognise?",
-        a: 'The Image to Text tool supports many languages including Arabic, English, French, Spanish, German, Chinese, Japanese, and more. Select the language that matches your document in the language selector before processing for the best accuracy.',
-        tool: 'Image to Text (OCR)',
-        toolSlug: 'ocr-image',
-      },
-      {
-        q: 'What image quality gives the best OCR results?',
-        a: 'Images scanned or photographed at 150 DPI or higher give the most accurate results. Blurry, low-light, or heavily skewed images reduce accuracy. Printed text is recognised reliably; handwritten text accuracy varies depending on legibility.',
-        tool: 'Image to Text (OCR)',
-        toolSlug: 'ocr-image',
-      },
       {
         q: 'What does the Word Counter tool measure beyond word count?',
         a: 'In addition to word count, the tool shows character count (with and without spaces), sentence count, paragraph count, and an estimated reading time. All counts update in real time as you type or paste text — no button press required.',

@@ -28,7 +28,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   'PDF Tools': 'PDF Tools',
   'Security Tools': 'Security Tools',
   'Converters': 'Converters',
-  'OCR Tools': 'OCR Tools',
   'Image Tools': 'Image Tools',
   'Text Tools': 'Text Tools',
   'Calculators': 'Calculators',

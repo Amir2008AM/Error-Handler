@@ -29,7 +29,7 @@ const VALID_JOB_TYPES = new Set<JobType>([
   'merge-pdf', 'split-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
   'protect-pdf', 'unlock-pdf', 'sign-pdf', 'pdf-to-jpg', 'pdf-to-word',
   'pdf-to-excel', 'word-to-pdf', 'excel-to-pdf', 'html-to-pdf', 'ppt-to-pdf',
-  'ocr-pdf', 'ocr-image', 'compress-image', 'resize-image', 'convert-image',
+  'compress-image', 'resize-image', 'convert-image',
   'crop-image', 'image-to-pdf', 'add-page-numbers', 'organize-pdf',
   'extract-pages', 'delete-pages', 'repair-pdf',
 ])
@@ -44,10 +44,10 @@ function getFileKind(type: JobType): 'pdf' | 'image' | 'any' {
     'merge-pdf', 'split-pdf', 'rotate-pdf', 'compress-pdf', 'watermark-pdf',
     'protect-pdf', 'unlock-pdf', 'sign-pdf', 'pdf-to-jpg', 'pdf-to-word',
     'pdf-to-excel', 'add-page-numbers', 'organize-pdf', 'extract-pages',
-    'delete-pages', 'repair-pdf', 'ocr-pdf',
+    'delete-pages', 'repair-pdf',
   ])
   const IMAGE_ONLY = new Set<JobType>([
-    'compress-image', 'resize-image', 'convert-image', 'crop-image', 'ocr-image',
+    'compress-image', 'resize-image', 'convert-image', 'crop-image',
   ])
   if (PDF_ONLY.has(type))   return 'pdf'
   if (IMAGE_ONLY.has(type)) return 'image'

@@ -36,8 +36,6 @@ const TOOL_BINARIES: Record<string, string[]> = {
   'html-to-pdf':   ['soffice'],
   'pdf-to-ppt':    ['soffice'],
   'pdf-to-excel':  ['python3'],
-  'ocr-image':     ['tesseract'],
-  'ocr-pdf':       ['tesseract'],
 }
 
 // ── GET — full tool list ──────────────────────────────────────────────────────

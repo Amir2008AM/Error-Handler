@@ -13,7 +13,6 @@ export function Navbar() {
     { key: 'nav.pdf' as const, href: '/?category=PDF+Tools' },
     { key: 'nav.security' as const, href: '/?category=Security+Tools' },
     { key: 'nav.converter' as const, href: '/?category=Converters' },
-    { key: 'nav.ocr' as const, href: '/?category=OCR+Tools' },
     { key: 'nav.image' as const, href: '/?category=Image+Tools' },
     { key: 'nav.text' as const, href: '/?category=Text+Tools' },
     { key: 'nav.calculator' as const, href: '/?category=Calculators' },

@@ -63,8 +63,6 @@ const IMAGE_TYPES = new Set<JobType>([
   'compress-image', 'resize-image', 'convert-image', 'crop-image', 'image-to-pdf',
 ])
 
-const OCR_TYPES = new Set<JobType>(['ocr-image', 'ocr-pdf'])
-
 /**
  * DOCUMENT: LibreOffice-based conversions — includes pdf-to-ppt which was
  * previously (incorrectly) falling through to the pdf queue.
@@ -73,13 +71,12 @@ const DOCUMENT_TYPES = new Set<JobType>([
   'word-to-pdf', 'excel-to-pdf', 'html-to-pdf', 'ppt-to-pdf', 'pdf-to-ppt',
 ])
 
-export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'ocr' | 'document'
+export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'document'
 
 export function getWorkerGroup(type: JobType): WorkerGroup {
   if (PDF_FAST_TYPES.has(type))     return 'pdf-fast'
   if (PDF_HEAVY_TYPES.has(type))    return 'pdf-heavy'
   if (IMAGE_TYPES.has(type))        return 'image'
-  if (OCR_TYPES.has(type))          return 'ocr'
   if (DOCUMENT_TYPES.has(type))     return 'document'
   // Safe default — unclassified PDF-like types go to heavy queue
   return 'pdf-heavy'
@@ -89,7 +86,6 @@ const QUEUE_NAMES: Record<WorkerGroup, string> = {
   'pdf-fast':  'toolify-pdf-fast',
   'pdf-heavy': 'toolify-pdf-heavy',
   image:       'toolify-image',
-  ocr:         'toolify-ocr',
   document:    'toolify-document',
 }
 
@@ -100,8 +96,6 @@ const CONCURRENCY: Record<WorkerGroup, number> = {
   'pdf-heavy': Math.max(1, Math.floor(cpus().length / 2)),
   // Sharp (libvips, async/non-blocking) — use all CPUs
   image:       Math.max(2, cpus().length),
-  // Tesseract — LSTM is CPU+RAM heavy — cap at half CPUs
-  ocr:         Math.max(1, Math.floor(cpus().length / 2)),
   // LibreOffice — each process uses 200–600 MB RAM.
   // Two concurrent conversions are safe on ≥4 GB available RAM.
   document:    2,
@@ -189,7 +183,7 @@ export async function enqueueJob(
  * Ordered group name list for ID parsing — longer names must come first so
  * 'pdf-fast' is matched before 'pdf' would be (if 'pdf' were still present).
  */
-const KNOWN_GROUPS: WorkerGroup[] = ['pdf-fast', 'pdf-heavy', 'image', 'ocr', 'document']
+const KNOWN_GROUPS: WorkerGroup[] = ['pdf-fast', 'pdf-heavy', 'image', 'document']
 
 /**
  * Parse a prefixed job ID (e.g. `bq-pdf-fast-abc123`) and fetch its BullMQ status.
@@ -363,7 +357,7 @@ export function startWorkers(): void {
   if (workersStarted) return
   workersStarted = true
 
-  const groups: WorkerGroup[] = ['pdf-fast', 'pdf-heavy', 'image', 'ocr', 'document']
+  const groups: WorkerGroup[] = ['pdf-fast', 'pdf-heavy', 'image', 'document']
 
   for (const group of groups) {
     const worker = new Worker(

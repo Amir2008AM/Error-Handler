@@ -18,7 +18,6 @@ import { Job, JobType, JobResult } from './types'
 import { getJobManager } from './job-manager'
 import { PDFProcessor } from '../processing/pdf-processor'
 import { ImageProcessor } from '../processing/image-processor'
-import { OCRProcessor } from '../processing/ocr-processor'
 import { PDFSecurityProcessor } from '../processing/pdf-security'
 import { PdfToImageConverter } from '../processing/pdf-to-image'
 import { DocumentConverter } from '../processing/document-converter'
@@ -38,7 +37,6 @@ const MIN_PDF_BYTES = 512
 // shared instance is safe even under concurrent calls.
 const _pdf        = new PDFProcessor()
 const _image      = new ImageProcessor()
-const _ocr        = new OCRProcessor()
 const _pdfSec     = new PDFSecurityProcessor()
 const _pdfToImg   = new PdfToImageConverter()
 const _docConv    = new DocumentConverter()
@@ -125,8 +123,6 @@ const processors: Partial<Record<JobType, ProcessorFunction>> = {
   'sign-pdf':        processSignPdf,
   'pdf-to-jpg':      processPdfToJpg,
   'pdf-to-word':     processPdfToWordFresh,
-  'ocr-image':       processOcrImage,
-  'ocr-pdf':         processOcrPdf,
   'compress-image':  processCompressImage,
   'resize-image':    processResizeImage,
   'convert-image':   processConvertImage,
@@ -670,56 +666,6 @@ async function processPdfToWordFresh(job: Job): Promise<SingleResult> {
     buffer: unwrap(result),
     fileName: `${baseName}.docx`,
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  }
-}
-
-// ============================================================
-// OCR Processors
-// ============================================================
-
-async function processOcrImage(job: Job): Promise<SingleResult> {
-  const manager = getJobManager()
-  manager.updateJobProgress(job.id, 10)
-
-  const language = (job.options.language as string) || 'eng'
-  const ocr = _ocr
-
-  const result = await withTimeout(
-    ocr.recognizeImage(job.files[0].buffer, { language }),
-    TIMEOUTS.ocrOp,
-    'ocr.image'
-  )
-  manager.updateJobProgress(job.id, 90)
-
-  const baseName = job.files[0].name.replace(/\.[^.]+$/, '')
-  const textBuffer = Buffer.from(result.text, 'utf-8')
-  return {
-    buffer: textBuffer,
-    fileName: `${baseName}-ocr.txt`,
-    mimeType: 'text/plain; charset=utf-8',
-  }
-}
-
-async function processOcrPdf(job: Job): Promise<SingleResult> {
-  const manager = getJobManager()
-  manager.updateJobProgress(job.id, 10)
-
-  const language = (job.options.language as string) || 'eng'
-  const ocr = _ocr
-
-  const result = await withTimeout(
-    ocr.recognizePdf(job.files[0].buffer, { language }),
-    TIMEOUTS.ocrOp,
-    'ocr.pdf'
-  )
-  manager.updateJobProgress(job.id, 90)
-
-  const baseName = job.files[0].name.replace(/\.pdf$/i, '')
-  const textBuffer = Buffer.from(result.text, 'utf-8')
-  return {
-    buffer: textBuffer,
-    fileName: `${baseName}-ocr.txt`,
-    mimeType: 'text/plain; charset=utf-8',
   }
 }
 

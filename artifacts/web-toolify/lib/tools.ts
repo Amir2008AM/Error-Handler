@@ -1,4 +1,4 @@
-export type ToolCategory = 'PDF Tools' | 'Image Tools' | 'Text Tools' | 'Converters' | 'Calculators' | 'Security Tools' | 'OCR Tools'
+export type ToolCategory = 'PDF Tools' | 'Image Tools' | 'Text Tools' | 'Converters' | 'Calculators' | 'Security Tools'
 
 export interface Tool {
   id: string
@@ -284,24 +284,6 @@ export const tools: Tool[] = [
     isNew: true,
   },
   
-  // OCR Tools
-  {
-    id: 'ocr-image',
-    name: 'Image to Text (OCR)',
-    description: 'Extract text from images using OCR technology.',
-    longDescription:
-      'Use optical character recognition (OCR) to extract text from images. Supports multiple languages and various image formats.',
-    category: 'OCR Tools',
-    slug: 'ocr-image',
-    icon: 'ScanText',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-    tags: ['ocr', 'image', 'text', 'extract', 'recognize'],
-    popular: true,
-    isNew: true,
-  },
-
-  
   // Image Tools
   {
     id: 'compress-image',
@@ -418,7 +400,6 @@ export const categories: ToolCategory[] = [
   'PDF Tools',
   'Security Tools',
   'Converters',
-  'OCR Tools',
   'Image Tools',
   'Text Tools',
   'Calculators',
@@ -468,12 +449,6 @@ export const categoryMeta: Record<ToolCategory, { icon: string; color: string; b
     color: 'text-indigo-600',
     bgColor: 'bg-indigo-50',
     description: 'Convert files between different formats',
-  },
-  'OCR Tools': {
-    icon: 'ScanText',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-    description: 'Extract text from images and scanned documents',
   },
   'Image Tools': {
     icon: 'Image',

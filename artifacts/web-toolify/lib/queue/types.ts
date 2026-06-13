@@ -20,8 +20,6 @@ export type JobType =
   | 'word-to-pdf'
   | 'excel-to-pdf'
   | 'html-to-pdf'
-  | 'ocr-pdf'
-  | 'ocr-image'
   | 'compress-image'
   | 'resize-image'
   | 'convert-image'
@@ -64,10 +62,6 @@ export interface JobOptions {
   watermarkImage?: Buffer
   watermarkPosition?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   watermarkOpacity?: number
-  
-  // OCR options
-  language?: string
-  outputType?: 'text' | 'searchable-pdf'
   
   // Batch options
   outputAsZip?: boolean

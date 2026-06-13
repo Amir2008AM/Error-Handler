@@ -2,7 +2,6 @@ export type TranslationKey =
   | 'nav.pdf'
   | 'nav.security'
   | 'nav.converter'
-  | 'nav.ocr'
   | 'nav.image'
   | 'nav.text'
   | 'nav.calculator'
@@ -13,7 +12,6 @@ export type TranslationKey =
   | 'home.pdfTools'
   | 'home.securityTools'
   | 'home.converters'
-  | 'home.ocrTools'
   | 'home.imageTools'
   | 'home.textTools'
   | 'home.calculators'
@@ -48,28 +46,6 @@ export type TranslationKey =
   | 'common.downloadZip'
   | 'common.downloadDocx'
   | 'tool.relatedTools'
-  | 'ocr.selectLanguage'
-  | 'ocr.languageRequired'
-  | 'ocr.extractText'
-  | 'ocr.extracting'
-  | 'ocr.extractedText'
-  | 'ocr.detectedLanguage'
-  | 'ocr.confidence'
-  | 'ocr.searchLanguages'
-  | 'ocr.uploading'
-  | 'ocr.scanning'
-  | 'ocr.extracted'
-  | 'ocr.uploadImage'
-  | 'ocr.supportedFormats'
-  | 'ocr.supportedLanguages'
-  | 'ocr.detectingScript'
-  | 'ocr.selectLanguageHint'
-  | 'ocr.detectedInImage'
-  | 'ocr.noLanguagesFound'
-  | 'ocr.charactersCount'
-  | 'ocr.wordsCount'
-  | 'ocr.recognitionAccuracy'
-  | 'ocr.cleaningOutput'
   | 'lang.switchLanguage'
   | 'lang.searchPlaceholder'
   | 'lang.noResults'
@@ -322,7 +298,6 @@ export type TranslationKey =
   | 'tools.ppt-to-pdf.name' | 'tools.ppt-to-pdf.desc'
   | 'tools.pdf-to-ppt.name' | 'tools.pdf-to-ppt.desc'
   | 'tools.pdf-to-excel.name' | 'tools.pdf-to-excel.desc'
-  | 'tools.ocr-image.name' | 'tools.ocr-image.desc'
   | 'tools.compress-image.name' | 'tools.compress-image.desc'
   | 'tools.resize-image.name' | 'tools.resize-image.desc'
   | 'tools.convert-image.name' | 'tools.convert-image.desc'
@@ -359,7 +334,6 @@ export const en: TranslationMap = {
   'nav.pdf': 'PDF',
   'nav.security': 'Security',
   'nav.converter': 'Converter',
-  'nav.ocr': 'OCR',
   'nav.image': 'Image',
   'nav.text': 'Text',
   'nav.calculator': 'Calculator',
@@ -370,7 +344,6 @@ export const en: TranslationMap = {
   'home.pdfTools': 'PDF Tools',
   'home.securityTools': 'Security Tools',
   'home.converters': 'Converters',
-  'home.ocrTools': 'OCR Tools',
   'home.imageTools': 'Image Tools',
   'home.textTools': 'Text Tools',
   'home.calculators': 'Calculators',
@@ -405,28 +378,6 @@ export const en: TranslationMap = {
   'common.downloadZip': 'Download ZIP',
   'common.downloadDocx': 'Download .docx',
   'tool.relatedTools': 'Related Tools',
-  'ocr.selectLanguage': 'Select Language',
-  'ocr.languageRequired': 'Please select a language to continue',
-  'ocr.extractText': 'Extract Text',
-  'ocr.extracting': 'Extracting Text...',
-  'ocr.extractedText': 'Extracted Text',
-  'ocr.detectedLanguage': 'Detected Language',
-  'ocr.confidence': 'Confidence',
-  'ocr.searchLanguages': 'Search languages...',
-  'ocr.uploading': 'Uploading image...',
-  'ocr.scanning': 'Scanning document...',
-  'ocr.extracted': 'Text extracted!',
-  'ocr.uploadImage': 'Upload Image',
-  'ocr.supportedFormats': 'Supports JPG, PNG, GIF, WebP, BMP and TIFF · Max 50 MB',
-  'ocr.supportedLanguages': '100+ languages · Arabic, Chinese, Japanese, Korean, Hindi and more',
-  'ocr.detectingScript': 'Detecting language…',
-  'ocr.selectLanguageHint': 'Select the language in your image for accurate results',
-  'ocr.detectedInImage': 'Detected in your image:',
-  'ocr.noLanguagesFound': 'No languages found',
-  'ocr.charactersCount': 'characters',
-  'ocr.wordsCount': 'words',
-  'ocr.recognitionAccuracy': 'Recognition accuracy',
-  'ocr.cleaningOutput': 'Cleaning output...',
   'lang.switchLanguage': 'Switch Language',
   'lang.searchPlaceholder': 'Search language...',
   'lang.noResults': 'No results',
@@ -698,8 +649,6 @@ export const en: TranslationMap = {
   'tools.pdf-to-ppt.desc': 'Convert PDF documents to editable PowerPoint presentations.',
   'tools.pdf-to-excel.name': 'PDF to Excel',
   'tools.pdf-to-excel.desc': 'Reconstruct tables from PDF files into Excel spreadsheets.',
-  'tools.ocr-image.name': 'Image to Text (OCR)',
-  'tools.ocr-image.desc': 'Extract text from images using OCR technology.',
   'tools.compress-image.name': 'Compress Image',
   'tools.compress-image.desc': 'Reduce image file size while maintaining quality.',
   'tools.resize-image.name': 'Resize Image',

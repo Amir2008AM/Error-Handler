@@ -43,6 +43,5 @@ export const TIMEOUTS = {
   imageOp: 60_000,        // single image op
   pdfOp: 90_000,          // single PDF op
   pdfHeavy: 180_000,      // compress / pdf->word / image rerender
-  ocrOp: 240_000,         // tesseract is slow on big pages
   jobOverall: 300_000,    // safety net for entire job
 } as const

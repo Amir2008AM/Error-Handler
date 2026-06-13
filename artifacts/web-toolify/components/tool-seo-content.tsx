@@ -391,26 +391,6 @@ const DATA: Record<string, ToolSeoData> = {
     ],
   },
 
-  'ocr-image': {
-    steps: [
-      { title: 'Upload Your Image or PDF', desc: 'Upload a scanned image, photo, or image-based PDF to extract text from.' },
-      { title: 'Select Language',          desc: 'Choose the language of the text in your document for better recognition accuracy.' },
-      { title: 'Copy or Download Text',    desc: 'The extracted text appears on screen — copy it directly or download as a text file.' },
-    ],
-    features: [
-      { title: 'Multi-Language OCR',       desc: 'Supports dozens of languages including Arabic, English, French, German, and more.' },
-      { title: 'Handles Scanned Docs',     desc: 'Extracts text from scanned papers, receipts, books, and handwritten notes.' },
-      { title: 'Image & PDF Input',        desc: 'Works with JPG, PNG, WebP images and image-based PDF files.' },
-      { title: 'Instant Text Output',      desc: 'OCR processing is fast — text is extracted and displayed within seconds.' },
-    ],
-    faqs: [
-      { q: 'What languages does OCR support?',          a: 'The tool supports many languages including Arabic, English, French, Spanish, German, Chinese, and more.' },
-      { q: 'Can it read handwritten text?',             a: 'Printed text is recognized reliably. Handwriting accuracy varies depending on legibility.' },
-      { q: 'What image quality is needed?',             a: 'Higher image resolution (150 DPI or above) gives the best OCR accuracy.' },
-      { q: 'Will my file be stored after processing?',  a: 'No. Files are permanently deleted from our servers after the OCR process completes.' },
-    ],
-  },
-
   'compress-image': {
     steps: [
       { title: 'Upload Your Image',        desc: 'Upload a JPG, PNG, WebP, or AVIF image using drag-and-drop or the file picker.' },
