@@ -17,7 +17,7 @@ import { PDFDocument, StandardFonts, rgb, PDFFont } from 'pdf-lib'
 import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import { spawn } from 'node:child_process'
-import { mkdtemp, writeFile, readFile as fsReadFile, rm } from 'node:fs/promises'
+import { mkdtemp, writeFile, readFile as fsReadFile, rm, readdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename } from 'node:path'
@@ -937,7 +937,17 @@ export class DocumentConverter {
           )
         }
 
-        const outFile = join(dir, 'input.pptx')
+        // LibreOffice may name the output file differently — find it dynamically
+        const entries = await readdir(dir)
+        const pptxName = entries.find((f) => f.toLowerCase().endsWith('.pptx'))
+        if (!pptxName) {
+          const stdout = (result.stdout || '').trim().slice(0, 400)
+          const stderr = (result.stderr || '').trim().slice(0, 400)
+          throw new Error(
+            `LibreOffice did not produce a .pptx file.\nstdout: ${stdout}\nstderr: ${stderr}`
+          )
+        }
+        const outFile = join(dir, pptxName)
         const pptxBuffer = await fsReadFile(outFile)
 
         if (pptxBuffer.length < 4) {
