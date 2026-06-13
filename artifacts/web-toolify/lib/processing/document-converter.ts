@@ -921,13 +921,14 @@ export class DocumentConverter {
             '--headless',
             '--norestore',
             '--nofirststartwizard',
-            '--convert-to', 'pptx',
+            '--infilter=impress_pdf_import',
+            '--convert-to', 'pptx:Impress MS PowerPoint 2007 XML',
             '--outdir', dir,
             inFile,
           ],
           {
             timeoutMs: 120_000,
-            env: { HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' },
+            env: { HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp', JAVA_HOME: '' },
           }
         )
 
