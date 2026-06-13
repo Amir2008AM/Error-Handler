@@ -7,7 +7,7 @@ import { trackRouteRequest } from '@/lib/route-analytics'
 import { getToolGuardResponse } from '@/lib/tool-guard'
 
 export const runtime = 'nodejs'
-export const maxDuration = 300
+export const maxDuration = 600
 
 export async function POST(req: NextRequest) {
   const guard = getToolGuardResponse('merge-pdf')

@@ -148,6 +148,7 @@ export function MergePdfClient() {
         url: '/api/merge-pdf',
         formData,
         responseType: 'blob',
+        timeoutMs: 600_000, // 10 minutes — allows slow connections with large files
         onUploadProgress: (pct) => {
           const bytesUploaded = (pct / 100) * totalSize
           const fileNum = Math.min(
@@ -355,8 +356,18 @@ export function MergePdfClient() {
       )}
 
       {error && (
-        <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
-          {error}
+        <div className="bg-red-50 border-2 border-red-400 text-red-900 rounded-xl px-5 py-4 flex items-start gap-3">
+          <AlertTriangle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-base">
+              {error.includes('timed out') ? 'Request timed out — upload took too long' : 'Something went wrong'}
+            </p>
+            <p className="text-sm text-red-700 mt-1">
+              {error.includes('timed out')
+                ? 'Your connection may be slow or the files are too large. Try merging fewer files at a time, or use a faster connection.'
+                : error}
+            </p>
+          </div>
         </div>
       )}
 
