@@ -11,24 +11,24 @@ interface PdfPreviewModalProps {
 
 export function PdfPreviewModal({ file, filename, onClose }: PdfPreviewModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const renderTaskRef = useRef<{ cancel: () => void } | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfDocRef = useRef<any>(null)
+  const pdfDocRef    = useRef<any>(null)
   const objectUrlRef = useRef<string | null>(null)
+  const renderGenRef = useRef(0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderTaskRef = useRef<any>(null)
 
-  const [totalPages, setTotalPages] = useState(0)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [scale, setScale] = useState(1.2)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [totalPages,   setTotalPages]   = useState(0)
+  const [currentPage,  setCurrentPage]  = useState(1)
+  const [scale,        setScale]        = useState(1.2)
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState<string | null>(null)
 
-  // Load PDF once on mount
   useEffect(() => {
     let cancelled = false
 
     const load = async () => {
       try {
-        // Lazy-import pdfjs so it's never bundled server-side
         const pdfjsLib = await import('pdfjs-dist')
         pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
           'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -59,21 +59,33 @@ export function PdfPreviewModal({ file, filename, onClose }: PdfPreviewModalProp
     }
   }, [file])
 
-  // Render page whenever currentPage or scale changes
   const renderPage = useCallback(async () => {
     if (!pdfDocRef.current || !canvasRef.current) return
 
-    // Cancel any in-flight render
-    renderTaskRef.current?.cancel()
+    // Stamp this render — any older in-flight render will bail out
+    const gen = ++renderGenRef.current
+
+    // Cancel whatever was rendering before
+    if (renderTaskRef.current) {
+      try { renderTaskRef.current.cancel() } catch { /* ignore */ }
+      await renderTaskRef.current.promise.catch(() => {})
+      renderTaskRef.current = null
+    }
+
+    // Bail if a newer render has already superseded us
+    if (gen !== renderGenRef.current) return
 
     try {
-      const page = await pdfDocRef.current.getPage(currentPage)
+      const page     = await pdfDocRef.current.getPage(currentPage)
+      if (gen !== renderGenRef.current) return
+
       const viewport = page.getViewport({ scale })
-      const canvas = canvasRef.current
+      const canvas   = canvasRef.current
+      if (!canvas) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      canvas.width = viewport.width
+      canvas.width  = viewport.width
       canvas.height = viewport.height
 
       const task = page.render({ canvasContext: ctx, viewport })
@@ -82,8 +94,9 @@ export function PdfPreviewModal({ file, filename, onClose }: PdfPreviewModalProp
       await task.promise
       renderTaskRef.current = null
     } catch (err: unknown) {
-      if ((err as { name?: string }).name !== 'RenderingCancelledException') {
-        setError('Render error.')
+      const name = (err as { name?: string }).name
+      if (name !== 'RenderingCancelledException') {
+        if (gen === renderGenRef.current) setError('Render error.')
       }
     }
   }, [currentPage, scale])
@@ -92,16 +105,18 @@ export function PdfPreviewModal({ file, filename, onClose }: PdfPreviewModalProp
     if (!loading) renderPage()
   }, [loading, renderPage])
 
-  // Close on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
       if (e.key === 'ArrowRight') setCurrentPage((p) => Math.min(p + 1, totalPages))
-      if (e.key === 'ArrowLeft') setCurrentPage((p) => Math.max(p - 1, 1))
+      if (e.key === 'ArrowLeft')  setCurrentPage((p) => Math.max(p - 1, 1))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, totalPages])
+
+  const zoomOut = useCallback(() => setScale((s) => Math.max(0.5, parseFloat((s - 0.2).toFixed(1)))), [])
+  const zoomIn  = useCallback(() => setScale((s) => Math.min(3,   parseFloat((s + 0.2).toFixed(1)))), [])
 
   return (
     <div
@@ -114,10 +129,10 @@ export function PdfPreviewModal({ file, filename, onClose }: PdfPreviewModalProp
         <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
           <p className="text-sm font-semibold text-foreground truncate max-w-[60%]">{filename}</p>
           <div className="flex items-center gap-2">
-            {/* Zoom */}
             <button
-              onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
-              className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              onClick={zoomOut}
+              disabled={scale <= 0.5}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-30"
               title="Zoom out"
             >
               <ZoomOut className="w-4 h-4" />
@@ -126,8 +141,9 @@ export function PdfPreviewModal({ file, filename, onClose }: PdfPreviewModalProp
               {Math.round(scale * 100)}%
             </span>
             <button
-              onClick={() => setScale((s) => Math.min(3, s + 0.2))}
-              className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              onClick={zoomIn}
+              disabled={scale >= 3}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-30"
               title="Zoom in"
             >
               <ZoomIn className="w-4 h-4" />
@@ -159,8 +175,8 @@ export function PdfPreviewModal({ file, filename, onClose }: PdfPreviewModalProp
           {!loading && !error && (
             <canvas
               ref={canvasRef}
-              className="shadow-md rounded max-w-full"
-              style={{ display: 'block' }}
+              className="shadow-md rounded"
+              style={{ display: 'block', maxWidth: '100%' }}
             />
           )}
         </div>
