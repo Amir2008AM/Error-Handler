@@ -42,6 +42,8 @@ function isSameOrigin(request: NextRequest): boolean {
     if (originHost === host) return true
     if (forwardedHost && originHost === forwardedHost) return true
     if (
+      originHostname === 'replit.com' ||
+      originHostname.endsWith('.replit.com') ||
       originHostname.endsWith('.replit.dev') ||
       originHostname.endsWith('.repl.co') ||
       originHostname.endsWith('.replit.app')
