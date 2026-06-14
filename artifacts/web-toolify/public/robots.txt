@@ -1,6 +1,15 @@
 User-agent: *
 Allow: /
 
+# Admin and internal pages — not for indexing
+Disallow: /ops
+Disallow: /dev-ops
+Disallow: /internal/
+Disallow: /api/
+
+# Prevent duplicate-content from query strings
+Disallow: /*?*
+
 User-agent: Mediapartners-Google
 Allow: /
 

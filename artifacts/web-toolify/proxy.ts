@@ -72,6 +72,16 @@ function assignSessionCookie(request: NextRequest, response: NextResponse): void
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // ── www redirect: non-www → www (301) to prevent duplicate canonical issues ──
+  if (process.env.NODE_ENV === 'production') {
+    const host = request.headers.get('host') ?? ''
+    if (host === 'toolifypdf.online') {
+      const url = request.nextUrl.clone()
+      url.host = 'www.toolifypdf.online'
+      return NextResponse.redirect(url, { status: 301 })
+    }
+  }
+
   // ── Non-API routes: just assign session cookie and pass through ──────────────
   if (!pathname.startsWith('/api/')) {
     const response = NextResponse.next()
