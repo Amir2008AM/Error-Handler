@@ -12,7 +12,7 @@ import { rm } from 'node:fs/promises'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
-const MAX_BYTES = 50 * 1024 * 1024 // 50 MB
+const MAX_BYTES = 25 * 1024 * 1024 // 25 MB
 
 export async function POST(req: NextRequest) {
   const guard = getToolGuardResponse('pdf-to-word')
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     try {
       if (stored.size > MAX_BYTES) {
         return NextResponse.json(
-          { error: `File too large. Maximum ${MAX_BYTES / 1024 / 1024} MB. Your file is ${(stored.size / 1024 / 1024).toFixed(1)} MB.` },
+          { error: `File too large. Maximum 25 MB. Your file is ${(stored.size / 1024 / 1024).toFixed(1)} MB.` },
           { status: 413 }
         )
       }
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
     if (file.size > MAX_BYTES) {
       return NextResponse.json(
-        { error: `File too large. Maximum ${MAX_BYTES / 1024 / 1024} MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
+        { error: `File too large. Maximum 25 MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
         { status: 413 }
       )
     }

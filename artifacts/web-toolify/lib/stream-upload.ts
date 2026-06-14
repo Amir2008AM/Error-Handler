@@ -22,7 +22,7 @@ import { Readable } from 'node:stream'
 import type { NextRequest } from 'next/server'
 
 /** Max upload size accepted by the streaming parser (matches next.config). */
-const MAX_UPLOAD_BYTES = 100 * 1024 * 1024 // 100 MB
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024 // 50 MB
 
 export interface StreamedFile {
   /** Form field name (e.g. "file"). */
