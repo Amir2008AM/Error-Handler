@@ -16,7 +16,8 @@ export interface Tool {
 }
 
 export const tools: Tool[] = [
-  // PDF Tools
+  // ── PDF Tools ──────────────────────────────────────────────────────────────
+  // Pair: Merge ↔ Split
   {
     id: 'merge-pdf',
     name: 'Merge PDF',
@@ -45,6 +46,7 @@ export const tools: Tool[] = [
     tags: ['pdf', 'split', 'extract'],
     popular: true,
   },
+  // Compress
   {
     id: 'compress-pdf',
     name: 'Compress PDF',
@@ -59,6 +61,7 @@ export const tools: Tool[] = [
     tags: ['pdf', 'compress', 'reduce', 'size'],
     popular: true,
   },
+  // Rotate
   {
     id: 'rotate-pdf',
     name: 'Rotate PDF',
@@ -72,32 +75,7 @@ export const tools: Tool[] = [
     bgColor: 'bg-purple-50',
     tags: ['pdf', 'rotate', 'orientation'],
   },
-  {
-    id: 'watermark-pdf',
-    name: 'Watermark PDF',
-    description: 'Add text watermarks to your PDF documents.',
-    longDescription:
-      'Add custom text watermarks to all pages of your PDF. Control position, opacity, and font size for professional document protection.',
-    category: 'PDF Tools',
-    slug: 'watermark-pdf',
-    icon: 'Droplets',
-    color: 'text-sky-600',
-    bgColor: 'bg-sky-50',
-    tags: ['pdf', 'watermark', 'protect', 'stamp'],
-  },
-  {
-    id: 'page-numbers',
-    name: 'Add Page Numbers',
-    description: 'Add page numbers to your PDF documents.',
-    longDescription:
-      'Automatically add page numbers to all pages of your PDF. Choose position, format, and starting number for professional documents.',
-    category: 'PDF Tools',
-    slug: 'page-numbers',
-    icon: 'FileText',
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-50',
-    tags: ['pdf', 'page numbers', 'numbering'],
-  },
+  // Organize
   {
     id: 'organize-pdf',
     name: 'Organize PDF',
@@ -111,6 +89,35 @@ export const tools: Tool[] = [
     bgColor: 'bg-teal-50',
     tags: ['pdf', 'organize', 'reorder', 'delete pages'],
   },
+  // Add Page Numbers
+  {
+    id: 'page-numbers',
+    name: 'Add Page Numbers',
+    description: 'Add page numbers to your PDF documents.',
+    longDescription:
+      'Automatically add page numbers to all pages of your PDF. Choose position, format, and starting number for professional documents.',
+    category: 'PDF Tools',
+    slug: 'page-numbers',
+    icon: 'FileText',
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50',
+    tags: ['pdf', 'page numbers', 'numbering'],
+  },
+  // Watermark
+  {
+    id: 'watermark-pdf',
+    name: 'Watermark PDF',
+    description: 'Add text watermarks to your PDF documents.',
+    longDescription:
+      'Add custom text watermarks to all pages of your PDF. Control position, opacity, and font size for professional document protection.',
+    category: 'PDF Tools',
+    slug: 'watermark-pdf',
+    icon: 'Droplets',
+    color: 'text-sky-600',
+    bgColor: 'bg-sky-50',
+    tags: ['pdf', 'watermark', 'protect', 'stamp'],
+  },
+  // Repair
   {
     id: 'repair-pdf',
     name: 'Repair PDF',
@@ -124,8 +131,9 @@ export const tools: Tool[] = [
     bgColor: 'bg-amber-50',
     tags: ['pdf', 'repair', 'fix', 'recover'],
   },
-  
-  // Security Tools
+
+  // ── Security Tools ─────────────────────────────────────────────────────────
+  // Pair: Protect ↔ Unlock
   {
     id: 'protect-pdf',
     name: 'Protect PDF',
@@ -154,37 +162,8 @@ export const tools: Tool[] = [
     tags: ['pdf', 'unlock', 'remove password', 'decrypt'],
   },
 
-  
-  // Converters
-  {
-    id: 'image-to-pdf',
-    name: 'Image to PDF',
-    description: 'Convert images to a PDF file with custom ordering.',
-    longDescription:
-      'Upload multiple images and convert them into a single PDF document. Click to assign order numbers and arrange pages exactly how you want them.',
-    category: 'Converters',
-    slug: 'image-to-pdf',
-    icon: 'ImageIcon',
-    color: 'text-red-600',
-    bgColor: 'bg-red-50',
-    tags: ['pdf', 'image', 'convert', 'jpg to pdf', 'png to pdf'],
-    popular: true,
-  },
-  {
-    id: 'pdf-to-jpg',
-    name: 'PDF to JPG',
-    description: 'Convert PDF pages to JPG images.',
-    longDescription:
-      'Convert each page of your PDF document into high-quality JPG images. Choose output format (JPG, PNG, WebP), quality, and DPI settings.',
-    category: 'Converters',
-    slug: 'pdf-to-jpg',
-    icon: 'ImageIcon',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
-    tags: ['pdf', 'jpg', 'image', 'convert', 'extract images'],
-    popular: true,
-    isNew: true,
-  },
+  // ── Converters ─────────────────────────────────────────────────────────────
+  // Pair: PDF to Word ↔ Word to PDF
   {
     id: 'pdf-to-word',
     name: 'PDF to Word',
@@ -213,6 +192,21 @@ export const tools: Tool[] = [
     tags: ['word', 'pdf', 'convert', 'docx to pdf'],
     isNew: true,
   },
+  // Pair: PDF to Excel ↔ Excel to PDF
+  {
+    id: 'pdf-to-excel',
+    name: 'PDF to Excel',
+    description: 'Reconstruct tables from PDF files into professionally structured Excel spreadsheets.',
+    longDescription:
+      'Enterprise-grade PDF to Excel reconstruction. Automatically classifies your PDF (text, scanned, or hybrid), builds a global column schema across all pages for consistent layout, merges multi-page tables, removes repeated headers, and supports Arabic RTL documents. Powered by Camelot, pdfplumber, spatial clustering, and Tesseract OCR with intelligent fallback routing.',
+    category: 'Converters',
+    slug: 'pdf-to-excel',
+    icon: 'FileText',
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    tags: ['pdf', 'excel', 'xlsx', 'convert', 'table', 'extract', 'spreadsheet', 'ocr', 'scanned'],
+    isNew: true,
+  },
   {
     id: 'excel-to-pdf',
     name: 'Excel to PDF',
@@ -227,18 +221,19 @@ export const tools: Tool[] = [
     tags: ['excel', 'pdf', 'convert', 'xlsx to pdf', 'spreadsheet'],
     isNew: true,
   },
+  // Pair: PDF to PowerPoint ↔ PowerPoint to PDF
   {
-    id: 'html-to-pdf',
-    name: 'HTML to PDF',
-    description: 'Convert HTML files or web content to PDF.',
+    id: 'pdf-to-ppt',
+    name: 'PDF to PowerPoint',
+    description: 'Convert PDF documents to editable PowerPoint presentations.',
     longDescription:
-      'Convert HTML files to PDF documents. Upload an HTML file or paste HTML content to create professional PDF documents.',
+      'Transform your PDF documents into editable Microsoft PowerPoint (.pptx) presentations. Each PDF page becomes a slide, preserving layout and content using LibreOffice.',
     category: 'Converters',
-    slug: 'html-to-pdf',
-    icon: 'FileCode',
+    slug: 'pdf-to-ppt',
+    icon: 'Presentation',
     color: 'text-orange-600',
     bgColor: 'bg-orange-50',
-    tags: ['html', 'pdf', 'convert', 'web to pdf'],
+    tags: ['pdf', 'powerpoint', 'pptx', 'convert', 'presentation', 'slides'],
     isNew: true,
   },
   {
@@ -255,36 +250,53 @@ export const tools: Tool[] = [
     tags: ['powerpoint', 'ppt', 'pptx', 'pdf', 'convert', 'slides'],
     isNew: true,
   },
+  // Pair: PDF to JPG ↔ Image to PDF
   {
-    id: 'pdf-to-ppt',
-    name: 'PDF to PowerPoint',
-    description: 'Convert PDF documents to editable PowerPoint presentations.',
+    id: 'pdf-to-jpg',
+    name: 'PDF to JPG',
+    description: 'Convert PDF pages to JPG images.',
     longDescription:
-      'Transform your PDF documents into editable Microsoft PowerPoint (.pptx) presentations. Each PDF page becomes a slide, preserving layout and content using LibreOffice.',
+      'Convert each page of your PDF document into high-quality JPG images. Choose output format (JPG, PNG, WebP), quality, and DPI settings.',
     category: 'Converters',
-    slug: 'pdf-to-ppt',
-    icon: 'Presentation',
+    slug: 'pdf-to-jpg',
+    icon: 'ImageIcon',
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
+    tags: ['pdf', 'jpg', 'image', 'convert', 'extract images'],
+    popular: true,
+    isNew: true,
+  },
+  {
+    id: 'image-to-pdf',
+    name: 'Image to PDF',
+    description: 'Convert images to a PDF file with custom ordering.',
+    longDescription:
+      'Upload multiple images and convert them into a single PDF document. Click to assign order numbers and arrange pages exactly how you want them.',
+    category: 'Converters',
+    slug: 'image-to-pdf',
+    icon: 'ImageIcon',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50',
+    tags: ['pdf', 'image', 'convert', 'jpg to pdf', 'png to pdf'],
+    popular: true,
+  },
+  // HTML to PDF (no pair)
+  {
+    id: 'html-to-pdf',
+    name: 'HTML to PDF',
+    description: 'Convert HTML files or web content to PDF.',
+    longDescription:
+      'Convert HTML files to PDF documents. Upload an HTML file or paste HTML content to create professional PDF documents.',
+    category: 'Converters',
+    slug: 'html-to-pdf',
+    icon: 'FileCode',
     color: 'text-orange-600',
     bgColor: 'bg-orange-50',
-    tags: ['pdf', 'powerpoint', 'pptx', 'convert', 'presentation', 'slides'],
+    tags: ['html', 'pdf', 'convert', 'web to pdf'],
     isNew: true,
   },
-  {
-    id: 'pdf-to-excel',
-    name: 'PDF to Excel',
-    description: 'Reconstruct tables from PDF files into professionally structured Excel spreadsheets.',
-    longDescription:
-      'Enterprise-grade PDF to Excel reconstruction. Automatically classifies your PDF (text, scanned, or hybrid), builds a global column schema across all pages for consistent layout, merges multi-page tables, removes repeated headers, and supports Arabic RTL documents. Powered by Camelot, pdfplumber, spatial clustering, and Tesseract OCR with intelligent fallback routing.',
-    category: 'Converters',
-    slug: 'pdf-to-excel',
-    icon: 'FileText',
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-50',
-    tags: ['pdf', 'excel', 'xlsx', 'convert', 'table', 'extract', 'spreadsheet', 'ocr', 'scanned'],
-    isNew: true,
-  },
-  
-  // Image Tools
+
+  // ── Image Tools ────────────────────────────────────────────────────────────
   {
     id: 'compress-image',
     name: 'Compress Image',
@@ -313,19 +325,6 @@ export const tools: Tool[] = [
     tags: ['image', 'resize', 'dimensions', 'scale'],
   },
   {
-    id: 'convert-image',
-    name: 'Convert Image',
-    description: 'Convert images between JPG, PNG, WebP, and GIF.',
-    longDescription:
-      'Easily convert your images between different formats including JPG, PNG, WebP, AVIF, and GIF with a single click.',
-    category: 'Image Tools',
-    slug: 'convert-image',
-    icon: 'RefreshCw',
-    color: 'text-cyan-600',
-    bgColor: 'bg-cyan-50',
-    tags: ['image', 'convert', 'format', 'jpg', 'png', 'webp'],
-  },
-  {
     id: 'crop-image',
     name: 'Crop Image',
     description: 'Crop images to any size with precision controls.',
@@ -338,8 +337,21 @@ export const tools: Tool[] = [
     bgColor: 'bg-emerald-50',
     tags: ['image', 'crop', 'resize', 'trim'],
   },
-  
-  // Text Tools
+  {
+    id: 'convert-image',
+    name: 'Convert Image',
+    description: 'Convert images between JPG, PNG, WebP, and GIF.',
+    longDescription:
+      'Easily convert your images between different formats including JPG, PNG, WebP, AVIF, and GIF with a single click.',
+    category: 'Image Tools',
+    slug: 'convert-image',
+    icon: 'RefreshCw',
+    color: 'text-cyan-600',
+    bgColor: 'bg-cyan-50',
+    tags: ['image', 'convert', 'format', 'jpg', 'png', 'webp'],
+  },
+
+  // ── Text Tools ─────────────────────────────────────────────────────────────
   {
     id: 'word-counter',
     name: 'Word Counter',
@@ -366,8 +378,8 @@ export const tools: Tool[] = [
     bgColor: 'bg-teal-50',
     tags: ['text', 'case', 'uppercase', 'lowercase'],
   },
-  
-  // Calculators
+
+  // ── Calculators ────────────────────────────────────────────────────────────
   {
     id: 'percentage-calculator',
     name: 'Percentage Calculator',
