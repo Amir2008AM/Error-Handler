@@ -560,9 +560,8 @@ export class PDFProcessor extends BaseProcessor {
    * Convert PDF to Word (.docx).
    *
    * Engine order:
-   *   1. pdf2docx Python script  — best layout fidelity, tables, columns
-   *   2. LibreOffice headless    — good quality fallback
-   *   3. pdfjs + docx rebuild    — text-only last resort
+   *   1. pdf2docx (Python) — best layout fidelity, tables, columns
+   *   2. LibreOffice headless — good quality fallback
    */
   async toWord(options: PDFToWordOptions): Promise<ProcessingResult<Buffer>> {
     try {
@@ -582,7 +581,7 @@ export class PDFProcessor extends BaseProcessor {
             const srcPath = join(dir, 'input.pdf')
             const dstPath = join(dir, 'output.docx')
             await wf(srcPath, pdfBuffer)
-            const ok = await runPdf2Docx(srcPath, dstPath, 90_000)
+            const ok = await runPdf2Docx(srcPath, dstPath, 120_000)
             if (ok) {
               const docxBuf = await rf(dstPath)
               if (docxBuf.length > 100) return docxBuf
@@ -609,7 +608,7 @@ export class PDFProcessor extends BaseProcessor {
                 '--headless', '--norestore', '--nofirststartwizard',
                 '--convert-to', 'docx', '--outdir', dir, inFile,
               ], { stdio: 'ignore', env: { ...process.env, HOME: dir, TMPDIR: dir, SAL_USE_VCLPLUGIN: 'svp' } })
-              const t = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('soffice timed out')) }, 90_000)
+              const t = setTimeout(() => { proc.kill('SIGKILL'); reject(new Error('soffice timed out')) }, 120_000)
               proc.on('close', (code) => { clearTimeout(t); code === 0 ? resolve() : reject(new Error(`soffice exited ${code}`)) })
               proc.on('error', (err) => { clearTimeout(t); reject(err) })
             })
@@ -623,62 +622,7 @@ export class PDFProcessor extends BaseProcessor {
           console.warn('[pdf-processor] LibreOffice PDF→Word failed:', e instanceof Error ? e.message : String(e))
         }
 
-        // ── 3. pdfjs + docx rebuild (text-only fallback) ─────────────────
-        const pdfjs = await getPdfjs()
-        const pdfDoc = await pdfjs.getDocument({ data: new Uint8Array(options.file), verbosity: 0 }).promise
-        const pageCount = pdfDoc.numPages
-        const docChildren: (Paragraph | Table)[] = []
-
-        for (let pn = 1; pn <= pageCount; pn++) {
-          if (pn > 1) docChildren.push(new Paragraph({ text: '', spacing: { before: 400 } }))
-          const page = await pdfDoc.getPage(pn)
-          const content = await page.getTextContent()
-          const viewport = page.getViewport({ scale: 1 })
-
-          interface TItem { str: string; x: number; y: number; fs: number }
-          const items: TItem[] = (content.items as Array<{ str: string; transform: number[] }>)
-            .filter((it) => it.str.trim())
-            .map((it) => ({
-              str: it.str,
-              x: it.transform[4],
-              y: viewport.height - it.transform[5],
-              fs: Math.abs(it.transform[3]),
-            }))
-
-          const lines: TItem[][] = []
-          for (const it of items) {
-            const existing = lines.find((l) => Math.abs(l[0].y - it.y) <= 5)
-            if (existing) existing.push(it)
-            else lines.push([it])
-          }
-          lines.sort((a, b) => a[0].y - b[0].y)
-          for (const l of lines) l.sort((a, b) => a.x - b.x)
-
-          const sizes = items.map((i) => i.fs).sort((a, b) => a - b)
-          const median = sizes[Math.floor(sizes.length / 2)] ?? 12
-
-          for (const line of lines) {
-            const text = line.map((i) => i.str).join(' ').trim()
-            if (!text) continue
-            const avgFs = line.reduce((s, i) => s + i.fs, 0) / line.length
-            let heading: (typeof HeadingLevel)[keyof typeof HeadingLevel] | undefined
-            if (avgFs >= median * 1.8) heading = HeadingLevel.HEADING_1
-            else if (avgFs >= median * 1.4) heading = HeadingLevel.HEADING_2
-            else if (avgFs >= median * 1.2) heading = HeadingLevel.HEADING_3
-            docChildren.push(new Paragraph({
-              ...(heading ? { heading } : {}),
-              children: [new TextRun({ text, bold: !!heading, size: Math.round(Math.min(avgFs * 2, 72)) })],
-              spacing: { after: 100 },
-            }))
-          }
-        }
-
-        if (docChildren.length === 0) {
-          docChildren.push(new Paragraph({ children: [new TextRun({ text: 'No extractable text found in this PDF.' })] }))
-        }
-
-        const wordDoc = new Document({ sections: [{ properties: {}, children: docChildren }] })
-        return Buffer.from(await Packer.toBuffer(wordDoc))
+        throw new Error('Conversion failed. The file may be encrypted, corrupted, or contain only scanned images without OCR text.')
       })
 
       return this.success(result, {
