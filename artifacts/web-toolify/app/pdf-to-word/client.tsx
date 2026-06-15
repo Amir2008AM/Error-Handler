@@ -44,9 +44,8 @@ export function PdfToWordClient() {
     if (job.status === 'processing' || !file) return
     setDownloadUrl(null)
 
-    // ── Phase 1: Upload with real progress ────────────────────────────────
-    // Show bar immediately so it's never blank while the file travels to server.
-    job.setUploadProgress(0, 'Uploading file… 0%')
+    // ── Phase 1: Upload (bar: 0 → 50%) ───────────────────────────────────
+    job.setUploadProgress(0, 'Uploading…')
 
     const formData = new FormData()
     formData.append('type', 'pdf-to-word')
@@ -60,7 +59,8 @@ export function PdfToWordClient() {
         url: '/api/jobs/create',
         formData,
         onUploadProgress: (pct) => {
-          job.setUploadProgress(pct, `Uploading file… ${pct}%`)
+          // Map XHR upload 0-100% → bar 0-50%
+          job.setUploadProgress(Math.round(pct / 2), 'Uploading…')
         },
       })
 
@@ -77,22 +77,17 @@ export function PdfToWordClient() {
       if (data.status === 'completed') {
         const fileId =
           data.result?.fileId ?? data.result?.id ?? data.result?.file_id
-        job.setUploadProgress(100, 'Completed')
         if (fileId) setDownloadUrl(`/api/files/${fileId}`)
         return
       }
     } catch (err: any) {
-      const msg = err.message ?? 'Upload failed'
-      job['reset']?.()
-      // surface the error through the hook's own error channel
-      // by calling startPolling with a dummy id that will 404:
-      // Instead, replicate the error state via setUploadProgress then fail:
-      job.setUploadProgress(0, msg)
+      job.fail(err.message ?? 'Upload failed')
       return
     }
 
-    // ── Phase 2: Poll real job progress ───────────────────────────────────
-    job.startPolling(jobId)
+    // ── Phase 2: Poll processing (bar: 50 → 100%) ────────────────────────
+    // baseProgress=50 so polling maps server 0-100% into bar 50-100%
+    job.startPolling(jobId, 50)
   }, [file, job])
 
   const reset = useCallback(() => {
@@ -177,7 +172,7 @@ export function PdfToWordClient() {
               message={job.message}
               error={job.error}
               className="w-full"
-              showPercentage={true}
+              showPercentage={false}
               showMessage={true}
               autoHide={false}
             />

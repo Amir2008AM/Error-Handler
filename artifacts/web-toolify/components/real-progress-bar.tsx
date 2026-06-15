@@ -515,6 +515,8 @@ export function useJobProgress(pollInterval: number = 250) {
   const [jobId, setJobId] = useState<string | null>(null)
   const [result, setResult] = useState<any>(null)
   const pollingRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  // Stores the progress offset when polling begins (e.g. 50 after upload phase)
+  const baseProgressRef = useRef<number>(0)
 
   const pollStatus = useCallback(async (id: string) => {
     try {
@@ -534,23 +536,31 @@ export function useJobProgress(pollInterval: number = 250) {
       }
 
       const data = await response.json()
-      
-      setState({
-        status: data.status === 'pending' || data.status === 'processing' 
-          ? 'processing' 
-          : data.status === 'completed' 
-            ? 'completed' 
+
+      // Map raw server progress (0-100) into the band [base, 100]
+      // so polling always continues forward from wherever the upload left off.
+      const base = baseProgressRef.current
+      const serverPct: number = typeof data.progress === 'number' ? data.progress : 0
+      const mapped = data.status === 'completed'
+        ? 100
+        : Math.round(base + (serverPct / 100) * (100 - base))
+
+      setState(prev => ({
+        status: data.status === 'pending' || data.status === 'processing'
+          ? 'processing'
+          : data.status === 'completed'
+            ? 'completed'
             : 'error',
-        progress: data.progress,
-        message: data.status === 'pending' 
-          ? 'Waiting in queue...' 
-          : data.status === 'processing' 
-            ? 'Processing...' 
+        progress: Math.max(prev.progress, mapped),
+        message: data.status === 'pending'
+          ? 'Waiting in queue...'
+          : data.status === 'processing'
+            ? 'Processing...'
             : data.status === 'completed'
               ? 'Completed'
               : 'Failed',
         error: data.error,
-      })
+      }))
 
       if (data.status === 'completed') {
         setResult(data.result)
@@ -635,15 +645,22 @@ export function useJobProgress(pollInterval: number = 250) {
   /**
    * Start polling an already-created job (e.g. after an external XHR upload
    * that tracked its own upload-progress separately).
+   *
+   * Pass `baseProgress` (0-100) to indicate where the bar already is after
+   * the upload phase. Polling progress will be mapped into [baseProgress, 100]
+   * so the bar never goes backward.
    */
-  const startPolling = useCallback((id: string) => {
+  const startPolling = useCallback((id: string, baseProgress: number = 0) => {
     if (pollingRef.current) clearInterval(pollingRef.current)
+    baseProgressRef.current = Math.max(0, Math.min(100, baseProgress))
     setJobId(id)
-    setState({
+    setState(prev => ({
       status: 'processing',
-      progress: 0,
-      message: 'Waiting in queue...',
-    })
+      // Never go backward — keep current progress if it's already higher
+      progress: Math.max(prev.progress, baseProgressRef.current),
+      message: 'Processing...',
+      error: undefined,
+    }))
     pollingRef.current = setInterval(() => {
       pollStatus(id)
     }, pollInterval)
@@ -652,13 +669,26 @@ export function useJobProgress(pollInterval: number = 250) {
 
   /**
    * Update the progress bar directly — used to reflect upload progress
-   * before polling begins.
+   * before polling begins. `pct` should be in 0-100 display range.
    */
   const setUploadProgress = useCallback((pct: number, message?: string) => {
     setState({
       status: 'processing',
-      progress: pct,
-      message: message ?? `Uploading… ${pct}%`,
+      progress: Math.max(0, Math.min(100, pct)),
+      message: message ?? 'Uploading…',
+    })
+  }, [])
+
+  /**
+   * Mark the job as failed with an error message.
+   */
+  const fail = useCallback((error: string) => {
+    if (pollingRef.current) clearInterval(pollingRef.current)
+    setState({
+      status: 'error',
+      progress: 0,
+      message: error,
+      error,
     })
   }, [])
 
@@ -666,6 +696,7 @@ export function useJobProgress(pollInterval: number = 250) {
     if (pollingRef.current) {
       clearInterval(pollingRef.current)
     }
+    baseProgressRef.current = 0
     setJobId(null)
     setResult(null)
     setState({
@@ -691,6 +722,7 @@ export function useJobProgress(pollInterval: number = 250) {
     startJob,
     startPolling,
     setUploadProgress,
+    fail,
     reset,
   }
 }
