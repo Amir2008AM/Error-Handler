@@ -172,7 +172,7 @@ export function PdfToWordClient() {
               message={job.message}
               error={job.error}
               className="w-full"
-              showPercentage={false}
+              showPercentage={true}
               showMessage={true}
               autoHide={false}
             />
