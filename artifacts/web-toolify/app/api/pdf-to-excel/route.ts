@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'node:child_process'
 import { readFile, rm, mkdtemp, copyFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { streamUpload, validateStreamedFile } from '@/lib/stream-upload'
@@ -17,15 +18,21 @@ export const maxDuration = 180
 // Candidate paths tried in order — resolved at request time, not at module load,
 // so Turbopack NFT tracing never crawls the filesystem for this module.
 const SCRIPT_CANDIDATES: readonly string[] = [
-  '/app/pdf_table_extractor.py',
-  '/app/artifacts/web-toolify/pdf_table_extractor.py',
-  '/opt/render/project/src/pdf_table_extractor.py',
+  // Dev / Replit
+  'scripts/pdf-to-excel.py',
+  // Docker / Railway deployment layouts
+  '/app/scripts/pdf-to-excel.py',
+  '/app/artifacts/web-toolify/scripts/pdf-to-excel.py',
+  '/opt/render/project/src/artifacts/web-toolify/scripts/pdf-to-excel.py',
 ]
 
 function resolveScript(): string {
-  // Return the first candidate; actual existence is validated by the OS when
-  // python3 is spawned. Keeping this out of top-level scope prevents NFT issues.
-  return SCRIPT_CANDIDATES[0]
+  for (const candidate of SCRIPT_CANDIDATES) {
+    const full = candidate.startsWith('/') ? candidate : join(process.cwd(), candidate)
+    if (existsSync(full)) return full
+  }
+  // Fallback — let Python report the "file not found" error with a clear message
+  return join(process.cwd(), SCRIPT_CANDIDATES[0])
 }
 
 function runExtractor(pdfPath: string, xlsxPath: string): Promise<void> {
