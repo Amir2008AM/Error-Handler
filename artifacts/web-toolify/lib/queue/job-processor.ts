@@ -280,13 +280,14 @@ async function processSplitPdf(job: Job): Promise<SingleResult> {
   const manager = getJobManager()
   manager.updateJobProgress(job.id, 10)
 
-  const splitMode = job.options.splitMode as 'all' | 'ranges' | 'extract' | undefined
-  const ranges = job.options.ranges as string | undefined
+  const splitMode   = job.options.splitMode as 'all' | 'ranges' | 'extract' | undefined
+  const ranges      = job.options.ranges as string | undefined
+  const customPages = job.options.customPages as number[] | undefined
   const mode: 'all' | 'range' | 'custom' =
     splitMode === 'ranges' ? 'range' : splitMode === 'extract' ? 'custom' : 'all'
 
   const result = await withTimeout(
-    processor.split({ file: toArrayBuffer(job.files[0].buffer), mode, ranges }),
+    processor.split({ file: toArrayBuffer(job.files[0].buffer), mode, ranges, customPages }),
     TIMEOUTS.pdfHeavy,
     'pdf.split'
   )
