@@ -6,10 +6,10 @@ import { getToolBySlug } from '@/lib/tools'
 export const metadata: Metadata = {
   alternates: { canonical: 'https://www.toolifypdf.online/merge-pdf' },
   robots: { index: true, follow: true },
-  title: 'Merge PDF — Combine Multiple PDFs Online Free',
+  title: 'Merge PDF — Combine Multiple PDFs Online Free | Toolify',
   description:
-    'Merge multiple PDF files into one online for free. Upload your PDFs, arrange their order, and download a single combined PDF. No sign-up, instant results.',
-  keywords: ['merge pdf', 'combine pdf', 'join pdf files online', 'pdf merger free', 'merge pdf online'],
+    'Merge PDF files into one online for free. Upload your PDFs, arrange their order, and download a single combined PDF instantly. No sign-up required.',
+  keywords: ['merge pdf', 'merge pdf online', 'combine pdf', 'join pdf files online', 'pdf merger free', 'merge pdf files'],
 }
 
 export default function MergePdfPage() {
