@@ -6,9 +6,8 @@ import { PdfToJpgClient } from './client'
 export const metadata: Metadata = {
   alternates: { canonical: 'https://www.toolifypdf.online/pdf-to-jpg' },
   robots: { index: true, follow: true },
-  title: 'PDF to JPG — Convert PDF Pages to Images Free | Toolify',
-  description: 'Convert PDF pages to high-quality JPG images online for free. Fast PDF to JPG converter with customizable DPI and quality settings. No sign-up required.',
-  keywords: ['pdf to jpg', 'pdf to jpg converter', 'convert pdf to jpg online', 'pdf pages to images', 'pdf to jpeg free'],
+  title: 'PDF to JPG - Convert PDF Pages to Images | Toolify',
+  description: 'Convert PDF pages to high-quality JPG, PNG, or WebP images. Free online PDF to image converter with customizable DPI and quality settings.',
 }
 
 export default function Page() {

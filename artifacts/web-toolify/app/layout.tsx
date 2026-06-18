@@ -43,11 +43,6 @@ export const metadata: Metadata = {
     'free online tools',
     'ocr',
     'image to text',
-    'ilovepdf',
-    'i love pdf',
-    'jpg to pdf',
-    'pdf to jpg',
-    'jpg into pdf',
   ],
   metadataBase: new URL('https://www.toolifypdf.online'),
   openGraph: {
