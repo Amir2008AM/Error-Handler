@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.chromium
     pkgs.redis
     pkgs.tesseract5
     pkgs.wkhtmltopdf

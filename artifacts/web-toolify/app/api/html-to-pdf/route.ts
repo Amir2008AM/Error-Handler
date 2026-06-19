@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DocumentConverter } from '@/lib/processing/document-converter'
+import { htmlToPdfPuppeteer, urlToPdfPuppeteer } from '@/lib/processing/puppeteer-pdf'
 import { streamUpload, readFile } from '@/lib/stream-upload'
 import { safeFilename } from '@/lib/safe-filename'
 import { trackRouteRequest } from '@/lib/route-analytics'
@@ -7,9 +7,19 @@ import { getToolGuardResponse } from '@/lib/tool-guard'
 import { applyToolRateLimit } from '@/lib/middleware/rate-limit'
 import { acquireGuard } from '@/lib/concurrency-guard'
 import { recordToolEvent } from '@/lib/tool-registry'
+import { PDFDocument } from 'pdf-lib'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
+
+async function getPageCount(buffer: Buffer): Promise<number> {
+  try {
+    const doc = await PDFDocument.load(buffer, { ignoreEncryption: true })
+    return doc.getPageCount()
+  } catch {
+    return 1
+  }
+}
 
 export async function POST(request: NextRequest) {
   const guard = getToolGuardResponse('html-to-pdf')
@@ -27,9 +37,15 @@ export async function POST(request: NextRequest) {
   try {
     const pageSize    = (fields['pageSize']    as 'a4' | 'letter' | 'legal') ?? 'a4'
     const orientation = (fields['orientation'] as 'portrait' | 'landscape')  ?? 'portrait'
-    const fontSize    = parseInt(fields['fontSize'] ?? '12') || 12
+    const marginSize  = (fields['marginSize']  as 'none' | 'small' | 'big')  ?? 'small'
+    const screenWidth = parseInt(fields['screenWidth'] ?? '1280') || 1280
+    const oneLongPage = fields['oneLongPage'] === 'true'
+    const blockAds    = fields['blockAds']    === 'true'
+    const removePopups = fields['removePopups'] === 'true'
     const htmlContent = fields['html'] ?? null
     const urlInput    = fields['url']  ?? null
+
+    const opts = { pageSize, orientation, marginSize, screenWidth, oneLongPage, blockAds, removePopups }
 
     const file = files.find((f) => f.fieldname === 'file')
 
@@ -41,31 +57,30 @@ export async function POST(request: NextRequest) {
       } catch {
         return NextResponse.json({ error: 'Invalid URL provided' }, { status: 400 })
       }
-
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
         return NextResponse.json({ error: 'Only http and https URLs are supported' }, { status: 400 })
       }
 
       const release = await acquireGuard('libreoffice')
-      let result: Awaited<ReturnType<DocumentConverter['htmlToPdfFromUrl']>>
+      let pdfBuffer: Buffer
       try {
-        const converter = new DocumentConverter()
-        result = await converter.htmlToPdfFromUrl(urlInput, { pageSize, orientation })
+        pdfBuffer = await urlToPdfPuppeteer(urlInput, opts)
       } finally {
         release()
       }
 
       const durationMs = Date.now() - start
       const baseName = safeFilename(parsedUrl.hostname)
+      const pageCount = await getPageCount(pdfBuffer)
       trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: 0, format: 'url', success: true, durationMs })
       recordToolEvent('html-to-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: 0, engine: 'wkhtmltopdf' })
 
-      return new NextResponse(result.buffer, {
+      return new NextResponse(pdfBuffer, {
         headers: {
-          'Content-Type': 'application/pdf',
+          'Content-Type':        'application/pdf',
           'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
-          'X-Page-Count': result.pageCount.toString(),
-          'Cache-Control': 'no-store',
+          'X-Page-Count':        pageCount.toString(),
+          'Cache-Control':       'no-store',
         },
       })
     }
@@ -82,7 +97,6 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-
       const buffer = await readFile(file.path)
       html     = new TextDecoder('utf-8').decode(buffer)
       baseName = safeFilename(file.filename.replace(/\.(html?|htm)$/i, ''))
@@ -93,24 +107,24 @@ export async function POST(request: NextRequest) {
     }
 
     const release = await acquireGuard('libreoffice')
-    let result: Awaited<ReturnType<DocumentConverter['htmlToPdf']>>
+    let pdfBuffer: Buffer
     try {
-      const converter = new DocumentConverter()
-      result = await converter.htmlToPdf(html, { pageSize, orientation, fontSize })
+      pdfBuffer = await htmlToPdfPuppeteer(html, opts)
     } finally {
       release()
     }
 
     const durationMs = Date.now() - start
+    const pageCount = await getPageCount(pdfBuffer)
     trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: file?.size ?? html.length, format: 'html', success: true, durationMs })
-    recordToolEvent('html-to-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: file?.size ?? html.length, engine: 'libreoffice' })
+    recordToolEvent('html-to-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: file?.size ?? html.length, engine: 'wkhtmltopdf' })
 
-    return new NextResponse(result.buffer, {
+    return new NextResponse(pdfBuffer, {
       headers: {
-        'Content-Type': 'application/pdf',
+        'Content-Type':        'application/pdf',
         'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
-        'X-Page-Count': result.pageCount.toString(),
-        'Cache-Control': 'no-store',
+        'X-Page-Count':        pageCount.toString(),
+        'Cache-Control':       'no-store',
       },
     })
   } catch (error) {
@@ -119,7 +133,7 @@ export async function POST(request: NextRequest) {
     const msg = error instanceof Error ? error.message : 'Failed to convert HTML to PDF'
     console.error('[html-to-pdf]', error)
     trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: files[0]?.size, format: 'html', success: false, durationMs, errorMsg: msg })
-    recordToolEvent('html-to-pdf', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'libreoffice', error: msg })
+    recordToolEvent('html-to-pdf', { ts: Date.now(), success: false, durationMs, fileSizeB: files[0]?.size, engine: 'wkhtmltopdf', error: msg })
     return NextResponse.json({ error: msg }, { status })
   } finally {
     await cleanup()
