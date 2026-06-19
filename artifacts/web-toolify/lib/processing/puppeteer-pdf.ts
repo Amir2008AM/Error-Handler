@@ -21,11 +21,13 @@ const LAUNCH_ARGS = [
   '--disable-dev-shm-usage',
   '--disable-gpu',
   '--no-first-run',
-  '--no-zygote',
   '--disable-extensions',
   '--disable-background-timer-throttling',
   '--disable-backgrounding-occluded-windows',
   '--disable-renderer-backgrounding',
+  '--disable-dbus',
+  '--disable-software-rasterizer',
+  '--font-render-hinting=none',
 ]
 
 export interface PuppeteerPdfOptions {
@@ -109,7 +111,7 @@ export async function htmlToPdfPuppeteer(
     const page = await browser.newPage()
     const width = options.screenWidth ?? 1280
     await page.setViewport({ width, height: 900 })
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30_000 })
+    await page.setContent(html, { waitUntil: 'load', timeout: 30_000 })
 
     if (options.blockAds)    await applyAdBlock(page)
     if (options.removePopups) await applyPopupRemoval(page)
