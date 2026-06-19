@@ -20,6 +20,12 @@ export default function ThirdPartyScripts() {
           gtag('config', 'G-SVNB9EP5YP');
         `}
       </Script>
+      <Script
+        src="https://analytics.ahrefs.com/analytics.js"
+        data-key="QJVgLKTTo6yseBMo0aT08w"
+        strategy="afterInteractive"
+        async
+      />
     </>
   )
 }
