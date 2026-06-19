@@ -95,6 +95,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
+      <head>
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://analytics.ahrefs.com/analytics.js" data-key="QJVgLKTTo6yseBMo0aT08w" async></script>
+      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <script
           type="application/ld+json"
