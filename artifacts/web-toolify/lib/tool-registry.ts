@@ -27,6 +27,7 @@ export type EngineLabel =
   | 'hybrid'
   | 'pdf2docx'
   | 'mammoth+wkhtmltopdf'
+  | 'wkhtmltopdf'
 
 export type WorkerGroup = 'pdf-fast' | 'pdf-heavy' | 'image' | 'document' | 'direct'
 

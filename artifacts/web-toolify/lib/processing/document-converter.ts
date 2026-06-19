@@ -836,6 +836,66 @@ export class DocumentConverter {
     }
   }
 
+  /**
+   * Convert a live website URL to PDF.
+   * wkhtmltopdf fetches and fully renders the URL (CSS, images, JS) before
+   * converting — behaves like a headless browser screenshot.
+   */
+  async htmlToPdfFromUrl(
+    url: string,
+    options: ConversionOptions = {}
+  ): Promise<ConversionResult> {
+    if (!await binaryExists('wkhtmltopdf')) {
+      throw new Error('wkhtmltopdf is not available — cannot convert URL to PDF')
+    }
+
+    const pageSize      = options.pageSize    ?? 'a4'
+    const orientation   = options.orientation ?? 'portrait'
+    const wkPageSize    = pageSize === 'a4' ? 'A4' : pageSize.charAt(0).toUpperCase() + pageSize.slice(1)
+    const wkOrientation = orientation.charAt(0).toUpperCase() + orientation.slice(1)
+
+    return withTempDir('wk-url-', async (dir) => {
+      const outFile = join(dir, 'output.pdf')
+
+      const result = await runCli(
+        'wkhtmltopdf',
+        [
+          '--quiet',
+          '--page-size',    wkPageSize,
+          '--orientation',  wkOrientation,
+          '--margin-top',    '15mm',
+          '--margin-right',  '15mm',
+          '--margin-bottom', '15mm',
+          '--margin-left',   '15mm',
+          '--no-stop-slow-scripts',
+          '--javascript-delay',          '2000',
+          '--load-error-handling',       'ignore',
+          '--load-media-error-handling', 'ignore',
+          url,
+          outFile,
+        ],
+        { timeoutMs: 90_000 }
+      )
+
+      const pdfBuffer = await fsReadFile(outFile).catch(() => Buffer.alloc(0))
+
+      if (!isPdf(pdfBuffer)) {
+        throw new Error(
+          `wkhtmltopdf failed to capture URL (exit ${result.code}): `
+          + (result.stderr || result.stdout).trim().slice(0, 300)
+        )
+      }
+
+      let pageCount = 1
+      try {
+        const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+        pageCount = pdfDoc.getPageCount()
+      } catch { /* best-effort */ }
+
+      return { buffer: pdfBuffer, pageCount, originalFormat: 'url', engine: 'wkhtmltopdf' }
+    })
+  }
+
   // ── PDF → Word ────────────────────────────────────────────────────────
 
   /**

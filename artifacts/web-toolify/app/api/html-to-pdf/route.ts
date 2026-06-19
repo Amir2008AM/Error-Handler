@@ -29,11 +29,50 @@ export async function POST(request: NextRequest) {
     const orientation = (fields['orientation'] as 'portrait' | 'landscape')  ?? 'portrait'
     const fontSize    = parseInt(fields['fontSize'] ?? '12') || 12
     const htmlContent = fields['html'] ?? null
-
-    let html: string
-    let baseName = 'document'
+    const urlInput    = fields['url']  ?? null
 
     const file = files.find((f) => f.fieldname === 'file')
+
+    // ── URL mode ─────────────────────────────────────────────────────────
+    if (urlInput) {
+      let parsedUrl: URL
+      try {
+        parsedUrl = new URL(urlInput)
+      } catch {
+        return NextResponse.json({ error: 'Invalid URL provided' }, { status: 400 })
+      }
+
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return NextResponse.json({ error: 'Only http and https URLs are supported' }, { status: 400 })
+      }
+
+      const release = await acquireGuard('libreoffice')
+      let result: Awaited<ReturnType<DocumentConverter['htmlToPdfFromUrl']>>
+      try {
+        const converter = new DocumentConverter()
+        result = await converter.htmlToPdfFromUrl(urlInput, { pageSize, orientation })
+      } finally {
+        release()
+      }
+
+      const durationMs = Date.now() - start
+      const baseName = safeFilename(parsedUrl.hostname)
+      trackRouteRequest(request, { tool: 'html-to-pdf', fileSizeB: 0, format: 'url', success: true, durationMs })
+      recordToolEvent('html-to-pdf', { ts: Date.now(), success: true, durationMs, fileSizeB: 0, engine: 'wkhtmltopdf' })
+
+      return new NextResponse(result.buffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${baseName}.pdf"`,
+          'X-Page-Count': result.pageCount.toString(),
+          'Cache-Control': 'no-store',
+        },
+      })
+    }
+
+    // ── HTML content / file mode ──────────────────────────────────────────
+    let html: string
+    let baseName = 'document'
 
     if (file) {
       const fileName = file.filename.toLowerCase()
@@ -50,7 +89,7 @@ export async function POST(request: NextRequest) {
     } else if (htmlContent) {
       html = htmlContent
     } else {
-      return NextResponse.json({ error: 'No HTML file or content provided' }, { status: 400 })
+      return NextResponse.json({ error: 'No HTML file, content, or URL provided' }, { status: 400 })
     }
 
     const release = await acquireGuard('libreoffice')
