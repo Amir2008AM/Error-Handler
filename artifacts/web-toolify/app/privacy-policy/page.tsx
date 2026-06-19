@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Toolify',
-  description: 'Privacy Policy for Toolify — learn how we collect, use, and protect your information.',
+  title: { absolute: 'Privacy Policy | Toolify' },
+  description: 'Privacy Policy for Toolify — learn how we collect, use, and protect your personal information when using our free online tools.',
   alternates: {
     canonical: 'https://www.toolifypdf.online/privacy-policy',
   },
@@ -155,7 +155,6 @@ function PolicySection({
     </section>
   )
 }
-
 export default function PrivacyPolicyPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">

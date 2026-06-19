@@ -6,9 +6,8 @@ import { PdfToPptClient } from './client'
 export const metadata: Metadata = {
   alternates: { canonical: 'https://www.toolifypdf.online/pdf-to-ppt' },
   robots: { index: true, follow: true },
-  title: 'PDF to PowerPoint — Convert PDF to PPTX Online Free',
-  description:
-    'Convert PDF documents to editable PowerPoint presentations (.pptx) online for free. Preserves layout and formatting. No registration, instant download.',
+  title: { absolute: 'PDF to PowerPoint — Convert PDF to PPTX | Toolify' },
+  description: 'Convert PDF documents to editable PowerPoint presentations (.pptx) online for free. Preserves layout and formatting. No registration needed.',
   keywords: [
     'pdf to powerpoint',
     'pdf to pptx',
@@ -16,8 +15,20 @@ export const metadata: Metadata = {
     'pdf to presentation',
     'pdf converter free',
   ],
+  openGraph: {
+    title: 'PDF to PowerPoint — Convert PDF to PPTX | Toolify',
+    description: 'Convert PDF documents to editable PowerPoint presentations (.pptx) online for free. Preserves layout and formatting. No registration needed.',
+    url: 'https://www.toolifypdf.online/pdf-to-ppt',
+    type: 'website',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'PDF to PowerPoint — Convert PDF to PPTX | Toolify' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'PDF to PowerPoint — Convert PDF to PPTX | Toolify',
+    description: 'Convert PDF documents to editable PowerPoint presentations (.pptx) online for free. Preserves layout and formatting. No registration needed.',
+    images: ['https://www.toolifypdf.online/og-image.jpg'],
+  },
 }
-
 export default function Page() {
   const tool = getToolBySlug('pdf-to-ppt')!
   return (

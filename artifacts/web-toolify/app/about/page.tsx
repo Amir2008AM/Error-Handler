@@ -2,13 +2,25 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'About Us | ToolifyPDF',
-  description:
-    'Learn about ToolifyPDF — a free online platform for PDF and image tools. No account required.',
+  title: { absolute: 'About Toolify — Free Online PDF & Image Tools' },
+  description: 'Learn about Toolify — a free, fast platform for PDF processing, image conversion, and document tools. No account required, instant results.',
   alternates: {
     canonical: 'https://www.toolifypdf.online/about',
   },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: 'About Toolify — Free Online PDF & Image Tools',
+    description: 'Learn about Toolify — a free, fast platform for PDF processing, image conversion, and document tools. No account required, instant results.',
+    url: 'https://www.toolifypdf.online/about',
+    type: 'website',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'About Toolify — Free Online PDF & Image Tools' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About Toolify — Free Online PDF & Image Tools',
+    description: 'Learn about Toolify — a free, fast platform for PDF processing, image conversion, and document tools. No account required, instant results.',
+    images: ['https://www.toolifypdf.online/og-image.jpg'],
+  },
 }
 
 const features = [

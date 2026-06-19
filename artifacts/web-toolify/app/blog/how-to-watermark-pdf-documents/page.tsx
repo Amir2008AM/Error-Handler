@@ -4,7 +4,7 @@ import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 
 export const metadata: Metadata = {
-  title: 'How to Add a Watermark to a PDF Document | ToolifyPDF Blog',
+  title: { absolute: 'How to Add a Watermark to a PDF Document | ToolifyPDF Blog' },
   description:
     'A complete guide to adding watermarks to PDF files — covering watermark types, positioning, opacity, use cases, and step-by-step instructions using a free online tool.',
   alternates: { canonical: 'https://www.toolifypdf.online/blog/how-to-watermark-pdf-documents' },
@@ -14,19 +14,21 @@ export const metadata: Metadata = {
     type: 'article',
     publishedTime: '2026-06-10T00:00:00.000Z',
     url: 'https://www.toolifypdf.online/blog/how-to-watermark-pdf-documents',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: 'How to Add a Watermark to a PDF Document', description: 'Add watermarks to PDF files online for free. Practical guide with step-by-step instructions.' },
+  twitter: { card: 'summary_large_image', title: 'How to Add a Watermark to a PDF Document', description: 'Add watermarks to PDF files online for free. Practical guide with step-by-step instructions.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Add a Watermark to a PDF Document',
+  image: 'https://www.toolifypdf.online/og-image.jpg',
   description: 'A complete guide to adding watermarks to PDF files — covering watermark types, positioning, opacity, use cases, and step-by-step instructions.',
   datePublished: '2026-06-10T00:00:00.000Z',
   dateModified: '2026-06-10T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-watermark-pdf-documents' },
   keywords: 'add watermark to pdf, pdf watermark online, watermark pdf free, text watermark pdf, confidential watermark pdf',
 }

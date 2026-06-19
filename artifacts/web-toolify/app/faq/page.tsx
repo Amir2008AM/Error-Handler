@@ -3,9 +3,8 @@ import Link from 'next/link'
 import { ChevronRight, ChevronDown, ArrowRight } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'FAQ — Frequently Asked Questions | Toolify',
-  description:
-    'Find precise answers about every tool on Toolify — file limits, compression levels, encryption, conversion accuracy, supported formats, and privacy. No fluff.',
+  title: { absolute: 'FAQ — Frequently Asked Questions | Toolify' },
+  description: 'Precise answers about every Toolify tool — file limits, supported formats, security practices, and accuracy. Get help fast.',
   alternates: { canonical: 'https://www.toolifypdf.online/faq' },
   keywords: [
     'toolify faq', 'pdf tools faq', 'compress pdf questions', 'merge pdf help',
@@ -13,9 +12,10 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: 'FAQ — Frequently Asked Questions | Toolify',
-    description: 'Precise answers about every Toolify tool — limits, formats, security, and accuracy.',
+    description: 'Precise answers about every Toolify tool — file limits, supported formats, security practices, and accuracy. Get help fast.',
     url: 'https://www.toolifypdf.online/faq',
     type: 'website',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'FAQ — Frequently Asked Questions | Toolify' }],
   },
   robots: { index: true, follow: true },
 }

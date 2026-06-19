@@ -4,7 +4,7 @@ import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 
 export const metadata: Metadata = {
-  title: 'How to Convert Excel to PDF Online for Free | ToolifyPDF Blog',
+  title: { absolute: 'How to Convert Excel to PDF Online for Free | ToolifyPDF Blog' },
   description:
     'Learn how to convert Excel spreadsheets to PDF files online for free. A practical guide covering formatting tips, common problems, and when PDF is better than XLS for sharing data.',
   alternates: { canonical: 'https://www.toolifypdf.online/blog/how-to-convert-excel-to-pdf' },
@@ -14,19 +14,21 @@ export const metadata: Metadata = {
     type: 'article',
     publishedTime: '2026-06-11T00:00:00.000Z',
     url: 'https://www.toolifypdf.online/blog/how-to-convert-excel-to-pdf',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: 'How to Convert Excel to PDF Online for Free', description: 'Convert Excel files to PDF online. Practical guide covering formatting and common issues.' },
+  twitter: { card: 'summary_large_image', title: 'How to Convert Excel to PDF Online for Free', description: 'Convert Excel files to PDF online. Practical guide covering formatting and common issues.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Convert Excel to PDF Online for Free',
+  image: 'https://www.toolifypdf.online/og-image.jpg',
   description: 'Learn how to convert Excel spreadsheets to PDF files online for free, with tips on formatting and common issues.',
   datePublished: '2026-06-11T00:00:00.000Z',
   dateModified: '2026-06-11T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-excel-to-pdf' },
   keywords: 'convert excel to pdf, excel to pdf online free, xlsx to pdf, spreadsheet to pdf, export excel as pdf',
 }

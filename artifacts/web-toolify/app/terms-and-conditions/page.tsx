@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Terms of Use | Toolify',
-  description: 'Terms of Use for Toolify — the rules and guidelines for using our free online tools.',
+  title: { absolute: 'Terms of Use | Toolify' },
+  description: 'Terms of Use for Toolify — the rules and guidelines for using our free online PDF, image, and document processing tools.',
   alternates: {
     canonical: 'https://www.toolifypdf.online/terms-and-conditions',
   },
@@ -119,7 +119,6 @@ function PolicySection({
     </section>
   )
 }
-
 export default function TermsAndConditionsPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">

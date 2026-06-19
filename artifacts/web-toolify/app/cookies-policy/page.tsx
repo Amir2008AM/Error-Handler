@@ -2,14 +2,26 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Cookies Policy | Toolify',
-  description: 'Cookies Policy for Toolify — learn how we use cookies and similar technologies.',
+  title: { absolute: 'Cookies Policy | Toolify' },
+  description: 'Cookies Policy for Toolify — learn how we use cookies and similar technologies to improve your experience on our platform.',
   alternates: {
     canonical: 'https://www.toolifypdf.online/cookies-policy',
   },
   robots: { index: true, follow: true },
+  openGraph: {
+    title: 'Cookies Policy | Toolify',
+    description: 'Cookies Policy for Toolify — learn how we use cookies and similar technologies to improve your experience on our platform.',
+    url: 'https://www.toolifypdf.online/cookies-policy',
+    type: 'website',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Cookies Policy | Toolify' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Cookies Policy | Toolify',
+    description: 'Cookies Policy for Toolify — learn how we use cookies and similar technologies to improve your experience on our platform.',
+    images: ['https://www.toolifypdf.online/og-image.jpg'],
+  },
 }
-
 export default function CookiesPolicyPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">

@@ -46,10 +46,9 @@ export const metadata: Metadata = {
   ],
   metadataBase: new URL('https://www.toolifypdf.online'),
   openGraph: {
-    title: 'Toolify — All Tools in One Place',
-    description: 'Free online tools for PDF, images, text, and more. No registration needed.',
+    title: 'Toolify — Free Online PDF, Image & Document Tools',
+    description: 'Free, fast online tools for PDF processing, image conversion, and document editing. No sign-up required.',
     type: 'website',
-    url: 'https://www.toolifypdf.online',
     images: [
       {
         url: 'https://www.toolifypdf.online/og-image.jpg',
@@ -111,10 +110,7 @@ export default function RootLayout({
               description: 'Free online tools for PDF, images, text, and conversions. No sign-up required.',
               potentialAction: {
                 '@type': 'SearchAction',
-                target: {
-                  '@type': 'EntryPoint',
-                  urlTemplate: 'https://www.toolifypdf.online/?q={search_term_string}',
-                },
+                target: 'https://www.toolifypdf.online/?q={search_term_string}',
                 'query-input': 'required name=search_term_string',
               },
             }),

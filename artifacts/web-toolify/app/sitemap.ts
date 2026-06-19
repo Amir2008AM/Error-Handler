@@ -36,6 +36,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }))
 
+  const utilityRoutes: MetadataRoute.Sitemap = [
+    { url: `${BASE_URL}/age-calculator`,        lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.6 },
+    { url: `${BASE_URL}/percentage-calculator`, lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.6 },
+    { url: `${BASE_URL}/text-case`,             lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.6 },
+    { url: `${BASE_URL}/word-counter`,          lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.6 },
+  ]
+
   const legalRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/privacy-policy`,       lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE_URL}/terms-and-conditions`, lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.3 },
@@ -75,6 +82,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     ...toolRoutes,
+    ...utilityRoutes,
     ...blogRoutes,
     ...legalRoutes,
   ]

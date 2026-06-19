@@ -4,7 +4,7 @@ import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 
 export const metadata: Metadata = {
-  title: 'How to Add Page Numbers to a PDF Online for Free | ToolifyPDF Blog',
+  title: { absolute: 'How to Add Page Numbers to a PDF Online for Free | ToolifyPDF Blog' },
   description:
     'Learn how to add page numbers to a PDF document online for free. Covers positioning, numbering formats, use cases, and step-by-step instructions — no software needed.',
   alternates: { canonical: 'https://www.toolifypdf.online/blog/how-to-add-page-numbers-to-pdf' },
@@ -14,19 +14,21 @@ export const metadata: Metadata = {
     type: 'article',
     publishedTime: '2026-06-13T00:00:00.000Z',
     url: 'https://www.toolifypdf.online/blog/how-to-add-page-numbers-to-pdf',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: 'How to Add Page Numbers to a PDF Online for Free', description: 'Add page numbers to any PDF online for free — no software needed.' },
+  twitter: { card: 'summary_large_image', title: 'How to Add Page Numbers to a PDF Online for Free', description: 'Add page numbers to any PDF online for free — no software needed.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Add Page Numbers to a PDF Online for Free',
+  image: 'https://www.toolifypdf.online/og-image.jpg',
   description: 'Learn how to add page numbers to a PDF document online for free — covering positioning, numbering formats, and use cases.',
   datePublished: '2026-06-13T00:00:00.000Z',
   dateModified: '2026-06-13T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-add-page-numbers-to-pdf' },
   keywords: 'add page numbers to pdf, pdf page numbering online, number pdf pages free, pdf footer page number, add numbers to pdf',
 }

@@ -33,15 +33,28 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     ? CATEGORY_DESCRIPTIONS[category]
     : 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.'
 
+  const url = category
+    ? `https://www.toolifypdf.online/?category=${encodeURIComponent(category)}`
+    : 'https://www.toolifypdf.online'
+
   return {
-    title,
+    title: { absolute: title },
     description,
-    alternates: {
-      canonical: category
-        ? `https://www.toolifypdf.online/?category=${encodeURIComponent(category)}`
-        : 'https://www.toolifypdf.online',
-    },
+    alternates: { canonical: url },
     robots: { index: true, follow: true },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: 'website',
+      images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['https://www.toolifypdf.online/og-image.jpg'],
+    },
   }
 }
 

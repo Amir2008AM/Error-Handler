@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     type: 'article',
     publishedTime: '2026-06-02T00:00:00.000Z',
     url: 'https://www.toolifypdf.online/blog/how-to-compress-pdf-online',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -30,12 +31,13 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Compress PDF Online for Free',
+  image: 'https://www.toolifypdf.online/og-image.jpg',
   description:
     'Learn how to compress PDF files online for free without losing quality. Follow this step-by-step guide to reduce PDF file size quickly, securely, and easily.',
   datePublished: '2026-06-02T00:00:00.000Z',
   dateModified: '2026-06-02T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online' },
+  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
+  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-compress-pdf-online' },
   keywords: 'compress pdf, reduce pdf size, pdf compressor online, compress pdf free, pdf file size reducer',
 }

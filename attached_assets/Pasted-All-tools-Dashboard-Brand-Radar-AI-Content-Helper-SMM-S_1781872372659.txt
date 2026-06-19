@@ -1,0 +1,498 @@
+All tools
+Dashboard
+Brand Radar
+AI Content Helper
+SMM
+Site Explorer
+Keywords Explorer
+Content Explorer
+Site Audit
+
+More
+
+Upgrade
+
+Amir Mohamed's workspace
+All projects
+/
+Toolifypdf
+/
+Site Audit
+
+Today
+
+
+Segment
+
+Looker Studio
+
+New crawl
+
+Brand Radar
+Site Explorer
+Web Analytics
+Bot Analytics
+Site Audit
+Rank Tracker
+GSC Insights
+Overview
+All Issues
+4
+Alerts 
+New
+Bulk export
+Project history
+Crawl log
+Tools
+Page explorer
+Link explorer
+Internal link opportunities
+Structure explorer
+Patches 
+Reports
+Internal pages
+Indexability
+Links
+Redirects
+Content
+Social tags
+Duplicates
+Localization
+Performance
+Images
+JavaScript
+CSS
+External pages
+
+All issues
+
+Print to PDF
+
+Actual
+16
+
+New
+0
+
+All tracked
+173
+
+Turned off
+0
+
+Importance
+
+AI · API
+
+Export all issues
+
+Fix with Agent A
+Issue
+Crawled
+Change
+Added
+New
+Removed
+Missing
+Internal pages
+404 page 
+1	
+—
+—
+—
+—
+—
+
+
+Issue details
+404 – Not Found is one of the most common 4xx errors and indicates that the requested URL does not exist.
+
+Links pointing to the 404 URLs are widely known as "broken links".
+
+404 URLs on your website damage the user experience, as people cannot access the page or file via a link they click. Besides, internal links to 404 URLs create unnecessary "dead ends" for the search engine crawlers and can waste your crawl budget.
+
+How to fix
+Review the list of 404 URLs on your website. Click on the number of inlinks to a given 404 URL to access the list of pages that link to it.
+
+You should review the internal outgoing links to all the 404 pages reported and either remove these links or replace them with relevant links to live pages.
+
+Alternatively, you can set the appropriate 301 redirects. It is especially important for the 404 pages with a decent number of external backlinks.
+
+Learn more
+
+
+View affected URLs
+
+Close
+4XX page 
+1	
+—
+—
+—
+—
+—
+
+
+Issue details
+4xx HTTP status codes indicate that the requested page or resource cannot be accessed. 401 - Unauthorized, 403 - Forbidden, 408 - Request Timeout, and 404 - Not Found are the most common "Client Errors".
+
+4xx URLs damage the user experience on your website as people cannot access the page or file via a link they click. Besides, internal links to 4xx URLs create unnecessary "dead ends" for the search engine crawlers and can waste your crawl budget.
+
+Pages of your website that changed their response code to 4xx will be removed from Google's index.
+
+How to fix
+Review the list of 4xx URLs. Click on the number of inlinks to a given 4xx URL to access the list of pages that link to it.
+
+You should review the internal outgoing links to all the 4xx pages reported and either remove these links or replace them with relevant links to live pages.
+
+Alternatively, you can set the appropriate 301 redirects. It is especially important when for moved or deleted pages on your website.
+
+This will provide smooth crawlability for your website and guarantee good user experience.
+
+The HTTP 429 (Too Many Requests) response code may indicate that the crawling speed set in the crawl settings for your project is too high for a web server. Reduce it in the crawl settings and run a project re-crawl.
+
+Learn more
+
+
+View affected URLs
+
+Close
+Links
+Indexable
+Orphan page (has no incoming internal links) 
+1	
+—
+—
+—
+—
+—
+
+
+Issue details
+Orphan pages of a website have no incoming internal links.
+
+Search engine crawlers can only discover such pages from the sitemap file or from external backlinks. Website visitors won't be able to get to this page from any other page on your website.
+
+How to fix
+Check your website navigation and link architecture to make sure all relevant pages are easily accessible.
+
+Learn more
+
+
+View affected URLs
+
+Close
+Page has links to broken page 
+1	
+—
+—
+—
+—
+—
+
+
+Issue details
+Pages on your website that link to internal or external URLs returning 404 or 410 HTTP response codes. These links are widely known as "broken links".
+
+Broken links on your website damage your visitors' browsing experience as people cannot access the page or file via a link they click. Besides, broken links create unnecessary "dead ends" for the search engine crawlers and can waste your crawl budget.
+
+How to fix
+Remove the broken links from the affected pages or replace them with links to other relevant live pages.
+
+Additionally, you can set redirects for the deleted or moved pages, which is especially relevant for the pages with external backlinks.
+
+Learn more
+
+
+View affected URLs
+
+Close
+Page has only one dofollow incoming internal link 
+15	
+—
+—
+—
+—
+—
+
+
+Issue details
+Pages that only have one "dofollow" internal link.
+
+The number of internal links pointing to a page is a signal to search engines about the relative importance of that page.
+
+Besides, their anchor text helps search engines to understand the context better.
+
+How to fix
+Make sure the most important pages on your website have at least a few internal "dofollow" links.
+
+Ahrefs' guide to internal links for SEO.
+
+
+View affected URLs
+
+Close
+Redirects
+3XX redirect  
+3	
+—
+—
+—
+—
+—
+
+
+Issue details
+Even though Google announced that any redirection method is good and will pass PageRank, Googlebot is not the only visitor of your website.
+
+Redirects always require caution. They may hurt your website performance, especially for mobile users, or confuse website visitors.
+
+How to fix
+It is recommended to replace the links to the internal redirected URLs on your website with the direct links to the destination pages where possible.
+
+Learn more
+
+
+View affected URLs
+
+Close
+HTTP to HTTPS redirect 
+2	
+—
+—
+—
+—
+—
+
+
+Redirect chain  
+1	
+—
+—
+—
+—
+—
+
+
+Issue details
+Although chaining redirects of 5 hops or less are acceptable, they may inflict damage on the user experience, slowing down the page loading speeds. Besides, redirect chains complicate your website's internal linking for the search engine crawlers.
+How to fix
+For a given URL, click on the number of inlinks to access the list of pages that have a link to the first URL in a chain. Where practically possible, replace links to redirecting URLs on these pages with direct links to the final destination URL in the redirect chain.
+
+Learn more
+
+
+View affected URLs
+
+Close
+Content
+Indexable
+Meta description too long  
+11	
+—
+—
+—
+—
+—
+
+
+Issue details
+Google sometimes uses <meta> tag content to generate snippets, if they think they give users a more accurate description than can be taken directly from the page content.
+
+Besides, Facebook, for example, will use <meta> tag content for link preview if the page has no 'og:description' tag.
+
+If Google decides to use the page meta description as a snippet, a long one can be truncated.
+
+How to fix
+A general recommendation today is to keep your page description between 110 and 160 characters, although Google can sometimes show longer snippets.
+
+Google's recommendations on good descriptions
+
+
+View affected URLs
+
+Close
+Meta description too short  
+7	
+—
+—
+—
+—
+—
+
+
+Issue details
+Google sometimes uses <meta> tag content to generate snippets, if they think they give users a more accurate description than can be taken directly from the page content.
+
+Besides, Facebook, for example, will use <meta> tag content for link preview if the page has no 'og:description' tag.
+
+A short meta description may not summarize the content of your page in the best possible way.
+
+How to fix
+A general recommendation today is to keep your page description between 110 and 160 characters, although Google can sometimes show longer snippets.
+
+Google's recommendations on good descriptions
+
+
+View affected URLs
+
+Close
+Title too long  
+6	
+—
+—
+—
+—
+—
+
+
+Issue details
+Longer titles will be truncated when they show up in the search results.
+
+See Google's recommendations on good titles.
+
+How to fix
+Generally recommended title length is between 50 and 60 characters (max 600 pixels).
+
+Review all the pages reported and consider shortening their titles.
+
+
+View affected URLs
+
+Close
+Social tags
+Open Graph URL not matching canonical  
+32	
+—
+—
+—
+—
+—
+
+
+Issue details
+Pages where the URL specified in og:url Open Graph tag and in rel=canonical tag is mismatched.
+
+Open Graph tags instruct social networks like Facebook, Pinterest, and LinkedIn what information to display whenever a URL to your page is shared.
+
+When Open Graph URL does not match the canonical one, a non-canonical version of a page will be shared on social networks.
+
+How to fix
+Make sure the URL specified in og:url matches the URL of the canonical page unless you have a specific intent.
+
+Please note that URLs inside OG tags must be absolute and utilize the http:// or https:// protocols.
+
+
+View affected URLs
+
+Close
+Open Graph tags incomplete 
+17	
+—
+—
+—
+—
+—
+
+
+Issue details
+Pages with one or more of the required Open Graph tags missing.
+
+The four required Open Graph tags for every page are og:title, og:type, og:image, and og:url.
+
+How to fix
+Make sure your pages have all required OG tags if you want them to look good in social feeds when shared.
+
+Please note that the URLs inside OG tags must be absolute and utilize the http:// or https:// protocols.
+
+You can find more information on the Open Graph protocol here.
+
+
+View affected URLs
+
+Close
+Other
+Pages to submit to IndexNow  
+51	
+—
+—
+—
+—
+—
+
+
+Issue details
+IndexNow is a free protocol that enables website owners to inform search engines about the latest content updates, additions, or removals on their sites. By notifying search engines about these changes, you can ensure that they are aware of the updates instantly, rather than waiting for their bots to crawl and discover the changes themselves.
+
+This issue automatically selects pages that we recommend to submit to IndexNow. It includes:
+
+Indexable pages with content changes
+New indexable pages that were previously non-indexable or missing from the site
+Pages that have been removed or redirected
+How to fix
+To submit pages to IndexNow using Site Audit, follow these steps:
+
+Set up IndexNow in Site Audit by navigating to Project settings > Site Audit > Crawl settings and follow further the instructions in the IndexNow section there
+Open this issue report and click the "IndexNow" button in its header to submit all listed pages
+Learn more about IndexNow and how to set it up in Site Audit by reading our help article.
+
+
+View affected URLs
+
+Close
+Structured data has Google rich results validation error 
+27	
+—
+—
+—
+—
+—
+
+
+Issue details
+Structured data is a standardized way to provide information about a web page. It helps search engines to understand your content and better represent it in the search results.
+
+Google uses structured data to show your content in a richer appearance in SERPs. Some pages of your site have structured data that does not follow the Google guidelines.
+
+How to fix
+Review the URLs listed in this report. You can find the schema properties with errors, as well as a detailed description of each issue, in the Structured Data tab of the URL details report.
+
+View affected URLs
+
+Close
+Structured data has schema.org validation error 
+27	
+—
+—
+—
+—
+—
+
+
+Issue details
+Structured data is a standardized way to provide information about a web page. It helps search engines to understand your content and better represent it in the search results.
+
+Structured data needs to conform to the schema.org markup format. Some pages on your site have structured data that does not meet the schema vocabulary and guidelines.
+
+How to fix
+Review the URLs listed in this report. You can find the schema properties with errors, as well as a detailed description of each issue, in the Structured Data tab of the URL details report.
+
+View affected URLs
+
+Close
+About
+Team
+Our data
+Blog
+Robot
+Jobs
+Plans & pricing
+API
+Help
+Contact us
+
+English
+© 2026 Ahrefs Pte. Ltd. (201227417H) 16 Raffles Quay, #33-03 Hong Leong Building, Singapore 048581
+Legal info
+
+0

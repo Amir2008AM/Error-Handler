@@ -6,10 +6,22 @@ import { ExcelToPdfClient } from './client'
 export const metadata: Metadata = {
   alternates: { canonical: 'https://www.toolifypdf.online/excel-to-pdf' },
   robots: { index: true, follow: true },
-  title: 'Excel to PDF - Convert Spreadsheets to PDF | Toolify',
+  title: { absolute: 'Excel to PDF — Convert Spreadsheets to PDF | Toolify' },
   description: 'Convert Excel spreadsheets (.xlsx, .xls, .csv) to PDF files. Free online Excel to PDF converter with table formatting preserved.',
+  openGraph: {
+    title: 'Excel to PDF — Convert Spreadsheets to PDF | Toolify',
+    description: 'Convert Excel spreadsheets (.xlsx, .xls, .csv) to PDF files. Free online Excel to PDF converter with table formatting preserved.',
+    url: 'https://www.toolifypdf.online/excel-to-pdf',
+    type: 'website',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Excel to PDF — Convert Spreadsheets to PDF | Toolify' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Excel to PDF — Convert Spreadsheets to PDF | Toolify',
+    description: 'Convert Excel spreadsheets (.xlsx, .xls, .csv) to PDF files. Free online Excel to PDF converter with table formatting preserved.',
+    images: ['https://www.toolifypdf.online/og-image.jpg'],
+  },
 }
-
 export default function Page() {
   const tool = getToolBySlug('excel-to-pdf')!
   return (
