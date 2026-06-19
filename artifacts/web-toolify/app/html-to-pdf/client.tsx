@@ -66,7 +66,10 @@ export function HtmlToPdfClient() {
     progress.reset()
   }
 
-  // ── load iframe URL ──────────────────────────────────────────────────────
+  // ── load iframe URL via server-side proxy ────────────────────────────────
+  // We proxy the external URL through /api/web-preview so the iframe src is
+  // same-origin — this bypasses X-Frame-Options / CSP frame-ancestors on the
+  // target site (the same technique used by ilovepdf and similar tools).
   const loadUrl = useCallback((raw: string) => {
     const url = raw.trim()
     if (!url) return
@@ -78,9 +81,11 @@ export function HtmlToPdfClient() {
 
     setIframeLoading(true)
     setLoadingStep(0)
-    setIframeSrc(full)
 
-    // advance loading step after 1.4 s
+    // Point iframe at our proxy — same-origin, so browser never blocks it
+    setIframeSrc(`/api/web-preview?url=${encodeURIComponent(full)}`)
+
+    // advance loading step label after 1.4 s
     const t1 = setTimeout(() => setLoadingStep(1), 1400)
     loadingTimers.current.push(t1)
   }, [])
