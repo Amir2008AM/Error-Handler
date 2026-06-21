@@ -279,6 +279,7 @@ export type TranslationKey =
   | 'imageToPdf.selectImages'
   | 'imageToPdf.downloadPdf'
   // Tool card names
+  | 'tools.pdf-editor.name' | 'tools.pdf-editor.desc'
   | 'tools.merge-pdf.name' | 'tools.merge-pdf.desc'
   | 'tools.split-pdf.name' | 'tools.split-pdf.desc'
   | 'tools.compress-pdf.name' | 'tools.compress-pdf.desc'
@@ -611,6 +612,8 @@ export const en: TranslationMap = {
   'imageToPdf.selectImages': 'Please click on images to select and order them before converting.',
   'imageToPdf.downloadPdf': 'Download PDF',
   // Tool names & descriptions
+  'tools.pdf-editor.name': 'PDF Editor',
+  'tools.pdf-editor.desc': 'Add text, images, drawings, and signatures to any PDF.',
   'tools.merge-pdf.name': 'Merge PDF',
   'tools.merge-pdf.desc': 'Combine multiple PDF files into a single document.',
   'tools.split-pdf.name': 'Split PDF',

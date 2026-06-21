@@ -56,6 +56,7 @@ export interface ToolMeta {
 
 const _registry: ToolMeta[] = [
   // ── PDF-FAST: quick in-process ops — typically <2 s ───────────────────────
+  { slug: 'pdf-editor',      name: 'PDF Editor',        engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'direct',   maxDurationSec: 60,  p95Sec: 2,   spawnsProcess: false },
   { slug: 'rotate-pdf',      name: 'Rotate PDF',        engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: false },
   { slug: 'watermark-pdf',   name: 'Watermark PDF',     engine: 'pdf-lib',          guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 8,   spawnsProcess: false },
   { slug: 'protect-pdf',     name: 'Protect PDF',       engine: 'qpdf',             guard: 'none',         rateTier: 'light',  workerGroup: 'pdf-fast', maxDurationSec: 60,  p95Sec: 5,   spawnsProcess: true  },

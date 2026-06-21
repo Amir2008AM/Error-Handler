@@ -17,6 +17,22 @@ export interface Tool {
 
 export const tools: Tool[] = [
   // ── PDF Tools ──────────────────────────────────────────────────────────────
+  // Editor
+  {
+    id: 'pdf-editor',
+    name: 'PDF Editor',
+    description: 'Add text, images, drawings, and signatures to any PDF.',
+    longDescription:
+      'Edit PDFs directly in your browser. Add text anywhere, draw freehand, highlight content, insert images, sign documents, and manage pages — all without installing anything.',
+    category: 'PDF Tools',
+    slug: 'pdf-editor',
+    icon: 'PenLine',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50',
+    tags: ['pdf', 'edit', 'annotate', 'sign', 'draw', 'text'],
+    popular: true,
+    isNew: true,
+  },
   // Pair: Merge ↔ Split
   {
     id: 'merge-pdf',
