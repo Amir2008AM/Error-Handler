@@ -36,6 +36,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }))
 
+  const categoryRoutes: MetadataRoute.Sitemap = [
+    { url: `${BASE_URL}/category/pdf-tools`,      lastModified: new Date('2026-06-01'), changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${BASE_URL}/category/security-tools`, lastModified: new Date('2026-06-01'), changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${BASE_URL}/category/converters`,     lastModified: new Date('2026-06-01'), changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${BASE_URL}/category/image-tools`,    lastModified: new Date('2026-06-01'), changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${BASE_URL}/category/text-tools`,     lastModified: new Date('2026-06-01'), changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${BASE_URL}/category/calculators`,    lastModified: new Date('2026-06-01'), changeFrequency: 'weekly', priority: 0.85 },
+  ]
+
   const utilityRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/age-calculator`,        lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.6 },
     { url: `${BASE_URL}/percentage-calculator`, lastModified: new Date('2026-06-01'), changeFrequency: 'yearly', priority: 0.6 },
@@ -81,6 +90,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.5,
     },
+    ...categoryRoutes,
     ...toolRoutes,
     ...utilityRoutes,
     ...blogRoutes,

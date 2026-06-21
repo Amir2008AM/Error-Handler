@@ -27,16 +27,28 @@ const CATEGORY_KEY_MAP: Record<string, string> = {
   'Calculators': 'home.calculators',
 }
 
-export function HomeContent() {
+const CATEGORY_SLUG_MAP: Record<string, string> = {
+  'PDF Tools':      'pdf-tools',
+  'Security Tools': 'security-tools',
+  'Converters':     'converters',
+  'Image Tools':    'image-tools',
+  'Text Tools':     'text-tools',
+  'Calculators':    'calculators',
+}
+
+type Props = {
+  initialCategory?: ToolCategory | null
+}
+
+export function HomeContent({ initialCategory }: Props = {}) {
   const { t } = useI18n()
   const searchParams = useSearchParams()
   const urlCategory = searchParams.get('category') as ToolCategory | null
-  const urlSearch = searchParams.get('search') ?? ''
 
-  const [searchQuery, setSearchQuery] = useState(urlSearch)
-  const [activeCategory, setActiveCategory] = useState<ToolCategory | 'All' | null>(
-    urlCategory ?? 'All'
-  )
+  const startCategory: ToolCategory | 'All' | null = initialCategory ?? urlCategory ?? 'All'
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<ToolCategory | 'All' | null>(startCategory)
 
   const displayedTools = useMemo(() => {
     if (searchQuery.trim()) return searchTools(searchQuery)
@@ -60,38 +72,40 @@ export function HomeContent() {
             {t('home.hero.subtitle')}
           </p>
 
-          {/* Category Filter Pills */}
+          {/* Category Filter Pills — rendered as <Link> for SEO */}
           <div className="flex items-center justify-center gap-2 flex-wrap mb-6">
-            <button
+            <Link
+              href="/"
+              className={cn(
+                'px-4 py-2 rounded-full text-sm font-medium transition-all border',
+                activeCategory === 'All' && !searchQuery
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-white text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
+              )}
               onClick={() => {
                 setActiveCategory('All')
                 setSearchQuery('')
               }}
-              className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium transition-all border',
-                activeCategory === 'All'
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'bg-white text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
-              )}
             >
               {t('home.allTools')}
-            </button>
+            </Link>
             {categories.map((cat) => (
-              <button
+              <Link
                 key={cat}
+                href={`/category/${CATEGORY_SLUG_MAP[cat] ?? cat.toLowerCase().replace(/ /g, '-')}`}
+                className={cn(
+                  'px-4 py-2 rounded-full text-sm font-medium transition-all border',
+                  activeCategory === cat && !searchQuery
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-white text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
+                )}
                 onClick={() => {
                   setActiveCategory(cat)
                   setSearchQuery('')
                 }}
-                className={cn(
-                  'px-4 py-2 rounded-full text-sm font-medium transition-all border',
-                  activeCategory === cat
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'bg-white text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
-                )}
               >
                 {t((CATEGORY_KEY_MAP[cat] ?? 'home.allTools') as Parameters<typeof t>[0])}
-              </button>
+              </Link>
             ))}
           </div>
 

@@ -26,6 +26,17 @@ const nextConfig = {
     },
   },
 
+  async redirects() {
+    return [
+      { source: '/', has: [{ type: 'query', key: 'category', value: 'PDF Tools' }],      destination: '/category/pdf-tools',      permanent: true },
+      { source: '/', has: [{ type: 'query', key: 'category', value: 'Security Tools' }], destination: '/category/security-tools',  permanent: true },
+      { source: '/', has: [{ type: 'query', key: 'category', value: 'Converters' }],     destination: '/category/converters',      permanent: true },
+      { source: '/', has: [{ type: 'query', key: 'category', value: 'Image Tools' }],    destination: '/category/image-tools',     permanent: true },
+      { source: '/', has: [{ type: 'query', key: 'category', value: 'Text Tools' }],     destination: '/category/text-tools',      permanent: true },
+      { source: '/', has: [{ type: 'query', key: 'category', value: 'Calculators' }],    destination: '/category/calculators',     permanent: true },
+    ]
+  },
+
   async headers() {
     const isProd = process.env.NODE_ENV === 'production'
 

@@ -2,60 +2,24 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { HomeContent } from '@/components/home-content'
 
-const CATEGORY_TITLES: Record<string, string> = {
-  'PDF Tools':      'Free PDF Tools — Merge, Split, Compress & Convert',
-  'Security Tools': 'PDF Security Tools — Protect & Unlock PDFs',
-  'Converters':     'File Converters — Word, Excel, PowerPoint to PDF & More',
-  'Image Tools':    'Free Image Tools — Compress, Resize, Crop & Convert',
-  'Text Tools':     'Free Text Tools — Word Count, Case Converter & More',
-  'Calculators':    'Free Online Calculators',
-}
-
-const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  'PDF Tools':      'Merge, split, compress, rotate, watermark and more — free PDF tools with no registration.',
-  'Security Tools': 'Protect PDFs with passwords and unlock encrypted files — 100% free, no registration.',
-  'Converters':     'Convert Word, Excel, PowerPoint, HTML and images to PDF or between formats — fast and free.',
-  'Image Tools':    'Compress, resize, crop, and convert images between formats — free, no account needed.',
-  'Text Tools':     'Count words, convert letter case, clean text and more — all free, no login needed.',
-  'Calculators':    'Free online calculators for everyday tasks.',
-}
-
-type Props = {
-  searchParams: Promise<{ category?: string; search?: string }>
-}
-
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { category } = await searchParams
-  const title = category && CATEGORY_TITLES[category]
-    ? CATEGORY_TITLES[category]
-    : 'Toolify — All Tools in One Place'
-  const description = category && CATEGORY_DESCRIPTIONS[category]
-    ? CATEGORY_DESCRIPTIONS[category]
-    : 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.'
-
-  const url = category
-    ? `https://www.toolifypdf.online/?category=${encodeURIComponent(category)}`
-    : 'https://www.toolifypdf.online'
-
-  return {
-    title: { absolute: title },
-    description,
-    alternates: { canonical: url },
-    robots: { index: true, follow: true },
-    openGraph: {
-      title,
-      description,
-      url,
-      type: 'website',
-      images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: title }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: ['https://www.toolifypdf.online/og-image.jpg'],
-    },
-  }
+export const metadata: Metadata = {
+  title: { absolute: 'Toolify — Free PDF, Image & Document Tools Online' },
+  description: 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
+  alternates: { canonical: 'https://www.toolifypdf.online' },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: 'Toolify — Free PDF, Image & Document Tools Online',
+    description: 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
+    url: 'https://www.toolifypdf.online',
+    type: 'website',
+    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Toolify — Free PDF, Image & Document Tools Online' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Toolify — Free PDF, Image & Document Tools Online',
+    description: 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
+    images: ['https://www.toolifypdf.online/og-image.jpg'],
+  },
 }
 
 function HomePageSkeleton() {

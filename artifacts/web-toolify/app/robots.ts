@@ -11,12 +11,26 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        allow: [
+          '/',
+          '/category/',
+        ],
         disallow: [
           '/api/',
           '/_next/',
-          '/*?q=',
+          '/ops',
+          '/dev-ops',
+          '/internal/',
+          '/*?*',
         ],
+      },
+      {
+        userAgent: 'AdsBot-Google',
+        allow: '/',
+      },
+      {
+        userAgent: 'Mediapartners-Google',
+        allow: '/',
       },
     ],
     sitemap: `${BASE_URL}/sitemap.xml`,

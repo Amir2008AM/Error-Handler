@@ -10,12 +10,12 @@ export function Navbar() {
   const { t } = useI18n()
 
   const navLinks = [
-    { key: 'nav.pdf' as const, href: '/?category=PDF+Tools' },
-    { key: 'nav.security' as const, href: '/?category=Security+Tools' },
-    { key: 'nav.converter' as const, href: '/?category=Converters' },
-    { key: 'nav.image' as const, href: '/?category=Image+Tools' },
-    { key: 'nav.text' as const, href: '/?category=Text+Tools' },
-    { key: 'nav.calculator' as const, href: '/?category=Calculators' },
+    { key: 'nav.pdf' as const, href: '/category/pdf-tools' },
+    { key: 'nav.security' as const, href: '/category/security-tools' },
+    { key: 'nav.converter' as const, href: '/category/converters' },
+    { key: 'nav.image' as const, href: '/category/image-tools' },
+    { key: 'nav.text' as const, href: '/category/text-tools' },
+    { key: 'nav.calculator' as const, href: '/category/calculators' },
   ]
 
   return (
