@@ -26,7 +26,7 @@ export const tools: Tool[] = [
       'Edit PDFs directly in your browser. Add text anywhere, draw freehand, highlight content, insert images, sign documents, and manage pages — all without installing anything.',
     category: 'PDF Tools',
     slug: 'pdf-editor',
-    icon: 'PenLine',
+    icon: 'FilePen',
     color: 'text-violet-600',
     bgColor: 'bg-violet-50',
     tags: ['pdf', 'edit', 'annotate', 'sign', 'draw', 'text'],

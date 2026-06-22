@@ -43,6 +43,7 @@ function SignatureModal({
   const [tab, setTab] = useState<SigTab>('draw')
   const [typedSig, setTypedSig] = useState('')
   const [sigFont, setSigFont] = useState<string>('Dancing Script')
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null)
   const sigCanvasRef = useRef<HTMLCanvasElement>(null)
   const sigFabricRef = useRef<any>(null)
 
@@ -55,7 +56,6 @@ function SignatureModal({
       const fc = new Canvas(sigCanvasRef.current, {
         width: 400,
         height: 150,
-        backgroundColor: '#f8fafc',
         isDrawingMode: true,
       })
       const brush = new PencilBrush(fc)
@@ -77,6 +77,7 @@ function SignatureModal({
       if (!fc) return
       const objects = fc.getObjects()
       if (objects.length === 0) return
+      // Export at 2x with transparent background — only the ink is visible
       onUse(fc.toDataURL({ format: 'png', multiplier: 2 }))
     } else if (tab === 'type') {
       if (!typedSig.trim()) return
@@ -90,14 +91,16 @@ function SignatureModal({
       ctx.textBaseline = 'middle'
       ctx.fillText(typedSig, 12, 60)
       onUse(tmp.toDataURL('image/png'))
+    } else if (tab === 'upload' && uploadPreview) {
+      onUse(uploadPreview)
     }
-  }, [tab, typedSig, sigFont, onUse])
+  }, [tab, typedSig, sigFont, uploadPreview, onUse])
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => onUse(reader.result as string)
+    reader.onload = () => setUploadPreview(reader.result as string)
     reader.readAsDataURL(file)
   }
 
@@ -119,7 +122,7 @@ function SignatureModal({
           {(['draw', 'type', 'upload'] as SigTab[]).map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => { setTab(t); setUploadPreview(null) }}
               className={cn(
                 'flex-1 py-2.5 text-sm font-medium capitalize transition-colors',
                 tab === t
@@ -136,11 +139,13 @@ function SignatureModal({
           {tab === 'draw' && (
             <>
               <p className="text-xs text-gray-400">Draw your signature below</p>
-              <canvas
-                ref={sigCanvasRef}
-                className="w-full rounded-xl border border-gray-200"
-                style={{ touchAction: 'none', display: 'block' }}
-              />
+              {/* No border/background — clean white surface */}
+              <div className="rounded-xl overflow-hidden bg-white" style={{ boxShadow: 'inset 0 0 0 1px #e2e8f0' }}>
+                <canvas
+                  ref={sigCanvasRef}
+                  style={{ touchAction: 'none', display: 'block' }}
+                />
+              </div>
               <button
                 onClick={() => sigFabricRef.current?.clear()}
                 className="text-xs text-blue-600 hover:underline"
@@ -160,8 +165,8 @@ function SignatureModal({
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               />
               <div
-                className="border border-gray-200 rounded-xl px-4 py-3 min-h-[70px] flex items-center bg-gray-50"
-                style={{ fontFamily: `"${sigFont}", cursive`, fontSize: 38 }}
+                className="rounded-xl px-4 py-3 min-h-[70px] flex items-center bg-white"
+                style={{ fontFamily: `"${sigFont}", cursive`, fontSize: 38, boxShadow: 'inset 0 0 0 1px #e2e8f0' }}
               >
                 <span className="text-gray-800">{typedSig || <span className="text-gray-300 text-2xl">preview</span>}</span>
               </div>
@@ -186,22 +191,40 @@ function SignatureModal({
           )}
 
           {tab === 'upload' && (
-            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-10 cursor-pointer hover:border-blue-400 transition-colors">
-              <ImageIcon size={28} className="text-gray-300" />
-              <span className="text-sm text-gray-500">Upload signature image (PNG, JPG)</span>
-              <input type="file" accept="image/*" className="sr-only" onChange={handleUpload} />
-            </label>
+            <>
+              {uploadPreview ? (
+                <div className="rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center p-4"
+                  style={{ boxShadow: 'inset 0 0 0 1px #e2e8f0', minHeight: 100 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={uploadPreview} alt="Signature preview" className="max-h-[120px] max-w-full object-contain" />
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-10 cursor-pointer hover:border-blue-400 transition-colors">
+                  <ImageIcon size={28} className="text-gray-300" />
+                  <span className="text-sm text-gray-500">Upload signature image (PNG, JPG)</span>
+                  <input type="file" accept="image/*" className="sr-only" onChange={handleUpload} />
+                </label>
+              )}
+              {uploadPreview && (
+                <label className="text-xs text-blue-600 hover:underline cursor-pointer block text-center">
+                  Choose different image
+                  <input type="file" accept="image/*" className="sr-only" onChange={handleUpload} />
+                </label>
+              )}
+            </>
           )}
 
-          {tab !== 'upload' && (
-            <button
-              onClick={handleUse}
-              disabled={tab === 'type' && !typedSig.trim()}
-              className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
-            >
-              Use Signature
-            </button>
-          )}
+          <button
+            onClick={handleUse}
+            disabled={
+              (tab === 'draw' && !sigFabricRef.current?.getObjects()?.length) ||
+              (tab === 'type' && !typedSig.trim()) ||
+              (tab === 'upload' && !uploadPreview)
+            }
+            className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
+          >
+            Use Signature
+          </button>
         </div>
       </div>
     </div>
@@ -309,7 +332,8 @@ export function PdfEditorClient() {
         position: 'absolute',
         top: '0',
         left: '0',
-        pointerEvents: 'auto',
+        pointerEvents: 'all',
+        overflow: 'visible',
       })
     }
 
@@ -392,22 +416,34 @@ export function PdfEditorClient() {
 
     try {
       const page = await doc.getPage(pageNum)
-      const viewport = page.getViewport({ scale: zoomLevel })
-      const W = Math.round(viewport.width)
-      const H = Math.round(viewport.height)
+      const dpr = Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, 2)
+      const viewport = page.getViewport({ scale: zoomLevel * dpr })
+      // CSS dimensions (layout pixels)
+      const W = Math.round(viewport.width / dpr)
+      const H = Math.round(viewport.height / dpr)
+      // Physical pixel dimensions for crisp rendering
+      const physW = Math.round(viewport.width)
+      const physH = Math.round(viewport.height)
 
-      // Size PDF canvas
+      // Size PDF canvas — physical pixels, display at CSS size for crispness
       const pdfCanvas = pdfCanvasRef.current!
-      pdfCanvas.width = W
-      pdfCanvas.height = H
+      pdfCanvas.width = physW
+      pdfCanvas.height = physH
+      pdfCanvas.style.width = W + 'px'
+      pdfCanvas.style.height = H + 'px'
 
-      // Size Fabric canvas
+      // Size Fabric canvas — use CSS pixel dimensions so coordinates align
       if (fc) {
         fc.setDimensions?.({ width: W, height: H })
         if (fc.wrapperEl) {
-          fc.wrapperEl.style.position = 'absolute'
-          fc.wrapperEl.style.top = '0'
-          fc.wrapperEl.style.left = '0'
+          Object.assign(fc.wrapperEl.style, {
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: W + 'px',
+            height: H + 'px',
+            pointerEvents: 'all',
+          })
         }
 
         // Clear and load saved annotations
@@ -1045,10 +1081,16 @@ export function PdfEditorClient() {
               className="block"
               style={{ display: 'block' }}
             />
-            {/* Fabric canvas element — Fabric will wrap this in a div */}
+            {/* Fabric canvas element — Fabric wraps this; pre-position so it doesn't affect layout flow */}
             <canvas
               ref={fabricElRef}
-              style={{ touchAction: 'none' }}
+              style={{
+                touchAction: 'none',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                pointerEvents: 'all',
+              }}
             />
           </div>
         </div>

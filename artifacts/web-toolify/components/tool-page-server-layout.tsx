@@ -6,7 +6,7 @@ import {
   ImageIcon, ChevronRight, Lock, Clock, Zap,
   RotateCw, Droplets, Crop, Hash, LayoutList, Wrench,
   Unlock, PenTool, Table, Code, ScanText, FileSearch,
-  FileArchive, Shield, Presentation,
+  FileArchive, Shield, Presentation, FilePen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ToolCard } from './tool-card'
@@ -21,7 +21,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Calendar, AlignLeft, ArrowRightLeft, Calculator, ImageIcon,
   RotateCw, Droplets, Crop, Hash, LayoutList, Wrench,
   Lock, Unlock, PenTool, Table, Code, ScanText, FileSearch,
-  FileArchive, Shield, Presentation,
+  FileArchive, Shield, Presentation, FilePen,
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
