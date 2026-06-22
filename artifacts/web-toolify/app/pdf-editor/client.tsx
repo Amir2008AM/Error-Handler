@@ -482,7 +482,8 @@ export function PdfEditorClient() {
           const head = new Polygon([tip, p1, p2], {
             fill: shapeStrokeRef.current, stroke: shapeStrokeRef.current, strokeWidth: 1,
             data: { temp: false },
-          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any)
           shape.set({ data: { temp: false }, selectable: true })
           fc.add(head)
         } else {
