@@ -125,7 +125,7 @@ function SignatureModal({
       ctx.fillStyle = '#1e293b'
       ctx.font = `62px "${sigFont}", cursive`
       ctx.textBaseline = 'middle'
-      ctx.textRenderingOptimization = 'optimizeLegibility' as any
+
       ctx.fillText(typedSig, 16, 70)
       onUse(tmp.toDataURL('image/png'))
     } else if (tab === 'upload' && uploadPreview) {
