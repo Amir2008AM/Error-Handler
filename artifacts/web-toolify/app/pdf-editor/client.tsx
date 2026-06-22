@@ -65,32 +65,31 @@ function SignatureModal({
       fc.freeDrawingBrush = brush
       sigFabricRef.current = fc
 
-      // ── Fix: prevent strokes from connecting when pointer is released
-      // outside the canvas. Only reset drawing state when the pointer has
-      // actually left the canvas — NOT on every mouseup, which would
-      // interrupt normal stroke finalization.
+      // ── Fix: prevent strokes from connecting when the mouse is released
+      // OUTSIDE the canvas. We track whether the pointer is inside and only
+      // reset Fabric's drawing state when a mouseup fires while outside.
+      // Touch events are intentionally excluded — Fabric handles them natively
+      // and resetting on touchend would erase the stroke the user just drew.
       let pointerInsideCanvas = false
-      const onEnter = () => { pointerInsideCanvas = true }
-      const onLeave = () => { pointerInsideCanvas = false }
-      fc.upperCanvasEl?.addEventListener('mouseenter', onEnter)
-      fc.upperCanvasEl?.addEventListener('mouseleave', onLeave)
+      const onMouseEnter = () => { pointerInsideCanvas = true }
+      const onMouseLeave = () => { pointerInsideCanvas = false }
+      fc.upperCanvasEl?.addEventListener('mouseenter', onMouseEnter)
+      fc.upperCanvasEl?.addEventListener('mouseleave', onMouseLeave)
 
       stopBrush = () => {
-        // Only reset if the release happened outside the canvas
-        if (pointerInsideCanvas) return
+        if (pointerInsideCanvas) return        // normal in-canvas release — leave Fabric alone
         const fb = fc.freeDrawingBrush as any
         if (!fc.isDrawingMode) return
         if (Array.isArray(fb?._points)) fb._points = []
         ;(fc as any)._isCurrentlyDrawing = false
       }
+      // Mouse only — touch events are NOT added here
       document.addEventListener('mouseup', stopBrush)
-      document.addEventListener('touchend', stopBrush)
     })
     return () => {
       mounted = false
       if (stopBrush) {
         document.removeEventListener('mouseup', stopBrush)
-        document.removeEventListener('touchend', stopBrush)
       }
       sigFabricRef.current?.dispose()
       sigFabricRef.current = null
