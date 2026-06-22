@@ -476,9 +476,32 @@ export function PdfEditorClient() {
       pdfCanvas.style.width = W + 'px'
       pdfCanvas.style.height = H + 'px'
 
-      // Size Fabric canvas — use CSS pixel dimensions so coordinates align
+      // Size Fabric canvas — bypass setDimensions and set all elements directly.
+      // setDimensions updates internal tracking but can silently skip resizing
+      // upperCanvasEl (the element that captures pointer events), so any area
+      // outside the original canvas size becomes a dead zone.
       if (fc) {
-        fc.setDimensions?.({ width: W, height: H })
+        // 1. Update Fabric's internal dimension properties
+        fc.width = W
+        fc.height = H
+
+        // 2. Resize the lower canvas (rendering layer)
+        if (fc.lowerCanvasEl) {
+          fc.lowerCanvasEl.width = W
+          fc.lowerCanvasEl.height = H
+          fc.lowerCanvasEl.style.width = W + 'px'
+          fc.lowerCanvasEl.style.height = H + 'px'
+        }
+
+        // 3. Resize the upper canvas (event capture layer) — this is the critical one
+        if (fc.upperCanvasEl) {
+          fc.upperCanvasEl.width = W
+          fc.upperCanvasEl.height = H
+          fc.upperCanvasEl.style.width = W + 'px'
+          fc.upperCanvasEl.style.height = H + 'px'
+        }
+
+        // 4. Size the wrapper div to cover the full PDF area
         if (fc.wrapperEl) {
           Object.assign(fc.wrapperEl.style, {
             position: 'absolute',
@@ -508,7 +531,7 @@ export function PdfEditorClient() {
 
       // Render PDF
       const ctx = pdfCanvas.getContext('2d')!
-      ctx.clearRect(0, 0, W, H)
+      ctx.clearRect(0, 0, physW, physH)
       const task = page.render({ canvasContext: ctx, viewport })
       renderTaskRef.current = task
       await task.promise
