@@ -161,6 +161,8 @@ export function ToolPageServerLayout(props: Props) {
 
         {children}
 
+        <ToolSeoContent slug={tool.slug} />
+
         <AdBanner slot="6978025975" format="horizontal" className="mt-8" />
 
         {/* Related Tools — server-rendered for SEO */}
