@@ -44,6 +44,7 @@ function SignatureModal({
   const [typedSig, setTypedSig] = useState('')
   const [sigFont, setSigFont] = useState<string>('Dancing Script')
   const [uploadPreview, setUploadPreview] = useState<string | null>(null)
+  const [hasDrawing, setHasDrawing] = useState(false)
   const sigCanvasRef = useRef<HTMLCanvasElement>(null)
   const sigFabricRef = useRef<any>(null)
 
@@ -64,6 +65,12 @@ function SignatureModal({
       brush.width = 2.5
       fc.freeDrawingBrush = brush
       sigFabricRef.current = fc
+
+      // Update React state whenever paths are added or removed so the
+      // "Use Signature" button enables/disables correctly.
+      const syncHasDrawing = () => setHasDrawing(fc.getObjects().length > 0)
+      fc.on('path:created', syncHasDrawing)
+      fc.on('object:removed', syncHasDrawing)
 
       // ── Fix: prevent strokes from connecting when the mouse is released
       // OUTSIDE the canvas. We track whether the pointer is inside and only
@@ -147,7 +154,7 @@ function SignatureModal({
           {(['draw', 'type', 'upload'] as SigTab[]).map((t) => (
             <button
               key={t}
-              onClick={() => { setTab(t); setUploadPreview(null) }}
+              onClick={() => { setTab(t); setUploadPreview(null); setHasDrawing(false) }}
               className={cn(
                 'flex-1 py-2.5 text-sm font-medium capitalize transition-colors',
                 tab === t
@@ -172,7 +179,7 @@ function SignatureModal({
                 />
               </div>
               <button
-                onClick={() => sigFabricRef.current?.clear()}
+                onClick={() => { sigFabricRef.current?.clear(); setHasDrawing(false) }}
                 className="text-xs text-blue-600 hover:underline"
               >
                 Clear
@@ -254,7 +261,7 @@ function SignatureModal({
           <button
             onClick={handleUse}
             disabled={
-              (tab === 'draw' && !sigFabricRef.current?.getObjects()?.length) ||
+              (tab === 'draw' && !hasDrawing) ||
               (tab === 'type' && !typedSig.trim()) ||
               (tab === 'upload' && !uploadPreview)
             }
