@@ -414,13 +414,25 @@ export function PdfEditorClient() {
       })
     })
 
-    // ── Eraser ──────────────────────────────────────────────────────────────
+    // ── Eraser — continuous: removes any object under the pointer while held ─
+    let eraserActive = false
+    const eraseAt = (opt: any) => {
+      const target = opt.target ?? fc.findTarget?.(opt.e)
+      if (!target || (target as any).data?.temp) return
+      fc.remove(target)
+      fc.discardActiveObject()
+      fc.renderAll()
+    }
     fc.on('mouse:down', (opt: any) => {
       if (toolRef.current !== 'eraser') return
-      if (!opt.target) return
-      fc.remove(opt.target)
-      fc.renderAll()
+      eraserActive = true
+      eraseAt(opt)
     })
+    fc.on('mouse:move', (opt: any) => {
+      if (toolRef.current !== 'eraser' || !eraserActive) return
+      eraseAt(opt)
+    })
+    fc.on('mouse:up', () => { eraserActive = false })
 
     // ── Shape drawing: start ────────────────────────────────────────────────
     fc.on('mouse:down', (opt: any) => {
