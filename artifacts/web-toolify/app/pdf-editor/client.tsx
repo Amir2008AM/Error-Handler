@@ -50,6 +50,7 @@ function SignatureModal({
   useEffect(() => {
     if (tab !== 'draw') return
     let mounted = true
+    let stopBrush: (() => void) | null = null
     import('fabric').then(({ Canvas, PencilBrush }) => {
       if (!mounted || !sigCanvasRef.current) return
       if (sigFabricRef.current) { sigFabricRef.current.dispose(); sigFabricRef.current = null }
@@ -63,9 +64,29 @@ function SignatureModal({
       brush.width = 2.5
       fc.freeDrawingBrush = brush
       sigFabricRef.current = fc
+
+      // ── Fix: prevent strokes from connecting when pointer is released
+      // outside the canvas. If mouseup fires outside, Fabric never closes the
+      // current path, so the next stroke starts with an unwanted straight line.
+      stopBrush = () => {
+        const fb = fc.freeDrawingBrush as any
+        if (!fc.isDrawingMode) return
+        if (Array.isArray(fb?._points)) fb._points = []
+        ;(fc as any)._isCurrentlyDrawing = false
+      }
+      // Catch release anywhere on the document
+      document.addEventListener('mouseup', stopBrush)
+      document.addEventListener('touchend', stopBrush)
+      // Also stop when pointer leaves the canvas area
+      fc.upperCanvasEl?.addEventListener('mouseleave', stopBrush)
     })
     return () => {
       mounted = false
+      if (stopBrush) {
+        document.removeEventListener('mouseup', stopBrush)
+        document.removeEventListener('touchend', stopBrush)
+        sigFabricRef.current?.upperCanvasEl?.removeEventListener('mouseleave', stopBrush)
+      }
       sigFabricRef.current?.dispose()
       sigFabricRef.current = null
     }
@@ -108,7 +129,7 @@ function SignatureModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Pinyon+Script&family=Satisfy&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Pinyon+Script&family=Satisfy&family=Great+Vibes&family=Sacramento&family=Parisienne&family=Alex+Brush&family=Kaushan+Script&family=Caveat:wght@600&family=Lobster&display=swap"
       />
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[440px]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -161,29 +182,41 @@ function SignatureModal({
                 type="text"
                 value={typedSig}
                 onChange={(e) => setTypedSig(e.target.value)}
-                placeholder="Type your name…"
+                placeholder="Write your signature…"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               />
               <div
                 className="rounded-xl px-4 py-3 min-h-[70px] flex items-center bg-white"
                 style={{ fontFamily: `"${sigFont}", cursive`, fontSize: 38, boxShadow: 'inset 0 0 0 1px #e2e8f0' }}
               >
-                <span className="text-gray-800">{typedSig || <span className="text-gray-300 text-2xl">preview</span>}</span>
+                <span className="text-gray-800">{typedSig || <span className="text-gray-300 text-2xl" style={{ fontFamily: 'inherit' }}>Your signature</span>}</span>
               </div>
-              <div className="flex gap-2">
-                {['Dancing Script', 'Pinyon Script', 'Satisfy'].map((f) => (
+              {/* 3-column font grid */}
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  'Dancing Script',
+                  'Great Vibes',
+                  'Pinyon Script',
+                  'Sacramento',
+                  'Parisienne',
+                  'Alex Brush',
+                  'Satisfy',
+                  'Kaushan Script',
+                  'Caveat',
+                ].map((f) => (
                   <button
                     key={f}
                     onClick={() => setSigFont(f)}
                     className={cn(
-                      'flex-1 py-1.5 rounded-lg border text-xs transition-colors',
+                      'py-2 px-1 rounded-lg border text-sm transition-colors truncate',
                       sigFont === f
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-300',
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white',
                     )}
-                    style={{ fontFamily: `"${f}", cursive` }}
+                    style={{ fontFamily: `"${f}", cursive`, fontSize: 18 }}
+                    title={f}
                   >
-                    {f.split(' ')[0]}
+                    {typedSig || 'Sign'}
                   </button>
                 ))}
               </div>
