@@ -378,22 +378,21 @@ export function PdfEditorClient() {
     fc.on('selection:updated', (opt: any) => { setSelectedObject(opt.selected?.[0] ?? null) })
     fc.on('selection:cleared', () => { setSelectedObject(null) })
 
-    // ── Nicer handles for all objects ──────────────────────────────────────
+    // ── No corner handles — drag the whole object to move it ───────────────
+    // Resize is handled by the slider in the side panel.
     const styleObject = (obj: any) => {
       if (!obj || obj.data?.temp) return
       obj.set({
-        cornerStyle: 'circle',
-        cornerSize: 14,
-        transparentCorners: false,
-        cornerColor: '#6366f1',
+        hasControls: false,
+        hasBorders: true,
         borderColor: '#6366f1',
-        cornerStrokeColor: '#ffffff',
-        borderScaleFactor: 1.5,
-        padding: 4,
+        borderScaleFactor: 2,
+        padding: 8,
       })
     }
     fc.on('object:added', (opt: any) => { styleObject(opt.target) })
-    fc.on('selection:created', (opt: any) => { styleObject(opt.selected?.[0]) })
+    fc.on('selection:created', (opt: any) => { opt.selected?.forEach((o: any) => styleObject(o)) })
+    fc.on('selection:updated', (opt: any) => { opt.selected?.forEach((o: any) => styleObject(o)) })
 
     // ── Text tool ───────────────────────────────────────────────────────────
     fc.on('mouse:down', (opt: any) => {
