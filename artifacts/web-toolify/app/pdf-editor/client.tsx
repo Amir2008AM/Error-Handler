@@ -596,12 +596,17 @@ export function PdfEditorClient() {
       fc.remove(obj); fc.renderAll()
     }
     window.addEventListener('keydown', handleKey)
+    // Re-calculate offset on window resize so touch coordinates stay accurate
+    const handleResize = () => { fc.calcOffset?.() }
+    window.addEventListener('resize', handleResize)
+
     fabricRef.current = fc
     setFabricReady(true)
 
     return () => {
       setFabricReady(false)
       window.removeEventListener('keydown', handleKey)
+      window.removeEventListener('resize', handleResize)
       document.removeEventListener('mouseup', handleDocUp)
       document.removeEventListener('touchend', handleDocUp as any)
     }
@@ -642,14 +647,21 @@ export function PdfEditorClient() {
       pdfCanvas.style.height = H + 'px'
 
       if (fc) {
-        fc.width = W; fc.height = H
-        if (fc.lowerCanvasEl) {
-          fc.lowerCanvasEl.width = W; fc.lowerCanvasEl.height = H
-          fc.lowerCanvasEl.style.width = W + 'px'; fc.lowerCanvasEl.style.height = H + 'px'
-        }
-        if (fc.upperCanvasEl) {
-          fc.upperCanvasEl.width = W; fc.upperCanvasEl.height = H
-          fc.upperCanvasEl.style.width = W + 'px'; fc.upperCanvasEl.style.height = H + 'px'
+        // Use Fabric's official resize API — this properly updates the internal
+        // offset cache that drives pointer/touch coordinate mapping.
+        if (typeof fc.setDimensions === 'function') {
+          fc.setDimensions({ width: W, height: H })
+        } else {
+          // Fallback: manual resize for older Fabric builds
+          fc.width = W; fc.height = H
+          if (fc.lowerCanvasEl) {
+            fc.lowerCanvasEl.width = W; fc.lowerCanvasEl.height = H
+            fc.lowerCanvasEl.style.width = W + 'px'; fc.lowerCanvasEl.style.height = H + 'px'
+          }
+          if (fc.upperCanvasEl) {
+            fc.upperCanvasEl.width = W; fc.upperCanvasEl.height = H
+            fc.upperCanvasEl.style.width = W + 'px'; fc.upperCanvasEl.style.height = H + 'px'
+          }
         }
         if (fc.wrapperEl) {
           Object.assign(fc.wrapperEl.style, {
@@ -672,6 +684,9 @@ export function PdfEditorClient() {
       const task = page.render({ canvasContext: ctx, viewport })
       renderTaskRef.current = task
       await task.promise
+      // Refresh Fabric's cached canvas offset after every render so that
+      // pointer/touch coordinates map correctly to the drawn position.
+      fabricRef.current?.calcOffset?.()
     } catch (err: any) {
       if (err?.name !== 'RenderingCancelledException') console.error('PDF render:', err)
     } finally {
@@ -1338,7 +1353,9 @@ export function PdfEditorClient() {
         </div>
 
         {/* ── Canvas area ───────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-auto bg-gray-100 flex items-start justify-center p-6" onClick={() => showDownloadMenu && setShowDownloadMenu(false)}>
+        <div className="flex-1 overflow-auto bg-gray-100 flex items-start justify-center p-6"
+          onScroll={() => fabricRef.current?.calcOffset?.()}
+          onClick={() => showDownloadMenu && setShowDownloadMenu(false)}>
           <div className="relative shadow-xl" style={{ display: 'inline-block' }}>
             <canvas ref={pdfCanvasRef} className="block" style={{ display: 'block' }} />
             <canvas ref={fabricElRef} style={{ touchAction: 'none', position: 'absolute', top: 0, left: 0, pointerEvents: 'all' }} />
