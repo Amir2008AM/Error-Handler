@@ -72,10 +72,12 @@ function SignatureModal({
         width: 400,
         height: 150,
         isDrawingMode: true,
+        enableRetinaScaling: true,
       })
       const brush = new PencilBrush(fc)
       brush.color = '#1e293b'
-      brush.width = 2.5
+      brush.width = 2
+      ;(brush as any).decimate = 2
       fc.freeDrawingBrush = brush
       sigFabricRef.current = fc
 
@@ -111,17 +113,20 @@ function SignatureModal({
       const fc = sigFabricRef.current
       if (!fc) return
       if (fc.getObjects().length === 0) return
-      onUse(fc.toDataURL({ format: 'png', multiplier: 2 }))
+      onUse(fc.toDataURL({ format: 'png', multiplier: 4 }))
     } else if (tab === 'type') {
       if (!typedSig.trim()) return
+      const dpr = window.devicePixelRatio || 2
       const tmp = document.createElement('canvas')
-      tmp.width = 500; tmp.height = 120
+      tmp.width = 700 * dpr; tmp.height = 140 * dpr
       const ctx = tmp.getContext('2d')!
-      ctx.clearRect(0, 0, 500, 120)
+      ctx.scale(dpr, dpr)
+      ctx.clearRect(0, 0, 700, 140)
       ctx.fillStyle = '#1e293b'
-      ctx.font = `52px "${sigFont}", cursive`
+      ctx.font = `62px "${sigFont}", cursive`
       ctx.textBaseline = 'middle'
-      ctx.fillText(typedSig, 12, 60)
+      ctx.textRenderingOptimization = 'optimizeLegibility' as any
+      ctx.fillText(typedSig, 16, 70)
       onUse(tmp.toDataURL('image/png'))
     } else if (tab === 'upload' && uploadPreview) {
       onUse(uploadPreview)
@@ -277,6 +282,12 @@ export function PdfEditorClient() {
   // ── Selected object (image editing panel) ─────────────────────────────────
   const [selectedObject, setSelectedObject] = useState<any>(null)
 
+  // ── Page thumbnails ────────────────────────────────────────────────────────
+  const [thumbnails, setThumbnails] = useState<Record<number, string>>({})
+
+  // ── Fabric ready flag (fixes page-1 not rendering) ────────────────────────
+  const [fabricReady, setFabricReady] = useState(false)
+
   // ── Canvas refs ────────────────────────────────────────────────────────────
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null)
   const fabricElRef = useRef<HTMLCanvasElement>(null)
@@ -366,6 +377,23 @@ export function PdfEditorClient() {
     fc.on('selection:created', (opt: any) => { setSelectedObject(opt.selected?.[0] ?? null) })
     fc.on('selection:updated', (opt: any) => { setSelectedObject(opt.selected?.[0] ?? null) })
     fc.on('selection:cleared', () => { setSelectedObject(null) })
+
+    // ── Nicer handles for all objects ──────────────────────────────────────
+    const styleObject = (obj: any) => {
+      if (!obj || obj.data?.temp) return
+      obj.set({
+        cornerStyle: 'circle',
+        cornerSize: 14,
+        transparentCorners: false,
+        cornerColor: '#6366f1',
+        borderColor: '#6366f1',
+        cornerStrokeColor: '#ffffff',
+        borderScaleFactor: 1.5,
+        padding: 4,
+      })
+    }
+    fc.on('object:added', (opt: any) => { styleObject(opt.target) })
+    fc.on('selection:created', (opt: any) => { styleObject(opt.selected?.[0]) })
 
     // ── Text tool ───────────────────────────────────────────────────────────
     fc.on('mouse:down', (opt: any) => {
@@ -569,8 +597,10 @@ export function PdfEditorClient() {
     }
     window.addEventListener('keydown', handleKey)
     fabricRef.current = fc
+    setFabricReady(true)
 
     return () => {
+      setFabricReady(false)
       window.removeEventListener('keydown', handleKey)
       document.removeEventListener('mouseup', handleDocUp)
       document.removeEventListener('touchend', handleDocUp as any)
@@ -598,7 +628,7 @@ export function PdfEditorClient() {
 
     try {
       const page = await doc.getPage(pageNum)
-      const dpr = Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, 2)
+      const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 3) : 1
       const viewport = page.getViewport({ scale: zoomLevel * dpr })
       const W = Math.round(viewport.width / dpr)
       const H = Math.round(viewport.height / dpr)
@@ -713,12 +743,35 @@ export function PdfEditorClient() {
 
   // ── Render page when dependencies change ───────────────────────────────────
   useEffect(() => {
-    if (phase !== 'editor' || !pdfDocProxy || !fabricRef.current) return
+    if (phase !== 'editor' || !pdfDocProxy || !fabricReady) return
     const timer = setTimeout(() => {
       renderPage(currentPage, pdfDocProxy, zoom)
     }, 30)
     return () => clearTimeout(timer)
-  }, [currentPage, pdfDocProxy, zoom, phase, renderPage])
+  }, [currentPage, pdfDocProxy, zoom, phase, renderPage, fabricReady])
+
+  // ── Generate page thumbnails ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!pdfDocProxy) return
+    let cancelled = false
+    setThumbnails({})
+    ;(async () => {
+      for (let i = 1; i <= pdfDocProxy.numPages; i++) {
+        if (cancelled) break
+        try {
+          const page = await pdfDocProxy.getPage(i)
+          const viewport = page.getViewport({ scale: 0.22 })
+          const tmp = document.createElement('canvas')
+          tmp.width = Math.round(viewport.width)
+          tmp.height = Math.round(viewport.height)
+          const ctx = tmp.getContext('2d')!
+          await page.render({ canvasContext: ctx, viewport }).promise
+          if (!cancelled) setThumbnails((prev) => ({ ...prev, [i]: tmp.toDataURL('image/jpeg', 0.75) }))
+        } catch { /* skip failed thumb */ }
+      }
+    })()
+    return () => { cancelled = true }
+  }, [pdfDocProxy])
 
   useEffect(() => {
     if (phase !== 'editor') return
@@ -1259,7 +1312,12 @@ export function PdfEditorClient() {
                 currentPage === pageNum && 'bg-violet-50 border-l-2 border-l-violet-500',
               )}>
               <div className="w-[80px] h-[110px] rounded-md border border-gray-200 bg-white flex items-center justify-center shadow-sm mb-1 overflow-hidden">
-                <FileText size={26} className="text-gray-200" />
+                {thumbnails[pageNum] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={thumbnails[pageNum]} alt={`Page ${di + 1}`} className="w-full h-full object-contain" />
+                ) : (
+                  <FileText size={26} className="text-gray-200" />
+                )}
               </div>
               <span className="text-[11px] text-gray-400">{di + 1}</span>
               {pageRotations[pageNum] ? <span className="text-[10px] text-violet-500">{pageRotations[pageNum]}°</span> : null}
@@ -1353,20 +1411,28 @@ export function PdfEditorClient() {
               <Sliders size={14} className="text-violet-500" />Image
             </p>
 
+            <p className="text-xs text-gray-400 bg-violet-50 rounded-lg px-2 py-1.5">
+              ✦ اسحب لتحريك · زوايا الدائرة للتحجيم
+            </p>
+
             <div>
-              <p className="text-xs font-medium text-gray-600 mb-2">Scale</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {[-0.1, -0.05, +0.05, +0.1].map((d) => (
-                  <button key={d} onClick={() => applyImageScale(d)}
-                    className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-mono">
-                    {d > 0 ? `+${Math.round(d * 100)}%` : `${Math.round(d * 100)}%`}
-                  </button>
-                ))}
+              <p className="text-xs font-medium text-gray-600 mb-1.5">الحجم</p>
+              <input type="range" min={0.05} max={3} step={0.05}
+                value={selectedObject?.scaleX ?? 1}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value)
+                  const fc = fabricRef.current; const obj = fc?.getActiveObject?.()
+                  if (!obj) return
+                  obj.set({ scaleX: v, scaleY: v }); fc.renderAll()
+                }}
+                className="w-full accent-violet-600" />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                <span>صغير</span><span>كبير</span>
               </div>
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-600 mb-2">Rotate</p>
+              <p className="text-xs font-medium text-gray-600 mb-2">تدوير</p>
               <div className="flex gap-1.5">
                 <button onClick={() => applyImageRotate(-90)}
                   className="flex-1 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center gap-1 text-gray-700">
@@ -1377,25 +1443,19 @@ export function PdfEditorClient() {
                   <RotateCw size={13} />+90°
                 </button>
               </div>
-              <div className="flex gap-1.5 mt-1">
-                <button onClick={() => applyImageRotate(-15)}
-                  className="flex-1 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700">−15°</button>
-                <button onClick={() => applyImageRotate(15)}
-                  className="flex-1 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700">+15°</button>
-              </div>
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-600 mb-1">Opacity</p>
+              <p className="text-xs font-medium text-gray-600 mb-1">الشفافية</p>
               <input type="range" min={0.1} max={1} step={0.05}
                 defaultValue={selectedObject?.opacity ?? 1}
                 onChange={(e) => applyImageOpacity(parseFloat(e.target.value))}
-                className="w-full" />
+                className="w-full accent-violet-600" />
             </div>
 
             <button onClick={deleteSelected}
               className="flex items-center justify-center gap-1.5 w-full py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors mt-1">
-              <Trash2 size={13} />Remove Image
+              <Trash2 size={13} />حذف
             </button>
           </div>
         )}
