@@ -170,11 +170,13 @@ export default function DrawPanel({
 
   return (
     <div
-      className="absolute left-1/2 -translate-x-1/2 mt-2 z-50
-        w-[340px] rounded-3xl overflow-hidden
+      className="fixed left-1/2 -translate-x-1/2 z-[200]
+        w-[340px] max-w-[calc(100vw-24px)]
+        max-h-[calc(100vh-72px)] overflow-y-auto
+        rounded-3xl
         shadow-2xl border border-white/10
         bg-zinc-900/96 backdrop-blur-xl"
-      style={{ animation: 'drawPanelIn 0.18s cubic-bezier(0.34,1.56,0.64,1) both' }}
+      style={{ top: '60px', animation: 'drawPanelIn 0.18s cubic-bezier(0.34,1.56,0.64,1) both' }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <style>{`
