@@ -69,7 +69,46 @@ function ptInPoly(px: number, py: number, poly: {x:number;y:number}[]): boolean 
 type PdfTextItem = {
   str: string; x: number; y: number; w: number; h: number; fontSize: number
 }
+type PageErasure  = { x: number; y: number; w: number; h: number; bgColor: string }
 type SigResult = { dataURL: string; text?: string; font?: string; tab: SigTab }
+
+// ─── Canvas helpers for text erasure ──────────────────────────────────────────
+
+/** Sample background color from pixels just above the text bounding box */
+function sampleCanvasBg(canvas: HTMLCanvasElement, x: number, y: number, w: number, dpr: number): string {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return '#ffffff'
+  const sx = Math.max(0, Math.round(x * dpr))
+  const sy = Math.max(0, Math.round(y * dpr) - Math.round(8 * dpr))
+  const sw = Math.min(Math.round(w * dpr), canvas.width - sx)
+  const sh = Math.max(1, Math.round(5 * dpr))
+  if (sw <= 0) return '#ffffff'
+  try {
+    const d = ctx.getImageData(sx, sy, sw, sh).data
+    let r = 0, g = 0, b = 0, n = 0
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 200) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++ }
+    }
+    if (n === 0) return '#ffffff'
+    return `rgb(${Math.round(r / n)},${Math.round(g / n)},${Math.round(b / n)})`
+  } catch { return '#ffffff' }
+}
+
+/** Paint erasure rects onto a canvas using stored background colors */
+function paintErasures(canvas: HTMLCanvasElement, erasures: PageErasure[], dpr: number) {
+  if (!erasures.length) return
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  for (const e of erasures) {
+    ctx.fillStyle = e.bgColor
+    ctx.fillRect(
+      Math.max(0, Math.round(e.x * dpr) - 2),
+      Math.max(0, Math.round(e.y * dpr) - 2),
+      Math.round(e.w * dpr) + 4,
+      Math.min(Math.round(e.h * dpr) + 8, canvas.height)
+    )
+  }
+}
 type CompressLevel = 'low' | 'medium' | 'high'
 
 const PDFJS_VERSION = '5.7.284'
@@ -434,6 +473,10 @@ export function PdfEditorClient() {
   const [pdfTextItems,  setPdfTextItems]  = useState<PdfTextItem[]>([])
   const pdfTextItemsRef = useRef<PdfTextItem[]>([])
 
+  // ── Text erasure store (per page) ─────────────────────────────────────────
+  const pageErasuresRef     = useRef<Record<number, PageErasure[]>>({})
+  const [editTextSelected,  setEditTextSelected] = useState<PdfTextItem[]>([])
+
   // ── Page thumbnails ────────────────────────────────────────────────────────
   const [thumbnails, setThumbnails] = useState<Record<number, string>>({})
 
@@ -597,62 +640,102 @@ export function PdfEditorClient() {
       })
     })
 
-    // ── Edit Text tool: click existing PDF text or add new textbox ──────────
+    // ── Edit Text: single click = erase original + edit, drag = multi-select ──
+    let etDragStart: { x: number; y: number } | null = null
+    let etDragging = false
+
     fc.on('mouse:down', (opt: any) => {
       if (toolRef.current !== 'editText') return
-      if (opt.target) return   // let Fabric handle clicking on existing objects
-      const pointer = opt.scenePoint ?? fc.getScenePoint?.(opt.e) ?? { x: opt.pointer?.x ?? 0, y: opt.pointer?.y ?? 0 }
-      const px = pointer.x; const py = pointer.y
+      if (opt.target) return  // clicking on existing Fabric object → Fabric handles it
+      const p = opt.scenePoint ?? fc.getScenePoint?.(opt.e) ?? { x: opt.pointer?.x ?? 0, y: opt.pointer?.y ?? 0 }
+      etDragStart = { x: p.x, y: p.y }
+      etDragging  = false
+      setEditTextSelected([])
 
-      // Check if we hit any extracted PDF text item
+      // ── Hit-test: did user click on a PDF text item?
       const hit = pdfTextItemsRef.current.find((item) =>
-        px >= item.x - 6 && px <= item.x + item.w + 6 &&
-        py >= item.y - 6 && py <= item.y + item.h + 6
+        p.x >= item.x - 6 && p.x <= item.x + item.w + 6 &&
+        p.y >= item.y - 6 && p.y <= item.y + item.h + 6
       )
+      if (!hit) return   // no text hit → wait for possible drag
 
-      if (hit) {
-        // Cover the original rendered text with a white rect, then place editable textbox
-        import('fabric').then(({ Rect, Textbox }) => {
-          const cover = new Rect({
-            left: hit.x - 2, top: hit.y - 2,
-            width: hit.w + 4, height: hit.h + 4,
-            fill: '#ffffff', stroke: 'none',
-            selectable: false, evented: false,
-            data: { temp: false, isCover: true },
-          } as any)
-          const txt = new Textbox(hit.str, {
-            left: hit.x - 2, top: hit.y - 2,
-            width: Math.max(hit.w + 4, 80),
-            fontSize: Math.max(Math.round(hit.fontSize), 8),
-            fill: '#1e293b',
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            editable: true,
-            data: { isEditText: true },
-          } as any)
-          fc.add(cover); fc.add(txt)
-          fc.setActiveObject(txt)
-          txt.enterEditing?.()
-          txt.selectAll?.()
-          fc.renderAll()
-        })
-      } else {
-        // Empty area → create a new multi-line text box
-        import('fabric').then(({ Textbox }) => {
-          const txt = new Textbox('', {
-            left: px, top: py,
-            width: 220,
-            fontSize: textSizeRef.current,
-            fill: textColorRef.current,
-            fontFamily: 'Helvetica, Arial, sans-serif',
-            editable: true,
-            data: { isEditText: true },
-          } as any)
-          fc.add(txt)
-          fc.setActiveObject(txt)
-          txt.enterEditing?.()
-          fc.renderAll()
-        })
+      etDragStart = null  // cancel drag tracking
+
+      // ── Erase original text pixels directly from the PDF canvas ──────────
+      const pdfCanvas = pdfCanvasRef.current
+      if (pdfCanvas) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 3)
+        const bgColor = sampleCanvasBg(pdfCanvas, hit.x, hit.y, hit.w, dpr)
+        const erasure: PageErasure = { x: hit.x, y: hit.y, w: hit.w, h: hit.h, bgColor }
+        paintErasures(pdfCanvas, [erasure], dpr)
+        const pg = currentPageRef.current
+        if (!pageErasuresRef.current[pg]) pageErasuresRef.current[pg] = []
+        pageErasuresRef.current[pg].push(erasure)
       }
+
+      // Remove hit item from the detected list so it won't be re-hit
+      setPdfTextItems((prev) => prev.filter((t) => t !== hit))
+
+      // ── Place an editable Textbox at the exact position of the erased text ─
+      import('fabric').then(({ Textbox }) => {
+        const txt = new Textbox(hit.str, {
+          left:      hit.x,
+          top:       hit.y,
+          width:     Math.max(hit.w + 8, 80),
+          fontSize:  Math.max(Math.round(hit.fontSize), 8),
+          fill:      '#1e293b',
+          fontFamily: 'Helvetica, Arial, sans-serif',
+          editable:  true,
+          data: { isEditText: true },
+        } as any)
+        fc.add(txt)
+        fc.setActiveObject(txt)
+        txt.enterEditing?.()
+        txt.selectAll?.()
+        fc.renderAll()
+        pushHistory()
+      })
+    })
+
+    fc.on('mouse:move', (opt: any) => {
+      if (toolRef.current !== 'editText' || !etDragStart) return
+      const p = opt.scenePoint ?? fc.getScenePoint?.(opt.e) ?? { x: opt.pointer?.x ?? 0, y: opt.pointer?.y ?? 0 }
+      const dx = p.x - etDragStart.x; const dy = p.y - etDragStart.y
+      if (!etDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) etDragging = true
+      if (!etDragging) return
+
+      // Draw drag-selection rect on the Fabric upper canvas overlay
+      const uc = (fc as any).upperCanvasEl as HTMLCanvasElement | undefined
+      if (uc) {
+        const ctx = uc.getContext('2d')
+        if (ctx) {
+          ctx.clearRect(0, 0, uc.width, uc.height)
+          const rx = Math.min(etDragStart.x, p.x)
+          const ry = Math.min(etDragStart.y, p.y)
+          const rw = Math.abs(dx); const rh = Math.abs(dy)
+          ctx.save()
+          ctx.strokeStyle = '#6366f1'; ctx.fillStyle = 'rgba(99,102,241,0.08)'
+          ctx.lineWidth = 1.5; ctx.setLineDash([4, 4])
+          ctx.strokeRect(rx, ry, rw, rh); ctx.fillRect(rx, ry, rw, rh)
+          ctx.restore()
+          // Live preview: highlight text items inside the drag rect
+          const hits = pdfTextItemsRef.current.filter((item) =>
+            item.x + item.w > rx && item.x < rx + rw &&
+            item.y + item.h > ry && item.y < ry + rh
+          )
+          setEditTextSelected(hits)
+        }
+      }
+    })
+
+    fc.on('mouse:up', (opt: any) => {
+      if (toolRef.current !== 'editText') return
+      if (!etDragging) { etDragStart = null; return }
+      etDragging = false; etDragStart = null
+      // Clear drag overlay
+      const uc = (fc as any).upperCanvasEl as HTMLCanvasElement | undefined
+      if (uc) { const ctx = uc.getContext('2d'); ctx?.clearRect(0, 0, uc.width, uc.height) }
+      // editTextSelected stays set → floating action bar appears
     })
 
     // ── Eraser — continuous: removes any object under the pointer while held ─
@@ -1009,6 +1092,9 @@ export function PdfEditorClient() {
       const task = page.render({ canvasContext: ctx, viewport })
       renderTaskRef.current = task
       await task.promise
+      // Re-apply stored text erasures so they survive page re-renders
+      const dprForErase = Math.min(window.devicePixelRatio || 1, 3)
+      paintErasures(pdfCanvas, pageErasuresRef.current[pageNum] ?? [], dprForErase)
       // Refresh Fabric's cached canvas offset after every render so that
       // pointer/touch coordinates map correctly to the drawn position.
       fabricRef.current?.calcOffset?.()
@@ -1321,25 +1407,43 @@ export function PdfEditorClient() {
         const extraRot = pageRotations[origPageNum] ?? 0
         if (extraRot !== 0) copied.setRotation(degrees((copied.getRotation().angle + extraRot) % 360))
 
-        const pageJSON = annotations[origPageNum] as any
-        if (pageJSON?.objects?.length > 0) {
+        const pageJSON    = annotations[origPageNum] as any
+        const hasErasures = (pageErasuresRef.current[origPageNum] ?? []).length > 0
+        const hasAnnotations = (pageJSON?.objects?.length ?? 0) > 0
+
+        if (hasErasures || hasAnnotations) {
           try {
             const pdfJsPage = await pdfDocProxy.getPage(origPageNum)
             const vp = pdfJsPage.getViewport({ scale: zoom })
             const W = Math.round(vp.width); const H = Math.round(vp.height)
-            const tmpEl = document.createElement('canvas')
-            tmpEl.width = W; tmpEl.height = H
-            const { Canvas } = await import('fabric')
-            const tmpFc = new Canvas(tmpEl, { width: W, height: H, backgroundColor: undefined as any })
-            await tmpFc.loadFromJSON(pageJSON)
-            tmpFc.renderAll()
-            const quality = compressOnDownload
-              ? (compressionLevel === 'high' ? 0.5 : compressionLevel === 'medium' ? 0.72 : 0.88)
-              : 1
-            const pngDataURL = tmpFc.toDataURL({ format: 'png', multiplier: quality })
-            tmpFc.dispose()
-            const pngBytes = dataURLtoBytes(pngDataURL)
-            const embedded = await outDoc.embedPng(pngBytes)
+
+            // Merge canvas: PDF render → erasures → Fabric annotations
+            const mergeEl = document.createElement('canvas')
+            mergeEl.width = W; mergeEl.height = H
+            const mergeCtx = mergeEl.getContext('2d')!
+
+            if (hasErasures) {
+              // Render the PDF page to get the base layer
+              await pdfJsPage.render({ canvasContext: mergeCtx, viewport: vp }).promise
+              // Apply erasures at download scale (dpr = 1)
+              paintErasures(mergeEl, pageErasuresRef.current[origPageNum] ?? [], 1)
+            }
+
+            if (hasAnnotations) {
+              // Render Fabric annotations to a separate canvas, then composite on top
+              const annEl = document.createElement('canvas')
+              annEl.width = W; annEl.height = H
+              const { Canvas } = await import('fabric')
+              const tmpFc = new Canvas(annEl, { width: W, height: H, backgroundColor: undefined as any })
+              await tmpFc.loadFromJSON(pageJSON)
+              tmpFc.renderAll()
+              mergeCtx.drawImage(annEl, 0, 0)
+              tmpFc.dispose()
+            }
+
+            const pngDataURL = mergeEl.toDataURL('image/png')
+            const pngBytes   = dataURLtoBytes(pngDataURL)
+            const embedded   = await outDoc.embedPng(pngBytes)
             const pw = copied.getWidth(); const ph = copied.getHeight()
             copied.drawImage(embedded, { x: 0, y: 0, width: pw, height: ph, opacity: 1 })
           } catch (err) { console.warn('Annotation embed error:', err) }
@@ -1376,10 +1480,12 @@ export function PdfEditorClient() {
   const handleReset = useCallback(() => {
     try { fabricRef.current?.dispose(); fabricRef.current = null } catch {}
     pageAnnotationsRef.current = {}
+    pageErasuresRef.current = {}
     setPhase('upload'); setPdfDocProxy(null); setFileBytes(null)
     setPageOrder([]); setPageRotations({}); setHistory([]); setHistoryIndex(-1)
     historyIndexRef.current = -1; setTool('select'); setLoadError(null)
     setOcrDone(false); setOcrRunning(false); setShowOcrPanel(false)
+    setEditTextSelected([])
   }, [])
 
   // ── Keep pdfTextItemsRef in sync ──────────────────────────────────────────
@@ -1458,6 +1564,28 @@ export function PdfEditorClient() {
     if (!obj) return
     fc.remove(obj); fc.renderAll()
   }, [])
+
+  // ── Batch-erase selected text items (drag-select → delete) ────────────────
+  const deleteSelectedEditText = useCallback(() => {
+    const items = editTextSelected
+    if (!items.length) return
+    const pdfCanvas = pdfCanvasRef.current
+    if (pdfCanvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 3)
+      const pg   = currentPageRef.current
+      if (!pageErasuresRef.current[pg]) pageErasuresRef.current[pg] = []
+      for (const item of items) {
+        const bgColor = sampleCanvasBg(pdfCanvas, item.x, item.y, item.w, dpr)
+        const erasure: PageErasure = { x: item.x, y: item.y, w: item.w, h: item.h, bgColor }
+        paintErasures(pdfCanvas, [erasure], dpr)
+        pageErasuresRef.current[pg].push(erasure)
+      }
+    }
+    const itemSet = new Set(items)
+    setPdfTextItems((prev) => prev.filter((t) => !itemSet.has(t)))
+    setEditTextSelected([])
+    pushHistory()
+  }, [editTextSelected, pushHistory])
 
   // ══════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -1807,11 +1935,29 @@ export function PdfEditorClient() {
             <canvas ref={fabricElRef} style={{ touchAction: 'none', position: 'absolute', top: 0, left: 0, pointerEvents: 'all' }} />
             {tool === 'editText' && pdfTextItems.length === 0 && fabricReady && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="bg-white/90 border border-gray-200 rounded-xl px-5 py-4 shadow-sm max-w-xs text-center">
-                  <AlertCircle size={20} className="text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 font-medium">This PDF contains no editable text.</p>
-                  <p className="text-xs text-gray-400 mt-1">OCR is not supported in the PDF Edit tool.</p>
+                <div className="bg-white/95 border border-amber-200 rounded-xl px-5 py-4 shadow-sm max-w-sm text-center">
+                  <AlertCircle size={20} className="text-amber-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-800 font-semibold mb-1">Scanned PDF — no selectable text</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    This PDF is image-based. You can add new text on top using the
+                    <strong className="text-gray-700"> Text</strong> tool, but the image content cannot be edited directly.
+                  </p>
                 </div>
+              </div>
+            )}
+
+            {/* Floating action bar for drag-selected text items */}
+            {tool === 'editText' && editTextSelected.length > 0 && (
+              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 bg-white border border-violet-200 shadow-xl rounded-2xl px-4 py-2.5 flex items-center gap-3 pointer-events-auto">
+                <span className="text-xs font-semibold text-gray-700">
+                  {editTextSelected.length} text item{editTextSelected.length > 1 ? 's' : ''} selected
+                </span>
+                <button onClick={deleteSelectedEditText}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium transition-colors">
+                  <Trash2 size={13} />Delete
+                </button>
+                <button onClick={() => setEditTextSelected([])}
+                  className="text-xs text-gray-400 hover:text-gray-600 px-1 transition-colors">Cancel</button>
               </div>
             )}
           </div>
