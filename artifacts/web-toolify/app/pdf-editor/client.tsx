@@ -25,6 +25,7 @@ type EditorTool =
   | 'form-text' | 'form-check' | 'form-radio' | 'form-dropdown'
 
 type SigTab = 'draw' | 'type' | 'upload'
+type SigResult = { dataURL: string; text?: string; font?: string; tab: SigTab }
 type OcrLang = 'eng' | 'ara' | 'eng+ara'
 type CompressLevel = 'low' | 'medium' | 'high'
 
@@ -50,7 +51,7 @@ function SignatureModal({
   onUse,
   onClose,
 }: {
-  onUse: (dataURL: string) => void
+  onUse: (result: SigResult) => void
   onClose: () => void
 }) {
   const [tab, setTab] = useState<SigTab>('draw')
@@ -113,7 +114,7 @@ function SignatureModal({
       const fc = sigFabricRef.current
       if (!fc) return
       if (fc.getObjects().length === 0) return
-      onUse(fc.toDataURL({ format: 'png', multiplier: 4 }))
+      onUse({ dataURL: fc.toDataURL({ format: 'png', multiplier: 4 }), tab: 'draw' })
     } else if (tab === 'type') {
       if (!typedSig.trim()) return
       const dpr = window.devicePixelRatio || 2
@@ -125,11 +126,10 @@ function SignatureModal({
       ctx.fillStyle = '#1e293b'
       ctx.font = `62px "${sigFont}", cursive`
       ctx.textBaseline = 'middle'
-
       ctx.fillText(typedSig, 16, 70)
-      onUse(tmp.toDataURL('image/png'))
+      onUse({ dataURL: tmp.toDataURL('image/png'), text: typedSig, font: sigFont, tab: 'type' })
     } else if (tab === 'upload' && uploadPreview) {
-      onUse(uploadPreview)
+      onUse({ dataURL: uploadPreview, tab: 'upload' })
     }
   }, [tab, typedSig, sigFont, uploadPreview, onUse])
 
@@ -281,6 +281,8 @@ export function PdfEditorClient() {
 
   // ── Selected object (image editing panel) ─────────────────────────────────
   const [selectedObject, setSelectedObject] = useState<any>(null)
+  const [sliderScale, setSliderScale]     = useState(1)
+  const [sliderOpacity, setSliderOpacity] = useState(1)
 
   // ── Page thumbnails ────────────────────────────────────────────────────────
   const [thumbnails, setThumbnails] = useState<Record<number, string>>({})
@@ -374,9 +376,14 @@ export function PdfEditorClient() {
     fc.on('object:removed', pushHistory)
 
     // ── Selection tracking (for image edit panel) ──────────────────────────
-    fc.on('selection:created', (opt: any) => { setSelectedObject(opt.selected?.[0] ?? null) })
-    fc.on('selection:updated', (opt: any) => { setSelectedObject(opt.selected?.[0] ?? null) })
-    fc.on('selection:cleared', () => { setSelectedObject(null) })
+    const onSel = (obj: any) => {
+      setSelectedObject(obj ?? null)
+      setSliderScale(obj?.scaleX ?? 1)
+      setSliderOpacity(obj?.opacity ?? 1)
+    }
+    fc.on('selection:created', (opt: any) => { onSel(opt.selected?.[0]) })
+    fc.on('selection:updated', (opt: any) => { onSel(opt.selected?.[0]) })
+    fc.on('selection:cleared', () => { onSel(null) })
 
     // ── No corner handles — drag the whole object to move it ───────────────
     // Resize is handled by the slider in the side panel.
@@ -850,16 +857,60 @@ export function PdfEditorClient() {
   }, [])
 
   // ── Signature ──────────────────────────────────────────────────────────────
-  const handleUseSignature = useCallback((dataURL: string) => {
+  const handleUseSignature = useCallback((result: SigResult) => {
     setShowSignatureModal(false)
     import('fabric').then(({ FabricImage }) => {
-      FabricImage.fromURL(dataURL, { crossOrigin: 'anonymous' } as any).then((img: any) => {
+      FabricImage.fromURL(result.dataURL, { crossOrigin: 'anonymous' } as any).then((img: any) => {
         const fc = fabricRef.current; if (!fc) return
         const maxW = Math.min(220, (fc.width ?? 400) * 0.4)
         const scale = img.width > maxW ? maxW / img.width : 1
-        img.scale(scale); img.set({ left: 60, top: 80 })
+        img.scale(scale)
+        img.set({
+          left: 60, top: 80,
+          data: { isSignature: true, text: result.text ?? '', font: result.font ?? '', tab: result.tab },
+        })
         fc.add(img); fc.setActiveObject(img); fc.renderAll()
         setTool('select')
+      })
+    })
+  }, [])
+
+  // ── Regenerate typed signature with a different font ───────────────────────
+  const regenerateSig = useCallback((text: string, newFont: string) => {
+    const fc = fabricRef.current
+    const obj = fc?.getActiveObject?.()
+    if (!obj || !obj.data?.isSignature) return
+
+    const dpr = window.devicePixelRatio || 2
+    const tmp = document.createElement('canvas')
+    tmp.width = 700 * dpr; tmp.height = 140 * dpr
+    const ctx = tmp.getContext('2d')!
+    ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, 700, 140)
+    ctx.fillStyle = '#1e293b'
+    ctx.font = `62px "${newFont}", cursive`
+    ctx.textBaseline = 'middle'
+    ctx.fillText(text, 16, 70)
+    const newDataURL = tmp.toDataURL('image/png')
+
+    const prevScale   = obj.scaleX ?? 1
+    const prevLeft    = obj.left  ?? 60
+    const prevTop     = obj.top   ?? 80
+    const prevAngle   = obj.angle ?? 0
+    const prevOpacity = obj.opacity ?? 1
+
+    import('fabric').then(({ FabricImage }) => {
+      FabricImage.fromURL(newDataURL, { crossOrigin: 'anonymous' } as any).then((newImg: any) => {
+        newImg.scale(prevScale)
+        newImg.set({
+          left: prevLeft, top: prevTop, angle: prevAngle, opacity: prevOpacity,
+          data: { isSignature: true, text, font: newFont, tab: 'type' },
+        })
+        fc!.remove(obj)
+        fc!.add(newImg)
+        fc!.setActiveObject(newImg)
+        fc!.renderAll()
+        setSelectedObject(newImg)
       })
     })
   }, [])
@@ -1152,7 +1203,8 @@ export function PdfEditorClient() {
   const isShapeTool = SHAPE_TOOLS.includes(tool)
   const isAnnotationTool = tool === 'sticky' || tool === 'comment'
   const isFormTool = ['form-text', 'form-check', 'form-radio', 'form-dropdown'].includes(tool)
-  const isImageSelected = selectedObject?.type === 'image' || selectedObject?.type === 'f-image'
+  const isSignatureSelected = !!(selectedObject?.data?.isSignature)
+  const isImageSelected = (selectedObject?.type === 'image' || selectedObject?.type === 'f-image') && !isSignatureSelected
 
   const ToolBtn = ({ id, icon, label, onClick }: { id: EditorTool; icon: React.ReactNode; label: string; onClick?: () => void }) => (
     <button title={label}
@@ -1446,9 +1498,10 @@ export function PdfEditorClient() {
             <div>
               <p className="text-xs font-medium text-gray-600 mb-1.5">الحجم</p>
               <input type="range" min={0.05} max={3} step={0.05}
-                value={selectedObject?.scaleX ?? 1}
+                value={sliderScale}
                 onChange={(e) => {
                   const v = parseFloat(e.target.value)
+                  setSliderScale(v)
                   const fc = fabricRef.current; const obj = fc?.getActiveObject?.()
                   if (!obj) return
                   obj.set({ scaleX: v, scaleY: v }); fc.renderAll()
@@ -1476,10 +1529,81 @@ export function PdfEditorClient() {
             <div>
               <p className="text-xs font-medium text-gray-600 mb-1">الشفافية</p>
               <input type="range" min={0.1} max={1} step={0.05}
-                defaultValue={selectedObject?.opacity ?? 1}
-                onChange={(e) => applyImageOpacity(parseFloat(e.target.value))}
+                value={sliderOpacity}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value)
+                  setSliderOpacity(v)
+                  applyImageOpacity(v)
+                }}
                 className="w-full accent-violet-600" />
             </div>
+
+            <button onClick={deleteSelected}
+              className="flex items-center justify-center gap-1.5 w-full py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors mt-1">
+              <Trash2 size={13} />حذف
+            </button>
+          </div>
+        )}
+
+        {/* ── Signature Edit Panel ───────────────────────────────────────── */}
+        {isSignatureSelected && !showOcrPanel && (
+          <div className="w-[200px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-4 gap-3 overflow-y-auto">
+            <link rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Pinyon+Script&family=Satisfy&family=Great+Vibes&family=Sacramento&family=Parisienne&family=Alex+Brush&family=Kaushan+Script&family=Caveat:wght@600&display=swap"
+            />
+            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+              <PenLine size={14} className="text-violet-500" />التوقيع
+            </p>
+
+            <div>
+              <p className="text-xs font-medium text-gray-600 mb-1.5">الحجم</p>
+              <input type="range" min={0.05} max={3} step={0.05}
+                value={sliderScale}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value)
+                  setSliderScale(v)
+                  const fc = fabricRef.current; const obj = fc?.getActiveObject?.()
+                  if (!obj) return
+                  obj.set({ scaleX: v, scaleY: v }); fc.renderAll()
+                }}
+                className="w-full accent-violet-600" />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                <span>صغير</span><span>كبير</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-gray-600 mb-1">الشفافية</p>
+              <input type="range" min={0.1} max={1} step={0.05}
+                value={sliderOpacity}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value)
+                  setSliderOpacity(v)
+                  applyImageOpacity(v)
+                }}
+                className="w-full accent-violet-600" />
+            </div>
+
+            {selectedObject?.data?.tab === 'type' && selectedObject?.data?.text && (
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-2">نوع الخط</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {['Dancing Script','Great Vibes','Pinyon Script','Sacramento','Parisienne','Alex Brush','Satisfy','Kaushan Script','Caveat'].map((f) => (
+                    <button key={f}
+                      onClick={() => regenerateSig(selectedObject.data.text, f)}
+                      className={cn(
+                        'py-2 px-1 rounded-lg border text-sm transition-colors truncate',
+                        selectedObject?.data?.font === f
+                          ? 'border-violet-500 bg-violet-50 text-violet-700'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'
+                      )}
+                      style={{ fontFamily: `"${f}", cursive`, fontSize: 16 }}
+                      title={f}
+                    >{selectedObject.data.text}</button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button onClick={deleteSelected}
               className="flex items-center justify-center gap-1.5 w-full py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors mt-1">
