@@ -44,29 +44,221 @@ export const DEFAULT_HL_PRESETS: Record<HlType, BrushPreset> = {
   dotted:   { color: '#f472b6', size: 14, opacity: 0.55, style: 'dotted' },
 }
 
+// ─── SVG Tool Icons ────────────────────────────────────────────────────────────
+
+function PenSvgIcon({ type }: { type: PenType }) {
+  const shadow: React.CSSProperties = { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.55))' }
+  switch (type) {
+    case 'pen': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="4" y="1" width="12" height="32" rx="6" fill="#e8ecf1" />
+        <rect x="4" y="1" width="5" height="32" rx="5" fill="rgba(255,255,255,0.45)" />
+        <rect x="13" y="4" width="2" height="26" rx="1" fill="rgba(0,0,0,0.07)" />
+        <rect x="4" y="29" width="12" height="6" rx="2" fill="#9eaab8" />
+        <rect x="4" y="30" width="12" height="1.5" fill="rgba(255,255,255,0.35)" />
+        <path d="M5 35 L10 51 L15 35Z" fill="#c8d2de" />
+        <path d="M8 46 L10 51 L12 46Z" fill="#6b7a8d" />
+        <circle cx="10" cy="51" r="1.5" fill="#3d4a58" />
+      </svg>
+    )
+    case 'fountain': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="4" y="1" width="12" height="26" rx="6" fill="#e8ecf1" />
+        <rect x="4" y="1" width="5" height="26" rx="5" fill="rgba(255,255,255,0.45)" />
+        <rect x="4" y="24" width="12" height="8" rx="2" fill="#9eaab8" />
+        <rect x="5" y="25" width="10" height="1" fill="rgba(255,255,255,0.35)" />
+        <rect x="5" y="27" width="10" height="1" fill="rgba(255,255,255,0.2)" />
+        <rect x="5" y="29" width="10" height="1" fill="rgba(255,255,255,0.15)" />
+        <path d="M4 32 Q10 28 16 32 L14 51 Q10 54 6 51 Z" fill="#d2dae6" />
+        <path d="M6 33 Q10 30 14 33 L12 50 Q10 52 8 50 Z" fill="#b8c4d2" />
+        <line x1="10" y1="34" x2="10" y2="50" stroke="rgba(50,70,90,0.3)" strokeWidth="0.9" />
+        <circle cx="10" cy="51" r="1" fill="#5a6a7a" />
+      </svg>
+    )
+    case 'pencil': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="5" y="1" width="10" height="5" rx="2.5" fill="#f0a0a0" />
+        <rect x="5" y="6" width="10" height="2" fill="#a0a8b0" />
+        <rect x="5" y="8" width="10" height="27" fill="#f5e090" />
+        <rect x="5" y="8" width="3.5" height="27" fill="#edd878" />
+        <rect x="5" y="8" width="1.5" height="27" fill="rgba(255,255,255,0.32)" />
+        <rect x="13" y="8" width="2" height="27" fill="rgba(0,0,0,0.07)" />
+        <path d="M5 35 L10 52 L15 35Z" fill="#c8a848" />
+        <path d="M7.5 43 L10 52 L12.5 43Z" fill="#eee8cc" />
+        <path d="M9.2 49 L10 52 L10.8 49Z" fill="#3a3a3a" />
+      </svg>
+    )
+    case 'calligraphy': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="4" y="1" width="12" height="28" rx="5" fill="#e8ecf1" />
+        <rect x="4" y="1" width="5" height="28" rx="5" fill="rgba(255,255,255,0.45)" />
+        <rect x="4" y="26" width="12" height="6" rx="1.5" fill="#9eaab8" />
+        <rect x="4" y="27" width="12" height="1" fill="rgba(255,255,255,0.35)" />
+        <rect x="3" y="32" width="14" height="20" rx="1.5" fill="#d2dae6" />
+        <rect x="3" y="32" width="6" height="20" rx="1.5" fill="rgba(255,255,255,0.22)" />
+        <rect x="3" y="32" width="14" height="3.5" rx="1.5" fill="#aebace" />
+        <rect x="3" y="50" width="14" height="2.5" rx="1" fill="#8899aa" />
+      </svg>
+    )
+    case 'brush': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="7.5" y="1" width="5" height="26" rx="2.5" fill="#c8956a" />
+        <rect x="7.5" y="1" width="2" height="26" rx="2" fill="rgba(255,255,255,0.32)" />
+        <rect x="6.5" y="24" width="7" height="6" rx="1.5" fill="#8899aa" />
+        <rect x="6.5" y="25" width="7" height="1" fill="rgba(255,255,255,0.4)" />
+        <rect x="6.5" y="28" width="7" height="1" fill="rgba(0,0,0,0.15)" />
+        <path d="M6 30 Q10 27 14 30 L13 51 Q10 54 7 51 Z" fill="#f2f2f2" />
+        <path d="M7.5 31 Q10 28.5 12.5 31 L11.5 50 Q10 53 8.5 50 Z" fill="rgba(0,0,0,0.05)" />
+        <path d="M9.2 47 L10 54 L10.8 47 Z" fill="#c8c8c8" />
+      </svg>
+    )
+    case 'marker': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="3" y="1" width="14" height="9" rx="5" fill="#b0bac8" />
+        <rect x="3" y="1" width="6" height="9" rx="5" fill="rgba(255,255,255,0.28)" />
+        <rect x="3" y="8" width="14" height="27" rx="2" fill="#e8ecf1" />
+        <rect x="3" y="8" width="6" height="27" rx="2" fill="rgba(255,255,255,0.38)" />
+        <rect x="3" y="33" width="14" height="5" rx="1.5" fill="#9eaab8" />
+        <rect x="3" y="34" width="14" height="1" fill="rgba(255,255,255,0.3)" />
+        <path d="M3 38 L6 52 L14 52 L17 38Z" fill="#c8d2de" />
+        <rect x="6" y="50" width="8" height="2.5" rx="1" fill="#6b7a8d" />
+      </svg>
+    )
+    case 'signature': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="7" y="1" width="6" height="33" rx="3" fill="#e8ecf1" />
+        <rect x="7" y="1" width="2.5" height="33" rx="2.5" fill="rgba(255,255,255,0.5)" />
+        <rect x="6.5" y="31" width="7" height="5" rx="1.5" fill="#9eaab8" />
+        <path d="M7.5 36 L10 52 L12.5 36Z" fill="#c8d2de" />
+        <path d="M9.2 48 L10 52 L10.8 48Z" fill="#5a6a7a" />
+        <circle cx="10" cy="52" r="1.2" fill="#2d3a48" />
+      </svg>
+    )
+    case 'dashed': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow}>
+        <rect x="4" y="1" width="12" height="32" rx="6" fill="#e8ecf1" />
+        <rect x="4" y="1" width="5" height="32" rx="5" fill="rgba(255,255,255,0.45)" />
+        <line x1="6.5" y1="11" x2="13.5" y2="11" stroke="#7a8a9a" strokeWidth="1.6" strokeDasharray="2.8,2.4" />
+        <line x1="6.5" y1="17" x2="13.5" y2="17" stroke="#7a8a9a" strokeWidth="1.6" strokeDasharray="2.8,2.4" />
+        <line x1="6.5" y1="23" x2="13.5" y2="23" stroke="#7a8a9a" strokeWidth="1.6" strokeDasharray="2.8,2.4" />
+        <rect x="4" y="29" width="12" height="6" rx="2" fill="#9eaab8" />
+        <path d="M5 35 L10 51 L15 35Z" fill="#c8d2de" />
+        <path d="M8 46 L10 51 L12 46Z" fill="#6b7a8d" />
+        <circle cx="10" cy="51" r="1.5" fill="#3d4a58" />
+      </svg>
+    )
+    default: return null
+  }
+}
+
+function HlSvgIcon({ type }: { type: HlType }) {
+  const shadow: React.CSSProperties = { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.55))' }
+  const caps: Record<HlType, string> = {
+    standard: '#fbbf24',
+    soft:     '#4ade80',
+    wide:     '#a78bfa',
+    gradient: '#f97316',
+    curved:   '#22d3ee',
+    dotted:   '#ec4899',
+  }
+  const tips: Record<HlType, string> = {
+    standard: '#fde68a',
+    soft:     '#bbf7d0',
+    wide:     '#ddd6fe',
+    gradient: '#fed7aa',
+    curved:   '#a5f3fc',
+    dotted:   '#fbcfe8',
+  }
+  const cap = caps[type]
+  const tip = tips[type]
+  const shadow2: React.CSSProperties = shadow
+
+  switch (type) {
+    case 'standard':
+    case 'gradient':
+    default: return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow2}>
+        <rect x="3" y="1" width="14" height="13" rx="6" fill={cap} />
+        <rect x="3" y="1" width="6" height="13" rx="6" fill="rgba(255,255,255,0.3)" />
+        <rect x="3" y="12" width="14" height="24" rx="2" fill="#f0f1f3" />
+        <rect x="3" y="12" width="6" height="24" rx="2" fill="rgba(255,255,255,0.42)" />
+        <rect x="3" y="34" width="14" height="5" rx="1.5" fill="#9eaab8" />
+        <rect x="3" y="35" width="14" height="1" fill="rgba(255,255,255,0.3)" />
+        <path d="M3 39 L6 53 L14 53 L17 39Z" fill={tip} />
+        <rect x="6" y="51" width="8" height="2.5" rx="1" fill={cap} opacity="0.85" />
+      </svg>
+    )
+    case 'soft': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow2}>
+        <rect x="3" y="1" width="14" height="13" rx="7" fill={cap} />
+        <rect x="3" y="1" width="5.5" height="13" rx="7" fill="rgba(255,255,255,0.3)" />
+        <rect x="3" y="12" width="14" height="24" rx="3" fill="#f0f1f3" />
+        <rect x="3" y="12" width="5.5" height="24" rx="3" fill="rgba(255,255,255,0.42)" />
+        <rect x="4" y="34" width="12" height="5" rx="2" fill="#9eaab8" />
+        <path d="M4 39 Q10 36 16 39 L13 51 Q10 54 7 51 Z" fill={tip} />
+        <ellipse cx="10" cy="51.5" rx="3.5" ry="1.5" fill={cap} opacity="0.8" />
+      </svg>
+    )
+    case 'wide': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow2}>
+        <rect x="2" y="1" width="16" height="12" rx="5" fill={cap} />
+        <rect x="2" y="1" width="7" height="12" rx="5" fill="rgba(255,255,255,0.3)" />
+        <rect x="2" y="11" width="16" height="24" rx="2" fill="#f0f1f3" />
+        <rect x="2" y="11" width="7" height="24" rx="2" fill="rgba(255,255,255,0.42)" />
+        <rect x="2" y="33" width="16" height="5" rx="1.5" fill="#9eaab8" />
+        <rect x="1" y="38" width="18" height="14" rx="1.5" fill={tip} />
+        <rect x="1" y="38" width="8" height="14" rx="1.5" fill="rgba(255,255,255,0.2)" />
+        <rect x="1" y="50.5" width="18" height="2.5" rx="1" fill={cap} opacity="0.9" />
+      </svg>
+    )
+    case 'curved': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow2}>
+        <rect x="3" y="1" width="14" height="12" rx="6" fill={cap} />
+        <rect x="3" y="1" width="5.5" height="12" rx="6" fill="rgba(255,255,255,0.3)" />
+        <rect x="3" y="11" width="14" height="24" rx="2" fill="#f0f1f3" />
+        <rect x="3" y="11" width="5.5" height="24" rx="2" fill="rgba(255,255,255,0.4)" />
+        <rect x="3" y="33" width="14" height="5" rx="2" fill="#9eaab8" />
+        <path d="M3 38 L3 52 Q10 56 17 52 L17 38Z" fill={tip} />
+        <path d="M3 38 L3 43 Q10 47 17 43 L17 38Z" fill={cap} opacity="0.55" />
+      </svg>
+    )
+    case 'dotted': return (
+      <svg viewBox="0 0 20 54" width={20} height={54} fill="none" style={shadow2}>
+        <rect x="5" y="1" width="10" height="11" rx="5" fill={cap} />
+        <rect x="5" y="1" width="4" height="11" rx="5" fill="rgba(255,255,255,0.3)" />
+        <rect x="5" y="10" width="10" height="27" rx="2" fill="#f0f1f3" />
+        <rect x="5" y="10" width="4" height="27" rx="2" fill="rgba(255,255,255,0.42)" />
+        <rect x="5" y="35" width="10" height="5" rx="2" fill="#9eaab8" />
+        <path d="M6 40 L10 53 L14 40Z" fill={tip} />
+        <circle cx="10" cy="53" r="1.8" fill={cap} />
+      </svg>
+    )
+  }
+}
+
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
-type PenMeta = { label: string; icon: string; lineCap: 'round' | 'square'; widthMult: number }
-type HlMeta  = { label: string; icon: string }
+type PenMeta = { label: string; icon: React.ReactNode; lineCap: 'round' | 'square'; widthMult: number }
+type HlMeta  = { label: string; icon: React.ReactNode }
 
 const PEN_META: Record<PenType, PenMeta> = {
-  pen:         { label: 'Pen',         icon: '🖊',  lineCap: 'round',  widthMult: 1.0 },
-  fountain:    { label: 'Fountain',    icon: '✒️',  lineCap: 'round',  widthMult: 1.5 },
-  pencil:      { label: 'Pencil',      icon: '✏️',  lineCap: 'round',  widthMult: 0.8 },
-  calligraphy: { label: 'Calligraphy', icon: '🖋',  lineCap: 'square', widthMult: 1.2 },
-  brush:       { label: 'Brush',       icon: '🖌',  lineCap: 'round',  widthMult: 2.0 },
-  marker:      { label: 'Marker',      icon: '🖍',  lineCap: 'square', widthMult: 2.5 },
-  signature:   { label: 'Signature',   icon: '✍️',  lineCap: 'round',  widthMult: 0.7 },
-  dashed:      { label: 'Dashed',      icon: '⁻ ⁻', lineCap: 'round',  widthMult: 1.0 },
+  pen:         { label: 'Pen',         icon: <PenSvgIcon type="pen" />,         lineCap: 'round',  widthMult: 1.0 },
+  fountain:    { label: 'Fountain',    icon: <PenSvgIcon type="fountain" />,    lineCap: 'round',  widthMult: 1.5 },
+  pencil:      { label: 'Pencil',      icon: <PenSvgIcon type="pencil" />,      lineCap: 'round',  widthMult: 0.8 },
+  calligraphy: { label: 'Calligraphy', icon: <PenSvgIcon type="calligraphy" />, lineCap: 'square', widthMult: 1.2 },
+  brush:       { label: 'Brush',       icon: <PenSvgIcon type="brush" />,       lineCap: 'round',  widthMult: 2.0 },
+  marker:      { label: 'Marker',      icon: <PenSvgIcon type="marker" />,      lineCap: 'square', widthMult: 2.5 },
+  signature:   { label: 'Signature',   icon: <PenSvgIcon type="signature" />,   lineCap: 'round',  widthMult: 0.7 },
+  dashed:      { label: 'Dashed',      icon: <PenSvgIcon type="dashed" />,      lineCap: 'round',  widthMult: 1.0 },
 }
 
 const HL_META: Record<HlType, HlMeta> = {
-  standard: { label: 'Standard', icon: '▬' },
-  soft:     { label: 'Soft',     icon: '≈' },
-  wide:     { label: 'Wide',     icon: '█' },
-  gradient: { label: 'Gradient', icon: '▓' },
-  curved:   { label: 'Curved',   icon: '∿' },
-  dotted:   { label: 'Dotted',   icon: '⋯' },
+  standard: { label: 'Standard', icon: <HlSvgIcon type="standard" /> },
+  soft:     { label: 'Soft',     icon: <HlSvgIcon type="soft"     /> },
+  wide:     { label: 'Wide',     icon: <HlSvgIcon type="wide"     /> },
+  gradient: { label: 'Gradient', icon: <HlSvgIcon type="gradient" /> },
+  curved:   { label: 'Curved',   icon: <HlSvgIcon type="curved"   /> },
+  dotted:   { label: 'Dotted',   icon: <HlSvgIcon type="dotted"   /> },
 }
 
 const PRESET_COLORS = [
@@ -185,9 +377,9 @@ export default function DrawPanel({
       `}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <span className="text-white/85 text-sm font-semibold tracking-wide">
-          {mode === 'pen' ? '🖊 Pen' : '✏ Highlighter'}
+          {mode === 'pen' ? 'Pen' : 'Highlighter'}
         </span>
         <button onClick={onClose}
           className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/50 hover:text-white transition-colors">
@@ -197,24 +389,27 @@ export default function DrawPanel({
 
       {/* Tool type selector */}
       <div className="px-3 pb-3">
-        <div className="flex gap-1 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {types.map((t) => {
-            const meta    = mode === 'pen' ? PEN_META[t as PenType] : HL_META[t as HlType]
+            const meta     = mode === 'pen' ? PEN_META[t as PenType] : HL_META[t as HlType]
             const isActive = t === activeType
             return (
               <button key={t}
                 onClick={() => mode === 'pen' ? onChangePenType(t as PenType) : onChangeHlType(t as HlType)}
                 style={isActive ? { transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)' } : {}}
                 className={cn(
-                  'flex-shrink-0 flex flex-col items-center gap-1 px-2.5 py-2 rounded-2xl transition-all duration-200 min-w-[52px]',
+                  'flex-shrink-0 flex flex-col items-center gap-1 pt-3 pb-2 px-2 rounded-2xl transition-all duration-200 min-w-[44px]',
                   isActive
-                    ? 'bg-white/22 ring-1 ring-white/35 scale-105'
+                    ? 'bg-white/20 ring-1 ring-white/35 scale-105'
                     : 'bg-white/6 hover:bg-white/12'
                 )}>
-                <span className="text-xl leading-none">{meta.icon}</span>
+                {/* SVG tool illustration */}
+                <span className="flex items-end justify-center" style={{ height: 54 }}>
+                  {meta.icon}
+                </span>
                 <span className={cn(
-                  'text-[9px] font-medium whitespace-nowrap',
-                  isActive ? 'text-white' : 'text-white/55'
+                  'text-[9px] font-medium whitespace-nowrap mt-0.5',
+                  isActive ? 'text-white' : 'text-white/50'
                 )}>{meta.label}</span>
               </button>
             )
