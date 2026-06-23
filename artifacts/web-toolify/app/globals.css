@@ -109,4 +109,8 @@
     flex-direction: column;
     min-height: 100vh;
   }
+  /* Eliminate 300ms tap delay on touch devices */
+  a, button, [role="button"], input, label, select, textarea {
+    touch-action: manipulation;
+  }
 }

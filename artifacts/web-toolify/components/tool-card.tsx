@@ -62,7 +62,8 @@ export function ToolCard({ tool, compact = false }: ToolCardProps) {
     return (
       <Link
         href={`/${tool.slug}`}
-        className="group flex flex-col items-center justify-center bg-white border border-border rounded-xl p-4 transition-all duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-1"
+        className="group flex flex-col items-center justify-center bg-white border border-border rounded-xl p-4 transition-[transform,box-shadow,border-color] duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-1"
+        style={{ willChange: 'transform' }}
       >
         <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center mb-3', tool.bgColor)}>
           <Icon className={cn('w-6 h-6', tool.color)} />
@@ -77,7 +78,8 @@ export function ToolCard({ tool, compact = false }: ToolCardProps) {
   return (
     <Link
       href={`/${tool.slug}`}
-      className="group flex flex-col items-center bg-white border border-border rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-1"
+      className="group flex flex-col items-center bg-white border border-border rounded-xl p-5 transition-[transform,box-shadow,border-color] duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-1"
+      style={{ willChange: 'transform' }}
     >
       <div className={cn('w-14 h-14 rounded-xl flex items-center justify-center mb-4', tool.bgColor)}>
         <Icon className={cn('w-7 h-7', tool.color)} />
