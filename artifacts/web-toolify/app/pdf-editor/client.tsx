@@ -24,6 +24,27 @@ import DrawPanel, {
   buildBrushColor, getPenLineCap, getPenWidthMult, getDashArray,
 } from '@/components/draw-panel'
 
+// ─── Custom Edit Text Icon ──────────────────────────────────────────────────
+function EditTextIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* Text lines */}
+      <line x1="2" y1="3.5" x2="11.5" y2="3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="2" y1="6.5" x2="13"   y2="6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="2" y1="9.5" x2="8"    y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Pencil body */}
+      <path d="M10.5 13.8 L12.2 12.1 L14.9 14.8 L13.2 16.5 Z"
+        fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
+      {/* Pencil tip/nib */}
+      <path d="M12.2 12.1 L13.4 10.9 A0.9 0.9 0 0 1 14.7 12.2 L13.5 13.4"
+        stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Eraser end */}
+      <path d="M10.5 13.8 L9.5 15.8 L11.5 15.1 Z"
+        fill="currentColor" fillOpacity="0.5" stroke="currentColor" strokeWidth="0.9" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type EditorTool =
@@ -1527,7 +1548,21 @@ export function PdfEditorClient() {
         {/* Basic tools */}
         <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
           <ToolBtn id="select"    icon={<MousePointer2 size={16} />} label="Select (V)" />
-          <ToolBtn id="editText"  icon={<Type size={16} />}          label="Edit Text" />
+
+          {/* Edit Text — featured button: icon + visible label */}
+          <button
+            title="Edit Text — click existing text to edit, click empty area to add new text"
+            onClick={() => setTool('editText')}
+            className={cn(
+              'flex flex-col items-center justify-center gap-[3px] px-2 py-1 rounded-lg transition-colors min-w-[44px]',
+              tool === 'editText'
+                ? 'bg-violet-100 text-violet-700 ring-1 ring-violet-300'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+            )}
+          >
+            <EditTextIcon size={16} />
+            <span className="text-[9px] font-semibold leading-none tracking-tight">Edit Text</span>
+          </button>
 
           {/* Pen — click once to activate, click again to open settings */}
           <div className="relative">
