@@ -385,6 +385,11 @@ export function PdfEditorClient() {
   const [compressionLevel, setCompressionLevel] = useState<CompressLevel>('medium')
   const [showDownloadMenu, setShowDownloadMenu] = useState(false)
 
+  // ── OCR panel ─────────────────────────────────────────────────────────────
+  const [ocrDone,        setOcrDone]        = useState(false)
+  const [ocrRunning,     setOcrRunning]     = useState(false)
+  const [showOcrPanel,   setShowOcrPanel]   = useState(false)
+
   // ── Selected object (image editing panel) ─────────────────────────────────
   const [selectedObject, setSelectedObject] = useState<any>(null)
   const [sliderScale, setSliderScale]     = useState(1)
