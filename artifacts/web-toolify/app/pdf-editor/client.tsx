@@ -18,16 +18,32 @@ import {
 } from 'lucide-react'
 import { PDFDocument, degrees } from 'pdf-lib'
 import { cn } from '@/lib/utils'
+import DrawPanel, {
+  type PenType, type HlType, type BrushPreset,
+  DEFAULT_PEN_PRESETS, DEFAULT_HL_PRESETS,
+  buildBrushColor, getPenLineCap, getPenWidthMult, getDashArray,
+} from '@/components/draw-panel'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type EditorTool =
-  | 'select' | 'text' | 'editText' | 'image' | 'draw' | 'highlight' | 'eraser' | 'signature'
+  | 'select' | 'text' | 'editText' | 'image' | 'draw' | 'highlight' | 'eraser' | 'lasso' | 'signature'
   | 'rect' | 'ellipse' | 'line' | 'arrow'
   | 'sticky' | 'comment'
   | 'form-text' | 'form-check' | 'form-radio' | 'form-dropdown'
 
 type SigTab = 'draw' | 'type' | 'upload'
+
+// ─── Lasso helper ──────────────────────────────────────────────────────────────
+function ptInPoly(px: number, py: number, poly: {x:number;y:number}[]): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)
+      inside = !inside
+  }
+  return inside
+}
 
 type PdfTextItem = {
   str: string; x: number; y: number; w: number; h: number; fontSize: number
@@ -260,6 +276,18 @@ export function PdfEditorClient() {
   const [brushColor, setBrushColor] = useState('#3b82f6')
   const [brushSize, setBrushSize] = useState(4)
   const [showSignatureModal, setShowSignatureModal] = useState(false)
+
+  // ── Drawing presets (per pen/hl type) ─────────────────────────────────────
+  const [activePenType,  setActivePenType]  = useState<PenType>('pen')
+  const [activeHlType,   setActiveHlType]   = useState<HlType>('standard')
+  const [penPresets,     setPenPresets]     = useState<Record<PenType, BrushPreset>>(() => ({ ...DEFAULT_PEN_PRESETS }))
+  const [hlPresets,      setHlPresets]      = useState<Record<HlType,  BrushPreset>>(() => ({ ...DEFAULT_HL_PRESETS  }))
+  const [showDrawPanel,  setShowDrawPanel]  = useState(false)
+  const [showHlPanel,    setShowHlPanel]    = useState(false)
+
+  // ── Lasso selection ───────────────────────────────────────────────────────
+  const lassoPointsRef  = useRef<{x:number;y:number}[]>([])
+  const [lassoAction,   setLassoAction]    = useState<{ objs: any[] } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
   // ── Shape style ────────────────────────────────────────────────────────────
@@ -552,6 +580,79 @@ export function PdfEditorClient() {
     })
     fc.on('mouse:up', () => { eraserActive = false })
 
+    // ── Lasso selection ─────────────────────────────────────────────────────
+    let lassoActive = false
+    const drawLasso = (pts: {x:number;y:number}[]) => {
+      const uc  = (fc as any).upperCanvasEl as HTMLCanvasElement | undefined
+      if (!uc) return
+      const ctx = uc.getContext('2d')
+      if (!ctx) return
+      const dpr = window.devicePixelRatio || 1
+      ctx.clearRect(0, 0, uc.width, uc.height)
+      if (pts.length < 2) return
+      ctx.save()
+      ctx.scale(dpr, dpr)
+      ctx.setLineDash([4, 4])
+      ctx.strokeStyle = '#6366f1'
+      ctx.fillStyle   = 'rgba(99,102,241,0.07)'
+      ctx.lineWidth   = 1.5
+      ctx.lineCap     = 'round'
+      ctx.lineJoin    = 'round'
+      ctx.beginPath()
+      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y))
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+    }
+
+    fc.on('mouse:down', (opt: any) => {
+      if (toolRef.current !== 'lasso') return
+      fc.discardActiveObject(); fc.renderAll()
+      setLassoAction(null)
+      const p = opt.scenePoint ?? fc.getScenePoint?.(opt.e) ?? { x: opt.pointer?.x ?? 0, y: opt.pointer?.y ?? 0 }
+      lassoPointsRef.current = [{ x: p.x, y: p.y }]
+      lassoActive = true
+    })
+
+    fc.on('mouse:move', (opt: any) => {
+      if (toolRef.current !== 'lasso' || !lassoActive) return
+      const p = opt.scenePoint ?? fc.getScenePoint?.(opt.e) ?? { x: opt.pointer?.x ?? 0, y: opt.pointer?.y ?? 0 }
+      lassoPointsRef.current.push({ x: p.x, y: p.y })
+      drawLasso(lassoPointsRef.current)
+    })
+
+    fc.on('mouse:up', () => {
+      if (toolRef.current !== 'lasso' || !lassoActive) return
+      lassoActive = false
+      const pts = lassoPointsRef.current
+      // Clear lasso overlay
+      const uc = (fc as any).upperCanvasEl as HTMLCanvasElement | undefined
+      if (uc) { const ctx = uc.getContext('2d'); ctx?.clearRect(0, 0, uc.width, uc.height) }
+
+      if (pts.length < 6) { lassoPointsRef.current = []; return }
+
+      // Find enclosed objects
+      const enclosed = (fc.getObjects?.() ?? []).filter((obj: any) => {
+        if (obj.data?.temp) return false
+        const br = obj.getBoundingRect?.()
+        if (!br) return false
+        const cx = br.left + br.width  / 2
+        const cy = br.top  + br.height / 2
+        return ptInPoly(cx, cy, pts)
+      })
+
+      lassoPointsRef.current = []
+      if (enclosed.length === 0) return
+
+      import('fabric').then(({ ActiveSelection }) => {
+        const sel = new (ActiveSelection as any)(enclosed, { canvas: fc })
+        fc.setActiveObject(sel)
+        fc.renderAll()
+        setLassoAction({ objs: enclosed })
+      })
+    })
+
     // ── Shape drawing: start ────────────────────────────────────────────────
     fc.on('mouse:down', (opt: any) => {
       const t = toolRef.current
@@ -823,6 +924,31 @@ export function PdfEditorClient() {
     }
   }, [])
 
+  // ── Apply brush settings from active preset ────────────────────────────────
+  const applyBrushFromPreset = useCallback(() => {
+    const fc = fabricRef.current
+    if (!fc || !fc.isDrawingMode) return
+    import('fabric').then(({ PencilBrush }) => {
+      const isPen = fc.isDrawingMode && toolRef.current === 'draw'
+      const preset = isPen ? penPresets[activePenType] : hlPresets[activeHlType]
+      const brush  = new PencilBrush(fc)
+
+      if (isPen) {
+        brush.color    = buildBrushColor(preset.color, preset.opacity)
+        brush.width    = preset.size * getPenWidthMult(activePenType)
+        ;(brush as any).strokeLineCap   = getPenLineCap(activePenType)
+        ;(brush as any).strokeDashArray = getDashArray(preset.style, preset.size)
+      } else {
+        brush.color    = buildBrushColor(preset.color, preset.opacity)
+        brush.width    = preset.size
+        ;(brush as any).strokeLineCap   = 'round'
+        ;(brush as any).strokeDashArray = getDashArray(preset.style, preset.size)
+      }
+
+      fc.freeDrawingBrush = brush
+    })
+  }, [activePenType, activeHlType, penPresets, hlPresets])
+
   // ── Tool effects ───────────────────────────────────────────────────────────
   useEffect(() => {
     const fc = fabricRef.current
@@ -833,21 +959,24 @@ export function PdfEditorClient() {
       const isForm = ['form-text', 'form-check', 'form-radio', 'form-dropdown'].includes(tool)
 
       fc.isDrawingMode = (tool === 'draw' || tool === 'highlight')
-      fc.selection = (tool === 'select')
-      fc.defaultCursor = isShape || isStickyOrComment || isForm || tool === 'text' || tool === 'eraser'
+      fc.selection     = (tool === 'select')
+      fc.defaultCursor = isShape || isStickyOrComment || isForm
+        || tool === 'text' || tool === 'editText' || tool === 'eraser' || tool === 'lasso'
         ? 'crosshair' : 'default'
 
       if (fc.isDrawingMode) {
-        const brush = new PencilBrush(fc)
-        brush.color = tool === 'highlight'
-          ? brushColor.replace(/^#/, '') !== brushColor ? brushColor + '80' : brushColor + '80'
-          : brushColor
-        brush.width = tool === 'highlight' ? brushSize * 3 : brushSize
-
-        if (tool === 'highlight') {
-          brush.color = brushColor
-          const ctx = fc.upperCanvasEl?.getContext('2d')
-          if (ctx) ctx.globalAlpha = 0.35
+        const preset = tool === 'draw' ? penPresets[activePenType] : hlPresets[activeHlType]
+        const brush  = new PencilBrush(fc)
+        if (tool === 'draw') {
+          brush.color    = buildBrushColor(preset.color, preset.opacity)
+          brush.width    = preset.size * getPenWidthMult(activePenType)
+          ;(brush as any).strokeLineCap   = getPenLineCap(activePenType)
+          ;(brush as any).strokeDashArray = getDashArray(preset.style, preset.size)
+        } else {
+          brush.color    = buildBrushColor(preset.color, preset.opacity)
+          brush.width    = preset.size
+          ;(brush as any).strokeLineCap   = 'round'
+          ;(brush as any).strokeDashArray = getDashArray(preset.style, preset.size)
         }
         fc.freeDrawingBrush = brush
       }
@@ -855,10 +984,10 @@ export function PdfEditorClient() {
       const allObjs = fc.getObjects?.() ?? []
       allObjs.forEach((obj: any) => {
         obj.selectable = tool === 'select'
-        obj.evented = tool === 'select' || tool === 'eraser'
+        obj.evented    = tool === 'select' || tool === 'eraser'
       })
     })
-  }, [tool, brushColor, brushSize])
+  }, [tool, activePenType, activeHlType, penPresets, hlPresets])
 
   useEffect(() => {
     const fc = fabricRef.current
@@ -870,12 +999,8 @@ export function PdfEditorClient() {
     }
   }, [textColor, textSize])
 
-  useEffect(() => {
-    const fc = fabricRef.current
-    if (!fc || !fc.isDrawingMode || !fc.freeDrawingBrush) return
-    fc.freeDrawingBrush.color = brushColor
-    fc.freeDrawingBrush.width = brushSize
-  }, [brushColor, brushSize])
+  // Re-apply brush when preset changes while already in drawing mode
+  useEffect(() => { applyBrushFromPreset() }, [applyBrushFromPreset])
 
   useEffect(() => {
     const fc = fabricRef.current
@@ -1396,10 +1521,70 @@ export function PdfEditorClient() {
         {/* Basic tools */}
         <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
           <ToolBtn id="select"    icon={<MousePointer2 size={16} />} label="Select (V)" />
-          <ToolBtn id="editText"  icon={<Type size={16} />}          label="Edit Text — click text to edit, click empty area to add" />
-          <ToolBtn id="draw"      icon={<PenLine size={16} />}       label="Draw" />
-          <ToolBtn id="highlight" icon={<Highlighter size={16} />}   label="Highlight" />
+          <ToolBtn id="editText"  icon={<Type size={16} />}          label="Edit Text" />
+
+          {/* Pen — click once to activate, click again to open settings */}
+          <div className="relative">
+            <button title={tool === 'draw' ? 'Pen settings' : 'Pen'}
+              onClick={() => {
+                if (tool === 'draw') { setShowDrawPanel((v) => !v); setShowHlPanel(false) }
+                else { setTool('draw'); setShowDrawPanel(false); setShowHlPanel(false) }
+              }}
+              className={cn(
+                'p-2 rounded-lg transition-colors relative',
+                tool === 'draw' ? 'bg-violet-100 text-violet-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+              )}>
+              <PenLine size={16} />
+              {tool === 'draw' && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white"
+                  style={{ background: penPresets[activePenType].color }} />
+              )}
+            </button>
+            {showDrawPanel && tool === 'draw' && (
+              <DrawPanel
+                mode="pen"
+                activePenType={activePenType} activeHlType={activeHlType}
+                penPresets={penPresets} hlPresets={hlPresets}
+                onChangePenType={(t) => { setActivePenType(t) }}
+                onChangeHlType={(t) => { setActiveHlType(t) }}
+                onUpdatePreset={(p) => setPenPresets((prev) => ({ ...prev, [activePenType]: p }))}
+                onClose={() => setShowDrawPanel(false)}
+              />
+            )}
+          </div>
+
+          {/* Highlighter — click once to activate, click again to open settings */}
+          <div className="relative">
+            <button title={tool === 'highlight' ? 'Highlighter settings' : 'Highlight'}
+              onClick={() => {
+                if (tool === 'highlight') { setShowHlPanel((v) => !v); setShowDrawPanel(false) }
+                else { setTool('highlight'); setShowHlPanel(false); setShowDrawPanel(false) }
+              }}
+              className={cn(
+                'p-2 rounded-lg transition-colors relative',
+                tool === 'highlight' ? 'bg-violet-100 text-violet-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+              )}>
+              <Highlighter size={16} />
+              {tool === 'highlight' && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white"
+                  style={{ background: hlPresets[activeHlType].color }} />
+              )}
+            </button>
+            {showHlPanel && tool === 'highlight' && (
+              <DrawPanel
+                mode="highlight"
+                activePenType={activePenType} activeHlType={activeHlType}
+                penPresets={penPresets} hlPresets={hlPresets}
+                onChangePenType={(t) => { setActivePenType(t) }}
+                onChangeHlType={(t) => { setActiveHlType(t) }}
+                onUpdatePreset={(p) => setHlPresets((prev) => ({ ...prev, [activeHlType]: p }))}
+                onClose={() => setShowHlPanel(false)}
+              />
+            )}
+          </div>
+
           <ToolBtn id="eraser"    icon={<Eraser size={16} />}        label="Eraser" />
+          <ToolBtn id="lasso"     icon={<Lasso size={16} />}         label="Lasso Select" />
           <ToolBtn id="signature" icon={<PenSquare size={16} />}     label="Signature"
             onClick={() => setShowSignatureModal(true)} />
           <ToolBtn id="image"     icon={<ImageIcon size={16} />}     label="Insert Image"
