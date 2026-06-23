@@ -12,6 +12,9 @@ import {
   StickyNote, MessageCircle,
   CheckSquare, List, FileSearch, Minimize2,
   Sliders, RotateCcw,
+  Bold, Italic, Underline as UnderlineIcon,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  Baseline,
 } from 'lucide-react'
 import { PDFDocument, degrees } from 'pdf-lib'
 import { cn } from '@/lib/utils'
@@ -19,12 +22,16 @@ import { cn } from '@/lib/utils'
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type EditorTool =
-  | 'select' | 'text' | 'image' | 'draw' | 'highlight' | 'eraser' | 'signature'
+  | 'select' | 'text' | 'editText' | 'image' | 'draw' | 'highlight' | 'eraser' | 'signature'
   | 'rect' | 'ellipse' | 'line' | 'arrow'
   | 'sticky' | 'comment'
   | 'form-text' | 'form-check' | 'form-radio' | 'form-dropdown'
 
 type SigTab = 'draw' | 'type' | 'upload'
+
+type PdfTextItem = {
+  str: string; x: number; y: number; w: number; h: number; fontSize: number
+}
 type SigResult = { dataURL: string; text?: string; font?: string; tab: SigTab }
 type OcrLang = 'eng' | 'ara' | 'eng+ara'
 type CompressLevel = 'low' | 'medium' | 'high'
@@ -284,6 +291,24 @@ export function PdfEditorClient() {
   const [sliderScale, setSliderScale]     = useState(1)
   const [sliderOpacity, setSliderOpacity] = useState(1)
 
+  // ── Text formatting (side panel) ───────────────────────────────────────────
+  const [fmtBold,          setFmtBold]          = useState(false)
+  const [fmtItalic,        setFmtItalic]        = useState(false)
+  const [fmtUnderline,     setFmtUnderline]     = useState(false)
+  const [fmtAlign,         setFmtAlign]         = useState('left')
+  const [fmtFontFamily,    setFmtFontFamily]    = useState('Helvetica, Arial, sans-serif')
+  const [fmtFontSize,      setFmtFontSize]      = useState(16)
+  const [fmtColor,         setFmtColor]         = useState('#1e293b')
+  const [fmtLetterSpacing, setFmtLetterSpacing] = useState(0)
+  const [fmtLineHeight,    setFmtLineHeight]    = useState(1.16)
+  const [fmtTextOpacity,   setFmtTextOpacity]   = useState(1)
+  const [fmtAngle,         setFmtAngle]         = useState(0)
+  const [fmtBgColor,       setFmtBgColor]       = useState('')
+
+  // ── PDF text items (edit-text overlay) ────────────────────────────────────
+  const [pdfTextItems,  setPdfTextItems]  = useState<PdfTextItem[]>([])
+  const pdfTextItemsRef = useRef<PdfTextItem[]>([])
+
   // ── Page thumbnails ────────────────────────────────────────────────────────
   const [thumbnails, setThumbnails] = useState<Record<number, string>>({})
 
@@ -375,27 +400,55 @@ export function PdfEditorClient() {
     fc.on('object:modified', pushHistory)
     fc.on('object:removed', pushHistory)
 
-    // ── Selection tracking (for image edit panel) ──────────────────────────
+    // ── Selection tracking (for image/text edit panels) ───────────────────
+    const syncTextFmt = (obj: any) => {
+      if (obj?.type === 'i-text' || obj?.type === 'textbox') {
+        setFmtBold(obj.fontWeight === 'bold')
+        setFmtItalic(obj.fontStyle === 'italic')
+        setFmtUnderline(!!obj.underline)
+        setFmtAlign(obj.textAlign || 'left')
+        setFmtFontFamily(obj.fontFamily || 'Helvetica, Arial, sans-serif')
+        setFmtFontSize(obj.fontSize || 16)
+        setFmtColor(typeof obj.fill === 'string' ? obj.fill : '#1e293b')
+        setFmtLetterSpacing(obj.charSpacing || 0)
+        setFmtLineHeight(obj.lineHeight || 1.16)
+        setFmtTextOpacity(obj.opacity ?? 1)
+        setFmtAngle(obj.angle || 0)
+        setFmtBgColor(obj.backgroundColor || '')
+      }
+    }
     const onSel = (obj: any) => {
       setSelectedObject(obj ?? null)
       setSliderScale(obj?.scaleX ?? 1)
       setSliderOpacity(obj?.opacity ?? 1)
+      syncTextFmt(obj)
     }
     fc.on('selection:created', (opt: any) => { onSel(opt.selected?.[0]) })
     fc.on('selection:updated', (opt: any) => { onSel(opt.selected?.[0]) })
     fc.on('selection:cleared', () => { onSel(null) })
+    // Re-sync text fmt when object is modified (e.g. after format applies)
+    fc.on('object:modified', (opt: any) => { syncTextFmt(opt.target) })
 
     // ── No corner handles — drag the whole object to move it ───────────────
-    // Resize is handled by the slider in the side panel.
+    // Textboxes get resize handles so users can widen/narrow them.
     const styleObject = (obj: any) => {
       if (!obj || obj.data?.temp) return
+      const isTextbox = obj.type === 'textbox'
       obj.set({
-        hasControls: false,
+        hasControls: isTextbox,
         hasBorders: true,
         borderColor: '#6366f1',
         borderScaleFactor: 2,
         padding: 8,
       })
+      if (isTextbox) {
+        obj.setControlsVisibility?.({
+          mt: false, mb: false,
+          tl: false, tr: false, bl: false, br: false,
+          mtr: false,
+          ml: true, mr: true,
+        })
+      }
     }
     fc.on('object:added', (opt: any) => { styleObject(opt.target) })
     fc.on('selection:created', (opt: any) => { opt.selected?.forEach((o: any) => styleObject(o)) })
@@ -419,6 +472,64 @@ export function PdfEditorClient() {
         fc.renderAll()
         setTool('select')
       })
+    })
+
+    // ── Edit Text tool: click existing PDF text or add new textbox ──────────
+    fc.on('mouse:down', (opt: any) => {
+      if (toolRef.current !== 'editText') return
+      if (opt.target) return   // let Fabric handle clicking on existing objects
+      const pointer = opt.scenePoint ?? fc.getScenePoint?.(opt.e) ?? { x: opt.pointer?.x ?? 0, y: opt.pointer?.y ?? 0 }
+      const px = pointer.x; const py = pointer.y
+
+      // Check if we hit any extracted PDF text item
+      const hit = pdfTextItemsRef.current.find((item) =>
+        px >= item.x - 6 && px <= item.x + item.w + 6 &&
+        py >= item.y - 6 && py <= item.y + item.h + 6
+      )
+
+      if (hit) {
+        // Cover the original rendered text with a white rect, then place editable textbox
+        import('fabric').then(({ Rect, Textbox }) => {
+          const cover = new Rect({
+            left: hit.x - 2, top: hit.y - 2,
+            width: hit.w + 4, height: hit.h + 4,
+            fill: '#ffffff', stroke: 'none',
+            selectable: false, evented: false,
+            data: { temp: false, isCover: true },
+          } as any)
+          const txt = new Textbox(hit.str, {
+            left: hit.x - 2, top: hit.y - 2,
+            width: Math.max(hit.w + 4, 80),
+            fontSize: Math.max(Math.round(hit.fontSize), 8),
+            fill: '#1e293b',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            editable: true,
+            data: { isEditText: true },
+          } as any)
+          fc.add(cover); fc.add(txt)
+          fc.setActiveObject(txt)
+          txt.enterEditing?.()
+          txt.selectAll?.()
+          fc.renderAll()
+        })
+      } else {
+        // Empty area → create a new multi-line text box
+        import('fabric').then(({ Textbox }) => {
+          const txt = new Textbox('', {
+            left: px, top: py,
+            width: 220,
+            fontSize: textSizeRef.current,
+            fill: textColorRef.current,
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            editable: true,
+            data: { isEditText: true },
+          } as any)
+          fc.add(txt)
+          fc.setActiveObject(txt)
+          txt.enterEditing?.()
+          fc.renderAll()
+        })
+      }
     })
 
     // ── Eraser — continuous: removes any object under the pointer while held ─
@@ -1119,6 +1230,55 @@ export function PdfEditorClient() {
     setOcrDone(false); setOcrRunning(false); setShowOcrPanel(false)
   }, [])
 
+  // ── Keep pdfTextItemsRef in sync ──────────────────────────────────────────
+  useEffect(() => { pdfTextItemsRef.current = pdfTextItems }, [pdfTextItems])
+
+  // ── Extract PDF text items for Edit Text overlay ───────────────────────────
+  const extractTextItems = useCallback(async () => {
+    const doc = pdfDocProxy
+    const pdfCanvas = pdfCanvasRef.current
+    if (!doc || !pdfCanvas || !pdfjsRef.current) return
+    try {
+      const page = await doc.getPage(currentPage)
+      const dpr  = Math.min(window.devicePixelRatio || 1, 3)
+      const viewport = page.getViewport({ scale: zoom * dpr })
+      const content  = await page.getTextContent()
+
+      const items: PdfTextItem[] = []
+      for (const raw of (content.items as any[])) {
+        if (!raw.str?.trim()) continue
+        const tx = pdfjsRef.current.Util?.transform?.(viewport.transform, raw.transform)
+        if (!tx) continue
+        // tx[4], tx[5] = physical-pixel position (top-left origin, Y already flipped by viewport)
+        const x   = tx[4] / dpr
+        const yBL = tx[5] / dpr
+        // Font size from the x-scale component
+        const fsz = Math.max(Math.abs(tx[0]) / dpr, Math.abs(tx[3]) / dpr, 8)
+        const w   = (raw.width ?? 40) * viewport.scale / dpr
+        items.push({ str: raw.str, x, y: yBL - fsz, w: Math.max(w, 20), h: Math.max(fsz * 1.3, 12), fontSize: fsz })
+      }
+      setPdfTextItems(items)
+    } catch (err) {
+      console.warn('[EditText] text extraction failed:', err)
+    }
+  }, [pdfDocProxy, currentPage, zoom])
+
+  // Extract text items whenever we enter editText mode or change page/zoom
+  useEffect(() => {
+    if (tool === 'editText') extractTextItems()
+    else setPdfTextItems([])
+  }, [tool, extractTextItems])
+
+  // ── Apply text formatting to selected IText / Textbox ─────────────────────
+  const applyTextFmt = useCallback((props: Record<string, unknown>) => {
+    const fc  = fabricRef.current
+    const obj = fc?.getActiveObject?.()
+    if (!obj || (obj.type !== 'i-text' && obj.type !== 'textbox')) return
+    obj.set(props as any)
+    fc!.renderAll()
+    pushHistory()
+  }, [pushHistory])
+
   // ── Image edit helpers (for selected object) ───────────────────────────────
   const applyImageScale = useCallback((delta: number) => {
     const fc = fabricRef.current; const obj = fc?.getActiveObject?.()
@@ -1205,6 +1365,16 @@ export function PdfEditorClient() {
   const isFormTool = ['form-text', 'form-check', 'form-radio', 'form-dropdown'].includes(tool)
   const isSignatureSelected = !!(selectedObject?.data?.isSignature)
   const isImageSelected = (selectedObject?.type === 'image' || selectedObject?.type === 'f-image') && !isSignatureSelected
+  const isTextSelected = selectedObject?.type === 'i-text' || selectedObject?.type === 'textbox'
+
+  const FONT_FAMILIES = [
+    'Helvetica, Arial, sans-serif',
+    'Georgia, serif',
+    'Times New Roman, serif',
+    'Courier New, monospace',
+    'Verdana, sans-serif',
+    'Trebuchet MS, sans-serif',
+  ]
 
   const ToolBtn = ({ id, icon, label, onClick }: { id: EditorTool; icon: React.ReactNode; label: string; onClick?: () => void }) => (
     <button title={label}
@@ -1226,7 +1396,7 @@ export function PdfEditorClient() {
         {/* Basic tools */}
         <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
           <ToolBtn id="select"    icon={<MousePointer2 size={16} />} label="Select (V)" />
-          <ToolBtn id="text"      icon={<Type size={16} />}          label="Add Text" />
+          <ToolBtn id="editText"  icon={<Type size={16} />}          label="Edit Text — click text to edit, click empty area to add" />
           <ToolBtn id="draw"      icon={<PenLine size={16} />}       label="Draw" />
           <ToolBtn id="highlight" icon={<Highlighter size={16} />}   label="Highlight" />
           <ToolBtn id="eraser"    icon={<Eraser size={16} />}        label="Eraser" />
@@ -1541,6 +1711,130 @@ export function PdfEditorClient() {
             <button onClick={deleteSelected}
               className="flex items-center justify-center gap-1.5 w-full py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors mt-1">
               <Trash2 size={13} />حذف
+            </button>
+          </div>
+        )}
+
+        {/* ── Text Formatting Panel ─────────────────────────────────────── */}
+        {isTextSelected && !showOcrPanel && !isImageSelected && !isSignatureSelected && (
+          <div className="w-[220px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-3 gap-3 overflow-y-auto text-xs">
+            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+              <Type size={14} className="text-violet-500" />Text
+            </p>
+
+            {/* Font family */}
+            <div>
+              <p className="font-medium text-gray-600 mb-1">Font</p>
+              <select value={fmtFontFamily}
+                onChange={(e) => { setFmtFontFamily(e.target.value); applyTextFmt({ fontFamily: e.target.value }) }}
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none bg-white">
+                {FONT_FAMILIES.map((f) => <option key={f} value={f} style={{ fontFamily: f }}>{f.split(',')[0]}</option>)}
+              </select>
+            </div>
+
+            {/* Font size + color */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <p className="font-medium text-gray-600 mb-1">Size</p>
+                <input type="number" min={6} max={200} value={fmtFontSize}
+                  onChange={(e) => { const v = Math.max(6, Number(e.target.value)); setFmtFontSize(v); applyTextFmt({ fontSize: v }) }}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-600 mb-1">Color</p>
+                <input type="color" value={fmtColor}
+                  onChange={(e) => { setFmtColor(e.target.value); applyTextFmt({ fill: e.target.value }) }}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200" title="Text color" />
+              </div>
+            </div>
+
+            {/* Bold / Italic / Underline */}
+            <div>
+              <p className="font-medium text-gray-600 mb-1">Style</p>
+              <div className="flex gap-1">
+                <button title="Bold"
+                  onClick={() => { const v = !fmtBold; setFmtBold(v); applyTextFmt({ fontWeight: v ? 'bold' : 'normal' }) }}
+                  className={cn('flex-1 py-1.5 rounded-lg border font-bold text-sm transition-colors',
+                    fmtBold ? 'bg-violet-100 border-violet-400 text-violet-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  B
+                </button>
+                <button title="Italic"
+                  onClick={() => { const v = !fmtItalic; setFmtItalic(v); applyTextFmt({ fontStyle: v ? 'italic' : 'normal' }) }}
+                  className={cn('flex-1 py-1.5 rounded-lg border italic text-sm transition-colors',
+                    fmtItalic ? 'bg-violet-100 border-violet-400 text-violet-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  I
+                </button>
+                <button title="Underline"
+                  onClick={() => { const v = !fmtUnderline; setFmtUnderline(v); applyTextFmt({ underline: v }) }}
+                  className={cn('flex-1 py-1.5 rounded-lg border underline text-sm transition-colors',
+                    fmtUnderline ? 'bg-violet-100 border-violet-400 text-violet-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  U
+                </button>
+              </div>
+            </div>
+
+            {/* Alignment */}
+            <div>
+              <p className="font-medium text-gray-600 mb-1">Align</p>
+              <div className="flex gap-1">
+                {(['left','center','right','justify'] as const).map((a) => (
+                  <button key={a} title={a}
+                    onClick={() => { setFmtAlign(a); applyTextFmt({ textAlign: a }) }}
+                    className={cn('flex-1 py-1.5 rounded-lg border text-xs transition-colors flex items-center justify-center',
+                      fmtAlign === a ? 'bg-violet-100 border-violet-400 text-violet-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
+                    {a === 'left' ? '⬛ L' : a === 'center' ? 'C' : a === 'right' ? 'R' : '≡'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Line height */}
+            <div>
+              <p className="font-medium text-gray-600 mb-1">Line height — {fmtLineHeight.toFixed(2)}</p>
+              <input type="range" min={0.8} max={3} step={0.05} value={fmtLineHeight}
+                onChange={(e) => { const v = parseFloat(e.target.value); setFmtLineHeight(v); applyTextFmt({ lineHeight: v }) }}
+                className="w-full accent-violet-600" />
+            </div>
+
+            {/* Letter spacing */}
+            <div>
+              <p className="font-medium text-gray-600 mb-1">Letter spacing — {fmtLetterSpacing}</p>
+              <input type="range" min={-200} max={800} step={10} value={fmtLetterSpacing}
+                onChange={(e) => { const v = Number(e.target.value); setFmtLetterSpacing(v); applyTextFmt({ charSpacing: v }) }}
+                className="w-full accent-violet-600" />
+            </div>
+
+            {/* Opacity */}
+            <div>
+              <p className="font-medium text-gray-600 mb-1">Opacity — {Math.round(fmtTextOpacity * 100)}%</p>
+              <input type="range" min={0.1} max={1} step={0.05} value={fmtTextOpacity}
+                onChange={(e) => { const v = parseFloat(e.target.value); setFmtTextOpacity(v); applyTextFmt({ opacity: v }) }}
+                className="w-full accent-violet-600" />
+            </div>
+
+            {/* Angle */}
+            <div>
+              <p className="font-medium text-gray-600 mb-1">Angle</p>
+              <input type="number" min={-180} max={180} value={fmtAngle}
+                onChange={(e) => { const v = Number(e.target.value); setFmtAngle(v); applyTextFmt({ angle: v }) }}
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none" />
+            </div>
+
+            {/* Background color */}
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-gray-600">Background</p>
+              <input type="color" value={fmtBgColor || '#ffffff'}
+                onChange={(e) => { setFmtBgColor(e.target.value); applyTextFmt({ backgroundColor: e.target.value }) }}
+                className="w-8 h-8 rounded cursor-pointer border border-gray-200" title="Background color" />
+              {fmtBgColor && (
+                <button onClick={() => { setFmtBgColor(''); applyTextFmt({ backgroundColor: '' }) }}
+                  className="text-gray-400 hover:text-gray-600 text-xs">✕ none</button>
+              )}
+            </div>
+
+            <button onClick={deleteSelected}
+              className="flex items-center justify-center gap-1.5 w-full py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors mt-1">
+              <Trash2 size={13} />Delete
             </button>
           </div>
         )}
