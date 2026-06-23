@@ -10,7 +10,7 @@ import {
   X, Loader2, AlertCircle, FileText,
   Square, Circle, Minus, ArrowRight,
   StickyNote, MessageCircle,
-  CheckSquare, List, Minimize2,
+  CheckSquare, List, Minimize2, Spline,
   Sliders, RotateCcw,
   Bold, Italic, Underline as UnderlineIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -1503,7 +1503,7 @@ export function PdfEditorClient() {
           </div>
 
           <ToolBtn id="eraser"    icon={<Eraser size={16} />}        label="Eraser" />
-          <ToolBtn id="lasso"     icon={<Lasso size={16} />}         label="Lasso Select" />
+          <ToolBtn id="lasso"     icon={<Spline size={16} />}        label="Lasso Select" />
           <ToolBtn id="signature" icon={<PenSquare size={16} />}     label="Signature"
             onClick={() => setShowSignatureModal(true)} />
           <ToolBtn id="image"     icon={<ImageIcon size={16} />}     label="Insert Image"
