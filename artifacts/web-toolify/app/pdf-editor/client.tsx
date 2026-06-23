@@ -61,50 +61,81 @@ const SHAPE_TOOLS: EditorTool[] = ['rect', 'ellipse', 'line', 'arrow']
 
 /**
  * Patches a Fabric PencilBrush instance so the live drawing preview exactly
- * matches the final saved stroke.
+ * matches the final saved stroke, without causing input lag.
  *
  * Root cause: Fabric v7 PencilBrush._render() draws only the *latest* segment
  * on the upper canvas without clearing it first.  Each new segment is composited
  * on top of the previous ones, so semi-transparent colors stack up and look
  * darker/more opaque during drawing than the finished path object.
  *
- * Fix: replace _render with a version that clears contextTop then redraws the
- * complete accumulated path from scratch on every pointer move.  This guarantees
- * that what the user sees while drawing is pixel-identical to the final result.
+ * Performance design:
+ * - Fully opaque strokes (alpha ≥ 0.99): no patch — Fabric's original O(1)
+ *   per-segment render has no visible accumulation at 100% opacity, so there
+ *   is zero overhead and zero lag.
+ * - Semi-transparent strokes (highlighter, low-opacity pen): the full-redraw
+ *   is needed for WYSIWYG, but we throttle it to one repaint per animation
+ *   frame (≤60fps) via requestAnimationFrame.  High-frequency touch events
+ *   (120–240Hz on tablets) used to trigger O(n) redraws on every event;
+ *   now they trigger at most one O(n) redraw per display frame.
+ *   _finalizeAndAddPath is also wrapped to cancel any pending rAF before
+ *   Fabric clears contextTop, preventing ghost strokes after mouseup/touchend.
  */
 function patchBrushWYSIWYG(brush: any, fc: any): void {
+  // Parse the alpha component from the rgba() color string built by buildBrushColor()
+  const alphaMatch = brush.color.match(/,\s*([\d.]+)\s*\)/)
+  const alpha = alphaMatch ? parseFloat(alphaMatch[1]) : 1
+
+  // Fully opaque: original Fabric rendering has no accumulation artifact → no patch needed
+  if (alpha >= 0.99) return
+
+  let rafId: number | null = null
+
+  // Cancel any pending rAF before Fabric clears contextTop on mouseup/touchend,
+  // otherwise the deferred draw fires onto an already-cleared canvas and ghosts.
+  const origFinalize = brush._finalizeAndAddPath?.bind(brush)
+  brush._finalizeAndAddPath = function (...args: any[]) {
+    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
+    return origFinalize?.(...args)
+  }
+
   brush._render = function (ctx?: CanvasRenderingContext2D) {
-    const context: CanvasRenderingContext2D = ctx ?? fc.contextTop
-    const points: { x: number; y: number }[] = this._points ?? []
-    if (points.length < 2) return
+    // Already have a frame scheduled — the rAF will pick up the latest _points
+    if (rafId !== null) return
 
-    // Clear the overlay so previous partial segments don't stack their opacity
-    fc.clearContext(context)
+    const self    = this
+    const context = (ctx ?? fc.contextTop) as CanvasRenderingContext2D
 
-    this._saveAndTransform(context)
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      const points: { x: number; y: number }[] = self._points ?? []
+      if (points.length < 2) return
 
-    context.beginPath()
-    context.strokeStyle = this.color
-    context.lineWidth   = this.width
-    context.lineCap     = (this.strokeLineCap  as CanvasLineCap)  ?? 'round'
-    context.lineJoin    = (this.strokeLineJoin as CanvasLineJoin) ?? 'round'
-    context.setLineDash(this.strokeDashArray ?? [])
+      // Clear overlay so accumulated semi-transparent segments don't stack
+      fc.clearContext(context)
+      self._saveAndTransform(context)
 
-    // Quadratic smoothing — same algorithm Fabric uses internally
-    let p1 = points[0]
-    let p2 = points[1]
-    context.moveTo(p1.x, p1.y)
-    for (let i = 1; i < points.length - 1; i++) {
-      const midX = (p1.x + p2.x) / 2
-      const midY = (p1.y + p2.y) / 2
-      context.quadraticCurveTo(p1.x, p1.y, midX, midY)
-      p1 = points[i]
-      p2 = points[i + 1]
-    }
-    context.lineTo(p1.x, p1.y)
-    context.stroke()
+      context.beginPath()
+      context.strokeStyle = self.color
+      context.lineWidth   = self.width
+      context.lineCap     = (self.strokeLineCap  as CanvasLineCap)  ?? 'round'
+      context.lineJoin    = (self.strokeLineJoin as CanvasLineJoin) ?? 'round'
+      context.setLineDash(self.strokeDashArray ?? [])
 
-    context.restore()
+      // Quadratic smoothing — same algorithm Fabric uses internally
+      let p1 = points[0]
+      let p2 = points[1]
+      context.moveTo(p1.x, p1.y)
+      for (let i = 1; i < points.length - 1; i++) {
+        const midX = (p1.x + p2.x) / 2
+        const midY = (p1.y + p2.y) / 2
+        context.quadraticCurveTo(p1.x, p1.y, midX, midY)
+        p1 = points[i]
+        p2 = points[i + 1]
+      }
+      context.lineTo(p1.x, p1.y)
+      context.stroke()
+      context.restore()
+    })
   }
 }
 
