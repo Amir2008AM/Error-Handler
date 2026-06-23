@@ -10,7 +10,7 @@ import {
   X, Loader2, AlertCircle, FileText,
   Square, Circle, Minus, ArrowRight,
   StickyNote, MessageCircle,
-  CheckSquare, List, FileSearch, Minimize2,
+  CheckSquare, List, Minimize2,
   Sliders, RotateCcw,
   Bold, Italic, Underline as UnderlineIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -49,7 +49,6 @@ type PdfTextItem = {
   str: string; x: number; y: number; w: number; h: number; fontSize: number
 }
 type SigResult = { dataURL: string; text?: string; font?: string; tab: SigTab }
-type OcrLang = 'eng' | 'ara' | 'eng+ara'
 type CompressLevel = 'low' | 'medium' | 'high'
 
 const PDFJS_VERSION = '5.7.284'
@@ -301,14 +300,6 @@ export function PdfEditorClient() {
   const historyIndexRef = useRef(-1)
   const isRestoringRef = useRef(false)
 
-  // ── OCR ────────────────────────────────────────────────────────────────────
-  const [showOcrPanel, setShowOcrPanel] = useState(false)
-  const [ocrRunning, setOcrRunning] = useState(false)
-  const [ocrProgress, setOcrProgress] = useState(0)
-  const [ocrLang, setOcrLang] = useState<OcrLang>('eng')
-  const [ocrDone, setOcrDone] = useState(false)
-  const ocrLangRef = useRef<OcrLang>('eng')
-
   // ── Compress on download ───────────────────────────────────────────────────
   const [compressOnDownload, setCompressOnDownload] = useState(false)
   const [compressionLevel, setCompressionLevel] = useState<CompressLevel>('medium')
@@ -374,8 +365,6 @@ export function PdfEditorClient() {
   useEffect(() => { shapeStrokeRef.current = shapeStroke }, [shapeStroke])
   useEffect(() => { shapeFillRef.current = shapeFill }, [shapeFill])
   useEffect(() => { shapeStrokeWidthRef.current = shapeStrokeWidth }, [shapeStrokeWidth])
-  useEffect(() => { ocrLangRef.current = ocrLang }, [ocrLang])
-
   // ── Load PDF.js ────────────────────────────────────────────────────────────
   useEffect(() => {
     import('pdfjs-dist').then((lib) => {
@@ -1151,76 +1140,6 @@ export function PdfEditorClient() {
     })
   }, [])
 
-  // ── OCR ────────────────────────────────────────────────────────────────────
-  const handleOCR = useCallback(async () => {
-    const pdfCanvas = pdfCanvasRef.current
-    if (!pdfCanvas) return
-    const fc = fabricRef.current
-    if (!fc) return
-
-    setOcrRunning(true)
-    setOcrProgress(0)
-    setOcrDone(false)
-
-    try {
-      const Tesseract = (await import('tesseract.js' as any)).default as any
-      const lang = ocrLangRef.current
-      const langs = lang === 'eng+ara' ? ['eng', 'ara'] : [lang]
-
-      const worker = await Tesseract.createWorker(langs, 1, {
-        logger: (m: any) => {
-          if (m.status === 'recognizing text') setOcrProgress(Math.round(m.progress * 100))
-          else if (m.status === 'loading tesseract core') setOcrProgress(5)
-          else if (m.status === 'loading language traineddata') setOcrProgress(15)
-          else if (m.status === 'initializing tesseract') setOcrProgress(25)
-        },
-      })
-
-      const physW = pdfCanvas.width
-      const physH = pdfCanvas.height
-      const W = parseFloat(pdfCanvas.style.width) || physW
-      const H = parseFloat(pdfCanvas.style.height) || physH
-      const scaleX = W / physW
-      const scaleY = H / physH
-
-      const { data } = await worker.recognize(pdfCanvas)
-      await worker.terminate()
-
-      const { IText } = await import('fabric')
-      let placed = 0
-
-      for (const line of (data.lines ?? [])) {
-        if (line.confidence < 40 || !line.text?.trim()) continue
-        const { x0, y0, x1, y1 } = line.bbox
-        const lineH = (y1 - y0) * scaleY
-        const fontSize = Math.max(8, Math.min(72, Math.round(lineH * 0.82)))
-        const txt = new IText(line.text.replace(/\n/g, ' ').trim(), {
-          left: x0 * scaleX,
-          top: y0 * scaleY,
-          fontSize,
-          fill: '#1e293b',
-          fontFamily: lang === 'ara' ? 'Arial, sans-serif' : 'Helvetica, Arial, sans-serif',
-          backgroundColor: 'rgba(254,240,138,0.35)',
-          padding: 2,
-          editable: true,
-          opacity: 0.88,
-        })
-        fc.add(txt)
-        placed++
-      }
-
-      fc.renderAll()
-      setOcrProgress(100)
-      setOcrDone(true)
-      if (placed === 0) setLoadError('No readable text found on this page.')
-    } catch (err: any) {
-      console.error('OCR error:', err)
-      setLoadError('OCR failed. Make sure you have an internet connection and try again.')
-    } finally {
-      setOcrRunning(false)
-    }
-  }, [])
-
   // ── Page management ────────────────────────────────────────────────────────
   const saveCurrentAnnotations = useCallback(() => {
     const fc = fabricRef.current
@@ -1613,19 +1532,6 @@ export function PdfEditorClient() {
           <ToolBtn id="form-dropdown" icon={<List size={16} />}        label="Dropdown" />
         </div>
 
-        {/* OCR */}
-        <button
-          title="OCR — Extract text from scanned PDF"
-          onClick={() => setShowOcrPanel((v) => !v)}
-          className={cn(
-            'flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors mr-1',
-            showOcrPanel ? 'bg-amber-100 text-amber-700 border-amber-300' : 'text-gray-500 hover:bg-gray-100 border-transparent',
-          )}
-        >
-          <FileSearch size={16} />
-          <span className="hidden sm:inline">OCR</span>
-        </button>
-
         {/* Tool-specific options */}
         {tool === 'text' && (
           <div className="flex items-center gap-2 border-r border-gray-100 pr-2 mr-1">
@@ -1777,70 +1683,20 @@ export function PdfEditorClient() {
           <div className="relative shadow-xl" style={{ display: 'inline-block' }}>
             <canvas ref={pdfCanvasRef} className="block" style={{ display: 'block' }} />
             <canvas ref={fabricElRef} style={{ touchAction: 'none', position: 'absolute', top: 0, left: 0, pointerEvents: 'all' }} />
+            {tool === 'editText' && pdfTextItems.length === 0 && fabricReady && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="bg-white/90 border border-gray-200 rounded-xl px-5 py-4 shadow-sm max-w-xs text-center">
+                  <AlertCircle size={20} className="text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 font-medium">This PDF contains no editable text.</p>
+                  <p className="text-xs text-gray-400 mt-1">OCR is not supported in the PDF Edit tool.</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── OCR Panel ─────────────────────────────────────────────────────── */}
-        {showOcrPanel && (
-          <div className="w-[220px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-4 gap-3 overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                <FileSearch size={15} className="text-amber-500" />OCR
-              </p>
-              <button onClick={() => setShowOcrPanel(false)} className="text-gray-400 hover:text-gray-600"><X size={15} /></button>
-            </div>
-
-            <p className="text-xs text-gray-500">Extract text from scanned pages and place it as an editable layer.</p>
-
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-1.5">Language</p>
-              {(['eng', 'ara', 'eng+ara'] as OcrLang[]).map((l) => (
-                <label key={l} className="flex items-center gap-2 mb-1 cursor-pointer">
-                  <input type="radio" name="ocr-lang" value={l} checked={ocrLang === l} onChange={() => setOcrLang(l)} />
-                  <span className="text-xs text-gray-700">
-                    {l === 'eng' ? 'English' : l === 'ara' ? 'العربية (Arabic)' : 'English + Arabic'}
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            {ocrRunning ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Loader2 size={14} className="animate-spin text-amber-500" />
-                  <span className="text-xs text-gray-600">Recognizing… {ocrProgress}%</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                  <div className="bg-amber-400 h-1.5 rounded-full transition-all" style={{ width: `${ocrProgress}%` }} />
-                </div>
-                <p className="text-xs text-gray-400">
-                  {ocrProgress < 20 ? 'Loading language data…' : ocrProgress < 50 ? 'Analyzing page…' : 'Extracting text…'}
-                </p>
-              </div>
-            ) : (
-              <button onClick={handleOCR}
-                className="w-full py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors">
-                Extract Text from Page
-              </button>
-            )}
-
-            {ocrDone && !ocrRunning && (
-              <div className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">
-                ✓ Text placed on canvas — click any highlighted text to edit it.
-              </div>
-            )}
-
-            <div className="border-t border-gray-100 pt-3 space-y-1">
-              <p className="text-xs text-gray-400">Tips:</p>
-              <p className="text-xs text-gray-400">• Works best on scanned PDFs</p>
-              <p className="text-xs text-gray-400">• First run downloads language data (~10 MB)</p>
-              <p className="text-xs text-gray-400">• Edit extracted text with the Select tool</p>
-            </div>
-          </div>
-        )}
-
         {/* ── Image Edit Panel ──────────────────────────────────────────────── */}
-        {isImageSelected && !showOcrPanel && (
+        {isImageSelected && (
           <div className="w-[200px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-4 gap-3 overflow-y-auto">
             <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
               <Sliders size={14} className="text-violet-500" />Image
@@ -1901,7 +1757,7 @@ export function PdfEditorClient() {
         )}
 
         {/* ── Text Formatting Panel ─────────────────────────────────────── */}
-        {isTextSelected && !showOcrPanel && !isImageSelected && !isSignatureSelected && (
+        {isTextSelected && !isImageSelected && !isSignatureSelected && (
           <div className="w-[220px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-3 gap-3 overflow-y-auto text-xs">
             <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
               <Type size={14} className="text-violet-500" />Text
@@ -2025,7 +1881,7 @@ export function PdfEditorClient() {
         )}
 
         {/* ── Signature Edit Panel ───────────────────────────────────────── */}
-        {isSignatureSelected && !showOcrPanel && (
+        {isSignatureSelected && (
           <div className="w-[200px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-4 gap-3 overflow-y-auto">
             <link rel="stylesheet"
               href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Pinyon+Script&family=Satisfy&family=Great+Vibes&family=Sacramento&family=Parisienne&family=Alex+Brush&family=Kaushan+Script&family=Caveat:wght@600&display=swap"
