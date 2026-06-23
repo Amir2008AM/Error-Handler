@@ -59,6 +59,55 @@ const SHAPE_TOOLS: EditorTool[] = ['rect', 'ellipse', 'line', 'arrow']
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Patches a Fabric PencilBrush instance so the live drawing preview exactly
+ * matches the final saved stroke.
+ *
+ * Root cause: Fabric v7 PencilBrush._render() draws only the *latest* segment
+ * on the upper canvas without clearing it first.  Each new segment is composited
+ * on top of the previous ones, so semi-transparent colors stack up and look
+ * darker/more opaque during drawing than the finished path object.
+ *
+ * Fix: replace _render with a version that clears contextTop then redraws the
+ * complete accumulated path from scratch on every pointer move.  This guarantees
+ * that what the user sees while drawing is pixel-identical to the final result.
+ */
+function patchBrushWYSIWYG(brush: any, fc: any): void {
+  brush._render = function (ctx?: CanvasRenderingContext2D) {
+    const context: CanvasRenderingContext2D = ctx ?? fc.contextTop
+    const points: { x: number; y: number }[] = this._points ?? []
+    if (points.length < 2) return
+
+    // Clear the overlay so previous partial segments don't stack their opacity
+    fc.clearContext(context)
+
+    this._saveAndTransform(context)
+
+    context.beginPath()
+    context.strokeStyle = this.color
+    context.lineWidth   = this.width
+    context.lineCap     = (this.strokeLineCap  as CanvasLineCap)  ?? 'round'
+    context.lineJoin    = (this.strokeLineJoin as CanvasLineJoin) ?? 'round'
+    context.setLineDash(this.strokeDashArray ?? [])
+
+    // Quadratic smoothing — same algorithm Fabric uses internally
+    let p1 = points[0]
+    let p2 = points[1]
+    context.moveTo(p1.x, p1.y)
+    for (let i = 1; i < points.length - 1; i++) {
+      const midX = (p1.x + p2.x) / 2
+      const midY = (p1.y + p2.y) / 2
+      context.quadraticCurveTo(p1.x, p1.y, midX, midY)
+      p1 = points[i]
+      p2 = points[i + 1]
+    }
+    context.lineTo(p1.x, p1.y)
+    context.stroke()
+
+    context.restore()
+  }
+}
+
 function dataURLtoBytes(dataURL: string): Uint8Array {
   const b64 = dataURL.split(',')[1]
   const bin = atob(b64)
@@ -934,6 +983,7 @@ export function PdfEditorClient() {
         ;(brush as any).strokeDashArray = getDashArray(preset.style, preset.size)
       }
 
+      patchBrushWYSIWYG(brush, fc)
       fc.freeDrawingBrush = brush
     })
   }, [activePenType, activeHlType, penPresets, hlPresets])
@@ -967,6 +1017,7 @@ export function PdfEditorClient() {
           ;(brush as any).strokeLineCap   = 'round'
           ;(brush as any).strokeDashArray = getDashArray(preset.style, preset.size)
         }
+        patchBrushWYSIWYG(brush, fc)
         fc.freeDrawingBrush = brush
       }
 
