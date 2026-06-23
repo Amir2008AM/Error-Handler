@@ -452,6 +452,7 @@ export function PdfEditorClient() {
 
   // ── Selected object (image editing panel) ─────────────────────────────────
   const [selectedObject, setSelectedObject] = useState<any>(null)
+  const [showPropPanel,  setShowPropPanel]  = useState(true)
   const [sliderScale, setSliderScale]     = useState(1)
   const [sliderOpacity, setSliderOpacity] = useState(1)
 
@@ -588,6 +589,7 @@ export function PdfEditorClient() {
       setSliderScale(obj?.scaleX ?? 1)
       setSliderOpacity(obj?.opacity ?? 1)
       syncTextFmt(obj)
+      if (obj) setShowPropPanel(true)   // auto-open panel whenever something is selected
     }
     fc.on('selection:created', (opt: any) => { onSel(opt.selected?.[0]) })
     fc.on('selection:updated', (opt: any) => { onSel(opt.selected?.[0]) })
@@ -1963,12 +1965,31 @@ export function PdfEditorClient() {
           </div>
         </div>
 
+        {/* ── Properties panel toggle tab (shown when panel is hidden but object selected) */}
+        {selectedObject && !showPropPanel && (
+          <button
+            onClick={() => setShowPropPanel(true)}
+            title="Show properties"
+            className="shrink-0 w-7 bg-white border-l border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors cursor-pointer"
+          >
+            <span className="w-3.5 h-0.5 rounded-full bg-current block" />
+            <span className="w-3.5 h-0.5 rounded-full bg-current block" />
+            <span className="w-3.5 h-0.5 rounded-full bg-current block" />
+          </button>
+        )}
+
         {/* ── Image Edit Panel ──────────────────────────────────────────────── */}
-        {isImageSelected && (
+        {isImageSelected && showPropPanel && (
           <div className="w-[200px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-4 gap-3 overflow-y-auto">
-            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <Sliders size={14} className="text-violet-500" />Image
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                <Sliders size={14} className="text-violet-500" />Image
+              </p>
+              <button onClick={() => setShowPropPanel(false)} title="Close panel"
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
 
             <p className="text-xs text-gray-400 bg-violet-50 rounded-lg px-2 py-1.5">
               ✦ اسحب لتحريك · زوايا الدائرة للتحجيم
@@ -2025,11 +2046,17 @@ export function PdfEditorClient() {
         )}
 
         {/* ── Text Formatting Panel ─────────────────────────────────────── */}
-        {isTextSelected && !isImageSelected && !isSignatureSelected && (
+        {isTextSelected && !isImageSelected && !isSignatureSelected && showPropPanel && (
           <div className="w-[220px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-3 gap-3 overflow-y-auto text-xs">
-            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <Type size={14} className="text-violet-500" />Text
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                <Type size={14} className="text-violet-500" />Text
+              </p>
+              <button onClick={() => setShowPropPanel(false)} title="Close panel"
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
 
             {/* Font family */}
             <div>
@@ -2149,14 +2176,20 @@ export function PdfEditorClient() {
         )}
 
         {/* ── Signature Edit Panel ───────────────────────────────────────── */}
-        {isSignatureSelected && (
+        {isSignatureSelected && showPropPanel && (
           <div className="w-[200px] shrink-0 bg-white border-l border-gray-200 flex flex-col p-4 gap-3 overflow-y-auto">
             <link rel="stylesheet"
               href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Pinyon+Script&family=Satisfy&family=Great+Vibes&family=Sacramento&family=Parisienne&family=Alex+Brush&family=Kaushan+Script&family=Caveat:wght@600&display=swap"
             />
-            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <PenLine size={14} className="text-violet-500" />التوقيع
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                <PenLine size={14} className="text-violet-500" />التوقيع
+              </p>
+              <button onClick={() => setShowPropPanel(false)} title="Close panel"
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
 
             <div>
               <p className="text-xs font-medium text-gray-600 mb-1.5">الحجم</p>
