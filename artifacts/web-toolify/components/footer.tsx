@@ -32,7 +32,7 @@ export function Footer() {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://startuups.com/images/badges/startuupscom.badge.svg"
+                src="/startuups-badge.svg"
                 alt="Featured on Startuups"
                 width={120}
                 height={43}
