@@ -123,13 +123,6 @@ export default function RootLayout({
           <LoadingBarProvider>
             <Navbar />
             {children}
-            {/* BuildVoyage badge — server-rendered, visible in initial HTML for badge verification */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
-              <a href="https://buildvoyage.com/products/toolifypdf?ref=badge" target="_blank" rel="noopener">
-                <img src="https://buildvoyage.com/images/featured_badge.png" alt="Featured on BuildVoyage" width="250" />
-              </a>
-            </div>
             <MinimalFooter />
           </LoadingBarProvider>
         </I18nProvider>
