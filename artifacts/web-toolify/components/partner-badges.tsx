@@ -66,7 +66,10 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
             backgroundColor: '#fff',
             borderRadius: '6px',
             border: '1px solid #E8E8E8',
+            width: `${width}px`,
+            height: `${height}px`,
             padding: '4px 8px',
+            boxSizing: 'border-box',
           } : undefined}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,6 +80,13 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
             height={height}
             loading="eager"
             decoding="async"
+            style={badge.whiteBg ? {
+              maxWidth: '100%',
+              maxHeight: '100%',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+            } : undefined}
           />
         </a>
       ))}
