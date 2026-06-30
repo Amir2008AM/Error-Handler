@@ -122,10 +122,25 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/10 mt-10 pt-6 text-center">
+        <div className="border-t border-white/10 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-white/40">
             &copy; {new Date().getFullYear()} ToolifyPDF. All rights reserved.
           </p>
+          <a
+            href="https://startuups.com/projects/toolifypdf-9169"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-70 hover:opacity-100 transition-opacity shrink-0"
+            title="Featured on Startuups"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://startuups.com/images/badges/startuupscom.badge.svg"
+              alt="Featured on Startuups"
+              width={150}
+              height={54}
+            />
+          </a>
         </div>
 
       </div>
