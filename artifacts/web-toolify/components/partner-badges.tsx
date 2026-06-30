@@ -37,12 +37,6 @@ export const BADGES = [
     alt:  'Featured on aat.ee',
     rel:  'noopener' as const,
   },
-  {
-    href: 'https://buildvoyage.com/products/toolifypdf?ref=badge',
-    src:  'https://buildvoyage.com/images/featured_badge.png',
-    alt:  'Featured on BuildVoyage',
-    rel:  'noopener' as const,
-  },
 ]
 
 interface PartnerBadgesProps {
@@ -76,6 +70,10 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
           />
         </a>
       ))}
+      <a href="https://buildvoyage.com/products/toolifypdf?ref=badge" target="_blank" rel="noopener">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="https://buildvoyage.com/images/featured_badge.png" alt="Featured on BuildVoyage" width={250} loading="eager" decoding="async" />
+      </a>
       <a
         href="https://bowora.com/?via=xr3m369j"
         target="_blank"
