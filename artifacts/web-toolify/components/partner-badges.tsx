@@ -37,6 +37,12 @@ export const BADGES = [
     alt:  'Featured on aat.ee',
     rel:  'noopener' as const,
   },
+  {
+    href: 'https://buildvoyage.com/products/toolifypdf?ref=badge',
+    src:  'https://buildvoyage.com/images/featured_badge.png',
+    alt:  'Featured on BuildVoyage',
+    rel:  'noopener' as const,
+  },
 ]
 
 interface PartnerBadgesProps {
