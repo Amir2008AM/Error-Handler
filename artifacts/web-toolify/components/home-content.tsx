@@ -263,10 +263,16 @@ export function HomeContent({ initialCategory }: Props = {}) {
                   </li>
                 ))}
               </ul>
-              <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener" className="inline-block mt-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
-              </a>
+              <div className="flex flex-row items-center gap-2 flex-wrap mt-4">
+                <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
+                </a>
+                <a href="https://saasgrow.app?ref=toolifypdf.online" target="_blank" rel="noopener">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="https://saasgrow.app/api/badge?type=featured&style=dark" alt="Toolifypdf on SaaSGrow" width={150} height={54} />
+                </a>
+              </div>
             </div>
 
             {/* Legal */}
