@@ -123,6 +123,25 @@ export function HomeContent({ initialCategory }: Props = {}) {
               className="w-full pl-11 pr-4 py-3 text-sm border border-border rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
+
+          {/* Featured badge */}
+          <div className="flex items-center justify-center mt-6">
+            <a
+              href="https://startuups.com/projects/toolifypdf-9169"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-60 hover:opacity-100 transition-opacity"
+              title="Featured on Startuups"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://startuups.com/images/badges/startuupscom.badge.svg"
+                alt="Featured on Startuups"
+                width={130}
+                height={47}
+              />
+            </a>
+          </div>
         </div>
       </section>
 
