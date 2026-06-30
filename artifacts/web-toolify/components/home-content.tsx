@@ -9,7 +9,7 @@ import { ToolCard } from './tool-card'
 import { tools, categories, categoryMeta, searchTools, type ToolCategory } from '@/lib/tools'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
-import { PartnerBadges } from './partner-badges'
+import type { ReactNode } from 'react'
 
 const categoryIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
@@ -39,9 +39,10 @@ const CATEGORY_SLUG_MAP: Record<string, string> = {
 
 type Props = {
   initialCategory?: ToolCategory | null
+  badgeSlot?: ReactNode
 }
 
-export function HomeContent({ initialCategory }: Props = {}) {
+export function HomeContent({ initialCategory, badgeSlot }: Props = {}) {
   const { t } = useI18n()
   const searchParams = useSearchParams()
   const urlCategory = searchParams.get('category') as ToolCategory | null
@@ -290,8 +291,8 @@ export function HomeContent({ initialCategory }: Props = {}) {
 
           {/* Bottom bar */}
           <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col gap-4">
-            {/* Badges row — horizontal on all screens */}
-            <PartnerBadges />
+            {/* Badges row — injected from page.tsx as a true server component */}
+            {badgeSlot}
             {/* Copyright + language */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <p style={{ color: '#6b7280' }} className="text-xs text-center sm:text-left">

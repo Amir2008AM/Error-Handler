@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { HomeContent } from '@/components/home-content'
+import { PartnerBadges } from '@/components/partner-badges'
 
 export const metadata: Metadata = {
   title: { absolute: 'Toolify — Free PDF, Image & Document Tools Online' },
@@ -53,7 +54,7 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Suspense fallback={<HomePageSkeleton />}>
-        <HomeContent />
+        <HomeContent badgeSlot={<PartnerBadges />} />
       </Suspense>
     </div>
   )

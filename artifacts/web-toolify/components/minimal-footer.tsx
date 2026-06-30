@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LanguageSwitcher } from './language-switcher'
 import { useI18n } from '@/lib/i18n/context'
-import { PartnerBadges } from './partner-badges'
 
 export function MinimalFooter() {
   const pathname = usePathname()
@@ -24,10 +23,6 @@ export function MinimalFooter() {
             <Link href="/about" className="hover:text-foreground transition-colors">About Us</Link>
             <Link href="/contact-us" className="hover:text-foreground transition-colors">Contact Us</Link>
           </nav>
-        </div>
-        {/* Partner badges — visible on every page for badge verification */}
-        <div className="flex justify-center sm:justify-start">
-          <PartnerBadges width={100} height={36} />
         </div>
         {/* Bottom row: language switcher */}
         <div className="flex justify-center">
