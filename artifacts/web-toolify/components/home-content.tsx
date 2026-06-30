@@ -72,27 +72,6 @@ export function HomeContent({ initialCategory }: Props = {}) {
             {t('home.hero.subtitle')}
           </p>
 
-          {/* Trust / Featured badge */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="h-px w-12 bg-border" />
-            <a
-              href="https://startuups.com/projects/toolifypdf-9169"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Featured on Startuups"
-              className="hover:opacity-80 transition-opacity"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://startuups.com/images/badges/startuupscom.badge.svg"
-                alt="Featured on Startuups"
-                width={140}
-                height={50}
-              />
-            </a>
-            <div className="h-px w-12 bg-border" />
-          </div>
-
           {/* Category Filter Pills — rendered as <Link> for SEO */}
           <div className="flex items-center justify-center gap-2 flex-wrap mb-6">
             <Link
