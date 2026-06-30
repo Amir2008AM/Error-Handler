@@ -272,6 +272,10 @@ export function HomeContent({ initialCategory }: Props = {}) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="https://saasgrow.app/api/badge?type=featured&style=dark" alt="Toolifypdf on SaaSGrow" width={150} height={54} />
                 </a>
+                <a href="https://submithunt.com" target="_blank">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width={150} height={54} />
+                </a>
               </div>
             </div>
 
