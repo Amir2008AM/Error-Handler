@@ -23,6 +23,7 @@ export function Footer() {
               Free online tools for everyone. No registration, no limits.
               Process files instantly in your browser.
             </p>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
             <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
@@ -44,7 +45,6 @@ export function Footer() {
                 borderRadius: '8px',
                 textDecoration: 'none',
                 border: '1px solid #E8E8E8',
-                marginTop: '8px',
               }}
             >
               <svg width="35" height="35" viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -58,6 +58,7 @@ export function Footer() {
                 <span style={{ fontSize: '16px', fontWeight: 700 }}>Bowora</span>
               </div>
             </a>
+            </div>
           </div>
 
           {/* PDF Tools */}
