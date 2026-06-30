@@ -56,10 +56,6 @@ export default async function HomePage() {
       <Suspense fallback={<HomePageSkeleton />}>
         <HomeContent badgeSlot={<PartnerBadges />} />
       </Suspense>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <a href="https://buildvoyage.com/products/toolifypdf?ref=badge">
-        <img src="https://buildvoyage.com/images/featured_badge.png" alt="Featured on BuildVoyage" width="250" />
-      </a>
     </div>
   )
 }
