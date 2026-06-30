@@ -31,6 +31,12 @@ export const BADGES = [
     alt:  'Featured on Submit Hunt',
     rel:  undefined, // no rel = dofollow ✓
   },
+  {
+    href: 'https://www.aat.ee/?ref=badge',
+    src:  'https://www.aat.ee/images/badges/featured-badge-light.svg',
+    alt:  'Featured on aat.ee',
+    rel:  'noopener' as const,
+  },
 ]
 
 interface PartnerBadgesProps {
