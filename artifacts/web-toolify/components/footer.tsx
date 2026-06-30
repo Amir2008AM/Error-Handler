@@ -24,28 +24,17 @@ export function Footer() {
               Process files instantly in your browser.
             </p>
             <div className="flex flex-row items-center gap-2 flex-wrap">
-              <a
-                href="https://startuups.com/projects/toolifypdf-9169"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Featured on Startuups"
-                className="inline-block opacity-70 hover:opacity-100 transition-opacity"
-              >
+              <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/startuups-badge.svg"
-                  alt="Featured on Startuups"
-                  width={120}
-                  height={44}
-                />
+                <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
               </a>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/secure-processing-badge.svg"
                 alt="Secure Processing — Files never stored"
-                width={120}
-                height={54}
-                className="opacity-80"
+                width={150}
+                height={62}
+                className="opacity-90"
               />
             </div>
           </div>

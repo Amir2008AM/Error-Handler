@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="54" viewBox="0 0 120 54">
-  <rect width="120" height="54" rx="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
-  <g transform="translate(10, 10)">
-    <path d="M10 2L2 5.5v4c0 4.2 3.07 8.1 8 9.08C14.93 17.6 18 13.7 18 9.5v-4L10 2z" fill="#16a34a"/>
-    <path d="M8.5 12.5L6 10l.85-.85 1.65 1.65 3.65-3.65.85.85z" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="62" viewBox="0 0 150 62">
+  <rect width="150" height="62" rx="5" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <g transform="translate(12, 13)">
+    <path d="M12 2L3 6.5v5c0 5.25 3.83 10.15 9 11.35C17.17 21.65 21 16.75 21 11.5v-5L12 2z" fill="#16a34a"/>
+    <path d="M10 15L7 12l1.06-1.06L10 12.88l4.94-4.94L16 9z" fill="white"/>
   </g>
-  <text x="33" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="7.5" font-weight="600" fill="#16a34a" letter-spacing="0.3">SECURE</text>
-  <text x="33" y="31" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" fill="#000000">100% Private</text>
-  <text x="33" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="7.5" fill="#000000" opacity="0.55">Files never stored</text>
+  <text x="40" y="22" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="#16a34a" letter-spacing="0.4">SECURE PROCESSING</text>
+  <text x="40" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#111111">100% Private</text>
+  <text x="40" y="51" font-family="system-ui, -apple-system, sans-serif" font-size="9" fill="#555555">Files never stored</text>
 </svg>
