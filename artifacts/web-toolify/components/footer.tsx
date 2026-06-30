@@ -23,7 +23,7 @@ export function Footer() {
               Free online tools for everyone. No registration, no limits.
               Process files instantly in your browser.
             </p>
-            <div className="flex flex-row items-center gap-2">
+            <div className="flex flex-row items-center gap-2 flex-wrap">
               <a
                 href="https://startuups.com/projects/toolifypdf-9169"
                 target="_blank"
@@ -33,10 +33,10 @@ export function Footer() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="https://startuups.com/images/badges/startuupscom.badge.svg"
+                  src="/startuups-badge.svg"
                   alt="Featured on Startuups"
                   width={120}
-                  height={43}
+                  height={44}
                 />
               </a>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -44,8 +44,8 @@ export function Footer() {
                 src="/secure-processing-badge.svg"
                 alt="Secure Processing — Files never stored"
                 width={120}
-                height={52}
-                className="opacity-70"
+                height={54}
+                className="opacity-80"
               />
             </div>
           </div>
