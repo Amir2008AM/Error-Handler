@@ -23,20 +23,10 @@ export function Footer() {
               Free online tools for everyone. No registration, no limits.
               Process files instantly in your browser.
             </p>
-            <div className="flex flex-row items-center gap-2 flex-wrap">
-              <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
-              </a>
+            <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/secure-processing-badge.svg"
-                alt="Secure Processing — Files never stored"
-                width={150}
-                height={62}
-                className="opacity-90"
-              />
-            </div>
+              <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
+            </a>
           </div>
 
           {/* PDF Tools */}
