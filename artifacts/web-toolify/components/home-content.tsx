@@ -263,20 +263,6 @@ export function HomeContent({ initialCategory }: Props = {}) {
                   </li>
                 ))}
               </ul>
-              <div className="flex flex-row items-center gap-2 flex-wrap mt-4">
-                <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
-                </a>
-                <a href="https://saasgrow.app?ref=toolifypdf.online" target="_blank" rel="noopener">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://saasgrow.app/api/badge?type=featured&style=dark" alt="Toolifypdf on SaaSGrow" width={150} height={54} />
-                </a>
-                <a href="https://submithunt.com" target="_blank">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width={150} height={54} />
-                </a>
-              </div>
             </div>
 
             {/* Legal */}
@@ -302,11 +288,29 @@ export function HomeContent({ initialCategory }: Props = {}) {
           </div>
 
           {/* Bottom bar */}
-          <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p style={{ color: '#6b7280' }} className="text-xs text-center sm:text-left">
-              © 2026 ToolifyPDF. All rights reserved.
-            </p>
-            <LanguageSwitcher variant="dark-footer" />
+          <div style={{ borderTop: '1px solid #2a2a2a' }} className="mt-10 pt-6 flex flex-col gap-4">
+            {/* Badges row — horizontal on all screens */}
+            <div className="flex flex-row items-center gap-3 flex-wrap">
+              <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={130} height={46} />
+              </a>
+              <a href="https://saasgrow.app?ref=toolifypdf.online" target="_blank" rel="noopener">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://saasgrow.app/api/badge?type=featured&style=dark" alt="Toolifypdf on SaaSGrow" width={130} height={46} />
+              </a>
+              <a href="https://submithunt.com" target="_blank">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://submithunt.com/badge-light.svg" alt="Featured on Submit Hunt" width={130} height={46} />
+              </a>
+            </div>
+            {/* Copyright + language */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p style={{ color: '#6b7280' }} className="text-xs text-center sm:text-left">
+                © 2026 ToolifyPDF. All rights reserved.
+              </p>
+              <LanguageSwitcher variant="dark-footer" />
+            </div>
           </div>
 
         </div>
