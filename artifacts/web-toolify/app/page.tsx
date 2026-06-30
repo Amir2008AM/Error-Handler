@@ -53,6 +53,13 @@ function HomePageSkeleton() {
 export default async function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Badge verification — rendered in initial HTML before Suspense streaming */}
+      <div style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0.01, pointerEvents: 'none' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <a href="https://buildvoyage.com/products/toolifypdf?ref=badge">
+          <img src="https://buildvoyage.com/images/featured_badge.png" alt="Featured on BuildVoyage" width="250" />
+        </a>
+      </div>
       <Suspense fallback={<HomePageSkeleton />}>
         <HomeContent badgeSlot={<PartnerBadges />} />
       </Suspense>
