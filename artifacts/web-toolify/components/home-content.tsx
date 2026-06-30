@@ -198,13 +198,9 @@ export function HomeContent({ initialCategory }: Props = {}) {
                 </div>
                 <span className="text-white text-lg font-bold">Toolify</span>
               </div>
-              <p style={{ color: '#9ca3af' }} className="text-sm leading-relaxed max-w-xs mb-4">
+              <p style={{ color: '#9ca3af' }} className="text-sm leading-relaxed max-w-xs">
                 {t('home.footer.brandDesc')}
               </p>
-              <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
-              </a>
             </div>
 
             {/* PDF Tools */}
@@ -267,6 +263,10 @@ export function HomeContent({ initialCategory }: Props = {}) {
                   </li>
                 ))}
               </ul>
+              <a href="https://startuups.com//projects/toolifypdf-9169" target="_blank" rel="noopener" className="inline-block mt-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://startuups.com//images/badges/startuupscom.badge.svg" alt="Featured on startuups" width={150} height={54} />
+              </a>
             </div>
 
             {/* Legal */}
