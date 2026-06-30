@@ -36,6 +36,7 @@ export const BADGES = [
     src:  'https://www.aat.ee/images/badges/featured-badge-light.svg',
     alt:  'Featured on aat.ee',
     rel:  'noopener' as const,
+    whiteBg: true,
   },
 ]
 
@@ -58,6 +59,15 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
           href={badge.href}
           target="_blank"
           {...(badge.rel ? { rel: badge.rel } : {})}
+          style={badge.whiteBg ? {
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#fff',
+            borderRadius: '6px',
+            border: '1px solid #E8E8E8',
+            padding: '4px 8px',
+          } : undefined}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
