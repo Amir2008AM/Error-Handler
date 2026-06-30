@@ -36,7 +36,6 @@ export const BADGES = [
     src:  'https://www.aat.ee/images/badges/featured-badge-light.svg',
     alt:  'Featured on aat.ee',
     rel:  'noopener' as const,
-    whiteBg: true,
   },
 ]
 
