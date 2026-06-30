@@ -41,6 +41,16 @@ const nextConfig = {
     const isProd = process.env.NODE_ENV === 'production'
 
     return [
+      // Homepage: always serve fresh HTML so badge verifiers & crawlers
+      // never get a stale cached page (bypasses Cloudflare page-cache).
+      {
+        source: '/',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Pragma',        value: 'no-cache' },
+          { key: 'Expires',       value: '0' },
+        ],
+      },
       // In production Next.js chunk filenames include a content hash, so
       // immutable caching is safe.  In development Turbopack reuses the same
       // filenames across hot reloads, so immutable caching breaks HMR.
