@@ -167,15 +167,36 @@ export function HomeContent({ initialCategory }: Props = {}) {
       {/* Security Trust Badge */}
       <section className="py-10 px-4">
         <div className="max-w-2xl mx-auto flex flex-col items-center gap-4">
-          <div className="flex items-center gap-3 bg-white border border-border rounded-2xl px-6 py-4 shadow-sm w-full sm:w-auto">
-            <div className="flex-shrink-0">
-              <img src="/ssl-secure.svg" alt="HTTPS Secure" width={45} height={24} className="h-8 w-auto" />
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            {/* Secure Processing */}
+            <div className="flex items-center gap-3 bg-white border border-border rounded-2xl px-6 py-4 shadow-sm w-full sm:w-auto">
+              <div className="flex-shrink-0">
+                <img src="/ssl-secure.svg" alt="HTTPS Secure" width={45} height={24} className="h-8 w-auto" />
+              </div>
+              <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-foreground leading-tight">Secure Processing</span>
+                <span className="text-xs text-muted-foreground leading-tight mt-0.5">Protected by HTTPS Encryption</span>
+              </div>
             </div>
-            <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground leading-tight">Secure Processing</span>
-              <span className="text-xs text-muted-foreground leading-tight mt-0.5">Protected by HTTPS Encryption</span>
-            </div>
+
+            {/* Startuups Featured Badge */}
+            <a
+              href="https://startuups.com/projects/toolifypdf-9169"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Featured on Startuups"
+              className="flex items-center gap-3 bg-white border border-border rounded-2xl px-6 py-4 shadow-sm w-full sm:w-auto hover:border-orange-300 transition-colors"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://startuups.com/images/badges/startuupscom.badge.svg"
+                alt="Featured on Startuups"
+                width={130}
+                height={47}
+                className="h-8 w-auto"
+              />
+            </a>
           </div>
           <p className="text-xs text-muted-foreground text-center max-w-xs">
             All file transfers are encrypted. Your files are automatically deleted after processing.
