@@ -42,7 +42,6 @@ export const BADGES = [
     src:  'https://buildvoyage.com/images/featured_badge.png',
     alt:  'Featured on BuildVoyage',
     rel:  'noopener' as const,
-    nativeWidth: 250,
   },
 ]
 
@@ -70,8 +69,8 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
           <img
             src={badge.src}
             alt={badge.alt}
-            width={badge.nativeWidth ?? width}
-            {...(!badge.nativeWidth ? { height } : {})}
+            width={width}
+            height={height}
             loading="eager"
             decoding="async"
           />
