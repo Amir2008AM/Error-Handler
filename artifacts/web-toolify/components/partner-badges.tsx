@@ -42,7 +42,6 @@ export const BADGES = [
     src:  'https://buildvoyage.com/images/featured_badge.png',
     alt:  'Featured on BuildVoyage',
     rel:  'noopener' as const,
-    customWidth: 250,
   },
 ]
 
@@ -59,46 +58,24 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
         Trusted and Featured On
       </p>
     <div className={`flex flex-row flex-wrap items-center justify-center gap-3 ${className ?? ''}`}>
-      {BADGES.map((badge) => {
-        const badgeWidth = badge.customWidth ?? width
-        return (
+      {BADGES.map((badge) => (
         <a
           key={badge.href}
           href={badge.href}
           target="_blank"
           {...(badge.rel ? { rel: badge.rel } : {})}
-          style={badge.whiteBg ? {
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#fff',
-            borderRadius: '6px',
-            border: '1px solid #E8E8E8',
-            width: `${badgeWidth}px`,
-            height: `${height}px`,
-            padding: '4px 8px',
-            boxSizing: 'border-box',
-          } : undefined}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={badge.src}
             alt={badge.alt}
-            width={badgeWidth}
+            width={width}
             height={height}
             loading="eager"
             decoding="async"
-            style={badge.whiteBg ? {
-              maxWidth: '100%',
-              maxHeight: '100%',
-              width: 'auto',
-              height: 'auto',
-              objectFit: 'contain',
-            } : undefined}
           />
         </a>
-        )
-      })}
+      ))}
       <a
         href="https://bowora.com/?via=xr3m369j"
         target="_blank"
