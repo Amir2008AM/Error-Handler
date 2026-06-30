@@ -29,7 +29,7 @@ export function Footer() {
             </a>
             <a href="https://buildvoyage.com/products/toolifypdf?ref=badge" target="_blank" rel="noopener">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://buildvoyage.com/images/featured_badge.png" alt="Featured on BuildVoyage" width={150} height={54} />
+              <img src="https://buildvoyage.com/images/featured_badge.png" alt="Featured on BuildVoyage" width={250} />
             </a>
           </div>
 
