@@ -19,10 +19,25 @@ export function Footer() {
                 Toolify
               </span>
             </Link>
-            <p className="text-sm text-white/60 leading-relaxed max-w-xs">
+            <p className="text-sm text-white/60 leading-relaxed max-w-xs mb-3">
               Free online tools for everyone. No registration, no limits.
               Process files instantly in your browser.
             </p>
+            <a
+              href="https://startuups.com/projects/toolifypdf-9169"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Featured on Startuups"
+              className="inline-block opacity-70 hover:opacity-100 transition-opacity"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://startuups.com/images/badges/startuupscom.badge.svg"
+                alt="Featured on Startuups"
+                width={120}
+                height={43}
+              />
+            </a>
           </div>
 
           {/* PDF Tools */}
@@ -122,25 +137,10 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/10 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="border-t border-white/10 mt-10 pt-6 text-center">
           <p className="text-xs text-white/40">
             &copy; {new Date().getFullYear()} ToolifyPDF. All rights reserved.
           </p>
-          <a
-            href="https://startuups.com/projects/toolifypdf-9169"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-70 hover:opacity-100 transition-opacity shrink-0"
-            title="Featured on Startuups"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://startuups.com/images/badges/startuupscom.badge.svg"
-              alt="Featured on Startuups"
-              width={150}
-              height={54}
-            />
-          </a>
         </div>
 
       </div>
