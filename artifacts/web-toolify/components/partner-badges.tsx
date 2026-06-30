@@ -41,7 +41,11 @@ interface PartnerBadgesProps {
 
 export function PartnerBadges({ width = 130, height = 46, className }: PartnerBadgesProps) {
   return (
-    <div className={`flex flex-row flex-wrap items-center gap-3 ${className ?? ''}`}>
+    <div className="flex flex-col items-center gap-3 w-full">
+      <p className="text-xs font-semibold uppercase tracking-widest text-center" style={{ color: '#6b7280' }}>
+        Trusted and Featured On
+      </p>
+    <div className={`flex flex-row flex-wrap items-center justify-center gap-3 ${className ?? ''}`}>
       {BADGES.map((badge) => (
         <a
           key={badge.href}
@@ -90,6 +94,7 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
           <span style={{ fontSize: '13px', fontWeight: 700 }}>Bowora</span>
         </div>
       </a>
+    </div>
     </div>
   )
 }
