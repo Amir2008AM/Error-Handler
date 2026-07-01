@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Download, AlertCircle, RefreshCw } from 'lucide-react'
+import { CheckCircle2, Download, AlertCircle, RefreshCw, Share2, ExternalLink, Check } from 'lucide-react'
 import { TrustpilotReview } from '@/components/trustpilot-review'
 
 interface ProcessedFileCardProps {
@@ -20,11 +20,16 @@ interface ProcessedFileCardProps {
  *   /api/files/<fileId> for 20 minutes so retries never require reprocessing.
  * - If the automatic download is blocked (popup-blocker, mobile browser) the
  *   card surfaces a clear "Download Again" button with an explanation.
+ * - Share File: shares only the processed file via Web Share API.
+ * - Share ToolifyPDF: shares the website promotional text.
  */
 export function ProcessedFileCard({ fileId, filename, children }: ProcessedFileCardProps) {
   const [autoFailed, setAutoFailed] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [sharingFile, setSharingFile] = useState(false)
+  const [shareFileError, setShareFileError] = useState<string | null>(null)
+  const [siteShareDone, setSiteShareDone] = useState(false)
   const attemptedRef = useRef(false)
 
   // Auto-download exactly once when the card mounts.
@@ -83,6 +88,53 @@ export function ProcessedFileCard({ fileId, filename, children }: ProcessedFileC
     }
   }
 
+  const handleShareFile = async () => {
+    setSharingFile(true)
+    setShareFileError(null)
+    try {
+      const res = await fetch(`/api/files/${fileId}`)
+      if (!res.ok) throw new Error('Could not load file')
+      const blob = await res.blob()
+      const file = new File([blob], filename, { type: blob.type })
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] })
+      } else if (navigator.share) {
+        // Browser supports share but not file sharing — share nothing extra
+        await navigator.share({ title: filename })
+      } else {
+        setShareFileError('Sharing not supported on this browser.')
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setShareFileError('Could not share the file.')
+      }
+    } finally {
+      setSharingFile(false)
+    }
+  }
+
+  const handleShareSite = async () => {
+    const shareData = {
+      text: 'Free PDF, Image & Document Tools — No Registration Required.\nhttps://www.toolifypdf.online',
+    }
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(shareData.text)
+        setSiteShareDone(true)
+        setTimeout(() => setSiteShareDone(false), 2000)
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        await navigator.clipboard.writeText(shareData.text).catch(() => {})
+        setSiteShareDone(true)
+        setTimeout(() => setSiteShareDone(false), 2000)
+      }
+    }
+  }
+
   return (
     <>
       <Card className="p-6 bg-green-50 border-green-200">
@@ -124,6 +176,42 @@ export function ProcessedFileCard({ fileId, filename, children }: ProcessedFileC
               <Download className="w-4 h-4" />
             )}
             <span className="ml-1.5">{downloadError ? 'Retry' : 'Download'}</span>
+          </Button>
+        </div>
+
+        {/* Share actions */}
+        <div className="mt-4 pt-4 border-t border-green-200 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleShareFile}
+            disabled={sharingFile}
+            className="border-green-300 text-green-800 hover:bg-green-100"
+          >
+            {sharingFile ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Share2 className="w-3.5 h-3.5" />
+            )}
+            <span className="ml-1.5">Share File</span>
+          </Button>
+
+          {shareFileError && (
+            <p className="text-xs text-red-500 self-center">{shareFileError}</p>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleShareSite}
+            className="border-green-300 text-green-800 hover:bg-green-100 ml-auto"
+          >
+            {siteShareDone ? (
+              <Check className="w-3.5 h-3.5 text-green-600" />
+            ) : (
+              <ExternalLink className="w-3.5 h-3.5" />
+            )}
+            <span className="ml-1.5">{siteShareDone ? 'Copied!' : 'Share ToolifyPDF'}</span>
           </Button>
         </div>
       </Card>
