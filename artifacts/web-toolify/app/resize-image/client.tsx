@@ -284,10 +284,8 @@ export function ResizeImageClient() {
                   <RotateCcw className="w-4 h-4" />
                 </button>
               </div>
-            </div>
-          )}
-          {result && progress.status === 'completed' && (
             <ShareButtons downloadUrl={result.downloadUrl} filename={result.filename} />
+            </div>
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

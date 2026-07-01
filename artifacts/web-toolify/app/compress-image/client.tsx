@@ -277,10 +277,8 @@ export function CompressImageClient() {
                   New Image
                 </button>
               </div>
-            </div>
-          )}
-          {result && progress.status === 'completed' && (
             <ShareButtons downloadUrl={result.downloadUrl} filename={result.filename} />
+            </div>
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

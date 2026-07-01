@@ -490,10 +490,8 @@ export function ImageToPdfClient() {
             <Download className="w-4 h-4" />
             {t(lang, 'imageToPdf.downloadPdf')}
           </a>
-        </div>
-      )}
-      {downloadUrl && progress.status === 'completed' && (
         <ShareButtons downloadUrl={downloadUrl} filename={"toolify-images.pdf"} />
+        </div>
       )}
       {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
     </div>

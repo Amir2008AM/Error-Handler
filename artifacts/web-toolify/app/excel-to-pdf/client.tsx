@@ -224,10 +224,8 @@ export function ExcelToPdfClient() {
                     New File
                   </button>
                 </div>
-              </div>
-            )}
-            {downloadUrl && progress.status === 'completed' && (
               <ShareButtons downloadUrl={downloadUrl} filename={downloadFilename} />
+              </div>
             )}
             {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>

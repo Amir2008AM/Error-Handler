@@ -323,10 +323,8 @@ export function CropImageClient() {
                   {t(lang, 'crop.newImage')}
                 </button>
               </div>
-            </div>
-          )}
-          {result && progress.status === 'completed' && (
             <ShareButtons downloadUrl={result.downloadUrl} filename={result.filename} />
+            </div>
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

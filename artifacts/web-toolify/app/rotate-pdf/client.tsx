@@ -201,10 +201,8 @@ export function RotatePdfClient() {
                   {t('rotate.newFile')}
                 </button>
               </div>
-            </div>
-          )}
-          {result && progress.status === 'completed' && (
             <ShareButtons downloadUrl={result.downloadUrl} filename={result.filename} />
+            </div>
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

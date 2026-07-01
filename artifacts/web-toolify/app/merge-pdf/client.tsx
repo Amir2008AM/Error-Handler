@@ -433,10 +433,8 @@ export function MergePdfClient() {
             <Download className="w-4 h-4" />
             {t('merge.downloadPdf')}
           </a>
-        </div>
-      )}
-      {result && progress.status === 'completed' && (
         <ShareButtons fileId={result.fileId} filename={result.filename} />
+        </div>
       )}
       {result && progress.status === 'completed' && <TrustpilotReview />}
 

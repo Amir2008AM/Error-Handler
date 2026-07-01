@@ -536,10 +536,8 @@ export function SplitPdfClient() {
                 <Download className="w-4 h-4" />
                 {isZip ? 'Download ZIP' : 'Download PDF'}
               </a>
-            </div>
-          )}
-          {result && progress.status === 'completed' && (
             <ShareButtons fileId={result.fileId} filename={dlName} />
+            </div>
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

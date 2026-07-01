@@ -199,10 +199,8 @@ export function PdfToWordClient() {
                 <Download className="w-4 h-4" />
                 {t(lang, 'pdfToWord.download')}
               </a>
-            </div>
-          )}
-          {downloadUrl && job.status === 'completed' && (
             <ShareButtons downloadUrl={downloadUrl} filename={filename} />
+            </div>
           )}
           {downloadUrl && job.status === 'completed' && <TrustpilotReview />}
         </div>

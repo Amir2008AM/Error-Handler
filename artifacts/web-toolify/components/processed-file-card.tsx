@@ -76,6 +76,9 @@ export function ProcessedFileCard({ fileId, filename, children }: ProcessedFileC
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-green-800">File ready</p>
             <p className="text-sm text-green-700 truncate">{filename}</p>
+            <div className="mt-2">
+              <ShareButtons fileId={fileId} filename={filename} />
+            </div>
 
             {children && <div className="mt-2">{children}</div>}
 
@@ -107,9 +110,6 @@ export function ProcessedFileCard({ fileId, filename, children }: ProcessedFileC
           </Button>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-green-100">
-          <ShareButtons fileId={fileId} filename={filename} />
-        </div>
       </Card>
 
       <TrustpilotReview />

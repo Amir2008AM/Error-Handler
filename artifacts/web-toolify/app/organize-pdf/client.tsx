@@ -416,17 +416,17 @@ export function OrganizePdfClient() {
               </p>
             </div>
           </div>
-          <a
-            href={downloadUrl}
-            download={`organized-${file?.name ?? 'document.pdf'}`}
-            className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
-          >
-            <Download className="w-4 h-4" /> Download PDF
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={downloadUrl}
+              download={`organized-${file?.name ?? 'document.pdf'}`}
+              className="flex items-center gap-2 bg-green-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-700 transition-colors shrink-0"
+            >
+              <Download className="w-4 h-4" /> Download PDF
+            </a>
+            <ShareButtons downloadUrl={downloadUrl} filename={`organized-${file?.name ?? 'document.pdf'}`} />
+          </div>
         </div>
-      )}
-      {downloadUrl && progress.status === 'completed' && (
-        <ShareButtons downloadUrl={downloadUrl} filename={`organized-${file?.name ?? 'document.pdf'}`} />
       )}
       {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
 
