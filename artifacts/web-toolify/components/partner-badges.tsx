@@ -56,6 +56,20 @@ export const BADGES = [
     rel:  'noopener' as const,
     width: 115,
   },
+  {
+    href: 'https://auraplusplus.com/projects/toolifypdf-online-converter-suite',
+    src:  'https://auraplusplus.com/images/badges/featured-on-light.svg',
+    alt:  'Featured on Aura++',
+    rel:  'noopener' as const,
+    width: 150,
+  },
+  {
+    href: 'https://toolfio.com',
+    src:  'https://toolfio.com/toolfio-dark-badge.png',
+    alt:  'Featured on Toolfio',
+    rel:  'dofollow noopener' as const,
+    width: 150,
+  },
 ]
 
 interface PartnerBadgesProps {
