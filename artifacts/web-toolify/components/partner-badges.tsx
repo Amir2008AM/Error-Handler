@@ -49,6 +49,13 @@ export const BADGES = [
     alt:  'Featured on aat.ee',
     rel:  'noopener' as const,
   },
+  {
+    href: 'https://peerpush.com/p/toolifypdf',
+    src:  '/peerpush-badge.png',
+    alt:  'Toolifypdf on PeerPush',
+    rel:  'noopener' as const,
+    width: 115,
+  },
 ]
 
 interface PartnerBadgesProps {
@@ -75,7 +82,7 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
             <img
               src={badge.src}
               alt={badge.alt}
-              width={width}
+              width={'width' in badge ? badge.width : width}
               height={height}
               loading="eager"
               decoding="async"
