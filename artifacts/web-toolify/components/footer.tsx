@@ -31,6 +31,10 @@ export function Footer() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="https://buildvoyage.com/images/featured_badge.png" alt="Featured on BuildVoyage" width={250} />
             </a>
+            <a href="https://auraplusplus.com/projects/toolifypdf-online-converter-suite" target="_blank" rel="noopener">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://auraplusplus.com/images/badges/featured-on-light.svg" alt="Featured on Aura++" width={265} height={58} />
+            </a>
           </div>
 
           {/* PDF Tools */}
