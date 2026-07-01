@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 import { formatBytes } from '@/lib/utils/format-bytes'
 
 import { useState, useCallback } from 'react'
@@ -258,6 +259,9 @@ export function WatermarkPdfClient() {
                 </button>
               </div>
             </div>
+          )}
+          {result && progress.status === 'completed' && (
+            <ShareButtons downloadUrl={result.downloadUrl} filename={result.filename} />
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

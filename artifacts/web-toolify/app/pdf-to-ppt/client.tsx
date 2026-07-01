@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
@@ -177,6 +178,7 @@ export function PdfToPptClient() {
                     Download .pptx
                   </a>
                 </div>
+                <ShareButtons downloadUrl={downloadUrl} filename={outputName} />
                 <TrustpilotReview />
               </>
             )}

@@ -14,6 +14,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { t } from '@/lib/i18n/translations'
 
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 
 export function PageNumbersClient() {
   const { lang } = useI18n()
@@ -264,6 +265,9 @@ export function PageNumbersClient() {
                   </button>
                 </div>
               </div>
+            )}
+            {downloadUrl && progress.status === 'completed' && (
+              <ShareButtons downloadUrl={downloadUrl} filename={downloadFilename} />
             )}
             {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>

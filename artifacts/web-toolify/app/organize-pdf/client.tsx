@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
 import {
@@ -423,6 +424,9 @@ export function OrganizePdfClient() {
             <Download className="w-4 h-4" /> Download PDF
           </a>
         </div>
+      )}
+      {downloadUrl && progress.status === 'completed' && (
+        <ShareButtons downloadUrl={downloadUrl} filename={`organized-${file?.name ?? 'document.pdf'}`} />
       )}
       {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
 

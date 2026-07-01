@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 import { formatBytes } from '@/lib/utils/format-bytes'
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -536,6 +537,9 @@ export function SplitPdfClient() {
                 {isZip ? 'Download ZIP' : 'Download PDF'}
               </a>
             </div>
+          )}
+          {result && progress.status === 'completed' && (
+            <ShareButtons fileId={result.fileId} filename={dlName} />
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

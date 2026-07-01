@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 
 import { useState, useCallback, useRef } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -490,6 +491,9 @@ export function ImageToPdfClient() {
             {t(lang, 'imageToPdf.downloadPdf')}
           </a>
         </div>
+      )}
+      {downloadUrl && progress.status === 'completed' && (
+        <ShareButtons downloadUrl={downloadUrl} filename={"toolify-images.pdf"} />
       )}
       {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
     </div>

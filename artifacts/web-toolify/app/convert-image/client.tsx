@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 
 import { useState, useCallback } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -263,6 +264,9 @@ export function ConvertImageClient() {
                 </button>
               </div>
             </div>
+          )}
+          {result && progress.status === 'completed' && (
+            <ShareButtons downloadUrl={result.downloadUrl} filename={result.filename} />
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 import { formatBytes } from '@/lib/utils/format-bytes'
 
 import { useState, useCallback, useRef } from 'react'
@@ -433,6 +434,9 @@ export function MergePdfClient() {
             {t('merge.downloadPdf')}
           </a>
         </div>
+      )}
+      {result && progress.status === 'completed' && (
+        <ShareButtons fileId={result.fileId} filename={result.filename} />
       )}
       {result && progress.status === 'completed' && <TrustpilotReview />}
 

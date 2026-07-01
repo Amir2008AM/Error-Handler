@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 import { formatBytes } from '@/lib/utils/format-bytes'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -323,6 +324,9 @@ export function CropImageClient() {
                 </button>
               </div>
             </div>
+          )}
+          {result && progress.status === 'completed' && (
+            <ShareButtons downloadUrl={result.downloadUrl} filename={result.filename} />
           )}
           {result && progress.status === 'completed' && <TrustpilotReview />}
         </div>

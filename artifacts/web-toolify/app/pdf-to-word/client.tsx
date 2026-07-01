@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 import { formatBytes } from '@/lib/utils/format-bytes'
 import { useState, useCallback, useEffect } from 'react'
 import { UploadDropzone } from '@/components/upload-dropzone'
@@ -199,6 +200,9 @@ export function PdfToWordClient() {
                 {t(lang, 'pdfToWord.download')}
               </a>
             </div>
+          )}
+          {downloadUrl && job.status === 'completed' && (
+            <ShareButtons downloadUrl={downloadUrl} filename={filename} />
           )}
           {downloadUrl && job.status === 'completed' && <TrustpilotReview />}
         </div>

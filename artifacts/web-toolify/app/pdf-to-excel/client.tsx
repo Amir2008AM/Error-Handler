@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
@@ -177,6 +178,7 @@ export function PdfToExcelClient() {
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   Excel file downloaded successfully!
                 </div>
+                <ShareButtons filename="" />
                 <TrustpilotReview />
               </>
             )}

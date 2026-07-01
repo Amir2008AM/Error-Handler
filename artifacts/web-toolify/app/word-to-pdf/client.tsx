@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -303,6 +304,9 @@ export function WordToPdfClient() {
                   </button>
                 </div>
               </div>
+            )}
+            {downloadUrl && progress.status === 'completed' && (
+              <ShareButtons downloadUrl={downloadUrl} filename={downloadFilename} />
             )}
             {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>

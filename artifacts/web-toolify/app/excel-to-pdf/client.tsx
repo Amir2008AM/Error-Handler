@@ -1,5 +1,6 @@
 'use client'
 import { TrustpilotReview } from '@/components/trustpilot-review'
+import { ShareButtons } from '@/components/share-buttons'
 
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
@@ -224,6 +225,9 @@ export function ExcelToPdfClient() {
                   </button>
                 </div>
               </div>
+            )}
+            {downloadUrl && progress.status === 'completed' && (
+              <ShareButtons downloadUrl={downloadUrl} filename={downloadFilename} />
             )}
             {downloadUrl && progress.status === 'completed' && <TrustpilotReview />}
           </div>
