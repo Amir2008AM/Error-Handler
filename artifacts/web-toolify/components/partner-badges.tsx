@@ -84,6 +84,13 @@ export const BADGES = [
     rel:  'noopener' as const,
     width: 150,
   },
+  {
+    href: 'https://fazier.com/launches/www.toolifypdf.online',
+    src:  'https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light',
+    alt:  'Fazier badge',
+    rel:  'noopener' as const,
+    width: 150,
+  },
 ]
 
 interface PartnerBadgesProps {
