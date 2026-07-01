@@ -70,6 +70,13 @@ export const BADGES = [
     rel:  'dofollow noopener' as const,
     width: 150,
   },
+  {
+    href: 'https://earlyhunt.com/project/toolifypdf',
+    src:  'https://earlyhunt.com/badges/earlyhunt-badge-light.svg',
+    alt:  'Featured on EarlyHunt',
+    rel:  'noopener' as const,
+    width: 150,
+  },
 ]
 
 interface PartnerBadgesProps {
