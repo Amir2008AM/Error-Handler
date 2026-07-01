@@ -77,6 +77,13 @@ export const BADGES = [
     rel:  'noopener' as const,
     width: 150,
   },
+  {
+    href: 'https://startupfa.me/s/toolifypdf?utm_source=www.toolifypdf.online',
+    src:  'https://startupfa.me/badges/featured-badge.webp',
+    alt:  'ToolifyPDF - Featured on Startup Fame',
+    rel:  'noopener' as const,
+    width: 150,
+  },
 ]
 
 interface PartnerBadgesProps {
