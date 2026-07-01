@@ -84,12 +84,13 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
       <p className="text-xs font-semibold uppercase tracking-widest text-center" style={{ color: '#6b7280' }}>
         Trusted and Featured On
       </p>
-      <div className={`flex flex-row flex-wrap items-center justify-center gap-3 ${className ?? ''}`}>
+      <div className={`grid grid-cols-3 sm:grid-cols-5 gap-3 w-full ${className ?? ''}`}>
         {BADGES.map((badge) => (
           <a
             key={badge.href}
             href={badge.href}
             target="_blank"
+            className="flex items-center justify-center"
             {...(badge.rel ? { rel: badge.rel } : {})}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
