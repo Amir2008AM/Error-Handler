@@ -15,7 +15,7 @@
 export const BADGES = [
   {
     href: 'https://buildvoyage.com/products/toolifypdf?ref=badge',
-    src:  'https://buildvoyage.com/images/featured_badge.png',
+    src:  '/buildvoyage-badge.png',
     alt:  'Featured on BuildVoyage',
     rel:  'noopener' as const,
   },
