@@ -20,6 +20,12 @@ export const BADGES = [
     rel:  'noopener' as const,
   },
   {
+    href: 'https://productburst.com/product/toolifypdf',
+    src:  'https://3188a5210b07f4ad511bbcdc967bc67b.cdn.bubble.io/f1747781918344x939992978866771600/pB-Badge.png',
+    alt:  'Featured on ProductBurst',
+    rel:  'noopener noreferrer' as const,
+  },
+  {
     href: 'https://startuups.com//projects/toolifypdf-9169',
     src:  'https://startuups.com//images/badges/startuupscom.badge.svg',
     alt:  'Featured on Startuups',
