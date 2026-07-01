@@ -35,6 +35,10 @@ export function Footer() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="https://auraplusplus.com/images/badges/featured-on-light.svg" alt="Featured on Aura++" width={265} height={58} />
             </a>
+            <a href="https://toolfio.com" target="_blank" rel="dofollow">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://toolfio.com/toolfio-dark-badge.png" alt="Featured on Toolfio" width={200} height={54} />
+            </a>
           </div>
 
           {/* PDF Tools */}
