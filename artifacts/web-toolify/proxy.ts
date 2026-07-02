@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// ── IndexerNow AI-crawler tracker ────────────────────────────────────────────
+const AI_BOTS =
+  /(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|PerplexityBot|Google-Extended|GoogleOther|Applebot-Extended|Applebot|Bytespider|Amazonbot|Meta-ExternalAgent|Meta-ExternalFetcher|CCBot|Diffbot|YouBot|MistralAI-User|cohere-ai|DuckAssistBot)/i
+
+function pingIndexerNow(pathname: string, ua: string): void {
+  const url =
+    'https://www.indexernow.com/api/pixel/TlVi67OnA6oZ0cLtJ6InXjbx?u=' +
+    encodeURIComponent(pathname) +
+    '&ua=' +
+    encodeURIComponent(ua)
+  fetch(url).catch(() => {})
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // In-memory sliding window rate limiter (no external dependencies)
 const rateLimitStore = new Map<string, number[]>()
 
@@ -73,6 +87,11 @@ function assignSessionCookie(request: NextRequest, response: NextResponse): void
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // ── AI-crawler tracking (fire-and-forget, never blocks the response) ─────────
+  const ua = request.headers.get('user-agent') || ''
+  if (AI_BOTS.test(ua)) pingIndexerNow(pathname, ua)
+  // ─────────────────────────────────────────────────────────────────────────────
 
   // ── www redirect: non-www → www (301) to prevent duplicate canonical issues ──
   if (process.env.NODE_ENV === 'production') {
