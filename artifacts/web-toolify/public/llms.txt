@@ -1,0 +1,36 @@
+# Toolify PDF
+
+> Toolify PDF is a free, browser-based suite of PDF and image processing tools. All processing happens securely in your browser — no files are uploaded to any server.
+
+## Tools
+
+- [PDF to Word](https://www.toolifypdf.online/pdf-to-word): Convert PDF files to editable Word documents (.docx).
+- [PDF to Excel](https://www.toolifypdf.online/pdf-to-excel): Extract tables from PDFs into Excel spreadsheets (.xlsx).
+- [PDF to PowerPoint](https://www.toolifypdf.online/pdf-to-ppt): Convert PDF slides to editable PowerPoint (.pptx).
+- [PDF to JPG](https://www.toolifypdf.online/pdf-to-jpg): Export every PDF page as a high-quality JPG image.
+- [PDF to PNG](https://www.toolifypdf.online/pdf-to-png): Export every PDF page as a lossless PNG image.
+- [PDF to Text](https://www.toolifypdf.online/pdf-to-text): Extract all text content from a PDF file.
+- [Merge PDF](https://www.toolifypdf.online/merge-pdf): Combine multiple PDF files into one document.
+- [Split PDF](https://www.toolifypdf.online/split-pdf): Separate a PDF into individual pages or custom ranges.
+- [Compress PDF](https://www.toolifypdf.online/compress-pdf): Reduce PDF file size while preserving quality.
+- [Rotate PDF](https://www.toolifypdf.online/rotate-pdf): Rotate pages in a PDF document.
+- [Word to PDF](https://www.toolifypdf.online/word-to-pdf): Convert Word documents (.docx) to PDF format.
+- [Excel to PDF](https://www.toolifypdf.online/excel-to-pdf): Convert Excel spreadsheets (.xlsx) to PDF format.
+- [JPG to PDF](https://www.toolifypdf.online/jpg-to-pdf): Combine JPG images into a single PDF file.
+- [PNG to PDF](https://www.toolifypdf.online/png-to-pdf): Combine PNG images into a single PDF file.
+- [Image to PDF](https://www.toolifypdf.online/image-to-pdf): Convert any image format to PDF.
+- [Crop Image](https://www.toolifypdf.online/crop-image): Crop and resize images online.
+- [Compress Image](https://www.toolifypdf.online/compress-image): Reduce image file size without visible quality loss.
+- [Remove Background](https://www.toolifypdf.online/remove-background): Automatically remove the background from any image.
+
+## About
+
+- All tools run entirely in the browser using WebAssembly — your files never leave your device.
+- No account or login required.
+- Free to use with no file size restrictions for most tools.
+- Available in multiple languages.
+
+## Contact
+
+- Website: https://www.toolifypdf.online
+- Sitemap: https://www.toolifypdf.online/sitemap.xml

@@ -9,6 +9,7 @@ const BASE_URL =
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
+      // ── General crawlers ──────────────────────────────────────────────────
       {
         userAgent: '*',
         allow: [
@@ -21,17 +22,46 @@ export default function robots(): MetadataRoute.Robots {
           '/ops',
           '/dev-ops',
           '/internal/',
-          '/*?*',
         ],
       },
-      {
-        userAgent: 'AdsBot-Google',
-        allow: '/',
-      },
-      {
-        userAgent: 'Mediapartners-Google',
-        allow: '/',
-      },
+      // ── Google ────────────────────────────────────────────────────────────
+      { userAgent: 'AdsBot-Google',       allow: '/' },
+      { userAgent: 'Mediapartners-Google', allow: '/' },
+      // ── OpenAI ────────────────────────────────────────────────────────────
+      { userAgent: 'GPTBot',              allow: '/' },
+      { userAgent: 'ChatGPT-User',        allow: '/' },
+      { userAgent: 'OAI-SearchBot',       allow: '/' },
+      // ── Anthropic / Claude ────────────────────────────────────────────────
+      { userAgent: 'ClaudeBot',           allow: '/' },
+      { userAgent: 'Claude-Web',          allow: '/' },
+      { userAgent: 'anthropic-ai',        allow: '/' },
+      // ── Google AI ────────────────────────────────────────────────────────
+      { userAgent: 'Google-Extended',     allow: '/' },
+      { userAgent: 'GoogleOther',         allow: '/' },
+      // ── Apple ─────────────────────────────────────────────────────────────
+      { userAgent: 'Applebot',            allow: '/' },
+      { userAgent: 'Applebot-Extended',   allow: '/' },
+      // ── Perplexity ────────────────────────────────────────────────────────
+      { userAgent: 'PerplexityBot',       allow: '/' },
+      // ── Meta ──────────────────────────────────────────────────────────────
+      { userAgent: 'Meta-ExternalAgent',  allow: '/' },
+      { userAgent: 'Meta-ExternalFetcher', allow: '/' },
+      // ── Amazon ────────────────────────────────────────────────────────────
+      { userAgent: 'Amazonbot',           allow: '/' },
+      // ── Cohere ───────────────────────────────────────────────────────────
+      { userAgent: 'cohere-ai',           allow: '/' },
+      // ── Mistral ───────────────────────────────────────────────────────────
+      { userAgent: 'MistralAI-User',      allow: '/' },
+      // ── You.com ───────────────────────────────────────────────────────────
+      { userAgent: 'YouBot',              allow: '/' },
+      // ── DuckDuckGo ────────────────────────────────────────────────────────
+      { userAgent: 'DuckAssistBot',       allow: '/' },
+      // ── Diffbot ───────────────────────────────────────────────────────────
+      { userAgent: 'Diffbot',             allow: '/' },
+      // ── ByteDance ────────────────────────────────────────────────────────
+      { userAgent: 'Bytespider',          allow: '/' },
+      // ── Common Crawl ──────────────────────────────────────────────────────
+      { userAgent: 'CCBot',               allow: '/' },
     ],
     sitemap: `${BASE_URL}/sitemap.xml`,
     host: BASE_URL,
