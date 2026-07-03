@@ -100,6 +100,24 @@ export function getDb(): DatabaseSync | null {
         created_at  INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_cm_created_at ON contact_messages(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS feedback (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        type        TEXT    NOT NULL DEFAULT 'general',
+        message     TEXT    NOT NULL,
+        email       TEXT    NOT NULL DEFAULT '',
+        page_url    TEXT    NOT NULL DEFAULT '',
+        page_name   TEXT    NOT NULL DEFAULT '',
+        browser     TEXT    NOT NULL DEFAULT '',
+        os          TEXT    NOT NULL DEFAULT '',
+        device_type TEXT    NOT NULL DEFAULT '',
+        country     TEXT    NOT NULL DEFAULT '',
+        language    TEXT    NOT NULL DEFAULT '',
+        ip          TEXT    NOT NULL DEFAULT '',
+        tg_sent     INTEGER NOT NULL DEFAULT 0,
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_fb_created_at ON feedback(created_at DESC);
     `)
 
     // Remove legacy user IDs written before the IP-hash fix.
@@ -155,9 +173,11 @@ let _stmtInsertError: StatementSync | null = null
 let _stmtInsertFile: StatementSync | null = null
 let _stmtInsertDetailedError: StatementSync | null = null
 let _stmtInsertContact: StatementSync | null = null
+let _stmtInsertFeedback: StatementSync | null = null
 
 function _prepareStatements(db: DatabaseSync): void {
-  if (_stmtInsertJob) return
+  // Guard on the last statement so all are guaranteed to be initialized
+  if (_stmtInsertFeedback) return
   _stmtInsertJob = db.prepare(`
     INSERT INTO jobs_history
       (job_id, tool, status, processing_time_ms, file_size_bytes, format, created_at)
@@ -187,6 +207,71 @@ function _prepareStatements(db: DatabaseSync): void {
     INSERT INTO contact_messages (email, message, ip, delivered, channel, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
   `)
+  _stmtInsertFeedback = db.prepare(`
+    INSERT INTO feedback
+      (type, message, email, page_url, page_name, browser, os, device_type, country, language, ip, tg_sent, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `)
+}
+
+// ── Feedback ─────────────────────────────────────────────────────────────────
+
+export interface FeedbackRecord {
+  type:       string
+  message:    string
+  email:      string
+  page_url:   string
+  page_name:  string
+  browser:    string
+  os:         string
+  device_type: string
+  country:    string
+  language:   string
+  ip:         string
+  tg_sent:    boolean
+}
+
+export function dbSaveFeedback(rec: FeedbackRecord): number | null {
+  const db = getDb()
+  if (!db) return null
+  try {
+    _prepareStatements(db)
+    const result = _stmtInsertFeedback!.run(
+      rec.type, rec.message, rec.email,
+      rec.page_url, rec.page_name,
+      rec.browser, rec.os, rec.device_type,
+      rec.country, rec.language, rec.ip,
+      rec.tg_sent ? 1 : 0,
+      Date.now(),
+    )
+    return Number(result.lastInsertRowid)
+  } catch (err) {
+    console.error('[Analytics DB] dbSaveFeedback failed:', (err as Error).message)
+    return null
+  }
+}
+
+export function dbMarkFeedbackTgSent(id: number): void {
+  const db = getDb()
+  if (!db) return
+  try {
+    db.prepare('UPDATE feedback SET tg_sent = 1 WHERE id = ?').run(id)
+  } catch { /* best-effort */ }
+}
+
+export interface FeedbackRow extends FeedbackRecord {
+  id: number
+  created_at: number
+}
+
+export function dbGetFeedback(limit = 100): FeedbackRow[] {
+  const db = getDb()
+  if (!db) return []
+  try {
+    return db.prepare(
+      'SELECT * FROM feedback ORDER BY created_at DESC LIMIT ?'
+    ).all(limit) as unknown as FeedbackRow[]
+  } catch { return [] }
 }
 
 // ── Contact messages ──────────────────────────────────────────────────────────

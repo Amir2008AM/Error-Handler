@@ -7,6 +7,7 @@ import HeartbeatBeacon from '@/components/heartbeat-beacon'
 import { MinimalFooter } from '@/components/minimal-footer'
 import { Navbar } from '@/components/navbar'
 import ThirdPartyScripts from '@/components/third-party-scripts'
+import FeedbackWidget from '@/components/feedback-widget'
 import './globals.css'
 
 const inter = Inter({
@@ -124,6 +125,7 @@ export default function RootLayout({
             <Navbar />
             {children}
             <MinimalFooter />
+            <FeedbackWidget />
           </LoadingBarProvider>
         </I18nProvider>
       </body>
