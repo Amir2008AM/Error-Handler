@@ -39,9 +39,10 @@ const CATEGORY_SLUG_MAP: Record<string, string> = {
 type Props = {
   initialCategory?: ToolCategory | null
   badgeSlot?: ReactNode
+  preFooterSlot?: ReactNode
 }
 
-export function HomeContent({ initialCategory, badgeSlot }: Props = {}) {
+export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props = {}) {
   const { t } = useI18n()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -189,6 +190,9 @@ export function HomeContent({ initialCategory, badgeSlot }: Props = {}) {
           </p>
         </div>
       </section>
+
+      {/* Pre-footer content slot (FAQ, SEO sections, etc.) */}
+      {preFooterSlot}
 
       {/* Footer */}
       <footer style={{ backgroundColor: '#111111' }} className="py-12">
