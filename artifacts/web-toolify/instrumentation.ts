@@ -134,6 +134,14 @@ export async function register() {
       console.warn('[AC] Failed to start (non-fatal):', (err as Error).message)
     }
 
+    // ── 0f. Telegram bot — long polling ────────────────────────────────────────
+    try {
+      const { startBotPolling } = await import('./lib/telegram/bot-poller')
+      startBotPolling()
+    } catch (err) {
+      console.warn('[Bot] Failed to start polling (non-fatal):', (err as Error).message)
+    }
+
     // ── 1. BullMQ workers ─────────────────────────────────────────────────────
     if (process.env.REDIS_URL) {
       try {
