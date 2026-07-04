@@ -1,4 +1,11 @@
-import { ChevronDown } from 'lucide-react'
+import {
+  ChevronDown,
+  UploadCloud, Eye, Wand2, CheckCheck, Download,
+  GripVertical, Trash2, LayoutGrid, ShieldCheck, Monitor,
+  Gift, Lock, Zap, UserX, Star, Minimize2, FileOutput,
+  MoveHorizontal, Copy, Type, RotateCw, ScanText, Merge,
+  Scissors, FilePlus2, RefreshCw, Image, FileText,
+} from 'lucide-react'
 
 type Step  = { title: string; desc: string }
 type Feat  = { title: string; desc: string }
@@ -11,6 +18,69 @@ type ToolSeoData = {
   faqs:     QA[]
 }
 
+// ── Icon resolver — picks a Lucide icon based on feature keywords ─────────────
+const FEAT_ICONS: Array<{ kw: string[]; Icon: React.ComponentType<{ className?: string }> }> = [
+  { kw: ['drag', 'reorder', 'move'],        Icon: GripVertical   },
+  { kw: ['delete', 'remove', 'trash'],      Icon: Trash2         },
+  { kw: ['preview', 'visual', 'thumbnail'], Icon: Eye            },
+  { kw: ['quality', 'loss', 'sharp'],       Icon: Star           },
+  { kw: ['device', 'mobile', 'phone'],      Icon: Monitor        },
+  { kw: ['free', 'watermark', 'cost'],      Icon: Gift           },
+  { kw: ['delet', 'secur', 'process'],      Icon: ShieldCheck    },
+  { kw: ['registr', 'account', 'sign'],     Icon: UserX          },
+  { kw: ['compress', 'reduc', 'size'],      Icon: Minimize2      },
+  { kw: ['convert', 'output', 'format'],    Icon: FileOutput     },
+  { kw: ['merge', 'combin', 'join'],        Icon: Merge          },
+  { kw: ['split', 'extract', 'separar'],    Icon: Scissors       },
+  { kw: ['rotat'],                          Icon: RotateCw       },
+  { kw: ['scan', 'ocr', 'text'],            Icon: ScanText       },
+  { kw: ['copy', 'duplicat'],               Icon: Copy           },
+  { kw: ['font', 'type', 'case'],           Icon: Type           },
+  { kw: ['fast', 'instant', 'speed'],       Icon: Zap            },
+  { kw: ['privacy', 'private', 'safe'],     Icon: Lock           },
+  { kw: ['upload', 'add', 'insert'],        Icon: UploadCloud    },
+  { kw: ['image', 'photo', 'picture'],      Icon: Image          },
+  { kw: ['page', 'number', 'count'],        Icon: FileText       },
+  { kw: ['horizontal', 'range', 'custom'],  Icon: MoveHorizontal },
+  { kw: ['unlock', 'password', 'protect'],  Icon: Lock           },
+  { kw: ['repair', 'recover', 'fix'],       Icon: RefreshCw      },
+  { kw: ['multiple', 'batch', 'unlimit'],   Icon: FilePlus2      },
+]
+
+function resolveIcon(title: string): React.ComponentType<{ className?: string }> {
+  const lower = title.toLowerCase()
+  for (const { kw, Icon } of FEAT_ICONS) {
+    if (kw.some(k => lower.includes(k))) return Icon
+  }
+  return CheckCheck
+}
+
+// ── Step icons — first 6 steps get semantic icons ────────────────────────────
+const STEP_ICONS = [UploadCloud, Eye, Wand2, CheckCheck, Download, Zap]
+
+// ── Trust strip items ─────────────────────────────────────────────────────────
+const TRUST_ITEMS = [
+  { Icon: Gift,        label: '100% Free',          sub: 'No hidden charges' },
+  { Icon: Lock,        label: 'Files Auto-Deleted',  sub: 'After processing' },
+  { Icon: UserX,       label: 'No Sign-Up',          sub: 'Just upload & go' },
+  { Icon: Monitor,     label: 'Any Device',          sub: 'Mobile & desktop' },
+]
+
+// ── Accent colours cycling through features ───────────────────────────────────
+const FEAT_COLORS = [
+  { bg: 'bg-blue-50',   icon: 'text-blue-600',   border: 'border-blue-100'   },
+  { bg: 'bg-violet-50', icon: 'text-violet-600',  border: 'border-violet-100' },
+  { bg: 'bg-emerald-50',icon: 'text-emerald-600', border: 'border-emerald-100'},
+  { bg: 'bg-amber-50',  icon: 'text-amber-600',   border: 'border-amber-100'  },
+  { bg: 'bg-rose-50',   icon: 'text-rose-600',    border: 'border-rose-100'   },
+  { bg: 'bg-cyan-50',   icon: 'text-cyan-600',    border: 'border-cyan-100'   },
+  { bg: 'bg-indigo-50', icon: 'text-indigo-600',  border: 'border-indigo-100' },
+  { bg: 'bg-teal-50',   icon: 'text-teal-600',    border: 'border-teal-100'   },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════════════
 const DATA: Record<string, ToolSeoData> = {
   'merge-pdf': {
     about: 'Toolify\'s free Merge PDF tool lets you combine multiple PDF files into one document instantly in your browser — no software to install, no account required. Whether you need to join reports, contracts, invoices, or any PDF files, ToolifyPDF makes it simple and secure. Just upload your PDF files, drag to reorder them, and download a single merged PDF in seconds.',
@@ -139,23 +209,45 @@ const DATA: Record<string, ToolSeoData> = {
   },
 
   'organize-pdf': {
-    about: 'Rearrange, delete, or duplicate pages in any PDF with ToolifyPDF\'s free Organize PDF tool. Toolify gives you a visual page preview so you can drag pages into any order, remove unwanted pages, or duplicate any page — all before saving. No software needed. Upload your PDF, reorganize the pages the way you want, and download the result instantly.',
+    about: 'Need to rearrange or delete pages in a PDF? ToolifyPDF\'s free Organize PDF tool gives you full visual control over every page — without installing any software or creating an account. Whether you\'re removing a blank page, reordering chapters in a report, swapping two pages in a contract, or cleaning up a multi-page scanned document, Toolify makes the entire process simple.\n\nJust upload your PDF and instantly see thumbnail previews of every page. Hold any page thumbnail and drag it to a new position. Tap the trash icon to remove any unwanted page. Want to reorder many pages at once? No problem — the tool handles PDFs with hundreds of pages smoothly. Nothing is written to your file until you click the download button, so you can arrange freely before committing.\n\nEverything runs securely and privately — your file is never permanently stored on our servers and is deleted immediately after your session ends. No watermarks, no quality loss on any remaining page, and no hidden fees. Works on Windows, Mac, Linux, iOS, and Android. 100% free, forever.',
     steps: [
-      { title: 'Upload Your PDF',         desc: 'Upload the PDF whose pages you want to reorganize.' },
-      { title: 'Reorder or Delete Pages', desc: 'Drag pages to reorder, click to select pages to delete, or duplicate any page.' },
-      { title: 'Save and Download',       desc: 'Click "Save" and download your reorganized PDF file.' },
+      { title: 'Upload Your PDF',          desc: 'Drag and drop your PDF file into the upload area, or click to browse and select it from your device. Files up to 50 MB are supported.' },
+      { title: 'Preview All Pages',        desc: 'Toolify instantly renders thumbnail previews of every page so you can see exactly what you\'re working with before making any changes.' },
+      { title: 'Reorder or Delete Pages',  desc: 'Hold any page thumbnail for half a second until it activates, then drag it to a new position. Tap the trash icon on any thumbnail to remove that page from the document.' },
+      { title: 'Review Your New Order',    desc: 'Check the final arrangement in the grid. If anything looks wrong, keep rearranging — nothing is saved until you click the download button.' },
+      { title: 'Download Your Organized PDF', desc: 'Click "Download Organized PDF" to generate and save your reorganized file instantly. No sign-up or waiting required.' },
     ],
     features: [
-      { title: 'Drag-to-Reorder',        desc: 'Easily move pages to any position by dragging their thumbnail previews.' },
-      { title: 'Delete Unwanted Pages',  desc: 'Remove any page from the document with a single click.' },
-      { title: 'Duplicate Pages',        desc: 'Create copies of any page and place them anywhere in the document.' },
-      { title: 'Visual Page Previews',   desc: 'See thumbnail previews of each page on Toolify before making changes.' },
+      { title: 'Drag-and-Drop Reordering',    desc: 'Hold any page thumbnail and drag it to a new position. The intuitive touch-friendly interface works on both desktop and mobile devices.' },
+      { title: 'Delete Any Page Instantly',   desc: 'Remove unwanted pages — blank pages, cover pages, or repeated content — with a single tap on the trash icon.' },
+      { title: 'Visual Page Previews',        desc: 'Every page is rendered as a thumbnail so you can see exactly what\'s on each page before reorganizing — no guessing by page number.' },
+      { title: 'No Quality Loss',             desc: 'Rearranging or deleting pages does not compress, re-render, or alter any page content. Text sharpness and image quality are fully preserved.' },
+      { title: 'Works on Any Device',         desc: 'Fully functional on Windows, Mac, Linux, iOS, and Android — no app download needed. Just open Toolify in any modern browser.' },
+      { title: 'Completely Free, No Watermark', desc: 'The organized PDF you download is clean — no Toolify branding, no watermarks, and no hidden charges. 100% free forever.' },
+      { title: 'Files Deleted After Processing', desc: 'Your uploaded PDF is never stored on our servers beyond the active session. Files are permanently deleted as soon as you download your result.' },
+      { title: 'No Registration Required',    desc: 'Start organizing your PDF immediately — no account, no email, no subscription. Just upload and go.' },
     ],
     faqs: [
-      { q: 'Can I undo changes before saving?',    a: 'Yes. Changes are only applied when you click Save, so you can rearrange freely before committing.' },
-      { q: 'Can I combine organize and split?',    a: 'Yes — use Organize PDF to remove or reorder pages, and Split PDF to separate specific page ranges on ToolifyPDF.' },
-      { q: 'What is the maximum number of pages?', a: 'The tool handles PDFs with hundreds of pages. For very large files, processing may take a few extra seconds.' },
-      { q: 'Will text quality be affected?',       a: 'No. Reorganizing pages does not change or compress any content.' },
+      { q: 'How do I rearrange pages in a PDF online for free?',
+        a: 'Upload your PDF to ToolifyPDF\'s Organize PDF tool. You\'ll see thumbnail previews of every page. Hold any thumbnail until it activates, drag it to the new position you want, then click "Download Organized PDF" to save the result. It\'s completely free with no sign-up required.' },
+      { q: 'Can I delete pages from a PDF without losing quality?',
+        a: 'Yes. Deleting pages on Toolify does not affect the remaining pages in any way. The content, fonts, images, and resolution of every kept page remain exactly as in the original file.' },
+      { q: 'Can I reorder PDF pages on my phone or tablet?',
+        a: 'Yes. The tool is fully mobile-friendly and works on iPhone, Android, and tablets. Use a long press to activate drag mode, then slide the page thumbnail to its new position.' },
+      { q: 'Is it safe to upload my PDF to reorganize it?',
+        a: 'Yes. All processing happens securely in your browser session. Your file is never permanently stored on Toolify\'s servers and is deleted automatically after your session ends. We do not share or analyze your file contents.' },
+      { q: 'What is the maximum PDF size I can organize?',
+        a: 'You can upload and organize PDF files up to 50 MB. For very large PDFs with many pages, thumbnail rendering may take a few extra seconds, but the tool handles hundreds of pages without issues.' },
+      { q: 'Can I undo a page move or deletion?',
+        a: 'Page moves can be reversed by dragging back. If you delete a page by mistake, click "Clear" to reset and re-upload your original file — no changes are saved until you download.' },
+      { q: 'Can I use Organize PDF together with Split PDF or Merge PDF?',
+        a: 'Absolutely. A common workflow is to use Organize PDF to remove unwanted pages and reorder the rest, then use Split PDF to divide the result into separate files, or Merge PDF to combine it with another document — all free on ToolifyPDF.' },
+      { q: 'Will organizing my PDF change the file size?',
+        a: 'The file size will reflect the pages you keep. Removing pages reduces the size proportionally. No additional compression is applied, so the quality of remaining pages is identical to the original.' },
+      { q: 'Can I organize a password-protected PDF?',
+        a: 'Password-protected PDFs need to be unlocked first. Use ToolifyPDF\'s free Unlock PDF tool to remove the password, then come back to Organize PDF to rearrange your pages.' },
+      { q: 'Does reorganizing pages affect embedded links or bookmarks?',
+        a: 'Internal bookmarks pointing to specific page numbers may shift after reordering. External hyperlinks embedded within page content are not affected.' },
     ],
   },
 
@@ -622,81 +714,148 @@ const DATA: Record<string, ToolSeoData> = {
   },
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════════
 export function ToolSeoContent({ slug }: { slug: string }) {
   const data = DATA[slug]
   if (!data) return null
 
+  // Split about into paragraphs
+  const aboutParas = data.about.split('\n\n').filter(Boolean)
+
   return (
-    <div className="mt-10 rounded-xl border border-border overflow-hidden divide-y divide-border bg-white">
+    <div className="mt-12 space-y-10">
 
-      {/* About */}
-      <details className="group">
-        <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
-          <span className="font-semibold text-sm text-foreground">About This Tool</span>
-          <ChevronDown size={16} className="text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
-        </summary>
-        <div className="px-5 pb-5 pt-1">
-          <p className="text-sm text-muted-foreground leading-relaxed">{data.about}</p>
+      {/* ── About ─────────────────────────────────────────────────────────── */}
+      <section aria-labelledby={`${slug}-about`}>
+        <h2
+          id={`${slug}-about`}
+          className="text-xl font-bold text-foreground mb-4"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          What Is This Tool?
+        </h2>
+        <div className="bg-white border border-border rounded-2xl p-6 space-y-3">
+          {aboutParas.map((para, i) => (
+            <p key={i} className="text-sm text-muted-foreground leading-relaxed">{para}</p>
+          ))}
         </div>
-      </details>
+      </section>
 
-      {/* How it works */}
-      <details className="group">
-        <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
-          <span className="font-semibold text-sm text-foreground">How to Use</span>
-          <ChevronDown size={16} className="text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
-        </summary>
-        <div className="px-5 pb-5 pt-1 space-y-4">
-          {data.steps.map((s, i) => (
-            <div key={i} className="flex gap-3">
-              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center mt-0.5">
-                {i + 1}
+      {/* ── How to Use ────────────────────────────────────────────────────── */}
+      <section aria-labelledby={`${slug}-steps`}>
+        <h2
+          id={`${slug}-steps`}
+          className="text-xl font-bold text-foreground mb-4"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          How to Use
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {data.steps.map((s, i) => {
+            const StepIcon = STEP_ICONS[i] ?? CheckCheck
+            return (
+              <div
+                key={i}
+                className="relative bg-white border border-border rounded-2xl p-5 flex flex-col gap-3 overflow-hidden"
+              >
+                {/* step number watermark */}
+                <span
+                  aria-hidden="true"
+                  className="absolute top-3 right-4 text-5xl font-black text-primary/5 select-none leading-none"
+                >
+                  {i + 1}
+                </span>
+                {/* icon badge */}
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <StepIcon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-foreground mb-1">{s.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-sm text-foreground">{s.title}</p>
-                <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</p>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ── Trust Strip ───────────────────────────────────────────────────── */}
+      <section aria-label="Why choose Toolify" className="bg-primary/5 border border-primary/10 rounded-2xl p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {TRUST_ITEMS.map(({ Icon, label, sub }) => (
+            <div key={label} className="flex flex-col items-center text-center gap-1.5">
+              <div className="w-9 h-9 rounded-xl bg-white border border-primary/15 flex items-center justify-center shadow-sm">
+                <Icon className="w-4 h-4 text-primary" />
               </div>
+              <p className="text-xs font-semibold text-foreground leading-tight">{label}</p>
+              <p className="text-[11px] text-muted-foreground leading-tight">{sub}</p>
             </div>
           ))}
         </div>
-      </details>
+      </section>
 
-      {/* Key Features */}
-      <details className="group">
-        <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
-          <span className="font-semibold text-sm text-foreground">Key Features</span>
-          <ChevronDown size={16} className="text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
-        </summary>
-        <div className="px-5 pb-5 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {data.features.map((f, i) => (
-            <div key={i} className="rounded-lg border border-border bg-gray-50 p-3">
-              <p className="font-semibold text-sm text-foreground">{f.title}</p>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
+      {/* ── Key Features ──────────────────────────────────────────────────── */}
+      <section aria-labelledby={`${slug}-features`}>
+        <h2
+          id={`${slug}-features`}
+          className="text-xl font-bold text-foreground mb-4"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          Key Features
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {data.features.map((f, i) => {
+            const FeatIcon = resolveIcon(f.title)
+            const color = FEAT_COLORS[i % FEAT_COLORS.length]
+            return (
+              <div
+                key={i}
+                className={`flex gap-4 p-4 rounded-2xl border ${color.bg} ${color.border}`}
+              >
+                <div className={`w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm border ${color.border}`}>
+                  <FeatIcon className={`w-4 h-4 ${color.icon}`} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-foreground mb-0.5">{f.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
-      </details>
+      </section>
 
-      {/* FAQ */}
-      <details className="group">
-        <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
-          <span className="font-semibold text-sm text-foreground">Frequently Asked Questions</span>
-          <ChevronDown size={16} className="text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
-        </summary>
-        <div className="px-5 pb-5 pt-1 space-y-3">
+      {/* ── FAQ ───────────────────────────────────────────────────────────── */}
+      <section aria-labelledby={`${slug}-faq`}>
+        <h2
+          id={`${slug}-faq`}
+          className="text-xl font-bold text-foreground mb-4"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          Frequently Asked Questions
+        </h2>
+        <div className="space-y-2">
           {data.faqs.map((faq, i) => (
-            <details key={i} className="group/faq border border-border rounded-lg overflow-hidden">
-              <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
-                <span className="font-medium text-sm text-foreground">{faq.q}</span>
-                <ChevronDown size={14} className="text-muted-foreground shrink-0 transition-transform duration-200 group-open/faq:rotate-180" />
+            <details
+              key={i}
+              className="group bg-white border border-border rounded-xl overflow-hidden"
+            >
+              <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
+                <h3 className="font-semibold text-sm text-foreground">{faq.q}</h3>
+                <ChevronDown
+                  size={16}
+                  className="text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180"
+                />
               </summary>
-              <div className="px-4 pb-3 pt-1">
-                <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
+              <div className="px-5 pb-4 pt-0 border-t border-border/60">
+                <p className="text-sm text-muted-foreground leading-relaxed pt-3">{faq.a}</p>
               </div>
             </details>
           ))}
         </div>
-      </details>
+      </section>
 
     </div>
   )
