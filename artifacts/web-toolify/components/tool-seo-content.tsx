@@ -90,13 +90,13 @@ const DATA: Record<string, ToolSeoData> = {
       { title: 'Merge and Download',       desc: 'Click "Merge PDF" and download the combined file instantly — no sign-up required.' },
     ],
     features: [
-      { title: 'Unlimited File Merging',   desc: 'Combine as many PDF files as you need into one single document.' },
+      { title: 'Merge Multiple Files at Once', desc: 'Upload several PDF files and combine them into one single document in one click.' },
       { title: 'Drag-and-Drop Reordering', desc: 'Easily reorder files before merging to get the exact output you want.' },
       { title: 'No Quality Loss',          desc: 'Your PDF content and formatting remain intact after merging.' },
       { title: 'Fast & Free on Toolify',   desc: 'Merging happens instantly — completely free on ToolifyPDF with no hidden fees.' },
     ],
     faqs: [
-      { q: 'How many PDF files can I merge at once?',    a: 'You can merge as many PDF files as you need. Simply upload them all and reorder before clicking Merge.' },
+      { q: 'How many PDF files can I merge at once?',    a: 'You can upload multiple PDF files at once and combine them into one document. Simply select all the files, reorder them if needed, then click Merge.' },
       { q: 'Will merging affect the quality of my PDF?', a: 'No. The text, images, and formatting in each file are preserved exactly as-is.' },
       { q: 'Is it safe to upload my files?',             a: 'Yes. Files are processed securely on ToolifyPDF servers and deleted automatically after processing.' },
       { q: 'Can I merge password-protected PDFs?',       a: 'You will need to unlock password-protected PDFs first using our Unlock PDF tool before merging.' },
