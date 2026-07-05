@@ -16,6 +16,23 @@ export const metadata: Metadata = {
   },
 }
 
+/* ── Pillar article (always pinned first) ─────────────────────────────── */
+
+const pillarArticle = {
+  slug: 'understanding-pdf-your-ultimate-guide-to-pdf-files',
+  title: 'Understanding PDF: Your Complete Guide to PDF Files',
+  description:
+    'Dive into our ultimate guide on PDF files. Discover everything you need to know about the PDF format, its features, security, cross-platform compatibility, and how to use it effectively in 2026.',
+  date: 'July 5, 2026',
+  readTime: '12 min read',
+  category: 'Ultimate Guide',
+  gradient: 'linear-gradient(135deg, #92400e 0%, #d97706 50%, #f59e0b 100%)',
+  color: '#92400e',
+  accentColor: '#f59e0b',
+}
+
+/* ── Regular articles ─────────────────────────────────────────────────── */
+
 const articles = [
   {
     slug: 'how-to-merge-pdf-files-online',
@@ -184,6 +201,82 @@ const articles = [
   },
 ]
 
+/* ── Pillar card (featured, pinned) ───────────────────────────────────── */
+
+function PillarArticleCard() {
+  return (
+    <Link
+      href={`/blog/${pillarArticle.slug}`}
+      className="group block rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-white border-2 border-amber-200"
+      aria-label={`Featured: ${pillarArticle.title}`}
+    >
+      {/* Gradient header — taller than regular cards */}
+      <div
+        className="px-8 py-9 relative overflow-hidden"
+        style={{ background: pillarArticle.gradient }}
+      >
+        {/* Decorative background circle */}
+        <div
+          className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-10"
+          style={{ backgroundColor: '#fff' }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute -bottom-16 -left-8 w-40 h-40 rounded-full opacity-10"
+          style={{ backgroundColor: '#fff' }}
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10">
+          {/* Badges row */}
+          <div className="flex flex-wrap items-center gap-2 mb-5">
+            {/* Ultimate Guide badge */}
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white text-amber-700 shadow-sm">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              Ultimate Guide
+            </span>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-white">
+              Pinned
+            </span>
+          </div>
+
+          {/* Title */}
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white leading-tight mb-4 group-hover:opacity-90 transition-opacity max-w-2xl">
+            {pillarArticle.title}
+          </h2>
+
+          {/* Description */}
+          <p className="text-white/85 text-sm md:text-base leading-relaxed max-w-2xl">
+            {pillarArticle.description}
+          </p>
+        </div>
+      </div>
+
+      {/* Card footer */}
+      <div className="px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-amber-50 border-t border-amber-200">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-amber-800">
+          <time>{pillarArticle.date}</time>
+          <span aria-hidden="true">·</span>
+          <span>{pillarArticle.readTime}</span>
+          <span aria-hidden="true">·</span>
+          <span className="font-medium">ToolifyPDF</span>
+        </div>
+        <span
+          className="inline-flex items-center gap-1.5 text-sm font-bold group-hover:gap-3 transition-all duration-200"
+          style={{ color: pillarArticle.color }}
+        >
+          Read the Full Guide
+          <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1">→</span>
+        </span>
+      </div>
+    </Link>
+  )
+}
+
+/* ── Regular article card ─────────────────────────────────────────────── */
+
 function ArticleCard({ article }: { article: typeof articles[number] }) {
   return (
     <Link
@@ -227,9 +320,12 @@ function ArticleCard({ article }: { article: typeof articles[number] }) {
   )
 }
 
+/* ── Page ─────────────────────────────────────────────────────────────── */
+
 export default function BlogPage() {
   return (
     <main className="min-h-screen bg-background">
+      {/* Page header */}
       <div className="bg-background border-b border-border py-14 px-4 text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">Blog</h1>
         <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
@@ -237,12 +333,31 @@ export default function BlogPage() {
         </p>
       </div>
 
-      <section className="max-w-6xl mx-auto px-4 py-12">
+      <section className="max-w-6xl mx-auto px-4 py-12 space-y-10">
+
+        {/* Pinned pillar article — full-width, above the grid */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1 h-5 rounded-full bg-amber-400" aria-hidden="true" />
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Featured Guide</p>
+          </div>
+          <PillarArticleCard />
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1 h-px bg-border" />
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-2">All Articles</p>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {/* Regular articles grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map((article) => (
             <ArticleCard key={article.slug} article={article} />
           ))}
         </div>
+
       </section>
     </main>
   )
