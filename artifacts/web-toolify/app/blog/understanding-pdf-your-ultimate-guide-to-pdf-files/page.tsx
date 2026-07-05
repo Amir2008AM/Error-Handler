@@ -805,13 +805,7 @@ export default function ArticlePage() {
             </p>
             <p className="text-muted-foreground leading-relaxed mb-2">Common tasks supported by PDF tools include:</p>
             <BulletList items={[
-              <>
-                Converting{' '}
-                <Link href="/convert-word-to-pdf" className="underline underline-offset-2 font-medium" style={{ color: ACCENT }}>
-                  Microsoft Word documents
-                </Link>
-                , images, or scans into PDF
-              </>,
+              'Converting Microsoft Word documents, images, or scans into PDF',
               <>
                 <Link href="/merge-pdf" className="underline underline-offset-2 font-medium" style={{ color: ACCENT }}>
                   Merging multiple files
@@ -864,15 +858,7 @@ export default function ArticlePage() {
               <FaqItem
                 id="faq-convert"
                 question="How do I convert a Word or image file to PDF?"
-                answer={
-                  <>
-                    You can{' '}
-                    <Link href="/convert-word-to-pdf" className="underline underline-offset-2 font-medium" style={{ color: ACCENT }}>
-                      convert a word document
-                    </Link>{' '}
-                    by using export or save features in Microsoft Word, or by printing to the pdf format through a virtual printer. Images such as PNG can also be converted with a pdf creator, office app, browser-based tool, or scan workflow.
-                  </>
-                }
+                answer="You can convert a word document by using export or save features in Microsoft Word, or by printing to the pdf format through a virtual printer. Images such as PNG can also be converted with a pdf creator, office app, browser-based tool, or scan workflow."
               />
               <FaqItem
                 id="faq-safety"
