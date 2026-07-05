@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { LanguageSwitcher } from './language-switcher'
@@ -50,13 +50,6 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
     initialCategory ?? 'All'
   )
 
-  // Read URL ?category= on the client after hydration (keeps SSR clean — no useSearchParams suspension)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const cat = params.get('category') as ToolCategory | null
-    if (cat && cat !== activeCategory) setActiveCategory(cat)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const displayedTools = useMemo(() => {
     if (searchQuery.trim()) return searchTools(searchQuery)

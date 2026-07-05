@@ -33,6 +33,15 @@ const CATEGORY_LABELS: Record<string, string> = {
   'Calculators': 'Calculators',
 }
 
+const CATEGORY_TO_SLUG: Record<string, string> = {
+  'PDF Tools':      'pdf-tools',
+  'Security Tools': 'security-tools',
+  'Converters':     'converters',
+  'Image Tools':    'image-tools',
+  'Text Tools':     'text-tools',
+  'Calculators':    'calculators',
+}
+
 const TRUST_BADGES = [
   { icon: Lock,  label: 'Files deleted after processing' },
   { icon: Zap,   label: 'Instant processing' },
@@ -91,7 +100,7 @@ export function ToolPageServerLayout(props: Props) {
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-        { '@type': 'ListItem', position: 2, name: categoryLabel, item: `${BASE_URL}/?category=${encodeURIComponent(tool.category)}` },
+        { '@type': 'ListItem', position: 2, name: categoryLabel, item: `${BASE_URL}/category/${CATEGORY_TO_SLUG[tool.category] ?? tool.category.toLowerCase().replace(/ /g, '-')}` },
         { '@type': 'ListItem', position: 3, name: displayName, item: toolUrl },
       ],
     },
@@ -111,7 +120,7 @@ export function ToolPageServerLayout(props: Props) {
             <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
             <ChevronRight className="w-3 h-3" aria-hidden="true" />
             <Link
-              href={`/?category=${encodeURIComponent(tool.category)}`}
+              href={`/category/${CATEGORY_TO_SLUG[tool.category] ?? tool.category.toLowerCase().replace(/ /g, '-')}`}
               className="hover:text-foreground transition-colors"
             >
               {categoryLabel}

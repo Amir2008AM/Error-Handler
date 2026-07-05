@@ -36,6 +36,15 @@ const CATEGORY_KEY_MAP: Record<string, TranslationKey> = {
   'Calculators': 'home.calculators',
 }
 
+const CATEGORY_TO_SLUG: Record<string, string> = {
+  'PDF Tools':      'pdf-tools',
+  'Security Tools': 'security-tools',
+  'Converters':     'converters',
+  'Image Tools':    'image-tools',
+  'Text Tools':     'text-tools',
+  'Calculators':    'calculators',
+}
+
 type ToolPageLayoutProps = (
   | { tool: Tool; toolId?: never; title?: never; description?: never }
   | { toolId: string; title?: string; description?: string; tool?: never }
@@ -86,7 +95,7 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
             </Link>
             <ChevronRight className="w-3 h-3" />
             <Link
-              href={`/?category=${encodeURIComponent(tool.category)}`}
+              href={`/category/${CATEGORY_TO_SLUG[tool.category] ?? tool.category.toLowerCase().replace(/ /g, '-')}`}
               className="hover:text-foreground transition-colors"
             >
               {categoryKey ? t(categoryKey) : tool.category}
