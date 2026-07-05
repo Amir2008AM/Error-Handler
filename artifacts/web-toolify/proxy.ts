@@ -85,12 +85,33 @@ function assignSessionCookie(request: NextRequest, response: NextResponse): void
   }
 }
 
+const CATEGORY_TO_SLUG: Record<string, string> = {
+  'PDF Tools':      'pdf-tools',
+  'Security Tools': 'security-tools',
+  'Converters':     'converters',
+  'Image Tools':    'image-tools',
+  'Text Tools':     'text-tools',
+  'Calculators':    'calculators',
+}
+
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, searchParams } = request.nextUrl
 
   // ── AI-crawler tracking (fire-and-forget, never blocks the response) ─────────
   const ua = request.headers.get('user-agent') || ''
   if (AI_BOTS.test(ua)) pingIndexerNow(pathname, ua)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ── ?category= → /category/slug permanent redirect (301, no param leak) ──────
+  if (pathname === '/') {
+    const category = searchParams.get('category')
+    if (category && CATEGORY_TO_SLUG[category]) {
+      const url = request.nextUrl.clone()
+      url.pathname = `/category/${CATEGORY_TO_SLUG[category]}`
+      url.search = ''
+      return NextResponse.redirect(url, { status: 301 })
+    }
+  }
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ── www redirect: non-www → www (301) to prevent duplicate canonical issues ──
