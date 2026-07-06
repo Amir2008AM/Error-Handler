@@ -914,49 +914,6 @@ export default function ArticlePage() {
             </div>
           </section>
 
-          {/* ── Related Articles ── */}
-          <section className="mb-10">
-            <h2 className="text-2xl font-bold text-foreground mb-6">Related Articles</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                {
-                  href: '/blog/pdf-vs-word-which-format-to-use',
-                  title: 'PDF vs Word: Which Format Should You Use?',
-                  desc: 'A practical comparison of PDF and Word — key differences and when to use each.',
-                  color: '#4f46e5',
-                },
-                {
-                  href: '/blog/how-to-merge-pdf-files-online',
-                  title: 'How to Merge PDF Files Online for Free',
-                  desc: 'Combine multiple PDF documents into one organized file quickly and securely.',
-                  color: '#2563eb',
-                },
-                {
-                  href: '/blog/how-to-compress-pdf-online',
-                  title: 'How to Compress PDF Online for Free',
-                  desc: 'Reduce PDF file size quickly, securely, and easily — no software required.',
-                  color: '#e85d35',
-                },
-                {
-                  href: '/blog/how-to-lock-and-unlock-pdf',
-                  title: 'How to Lock and Unlock PDF Files',
-                  desc: 'Protect sensitive documents with passwords or remove them from PDFs you own.',
-                  color: '#9333ea',
-                },
-              ].map(article => (
-                <Link
-                  key={article.href}
-                  href={article.href}
-                  className="flex flex-col gap-2 p-4 rounded-xl border border-border hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-background group"
-                >
-                  <div className="w-8 h-1 rounded-full" style={{ backgroundColor: article.color }} />
-                  <p className="font-semibold text-foreground group-hover:text-primary transition-colors text-sm leading-snug">{article.title}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{article.desc}</p>
-                </Link>
-              ))}
-            </div>
-          </section>
-
           <RelatedArticles slugs={['how-to-merge-pdf-files-online', 'how-to-compress-pdf-online', 'pdf-vs-word-which-format-to-use']} />
         </article>
       </main>
