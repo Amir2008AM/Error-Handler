@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-export function ReadingProgress() {
+export function ReadingProgress({ color = '#2563eb' }: { color?: string }) {
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -18,8 +18,8 @@ export function ReadingProgress() {
 
   return (
     <div
-      className="fixed top-0 left-0 z-50 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 transition-all duration-100 ease-linear"
-      style={{ width: `${progress}%` }}
+      className="fixed top-0 left-0 z-50 h-1 transition-all duration-100 ease-linear"
+      style={{ width: `${progress}%`, backgroundColor: color }}
       role="progressbar"
       aria-valuenow={Math.round(progress)}
       aria-valuemin={0}

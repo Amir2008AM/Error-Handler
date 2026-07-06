@@ -41,7 +41,7 @@ const ACCENT = '#0891b2'
 export default function ArticlePage() {
   return (
     <>
-      <ReadingProgress />
+      <ReadingProgress color={ACCENT} />
       <Script id="schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">

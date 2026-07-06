@@ -239,7 +239,7 @@ function ProblemItem({ problem, solution }: { problem: string; solution: string 
 export default function ArticlePage() {
   return (
     <>
-      <ReadingProgress />
+      <ReadingProgress color={ACCENT} />
       <Script id="blog-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <main className="min-h-screen bg-background">

@@ -485,7 +485,7 @@ export default function ArticlePage() {
       <Script id="article-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <Script id="faq-schema"     type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
-      <ReadingProgress />
+      <ReadingProgress color={ACCENT} />
 
       <main className="min-h-screen bg-background">
         <article
