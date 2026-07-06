@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ function SecurityCard({ title, body }: { title: string; body: string }) {
 export default function ArticlePage() {
   return (
     <>
+      <ReadingProgress />
       <Script id="schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">

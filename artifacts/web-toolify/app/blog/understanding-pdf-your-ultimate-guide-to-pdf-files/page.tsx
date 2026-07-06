@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 import { RelatedArticles } from '@/components/related-articles'
-import { ReadingProgress } from './reading-progress'
+import { ReadingProgress } from '@/components/reading-progress'
 
 export const metadata: Metadata = {
   title: { absolute: 'Understanding PDF: Your Ultimate Guide to PDF Files | Toolify' },

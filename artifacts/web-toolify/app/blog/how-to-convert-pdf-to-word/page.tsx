@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
@@ -282,6 +283,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function ArticlePage() {
   return (
     <>
+      <ReadingProgress />
       <Script id="blog-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <main className="min-h-screen bg-background">
