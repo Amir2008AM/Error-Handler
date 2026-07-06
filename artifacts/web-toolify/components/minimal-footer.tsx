@@ -4,10 +4,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LanguageSwitcher } from './language-switcher'
 import { useI18n } from '@/lib/i18n/context'
+import { useCookieConsent } from '@/lib/cookie-consent-context'
 
 export function MinimalFooter() {
   const pathname = usePathname()
   const { t } = useI18n()
+  const { openPreferences } = useCookieConsent()
   if (pathname === '/') return null
   return (
     <footer className="w-full border-t border-border py-5 text-sm text-muted-foreground">
@@ -20,6 +22,7 @@ export function MinimalFooter() {
             <Link href="/terms-and-conditions" className="hover:text-foreground transition-colors">{t('footer.terms')}</Link>
             <Link href="/cookies-policy" className="hover:text-foreground transition-colors">{t('footer.cookies')}</Link>
             <Link href="/disclaimer" className="hover:text-foreground transition-colors">{t('footer.disclaimer')}</Link>
+            <button onClick={openPreferences} className="hover:text-foreground transition-colors">Cookie Preferences</button>
           </nav>
         </div>
         {/* Bottom row: language switcher */}

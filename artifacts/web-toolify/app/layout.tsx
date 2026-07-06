@@ -2,11 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import { LoadingBarProvider } from '@/components/global-loading-bar'
 import { I18nProvider } from '@/lib/i18n/context'
+import { CookieConsentProvider } from '@/lib/cookie-consent-context'
 import DisconnectBeacon from '@/components/disconnect-beacon'
 import HeartbeatBeacon from '@/components/heartbeat-beacon'
 import { MinimalFooter } from '@/components/minimal-footer'
 import { Navbar } from '@/components/navbar'
 import ThirdPartyScripts from '@/components/third-party-scripts'
+import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import FeedbackWidget from '@/components/feedback-widget'
 import './globals.css'
 
@@ -120,17 +122,20 @@ export default function RootLayout({
             }),
           }}
         />
-        {process.env.NODE_ENV === 'production' && <ThirdPartyScripts />}
-        <DisconnectBeacon />
-        <HeartbeatBeacon />
-        <I18nProvider>
-          <LoadingBarProvider>
-            <Navbar />
-            {children}
-            <MinimalFooter />
-            <FeedbackWidget />
-          </LoadingBarProvider>
-        </I18nProvider>
+        <CookieConsentProvider>
+          {process.env.NODE_ENV === 'production' && <ThirdPartyScripts />}
+          <DisconnectBeacon />
+          <HeartbeatBeacon />
+          <I18nProvider>
+            <LoadingBarProvider>
+              <Navbar />
+              {children}
+              <MinimalFooter />
+              <FeedbackWidget />
+            </LoadingBarProvider>
+          </I18nProvider>
+          <CookieConsentBanner />
+        </CookieConsentProvider>
       </body>
     </html>
   )

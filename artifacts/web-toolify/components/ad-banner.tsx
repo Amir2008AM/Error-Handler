@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useCookieConsent } from '@/lib/cookie-consent-context'
 
 type AdBannerProps = {
   slot: string
@@ -23,19 +24,21 @@ export function AdBanner({
 }: AdBannerProps) {
   const adRef = useRef<HTMLModElement>(null)
   const pushed = useRef(false)
+  const { consent } = useCookieConsent()
 
   const isProd = process.env.NODE_ENV === 'production'
+  const canShowAds = isProd && !!consent?.advertising
 
   useEffect(() => {
-    if (!isProd || pushed.current) return
+    if (!canShowAds || pushed.current) return
     try {
       const adsByGoogle = (window.adsbygoogle = window.adsbygoogle || [])
       adsByGoogle.push({})
       pushed.current = true
     } catch {}
-  }, [isProd])
+  }, [canShowAds])
 
-  if (!isProd) return null
+  if (!canShowAds) return null
 
   return (
     <div className={`overflow-hidden ${className}`}>
