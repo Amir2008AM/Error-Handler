@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: 'How to Convert PDF to Word for Free | Toolify Blog',
@@ -36,9 +37,10 @@ const schema = {
     'Learn 3 easy ways to convert a PDF into an editable Word document at no cost. This guide covers free online tools, Google Docs, and Microsoft Word.',
   datePublished: '2026-06-01T00:00:00.000Z',
   dateModified: '2026-06-01T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-pdf-to-word' },
+  articleSection: 'PDF Guide',
   keywords: 'convert pdf to word, pdf to docx, free pdf converter, pdf to word online',
 }
 
@@ -321,9 +323,7 @@ export default function ArticlePage() {
               <span>·</span>
               <span>8 min read</span>
               <span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization">
-                <span itemProp="name">ToolifyPDF</span>
-              </span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -588,6 +588,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
+          <RelatedArticles slugs={['how-to-convert-word-to-pdf', 'pdf-vs-word-which-format-to-use', 'how-to-convert-jpg-to-pdf']} />
         </article>
       </main>
     </>

@@ -5,6 +5,7 @@ export type TranslationKey =
   | 'nav.image'
   | 'nav.text'
   | 'nav.calculator'
+  | 'nav.blog'
   | 'nav.searchPlaceholder'
   | 'home.hero.title'
   | 'home.hero.subtitle'
@@ -338,6 +339,7 @@ export const en: TranslationMap = {
   'nav.image': 'Image',
   'nav.text': 'Text',
   'nav.calculator': 'Calculator',
+  'nav.blog': 'Blog',
   'nav.searchPlaceholder': 'Search tools...',
   'home.hero.title': 'Online Tools for PDF & Image Lovers',
   'home.hero.subtitle': 'Free PDF tools to merge, split, compress, and convert PDFs. Transform images to JPG or PDF. No installation or registration required.',

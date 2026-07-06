@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 import { ReadingProgress } from './reading-progress'
 
 export const metadata: Metadata = {
@@ -38,10 +39,10 @@ const articleSchema = {
     'Dive into our ultimate guide on pdf files! Discover everything you need to know about pdf, its features, and how to use it effectively in 2026.',
   datePublished: '2026-07-05T00:00:00.000Z',
   dateModified: '2026-07-05T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
   publisher: {
     '@type': 'Organization',
-    name: 'Toolify',
+    name: 'ToolifyPDF',
     url: 'https://www.toolifypdf.online',
     logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' },
   },
@@ -546,9 +547,7 @@ export default function ArticlePage() {
             </p>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground border-b border-border pb-6 mb-6">
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization">
-                <span itemProp="name" className="font-medium text-foreground">ToolifyPDF</span>
-              </span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
               <span aria-hidden="true">·</span>
               <time dateTime="2026-07-05" itemProp="datePublished">Published July 5, 2026</time>
               <span aria-hidden="true">·</span>
@@ -958,6 +957,7 @@ export default function ArticlePage() {
             </div>
           </section>
 
+          <RelatedArticles slugs={['how-to-merge-pdf-files-online', 'how-to-compress-pdf-online', 'pdf-vs-word-which-format-to-use']} />
         </article>
       </main>
     </>

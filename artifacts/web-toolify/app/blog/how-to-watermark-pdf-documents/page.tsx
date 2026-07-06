@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: { absolute: 'How to Add a Watermark to a PDF Document | ToolifyPDF Blog' },
@@ -27,9 +28,10 @@ const schema = {
   description: 'A complete guide to adding watermarks to PDF files — covering watermark types, positioning, opacity, use cases, and step-by-step instructions.',
   datePublished: '2026-06-10T00:00:00.000Z',
   dateModified: '2026-06-10T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-watermark-pdf-documents' },
+  articleSection: 'PDF Security',
   keywords: 'add watermark to pdf, pdf watermark online, watermark pdf free, text watermark pdf, confidential watermark pdf',
 }
 
@@ -63,7 +65,7 @@ export default function ArticlePage() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
               <time dateTime="2026-06-10" itemProp="datePublished">June 10, 2026</time>
               <span>·</span><span>7 min read</span><span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><span itemProp="name">ToolifyPDF</span></span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -215,6 +217,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
+          <RelatedArticles slugs={['how-to-protect-pdf-documents', 'how-to-lock-and-unlock-pdf', 'how-to-merge-pdf-files-online']} />
         </article>
       </main>
     </>

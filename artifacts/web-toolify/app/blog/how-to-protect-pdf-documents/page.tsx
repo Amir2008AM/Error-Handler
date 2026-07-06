@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: { absolute: 'How to Protect PDF Documents with a Password | ToolifyPDF Blog' },
@@ -27,9 +28,10 @@ const schema = {
   description: 'Learn how to add password protection to a PDF document online for free — covering when to use protection, how it works, and how to remove passwords.',
   datePublished: '2026-06-14T00:00:00.000Z',
   dateModified: '2026-06-14T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-protect-pdf-documents' },
+  articleSection: 'PDF Security',
   keywords: 'protect pdf, password protect pdf, add password to pdf, pdf security, lock pdf online free, pdf encryption',
 }
 
@@ -74,7 +76,7 @@ export default function ArticlePage() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
               <time dateTime="2026-06-14" itemProp="datePublished">June 14, 2026</time>
               <span>·</span><span>8 min read</span><span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><span itemProp="name">ToolifyPDF</span></span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -231,6 +233,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
+          <RelatedArticles slugs={['how-to-lock-and-unlock-pdf', 'how-to-watermark-pdf-documents', 'common-pdf-problems-and-solutions']} />
         </article>
       </main>
     </>

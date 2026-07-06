@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: { absolute: 'How to Convert PowerPoint to PDF Online for Free | ToolifyPDF Blog' },
@@ -27,9 +28,10 @@ const schema = {
   description: 'Learn how to convert PowerPoint presentations to PDF online for free, including what gets preserved and common formatting issues.',
   datePublished: '2026-06-12T00:00:00.000Z',
   dateModified: '2026-06-12T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf' },
+  articleSection: 'Presentation Guide',
   keywords: 'convert powerpoint to pdf, pptx to pdf online free, presentation to pdf, ppt to pdf converter, export slides as pdf',
 }
 
@@ -74,7 +76,7 @@ export default function ArticlePage() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
               <time dateTime="2026-06-12" itemProp="datePublished">June 12, 2026</time>
               <span>·</span><span>7 min read</span><span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><span itemProp="name">ToolifyPDF</span></span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -249,6 +251,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
+          <RelatedArticles slugs={['how-to-convert-excel-to-pdf', 'how-to-convert-word-to-pdf', 'how-to-merge-pdf-files-online']} />
         </article>
       </main>
     </>

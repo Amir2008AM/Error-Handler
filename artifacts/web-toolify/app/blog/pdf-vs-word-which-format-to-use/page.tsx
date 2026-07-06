@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: { absolute: 'PDF vs Word: Which Document Format Should You Use? | ToolifyPDF Blog' },
@@ -27,9 +28,10 @@ const schema = {
   description: 'A practical comparison of PDF and Word formats — when each is appropriate, their key differences, and how to convert between them.',
   datePublished: '2026-06-09T00:00:00.000Z',
   dateModified: '2026-06-09T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/pdf-vs-word-which-format-to-use' },
+  articleSection: 'Document Guide',
   keywords: 'pdf vs word, pdf or docx, when to use pdf, convert pdf to word, convert word to pdf, document format comparison',
 }
 
@@ -73,7 +75,7 @@ export default function ArticlePage() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
               <time dateTime="2026-06-09" itemProp="datePublished">June 9, 2026</time>
               <span>·</span><span>8 min read</span><span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><span itemProp="name">ToolifyPDF</span></span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -214,6 +216,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
+          <RelatedArticles slugs={['how-to-convert-pdf-to-word', 'how-to-convert-word-to-pdf', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
         </article>
       </main>
     </>

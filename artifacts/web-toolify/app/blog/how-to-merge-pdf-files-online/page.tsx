@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: 'How to Merge PDF Files Online for Free | Toolify Blog',
@@ -36,9 +37,10 @@ const schema = {
     'Learn how to merge PDF files online for free. Combine multiple PDF documents into one organized file quickly, securely, and without installing software.',
   datePublished: '2026-06-05T00:00:00.000Z',
   dateModified: '2026-06-05T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-merge-pdf-files-online' },
+  articleSection: 'PDF Guide',
   keywords: 'merge pdf, combine pdf files, pdf merger online, merge pdf free, join pdf files online',
 }
 
@@ -299,9 +301,7 @@ export default function ArticlePage() {
               <span>·</span>
               <span>7 min read</span>
               <span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization">
-                <span itemProp="name">ToolifyPDF</span>
-              </span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -578,6 +578,7 @@ export default function ArticlePage() {
 
           <AdBanner slot="6978025975" format="horizontal" className="my-8" />
 
+          <RelatedArticles slugs={['how-to-split-pdf-online', 'how-to-compress-pdf-online', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
         </article>
       </main>
     </>

@@ -16,6 +16,7 @@ export function Navbar() {
     { key: 'nav.image' as const, href: '/category/image-tools' },
     { key: 'nav.text' as const, href: '/category/text-tools' },
     { key: 'nav.calculator' as const, href: '/category/calculators' },
+    { key: 'nav.blog' as const, href: '/blog' },
   ]
 
   return (

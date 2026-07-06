@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: 'How to Lock and Unlock PDF Files Online for Free',
@@ -36,9 +37,10 @@ const schema = {
     'Learn how to lock and unlock PDF files online for free. Protect sensitive documents with passwords or remove passwords from PDFs you own using secure online tools.',
   datePublished: '2026-06-04T00:00:00.000Z',
   dateModified: '2026-06-04T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-lock-and-unlock-pdf' },
+  articleSection: 'PDF Security',
   keywords: 'lock pdf, unlock pdf, password protect pdf, remove pdf password, pdf security online free',
 }
 
@@ -315,9 +317,7 @@ export default function ArticlePage() {
               <span>·</span>
               <span>8 min read</span>
               <span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization">
-                <span itemProp="name">ToolifyPDF</span>
-              </span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -651,6 +651,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
+          <RelatedArticles slugs={['how-to-protect-pdf-documents', 'how-to-watermark-pdf-documents', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
         </article>
       </main>
     </>

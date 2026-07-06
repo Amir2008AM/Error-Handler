@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: { absolute: 'How to Split a PDF File Online for Free | ToolifyPDF Blog' },
@@ -27,9 +28,10 @@ const schema = {
   description: 'Learn how to split a PDF into separate pages or sections online for free.',
   datePublished: '2026-06-06T00:00:00.000Z',
   dateModified: '2026-06-06T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-split-pdf-online' },
+  articleSection: 'PDF Guide',
   keywords: 'split pdf, split pdf online free, separate pdf pages, extract pdf pages, divide pdf',
 }
 
@@ -84,7 +86,7 @@ export default function ArticlePage() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
               <time dateTime="2026-06-06" itemProp="datePublished">June 6, 2026</time>
               <span>·</span><span>8 min read</span><span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><span itemProp="name">ToolifyPDF</span></span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -233,6 +235,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
+          <RelatedArticles slugs={['how-to-merge-pdf-files-online', 'how-to-compress-pdf-online', 'common-pdf-problems-and-solutions']} />
         </article>
       </main>
     </>

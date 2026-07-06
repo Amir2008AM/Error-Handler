@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: { absolute: '8 Common PDF Problems and How to Fix Them | ToolifyPDF Blog' },
@@ -27,9 +28,10 @@ const schema = {
   description: 'Practical solutions to the most common PDF problems — files too large to send, password issues, text you cannot copy, and more.',
   datePublished: '2026-06-15T00:00:00.000Z',
   dateModified: '2026-06-15T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/common-pdf-problems-and-solutions' },
+  articleSection: 'Troubleshooting',
   keywords: 'pdf problems, pdf too large to email, pdf password forgot, cannot select text in pdf, pdf not opening, fix pdf online, pdf corrupted',
 }
 
@@ -98,7 +100,7 @@ export default function ArticlePage() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
               <time dateTime="2026-06-15" itemProp="datePublished">June 15, 2026</time>
               <span>·</span><span>9 min read</span><span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><span itemProp="name">ToolifyPDF</span></span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -212,6 +214,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
+          <RelatedArticles slugs={['how-to-compress-pdf-online', 'how-to-lock-and-unlock-pdf', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
         </article>
       </main>
     </>

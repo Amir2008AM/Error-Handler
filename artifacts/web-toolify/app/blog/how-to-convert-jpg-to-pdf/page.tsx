@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
+import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
   title: 'How to Convert JPG to PDF Online for Free | Toolify Blog',
@@ -36,9 +37,10 @@ const schema = {
     'Learn how to convert JPG images to PDF files for free online. Follow this easy step-by-step guide to combine your JPGs into high-quality PDFs in seconds.',
   datePublished: '2026-06-03T00:00:00.000Z',
   dateModified: '2026-06-03T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online' },
-  publisher: { '@type': 'Organization', name: 'Toolify', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-jpg-to-pdf' },
+  articleSection: 'Image Guide',
   keywords: 'jpg to pdf, convert jpg to pdf, image to pdf, jpg to pdf online free, convert jpeg to pdf',
 }
 
@@ -280,9 +282,7 @@ export default function ArticlePage() {
               <span>·</span>
               <span>7 min read</span>
               <span>·</span>
-              <span itemProp="author" itemScope itemType="https://schema.org/Organization">
-                <span itemProp="name">ToolifyPDF</span>
-              </span>
+              <span itemProp="author" itemScope itemType="https://schema.org/Organization"><Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link></span>
             </div>
           </header>
 
@@ -559,6 +559,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
+          <RelatedArticles slugs={['how-to-reduce-image-file-size', 'how-to-convert-pdf-to-word', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
         </article>
       </main>
     </>
