@@ -440,7 +440,7 @@ export default function ArticlePage() {
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Automatic File Deletion</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">Uploaded files are automatically deleted after 1 hour, helping protect your privacy.</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">Uploaded files are automatically deleted after 10 minutes, helping protect your privacy.</p>
               </div>
             </div>
           </section>
@@ -490,7 +490,7 @@ export default function ArticlePage() {
               'Secure HTTPS encryption',
               'Protected file transfers',
               'No registration requirements',
-              'Automatic file deletion after 1 hour',
+              'Automatic file deletion after 10 minutes',
             ]} />
 
             <p className="text-muted-foreground leading-relaxed mt-4">
@@ -521,7 +521,7 @@ export default function ArticlePage() {
               Converting JPG images to PDF online is one of the easiest ways to create professional, shareable documents. Whether you&apos;re organizing scanned paperwork, creating reports, submitting applications, or combining photos into a single file, a JPG to PDF converter makes the process fast and hassle-free.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              ToolifyPDF provides a simple solution that works across desktop and mobile devices without requiring registration. With support for files up to 50 MB, fast processing, and automatic file deletion after one hour, it offers a convenient way to turn images into PDF documents whenever you need them.
+              ToolifyPDF provides a simple solution that works across desktop and mobile devices without requiring registration. With support for files up to 50 MB, fast processing, and automatic file deletion after 10 minutes, it offers a convenient way to turn images into PDF documents whenever you need them.
             </p>
           </section>
 
@@ -539,7 +539,7 @@ export default function ArticlePage() {
               <li>✓ No sign-up required</li>
               <li>✓ Mobile-friendly conversion</li>
               <li>✓ Secure processing</li>
-              <li>✓ Automatic file deletion after 1 hour</li>
+              <li>✓ Automatic file deletion after 10 minutes</li>
             </ul>
             <div>
               <Link

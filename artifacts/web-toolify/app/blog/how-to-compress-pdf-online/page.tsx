@@ -469,7 +469,7 @@ export default function ArticlePage() {
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Automatic File Deletion</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">Uploaded files are automatically deleted after 1 hour, reducing the amount of time files remain stored on servers.</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">Uploaded files are automatically deleted after 10 minutes, reducing the amount of time files remain stored on servers.</p>
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">No Account Required</h3>
@@ -507,7 +507,7 @@ export default function ArticlePage() {
               Compressing PDF files online is one of the easiest ways to improve document sharing, reduce storage usage, and speed up uploads.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              With a reliable PDF compressor, you can significantly reduce file size while preserving readability and document quality. ToolifyPDF makes the process simple by offering fast compression, support for files up to 50 MB, mobile-friendly access, secure processing, and automatic file deletion after one hour — all without requiring registration.
+              With a reliable PDF compressor, you can significantly reduce file size while preserving readability and document quality. ToolifyPDF makes the process simple by offering fast compression, support for files up to 50 MB, mobile-friendly access, secure processing, and automatic file deletion after 10 minutes — all without requiring registration.
             </p>
           </section>
 
@@ -534,7 +534,7 @@ export default function ArticlePage() {
                   'Mobile-friendly',
                   'Fast compression',
                   'Secure processing',
-                  'Automatic file deletion after 1 hour',
+                  'Automatic file deletion after 10 minutes',
                 ].map((b) => (
                   <li key={b} className="flex items-center gap-2">
                     <span className="text-green-300 font-bold">✓</span>

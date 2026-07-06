@@ -3,14 +3,14 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: { absolute: 'Disclaimer | Toolify' },
-  description: 'Disclaimer for Toolify — important information about the limitations and proper use of our free online PDF and image tools.',
+  description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
   alternates: {
     canonical: 'https://www.toolifypdf.online/disclaimer',
   },
   robots: { index: true, follow: true },
   openGraph: {
     title: 'Disclaimer | Toolify',
-    description: 'Disclaimer for Toolify — important information about the limitations and proper use of our free online PDF and image tools.',
+    description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
     url: 'https://www.toolifypdf.online/disclaimer',
     type: 'website',
     images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Disclaimer | Toolify' }],
@@ -18,10 +18,11 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Disclaimer | Toolify',
-    description: 'Disclaimer for Toolify — important information about the limitations and proper use of our free online PDF and image tools.',
+    description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
     images: ['https://www.toolifypdf.online/og-image.jpg'],
   },
 }
+
 export default function DisclaimerPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">
@@ -33,29 +34,58 @@ export default function DisclaimerPage() {
           ← Back to Home
         </Link>
 
-        {/* ── English ─────────────────────────────────────────────────── */}
-        <h1 className="text-3xl font-bold mb-8">Disclaimer</h1>
+        <h1 className="text-3xl font-bold mb-1">Disclaimer</h1>
+        <p className="text-muted-foreground text-sm mb-8">Last updated: July 2026</p>
 
-        <div className="space-y-4 mb-16">
-          <ul className="list-disc text-muted-foreground space-y-3 ml-5">
-            <li className="leading-relaxed">The service is provided for general informational purposes only.</li>
-            <li className="leading-relaxed">We do not guarantee that results will be error-free or suitable for any specific purpose.</li>
-            <li className="leading-relaxed">We are not responsible for any direct or indirect damages resulting from the use of the website.</li>
-          </ul>
-        </div>
+        <div className="space-y-8 mb-8">
+          <section>
+            <h2 className="text-xl font-semibold mb-3">1. General Information Only</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              ToolifyPDF provides free, automated tools for PDF, image, and document processing for general informational and productivity purposes. The Service is not intended to replace professional, legal, or certified document services, and nothing on this website constitutes professional advice.
+            </p>
+          </section>
 
-        {/* ── Divider ──────────────────────────────────────────────────── */}
-        <div className="border-t border-border my-12" />
+          <section>
+            <h2 className="text-xl font-semibold mb-3">2. Automated Processing Limitations</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              All file processing on ToolifyPDF is fully automated and is not manually reviewed. As with any automated tool, results may occasionally vary depending on the source file&apos;s complexity, formatting, fonts, or quality. For example, document conversion may not perfectly preserve complex layouts, OCR text extraction accuracy depends on image quality, and PDF rendering relies on open-source engines that may not match the exact output of proprietary software such as Adobe Acrobat for uncommon fonts or intricate vector graphics.
+            </p>
+          </section>
 
-        {/* ── Arabic ───────────────────────────────────────────────────── */}
-        <div dir="rtl">
-          <h2 className="text-3xl font-bold mb-8">إخلاء المسؤولية</h2>
+          <section>
+            <h2 className="text-xl font-semibold mb-3">3. No Warranty</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              The Service is provided &quot;as is&quot; and &quot;as available,&quot; without warranties of any kind, whether express or implied, including but not limited to warranties of accuracy, reliability, or fitness for a particular purpose.
+            </p>
+          </section>
 
-          <ul className="list-disc text-muted-foreground space-y-3 mr-5">
-            <li className="leading-relaxed">يتم تقديم الخدمة لأغراض معلوماتية عامة فقط.</li>
-            <li className="leading-relaxed">نحن لا نضمن أن تكون النتائج خالية من الأخطاء أو مناسبة لأي استخدام معين.</li>
-            <li className="leading-relaxed">كما أننا غير مسؤولين عن أي أضرار مباشرة أو غير مباشرة ناتجة عن استخدام الموقع.</li>
-          </ul>
+          <section>
+            <h2 className="text-xl font-semibold mb-3">4. Limitation of Liability</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              To the fullest extent permitted by law, ToolifyPDF is not liable for any direct, indirect, incidental, or consequential damages, including loss of data or files, arising from the use of, or inability to use, the Service. Users are responsible for keeping backup copies of any important files before uploading them for processing.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">5. Third-Party Content and Advertising</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Our website may display advertisements served by third parties, such as Google AdSense, and may link to external websites. We do not control and are not responsible for the content, accuracy, or practices of third-party advertisers or linked websites.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">6. Changes to This Disclaimer</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              We may update this Disclaimer from time to time. Continued use of the Service after changes are posted constitutes acceptance of the updated Disclaimer.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">7. Contact Us</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              If you have any questions about this Disclaimer, please contact us at contact@toolifypdf.online or through our Contact page.
+            </p>
+          </section>
         </div>
       </div>
     </main>

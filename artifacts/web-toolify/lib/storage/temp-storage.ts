@@ -69,7 +69,7 @@ export interface StorageConfig {
 }
 
 const DEFAULT_CONFIG: StorageConfig = {
-  defaultTtlMs: 60 * 60 * 1000, // 60 minutes — matches the "~1 hour" user-facing guarantee
+  defaultTtlMs: 10 * 60 * 1000, // 10 minutes — matches the site-wide user-facing guarantee
   maxStorageBytes: 500 * 1024 * 1024, // 500MB
   maxFileBytes: 50 * 1024 * 1024, // 50MB per file
   cleanupIntervalMs: 60 * 1000, // 1 minute

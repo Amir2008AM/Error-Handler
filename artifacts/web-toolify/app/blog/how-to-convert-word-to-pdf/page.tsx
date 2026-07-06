@@ -348,7 +348,7 @@ export default function ArticlePage() {
                   ['Registration Required', 'No'],
                   ['Mobile Support', 'Yes'],
                   ['Secure Processing', 'Yes'],
-                  ['Automatic File Deletion', 'After 1 Hour'],
+                  ['Automatic File Deletion', 'After 10 Minutes'],
                 ].map(([feature, value], i) => (
                   <tr key={feature} className={i % 2 === 0 ? 'bg-white' : 'bg-muted/30'}>
                     <td className="px-5 py-3 text-muted-foreground">{feature}</td>
@@ -510,7 +510,7 @@ export default function ArticlePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 { title: 'Secure File Processing', body: 'ToolifyPDF processes files through secure connections to help protect your data during upload and conversion.' },
-                { title: 'Automatic File Deletion', body: 'All uploaded files are automatically deleted after 1 hour, reducing the risk of unauthorized access.' },
+                { title: 'Automatic File Deletion', body: 'All uploaded files are automatically deleted after 10 minutes, reducing the risk of unauthorized access.' },
                 { title: 'No Registration Required', body: 'Since no account is needed, you can convert files without sharing unnecessary personal information.' },
                 { title: 'Use Trusted Services', body: 'Always choose reputable PDF tools with clear privacy policies and secure processing practices.' },
               ].map(({ title, body }) => (
@@ -534,7 +534,7 @@ export default function ArticlePage() {
             <div className="space-y-4">
               <FaqItem
                 q="Is it safe to convert Word files online?"
-                a="Yes. Trusted conversion tools use secure file processing and automatically remove uploaded documents after a limited period. ToolifyPDF deletes files after 1 hour."
+                a="Yes. Trusted conversion tools use secure file processing and automatically remove uploaded documents after a limited period. ToolifyPDF deletes files after 10 minutes."
               />
               <FaqItem
                 q="Will my formatting stay the same?"
@@ -587,7 +587,7 @@ export default function ArticlePage() {
                   'No sign-up required',
                   'Mobile-friendly conversion',
                   'Secure file processing',
-                  'Automatic file deletion after 1 hour',
+                  'Automatic file deletion after 10 minutes',
                 ].map((b) => (
                   <li key={b} className="flex items-center gap-2">
                     <span className="text-green-300 font-bold">✓</span>

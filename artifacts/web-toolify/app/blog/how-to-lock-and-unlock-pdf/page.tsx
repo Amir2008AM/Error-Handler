@@ -556,7 +556,7 @@ export default function ArticlePage() {
 
             <BulletList items={[
               'Secure HTTPS encryption for all file transfers',
-              'Automatic file deletion after 1 hour',
+              'Automatic file deletion after 10 minutes',
               'No registration requirements — no unnecessary personal data collected',
               'AES-256 encryption applied to protected PDF files',
             ]} />
@@ -590,7 +590,7 @@ export default function ArticlePage() {
               Locking and unlocking PDF files is an important part of managing digital documents securely. Password protection helps safeguard sensitive information, while password removal can make authorized documents easier to access and share.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              With ToolifyPDF, you can protect or unlock PDF files quickly and securely from any device. The process is simple, requires no registration, supports files up to 50 MB, and includes automatic file deletion after one hour for added privacy.
+              With ToolifyPDF, you can protect or unlock PDF files quickly and securely from any device. The process is simple, requires no registration, supports files up to 50 MB, and includes automatic file deletion after 10 minutes for added privacy.
             </p>
           </section>
 
@@ -617,7 +617,7 @@ export default function ArticlePage() {
                   'Mobile-friendly',
                   'Fast processing',
                   'Secure file handling',
-                  'Automatic file deletion after 1 hour',
+                  'Automatic file deletion after 10 minutes',
                 ].map((b) => (
                   <li key={b} className="flex items-center gap-2">
                     <span className="text-green-300 font-bold">✓</span>

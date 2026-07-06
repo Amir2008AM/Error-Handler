@@ -506,7 +506,7 @@ export default function ArticlePage() {
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">Automatic File Deletion</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">All uploaded files are automatically deleted after 1 hour, protecting your privacy and reducing the risk of unauthorized access.</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">All uploaded files are automatically deleted after 10 minutes, protecting your privacy and reducing the risk of unauthorized access.</p>
               </div>
               <div className="border border-border rounded-xl p-5">
                 <h3 className="font-semibold text-foreground mb-2">No Account Required</h3>
@@ -538,7 +538,7 @@ export default function ArticlePage() {
               Merging PDF files is one of the easiest ways to organize documents, simplify sharing, and create professional-looking files. Whether you&apos;re combining reports, contracts, presentations, or scanned documents, an online PDF merger can save time and reduce file management headaches.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              ToolifyPDF makes the process fast and straightforward. With support for files up to 50 MB, secure processing, mobile compatibility, and automatic file deletion after one hour, it&apos;s an efficient solution for combining PDFs from any device.
+              ToolifyPDF makes the process fast and straightforward. With support for files up to 50 MB, secure processing, mobile compatibility, and automatic file deletion after 10 minutes, it&apos;s an efficient solution for combining PDFs from any device.
             </p>
           </section>
 
@@ -559,7 +559,7 @@ export default function ArticlePage() {
                 'Mobile-friendly',
                 'Fast processing',
                 'Secure file handling',
-                'Automatic file deletion after 1 hour',
+                'Automatic file deletion after 10 minutes',
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <span className="text-green-300 font-bold">✓</span>

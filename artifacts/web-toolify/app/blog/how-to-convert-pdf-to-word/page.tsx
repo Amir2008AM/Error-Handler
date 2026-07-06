@@ -374,7 +374,7 @@ export default function ArticlePage() {
               ToolifyPDF supports PDF files up to 50 MB, making it suitable for larger documents that many free online converters cannot handle. If your PDF exceeds the size limit, consider compressing or splitting the file before conversion.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-6">
-              For additional privacy, ToolifyPDF uses secure HTTPS encryption during file transfers. Uploaded files are automatically deleted from the server after approximately one hour, helping protect your documents and personal information.
+              For additional privacy, ToolifyPDF uses secure HTTPS encryption during file transfers. Uploaded files are automatically deleted from the server after approximately 10 minutes, helping protect your documents and personal information.
             </p>
 
             <div className="border border-border rounded-xl p-5 bg-muted/20">
@@ -384,7 +384,7 @@ export default function ArticlePage() {
                 'Works directly in your browser.',
                 'Supports large files up to 50 MB.',
                 'Fast conversion process.',
-                'Automatic file deletion after approximately one hour.',
+                'Automatic file deletion after approximately 10 minutes.',
                 'Suitable for desktop and mobile devices.',
               ]} />
             </div>
@@ -492,7 +492,7 @@ export default function ArticlePage() {
           <section className="mb-12 rounded-2xl p-6" style={{ backgroundColor: '#eff3ff', border: '1px solid #c7d7fc' }}>
             <h2 className="text-xl font-bold text-foreground mb-3">Privacy and Security</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Trusted PDF tools should protect your uploaded files. ToolifyPDF transfers files using secure HTTPS encryption and automatically deletes uploaded files after approximately one hour, helping keep your documents private.
+              Trusted PDF tools should protect your uploaded files. ToolifyPDF transfers files using secure HTTPS encryption and automatically deletes uploaded files after approximately 10 minutes, helping keep your documents private.
             </p>
           </section>
 
@@ -508,7 +508,7 @@ export default function ArticlePage() {
             <div className="space-y-4">
               <FaqItem
                 q="Is it safe to use free PDF converters online?"
-                a="Yes. Trusted PDF converters use secure encryption to protect uploaded files. ToolifyPDF transfers files over secure HTTPS connections and automatically removes uploaded documents after approximately one hour, helping protect user privacy."
+                a="Yes. Trusted PDF converters use secure encryption to protect uploaded files. ToolifyPDF transfers files over secure HTTPS connections and automatically removes uploaded documents after approximately 10 minutes, helping protect user privacy."
               />
               <FaqItem
                 q="Will the formatting be preserved?"
@@ -559,7 +559,7 @@ export default function ArticlePage() {
                   'Supports files up to 50 MB',
                   'No registration required',
                   'Fast conversion process',
-                  'Automatic file deletion after approximately 1 hour',
+                  'Automatic file deletion after approximately 10 minutes',
                 ].map((b) => (
                   <li key={b} className="flex items-center gap-2">
                     <span className="text-green-300 font-bold">✓</span>

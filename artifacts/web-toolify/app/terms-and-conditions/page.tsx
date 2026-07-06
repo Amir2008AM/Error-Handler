@@ -3,90 +3,71 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: { absolute: 'Terms of Use | Toolify' },
-  description: 'Terms of Use for Toolify — the rules and guidelines for using our free online PDF, image, and document processing tools.',
+  description: 'Terms of Use for ToolifyPDF — the rules and guidelines for using our free online PDF, image, and document processing tools.',
   alternates: {
     canonical: 'https://www.toolifypdf.online/terms-and-conditions',
   },
   robots: { index: true, follow: true },
 }
 
-const sections_en = [
+const sections = [
   {
-    title: '1. Service Use',
-    body: 'The service is provided free of charge without subscriptions.',
+    title: '1. Acceptance of Terms',
+    body: 'By accessing or using toolifypdf.online (the "Service"), you agree to be bound by these Terms of Use. If you do not agree with any part of these terms, please do not use the Service.',
   },
   {
-    title: '2. User Responsibility',
-    body: 'Users are responsible for the files they upload and must ensure they have legal rights to use them.',
+    title: '2. Description of Service',
+    body: 'ToolifyPDF provides free, automated online tools for PDF, image, and document processing, including merging, splitting, converting, compressing, and protecting files. The Service is provided free of charge, without subscriptions or account registration.',
   },
   {
-    title: '3. Prohibited Use',
-    body: 'It is prohibited to use the website for:',
+    title: '3. Eligibility',
+    body: 'The Service is intended for general audiences and is not directed at children under the age of 13. By using the Service, you confirm that you are legally permitted to use it under the laws applicable to you.',
+  },
+  {
+    title: '4. User Responsibility',
+    body: 'You are solely responsible for the files you upload and must ensure you have the legal right to use, process, and share them. You agree to use the Service only for lawful purposes.',
+  },
+  {
+    title: '5. Prohibited Use',
+    body: 'You may not use the Service to:',
     list: [
-      'Uploading malicious files',
-      'Violating copyright or intellectual property rights',
-      'Any illegal activity',
+      'Upload malicious files, malware, or content designed to disrupt the Service',
+      'Violate copyright, trademark, or other intellectual property rights',
+      'Upload or process content that is illegal, harmful, or infringes on the rights of others',
+      'Attempt to interfere with, disrupt, or gain unauthorized access to the Service or its infrastructure',
     ],
   },
   {
-    title: '4. File Processing',
-    body: 'All processing is fully automated. Files are deleted within approximately 1 hour after processing.',
+    title: '6. File Processing and Limits',
+    body: 'All file processing is fully automated and is not manually reviewed. Our tools currently support files up to 50 MB in size. Uploaded and processed files are automatically deleted from our servers within approximately 10 minutes after processing, and we do not retain copies of your files afterward.',
   },
   {
-    title: '5. Intellectual Property',
-    body: 'All website content belongs to ToolifyPDF. Users retain ownership of their uploaded files.',
+    title: '7. Intellectual Property',
+    body: 'All website content, branding, design, and underlying technology belong to ToolifyPDF. You retain full ownership of the files you upload; we claim no ownership rights over your content.',
   },
   {
-    title: '6. Disclaimer',
-    body: 'The service is provided "as is" without warranties of any kind. We do not guarantee accuracy or results.',
+    title: '8. Third-Party Advertising and Links',
+    body: 'The Service may display advertisements served by third parties, such as Google AdSense, and may include links to external websites. We do not control and are not responsible for the content or practices of third-party advertisers or linked sites.',
   },
   {
-    title: '7. Limitation of Liability',
-    body: 'We are not responsible for any damages or data loss resulting from use of the service.',
+    title: '9. Disclaimer of Warranties',
+    body: 'The Service is provided "as is" and "as available," without warranties of any kind, whether express or implied. We do not guarantee that the Service will be uninterrupted, error-free, or that processing results will meet your specific requirements.',
   },
   {
-    title: '8. Changes',
-    body: 'We may update these terms at any time.',
-  },
-]
-
-const sections_ar = [
-  {
-    title: '1. استخدام الخدمة',
-    body: 'يتم تقديم الخدمة مجانًا بدون أي اشتراكات.',
+    title: '10. Limitation of Liability',
+    body: 'To the fullest extent permitted by law, ToolifyPDF is not liable for any direct, indirect, incidental, or consequential damages, including loss of data or files, arising from your use of, or inability to use, the Service. You are responsible for keeping backup copies of any important files before uploading them.',
   },
   {
-    title: '2. مسؤولية المستخدم',
-    body: 'المستخدم مسؤول عن الملفات التي يقوم برفعها، ويجب التأكد من امتلاكه الحقوق القانونية لاستخدامها.',
+    title: '11. Termination',
+    body: 'We reserve the right to restrict or terminate access to the Service, without notice, for any user found to be violating these Terms or engaging in abusive or unlawful conduct.',
   },
   {
-    title: '3. الاستخدام الممنوع',
-    body: 'يُمنع استخدام الموقع في الحالات التالية:',
-    list: [
-      'رفع ملفات ضارة أو خبيثة',
-      'انتهاك حقوق النشر أو الملكية الفكرية',
-      'أي نشاط غير قانوني',
-    ],
+    title: '12. Changes to These Terms',
+    body: 'We may update these Terms of Use from time to time. Continued use of the Service after changes are posted constitutes acceptance of the updated terms. Material changes will be reflected by updating the "Last updated" date at the top of this page.',
   },
   {
-    title: '4. معالجة الملفات',
-    body: 'تتم جميع عمليات المعالجة بشكل آلي بالكامل. يتم حذف الملفات خلال حوالي ساعة واحدة بعد المعالجة.',
-  },
-  {
-    title: '5. الملكية الفكرية',
-    body: 'جميع محتويات الموقع مملوكة لموقع ToolifyPDF. بينما يحتفظ المستخدم بملكية الملفات التي يقوم برفعها.',
-  },
-  {
-    title: '6. إخلاء المسؤولية',
-    body: 'يتم تقديم الخدمة "كما هي" بدون أي ضمانات من أي نوع. نحن لا نضمن الدقة أو النتائج.',
-  },
-  {
-    title: '7. تحديد المسؤولية',
-    body: 'نحن غير مسؤولين عن أي أضرار أو فقدان بيانات ينتج عن استخدام الخدمة.',
-  },
-  {
-    title: '8. التعديلات',
-    body: 'يجوز لنا تحديث هذه الشروط في أي وقت.',
+    title: '13. Contact Us',
+    body: 'If you have any questions about these Terms of Use, please contact us at contact@toolifypdf.online or through our Contact page.',
   },
 ]
 
@@ -94,15 +75,13 @@ function PolicySection({
   title,
   body,
   list,
-  rtl,
 }: {
   title: string
   body: string
   list?: string[]
-  rtl?: boolean
 }) {
   return (
-    <section dir={rtl ? 'rtl' : 'ltr'}>
+    <section>
       <h2 className="text-xl font-semibold mb-3">{title}</h2>
       {body.split('\n\n').map((para, i) => (
         <p key={i} className="text-muted-foreground leading-relaxed mb-2">
@@ -110,7 +89,7 @@ function PolicySection({
         </p>
       ))}
       {list && (
-        <ul className="list-disc text-muted-foreground space-y-1 mt-2 ml-5 rtl:mr-5 rtl:ml-0">
+        <ul className="list-disc text-muted-foreground space-y-1 mt-2 ml-5">
           {list.map((item) => (
             <li key={item}>{item}</li>
           ))}
@@ -119,6 +98,7 @@ function PolicySection({
     </section>
   )
 }
+
 export default function TermsAndConditionsPage() {
   return (
     <main className="min-h-screen bg-background py-12 px-4">
@@ -130,33 +110,16 @@ export default function TermsAndConditionsPage() {
           ← Back to Home
         </Link>
 
-        {/* ── English ─────────────────────────────────────────────────── */}
         <h1 className="text-3xl font-bold mb-1">Terms of Use</h1>
+        <p className="text-muted-foreground text-sm mb-2">Last updated: July 2026</p>
         <p className="text-muted-foreground leading-relaxed mb-8">
-          ToolifyPDF provides free tools for PDF processing.
+          ToolifyPDF provides free tools for PDF, image, and document processing. Please read these Terms of Use carefully before using the Service.
         </p>
 
-        <div className="space-y-8 mb-16">
-          {sections_en.map((s) => (
+        <div className="space-y-8 mb-8">
+          {sections.map((s) => (
             <PolicySection key={s.title} {...s} />
           ))}
-        </div>
-
-        {/* ── Divider ──────────────────────────────────────────────────── */}
-        <div className="border-t border-border my-12" />
-
-        {/* ── Arabic ───────────────────────────────────────────────────── */}
-        <div dir="rtl">
-          <h2 className="text-3xl font-bold mb-1">شروط الاستخدام</h2>
-          <p className="text-muted-foreground leading-relaxed mb-8">
-            يوفر موقع ToolifyPDF أدوات مجانية لمعالجة ملفات PDF.
-          </p>
-
-          <div className="space-y-8">
-            {sections_ar.map((s) => (
-              <PolicySection key={s.title} {...s} rtl />
-            ))}
-          </div>
         </div>
       </div>
     </main>
