@@ -63,7 +63,7 @@ export default function robots(): MetadataRoute.Robots {
       // ── Common Crawl ──────────────────────────────────────────────────────
       { userAgent: 'CCBot',               allow: '/' },
     ],
-    sitemap: `${BASE_URL}/sitemap.xml`,
+    sitemap: `${BASE_URL}/sitemap_index.xml`,
     host: BASE_URL,
   }
 }
