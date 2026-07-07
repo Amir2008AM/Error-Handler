@@ -45,6 +45,8 @@ const schema = {
   keywords: 'convert pdf to word, pdf to docx, free pdf converter, pdf to word online',
 }
 
+const ACCENT = '#0369a1'
+
 /* ── Inline SVG illustrations ───────────────────────────────────────────── */
 
 function IllustrationPdfToWord() {
