@@ -142,6 +142,14 @@ export async function register() {
       console.warn('[Bot] Failed to start polling (non-fatal):', (err as Error).message)
     }
 
+    // ── 0g. GA4 Monitor — smart Telegram notifications from Google Analytics ──
+    try {
+      const { startGa4Monitor } = await import('./lib/telegram/ga4-monitor')
+      startGa4Monitor()
+    } catch (err) {
+      console.warn('[GA4Monitor] Failed to start (non-fatal):', (err as Error).message)
+    }
+
     // ── 1. BullMQ workers ─────────────────────────────────────────────────────
     if (process.env.REDIS_URL) {
       try {

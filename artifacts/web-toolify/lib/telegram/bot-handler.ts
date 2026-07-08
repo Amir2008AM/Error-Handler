@@ -14,6 +14,7 @@ import {
   LOCKOUT_DURATION_MS,
 } from './bot-auth'
 import { dbGetFeedback, type FeedbackRow } from './db'
+import { getGa4Snapshot } from './ga4-monitor'
 
 // ── Telegram helpers ──────────────────────────────────────────────────────────
 
@@ -207,6 +208,7 @@ const HELP_TEXT = [
   `/dashboard — الداشبورد الرئيسي`,
   `/feedback  — قائمة الفيدباك`,
   `/stats     — إحصائيات تفصيلية`,
+  `/ga4       — إحصائيات Google Analytics`,
   `/status    — حالة الجلسة`,
   `/logout    — تسجيل الخروج`,
   `/help      — هذه القائمة`,
@@ -304,6 +306,52 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
       `<b>👋 تم تسجيل الخروج</b>`,
       ``,
       `أرسل /start للدخول مجدداً.`,
+    ].join('\n'))
+    return
+  }
+
+  // ── /ga4 ──────────────────────────────────────────────────────────────────
+  if (command === '/ga4') {
+    const snap = getGa4Snapshot()
+    if (!snap) {
+      await send(chatId, [
+        `📊 <b>Google Analytics 4</b>`,
+        `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+        ``,
+        `⏳ جاري جمع البيانات من GA4…`,
+        ``,
+        `<i>تأكد من ضبط:</i>`,
+        `<code>GA_PROPERTY_ID</code>`,
+        `<code>GOOGLE_SERVICE_ACCOUNT_KEY</code>`,
+        `<code>TELEGRAM_CHAT_ID</code>`,
+      ].join('\n'))
+      return
+    }
+
+    const deviceIcon = snap.device === 'mobile' ? '📱' : snap.device === 'tablet' ? '📟' : '🖥'
+    const srcIcon    = snap.source.includes('Organic') ? '🔍' : snap.source.includes('Social') ? '📲' : snap.source.includes('Referral') ? '🔗' : '🚀'
+    const updatedAgo = Math.round((Date.now() - snap.fetchedAt) / 60_000)
+    const pagesBlock = snap.activePages
+      .map((p, i) => `<code>${i + 1}. ${p.path.slice(0, 28).padEnd(28)} ${String(p.users).padStart(3)} 👤</code>`)
+      .join('\n')
+
+    await send(chatId, [
+      `📊 <b>Google Analytics — Live</b>`,
+      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+      ``,
+      `👥 <b>Active Users (30 min):</b>  <b>${snap.activeUsers}</b>`,
+      `🆕 <b>New Users Today:</b>        <b>${snap.newUsers30m}</b>`,
+      ``,
+      `<b>📄 Top Active Pages</b>`,
+      pagesBlock || `<code>  — لا يوجد نشاط حالياً</code>`,
+      ``,
+      `🌍 <b>Country:</b>  ${snap.country}`,
+      `${deviceIcon} <b>Device:</b>   ${snap.device}`,
+      `🌐 <b>Browser:</b>  ${snap.browser}`,
+      `${srcIcon} <b>Source:</b>   ${snap.source}`,
+      ``,
+      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+      `🕐 آخر تحديث: منذ ${updatedAgo === 0 ? 'أقل من دقيقة' : `${updatedAgo} دقيقة`}`,
     ].join('\n'))
     return
   }
