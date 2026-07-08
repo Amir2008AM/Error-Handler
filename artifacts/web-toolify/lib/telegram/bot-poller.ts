@@ -8,7 +8,7 @@
  * Started once from instrumentation.ts via globalThis guard.
  */
 
-import { handleUpdate } from './bot-handler'
+import { handleUpdate, type TgUpdate } from './bot-handler'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -37,7 +37,7 @@ async function poll(): Promise<void> {
   while (true) {
     try {
       const res = await fetch(
-        `https://api.telegram.org/bot${token}/getUpdates?timeout=${POLL_TIMEOUT}&offset=${offset}`,
+        `https://api.telegram.org/bot${token}/getUpdates?timeout=${POLL_TIMEOUT}&offset=${offset}&allowed_updates=${encodeURIComponent(JSON.stringify(['message','callback_query']))}`,
         { signal: AbortSignal.timeout((POLL_TIMEOUT + 10) * 1000) },
       )
 
@@ -48,7 +48,7 @@ async function poll(): Promise<void> {
         continue
       }
 
-      const data = await res.json() as { ok: boolean; result: Array<{ update_id: number }> }
+      const data = await res.json() as { ok: boolean; result: TgUpdate[] }
       if (!data.ok || !Array.isArray(data.result)) {
         await sleep(RETRY_DELAY)
         continue
