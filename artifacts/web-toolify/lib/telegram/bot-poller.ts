@@ -14,6 +14,7 @@ import { handleUpdate, type TgUpdate } from './bot-handler'
 declare global {
   var __botPollingActive: boolean | undefined
   var __botAbortController: AbortController | undefined
+  var __botPollOffset: number | undefined   // persists across HMR so updates aren't replayed
 }
 
 const POLL_TIMEOUT = 25        // seconds — Telegram holds connection this long
