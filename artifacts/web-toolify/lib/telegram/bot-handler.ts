@@ -41,6 +41,29 @@ export interface TgUpdate {
 interface IKButton { text: string; callback_data: string }
 type IKMarkup = { inline_keyboard: IKButton[][] }
 
+// Reply keyboard (persistent bottom keyboard — real physical-looking buttons)
+type RKButton  = { text: string }
+type RKMarkup  = { keyboard: RKButton[][]; resize_keyboard: boolean; persistent: boolean; is_persistent: boolean }
+type RKRemove  = { remove_keyboard: true }
+type AnyMarkup = IKMarkup | RKMarkup | RKRemove
+
+// ── Reply keyboard — main nav (shown after login, persistent at screen bottom) ─
+
+const REPLY_KB: RKMarkup = {
+  keyboard: [
+    [{ text: '🏠 الرئيسية' },  { text: '📊 GA4' }],
+    [{ text: '🌍 الدول' },      { text: '📄 الصفحات' }],
+    [{ text: '📈 إحصائيات' },  { text: '💬 الفيدباك' }],
+    [{ text: '🔔 آخر الرسائل' }, { text: '🔧 الجلسة' }],
+    [{ text: '👋 خروج' }],
+  ],
+  resize_keyboard: true,
+  persistent:      true,
+  is_persistent:   true,
+}
+
+const REPLY_KB_REMOVE: RKRemove = { remove_keyboard: true }
+
 // ── Telegram API helpers ──────────────────────────────────────────────────────
 
 const TOKEN = () => process.env.TELEGRAM_BOT_TOKEN ?? ''
@@ -56,7 +79,7 @@ async function tgPost(method: string, body: Record<string, unknown>): Promise<un
   return res ? res.json().catch(() => null) : null
 }
 
-async function send(chatId: number, text: string, keyboard?: IKMarkup): Promise<void> {
+async function send(chatId: number, text: string, keyboard?: AnyMarkup): Promise<void> {
   const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }
   if (keyboard) body.reply_markup = keyboard
   await tgPost('sendMessage', body)
@@ -607,14 +630,31 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     logout(chatId)
     const text = `<b>👋 تم تسجيل الخروج</b>\n\nأرسل /start للدخول مجدداً.`
     if (msgId) await editText(chatId, msgId, text)
-    else       await send(chatId, text)
+    // Remove the persistent reply keyboard
+    await send(chatId, '🔒 تم قفل الجلسة.', REPLY_KB_REMOVE)
   }
+}
+
+// ── Reply keyboard button labels → canonical command mapping ──────────────────
+
+const REPLY_BTN_MAP: Record<string, string> = {
+  '🏠 الرئيسية':    '/dashboard',
+  '📊 GA4':          '/ga4',
+  '🌍 الدول':        '/countries',
+  '📄 الصفحات':      '/pages',
+  '📈 إحصائيات':    '/stats',
+  '💬 الفيدباك':    '/feedback',
+  '🔔 آخر الرسائل': '/latest',
+  '🔧 الجلسة':      '/status',
+  '👋 خروج':         '/logout',
 }
 
 // ── Command handler ───────────────────────────────────────────────────────────
 
 async function handleCommand(chatId: number, text: string): Promise<void> {
-  const cmd = text.trim().split(/\s+/)[0].toLowerCase()
+  // Normalize reply-keyboard button text → slash command
+  const normalized = REPLY_BTN_MAP[text.trim()] ?? text.trim()
+  const cmd = normalized.split(/\s+/)[0].toLowerCase()
 
   if (cmd === '/dashboard' || cmd === '/start') {
     await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
@@ -656,7 +696,8 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
   }
   if (cmd === '/logout') {
     logout(chatId)
-    await send(chatId, `<b>👋 تم تسجيل الخروج</b>\n\nأرسل /start للدخول مجدداً.`)
+    // Remove the reply keyboard on logout
+    await send(chatId, `<b>👋 تم تسجيل الخروج</b>\n\nأرسل /start للدخول مجدداً.`, REPLY_KB_REMOVE)
     return
   }
   if (cmd === '/help') {
@@ -664,9 +705,9 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
       `<b>🤖 لوحة تحكم Toolify</b>`,
       `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
       ``,
-      `استخدم <b>الأزرار</b> في الداشبورد للتنقل.`,
+      `الأزرار في أسفل الشاشة للتنقل السريع 👇`,
       ``,
-      `/dashboard — الداشبورد الرئيسي`,
+      `أو استخدم الأوامر:`,
       `/ga4       — Google Analytics Live`,
       `/countries — أكثر الدول زيارةً`,
       `/pages     — أكثر الصفحات زيارةً`,
@@ -756,6 +797,7 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
       break
 
     case 'success': {
+      // Show the reply keyboard (persistent bottom keyboard) right after login
       await send(chatId, [
         `<b>╔══════════════════════════╗</b>`,
         `<b>║  ✅  تم الدخول بنجاح     ║</b>`,
@@ -763,8 +805,8 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
         ``,
         `🔐 جلستك نشطة لمدة <b>ساعة كاملة</b>`,
         ``,
-        `جاري تحميل الداشبورد…`,
-      ].join('\n'))
+        `الأزرار ظاهرة في أسفل الشاشة 👇`,
+      ].join('\n'), REPLY_KB)
       await new Promise(r => setTimeout(r, 600))
       await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
       break
