@@ -31,19 +31,20 @@ async function poll(signal: AbortSignal): Promise<void> {
     return
   }
 
-  // Delete webhook + drop any pending session conflicts
+  // Delete webhook + close any existing getUpdates sessions
   try {
     await fetch(`https://api.telegram.org/bot${token}/deleteWebhook?drop_pending_updates=false`, {
       signal: AbortSignal.timeout(8_000),
     })
-    // Close any existing getUpdates sessions
+    // Flush any Telegram-side pending long-poll so we can open a new one
     await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=-1&timeout=0`, {
       signal: AbortSignal.timeout(8_000),
     })
     console.log('[Bot] Session cleared, long polling starting ✓')
   } catch { /* non-fatal */ }
 
-  let offset = 0
+  // Restore offset from globalThis so HMR reloads don't replay already-processed updates
+  let offset: number = globalThis.__botPollOffset ?? 0
 
   while (!signal.aborted) {
     try {
@@ -80,6 +81,7 @@ async function poll(signal: AbortSignal): Promise<void> {
 
       for (const update of data.result) {
         offset = update.update_id + 1
+        globalThis.__botPollOffset = offset   // persist so HMR restarts don't replay
         handleUpdate(update).catch((err) =>
           console.error('[Bot] handler error:', err),
         )

@@ -3,3 +3,4 @@
 - [Toolify 5-queue architecture](toolify-queue-arch.md) — BullMQ split into pdf-fast/pdf-heavy/image/ocr/document; WorkerGroup type + QUEUE_NAMES + tool-registry + 3 Telegram files all must stay in sync.
 
 - [Legal pages consistency](legal-pages-consistency.md) — toolifypdf legal pages (privacy/terms/cookies/disclaimer) must stay English-only, single source of truth for retention time, footer links.
+- [Bot auth & poller fixes](bot-auth-poller-fixes.md) — two_step vs key_only mode, offset-replay double-message bug, allowlist brute-force fix, lockout state lost on restart.

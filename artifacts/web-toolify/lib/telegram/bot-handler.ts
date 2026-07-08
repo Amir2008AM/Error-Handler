@@ -853,10 +853,27 @@ function loginStartPrompt(): string {
   ].join('\n')
 }
 
+// ── Allowlist — only respond to known admin chat IDs ─────────────────────────
+// Parsed once and cached; env var is a comma-separated list of numeric IDs.
+// When the list is empty the check is skipped (fail-open during initial setup).
+
+function getAllowedIds(): Set<number> {
+  const raw = process.env.TELEGRAM_ADMIN_IDS ?? ''
+  const ids  = raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0)
+  return new Set(ids)
+}
+
+function isAllowed(chatId: number): boolean {
+  const ids = getAllowedIds()
+  return ids.size === 0 || ids.has(chatId)
+}
+
 // ── Main entry ────────────────────────────────────────────────────────────────
 
 export async function handleUpdate(update: TgUpdate): Promise<void> {
   if (update.callback_query) {
+    // Silently drop callbacks from non-admin accounts
+    if (!isAllowed(update.callback_query.from.id)) return
     await handleCallback(update.callback_query)
     return
   }
@@ -865,7 +882,11 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   if (!message?.text) return
 
   const chatId = message.chat.id
-  const text   = message.text.trim()
+
+  // Silently drop messages from non-admin accounts — do NOT reveal bot existence
+  if (!isAllowed(chatId)) return
+
+  const text = message.text.trim()
 
   if (isAuthenticated(chatId)) {
     await handleCommand(chatId, text)
