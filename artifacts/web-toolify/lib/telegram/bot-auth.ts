@@ -211,6 +211,18 @@ export function logout(chatId: number): void {
   pending.delete(chatId)
 }
 
+/**
+ * Renew the session TTL for an authenticated user.
+ * Call this on every successful authenticated interaction so active
+ * users never get logged out mid-session.
+ */
+export function renewSession(chatId: number): void {
+  const session = sessions.get(chatId)
+  if (session) {
+    session.expiresAt = ts() + SESSION_DURATION_MS
+  }
+}
+
 /** Returns whether this bot uses key-only (single-step) auth */
 export function isKeyOnlyMode(): boolean {
   return getCredentials().mode === 'key_only'

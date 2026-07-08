@@ -1,7 +1,7 @@
 /**
  * Telegram Bot — Message & Callback Handler
  *
- * Full inline-keyboard navigation. Every section has Refresh + Home buttons.
+ * Professional admin dashboard with clean layout, icons and structured sections.
  *
  * Main keyboard:
  *   [📊 GA4 Live]     [🌍 الدول]
@@ -12,11 +12,13 @@
 
 import {
   isAuthenticated,
+  isKeyOnlyMode,
   sessionRemainingMs,
   getLoginState,
   startLogin,
   processAuthInput,
   logout,
+  renewSession,
   formatCountdown,
   formatSession,
   LOCKOUT_DURATION_MS,
@@ -41,13 +43,13 @@ export interface TgUpdate {
 interface IKButton { text: string; callback_data: string }
 type IKMarkup = { inline_keyboard: IKButton[][] }
 
-// Reply keyboard (persistent bottom keyboard — real physical-looking buttons)
+// Reply keyboard (persistent bottom keyboard)
 type RKButton  = { text: string }
 type RKMarkup  = { keyboard: RKButton[][]; resize_keyboard: boolean; persistent: boolean; is_persistent: boolean }
 type RKRemove  = { remove_keyboard: true }
 type AnyMarkup = IKMarkup | RKMarkup | RKRemove
 
-// ── Reply keyboard — main nav (shown after login, persistent at screen bottom) ─
+// ── Reply keyboard — main nav ──────────────────────────────────────────────────
 
 const REPLY_KB: RKMarkup = {
   keyboard: [
@@ -215,6 +217,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
 }
 
 function flag(country: string): string { return COUNTRY_FLAGS[country] ?? '🌐' }
+
 function bar(ratio: number, len = 8): string {
   const f = Math.max(0, Math.min(len, Math.round(ratio * len)))
   return '█'.repeat(f) + '░'.repeat(len - f)
@@ -234,6 +237,11 @@ function fmtAgo(ts: number): string {
   const m = Math.round((Date.now() - ts) / 60_000)
   return m === 0 ? 'أقل من دقيقة' : `${m} دقيقة`
 }
+function fmtTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString('en-GB', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC',
+  }) + ' UTC'
+}
 function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -248,6 +256,8 @@ function sourceIcon(s: string): string {
   if (s.includes('Referral'))return '🔗'
   return '🚀'
 }
+function divider(): string { return `<code>▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰</code>` }
+function thinLine(): string { return `<code>──────────────────────────</code>` }
 
 // ── GA4 section builders ──────────────────────────────────────────────────────
 
@@ -256,66 +266,84 @@ function buildGa4(): string {
 
   if (!snap) {
     return [
-      `📊 <b>Google Analytics 4 — Live</b>`,
-      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
       ``,
-      `⏳ <b>جاري جمع البيانات…</b>`,
+      `📡 <b>GOOGLE ANALYTICS 4  —  LIVE</b>`,
+      divider(),
       ``,
-      `<i>تأكد من ضبط:</i>`,
-      `<code>GA_PROPERTY_ID</code>`,
-      `<code>GOOGLE_SERVICE_ACCOUNT_KEY</code>`,
+      `⏳  <i>جاري تهيئة الاتصال بـ GA4…</i>`,
+      ``,
+      `<i>تأكد من إعداد متغيرات البيئة:</i>`,
+      `<code>  • GA_PROPERTY_ID</code>`,
+      `<code>  • GOOGLE_SERVICE_ACCOUNT_KEY</code>`,
     ].join('\n')
   }
 
-  const devIco = deviceIcon(snap.device)
-  const srcIco = sourceIcon(snap.source)
-  const flg    = COUNTRY_FLAGS[snap.country] ?? '🌐'
+  const now = fmtTime(snap.fetchedAt)
+  const ago = fmtAgo(snap.fetchedAt)
 
-  // Device breakdown bar
-  const totalDevUsers = snap.devices.reduce((s, d) => s + d.users, 0) || 1
-  const deviceLines = snap.devices.map(d =>
-    `<code>${deviceIcon(d.device)} ${pad(d.device, 8)} ${String(d.users).padStart(3)}  ${bar(d.users / totalDevUsers, 6)}  ${Math.round((d.users / totalDevUsers) * 100)}%</code>`
-  )
+  // ── KPIs ──
+  const kpiBlock = [
+    `<code>┌─────────────────────────────┐</code>`,
+    `<code>│  🟢 نشطون الآن    ${String(snap.realtimeActive).padStart(6)}      │</code>`,
+    `<code>│  👥 زوار اليوم    ${String(snap.todayUsers).padStart(6)}      │</code>`,
+    `<code>│  🆕 جدد اليوم     ${String(snap.newUsers).padStart(6)}      │</code>`,
+    `<code>│  📋 جلسات اليوم   ${String(snap.todaySessions).padStart(6)}      │</code>`,
+    `<code>└─────────────────────────────┘</code>`,
+  ].join('\n')
 
-  // Source breakdown
-  const totalSrcUsers = snap.sources.reduce((s, x) => s + x.users, 0) || 1
-  const sourceLines = snap.sources.slice(0, 4).map(s =>
-    `<code>${sourceIcon(s.source)} ${pad(s.source, 14)} ${String(s.users).padStart(3)}  ${bar(s.users / totalSrcUsers, 5)}</code>`
-  )
-
-  // Pages
+  // ── Top pages ──
+  const totalPageUsers = snap.activePages.reduce((s, p) => s + p.users, 0) || 1
   const pagesBlock = snap.activePages.length
-    ? snap.activePages.slice(0, 5).map((p, i) =>
-        `<code>${i + 1}. ${pad(p.path.slice(0, 22), 22)} ${String(p.users).padStart(3)} 👤</code>`
-      ).join('\n')
+    ? snap.activePages.slice(0, 5).map((p, i) => {
+        const name = p.path === '/' ? '/ (الرئيسية)' : p.path
+        const pct  = Math.round((p.users / totalPageUsers) * 100)
+        return `<code>${String(i + 1).padStart(2)}.  ${pad(name.slice(0, 18), 18)}  ${String(p.users).padStart(3)} 👤  ${pct}%</code>`
+      }).join('\n')
     : `<code>  — لا يوجد نشاط حالياً</code>`
 
+  // ── Devices ──
+  const totalDevUsers = snap.devices.reduce((s, d) => s + d.users, 0) || 1
+  const deviceLines = snap.devices.map(d => {
+    const pct = Math.round((d.users / totalDevUsers) * 100)
+    return `<code>  ${deviceIcon(d.device)} ${pad(d.device, 9)} ${String(d.users).padStart(3)}  ${bar(d.users / totalDevUsers, 7)}  ${String(pct).padStart(3)}%</code>`
+  }).join('\n')
+
+  // ── Sources ──
+  const totalSrcUsers = snap.sources.reduce((s, x) => s + x.users, 0) || 1
+  const sourceLines = snap.sources.slice(0, 4).map(s => {
+    const pct = Math.round((s.users / totalSrcUsers) * 100)
+    return `<code>  ${sourceIcon(s.source)} ${pad(s.source, 14)} ${String(s.users).padStart(3)}  ${bar(s.users / totalSrcUsers, 5)}  ${pct}%</code>`
+  }).join('\n')
+
+  const flg = COUNTRY_FLAGS[snap.country] ?? '🌐'
+
   return [
-    `📊 <b>Google Analytics — Live</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
     ``,
-    `<code>🟢 نشطون الآن          ${String(snap.realtimeActive).padStart(5)}</code>`,
-    `<code>👥 زوار اليوم          ${String(snap.todayUsers).padStart(5)}</code>`,
-    `<code>🆕 جدد اليوم           ${String(snap.newUsers).padStart(5)}</code>`,
-    `<code>📋 جلسات اليوم         ${String(snap.todaySessions).padStart(5)}</code>`,
+    `📡 <b>GOOGLE ANALYTICS 4  —  LIVE</b>`,
+    divider(),
     ``,
-    `<b>📄 أكثر الصفحات نشاطاً</b>`,
+    `<b>📊  إحصائيات اليوم</b>`,
+    kpiBlock,
+    ``,
+    `<b>📄  أكثر الصفحات نشاطاً</b>`,
+    thinLine(),
     pagesBlock,
     ``,
-    `<b>🌍 الموقع الجغرافي</b>`,
-    `<code>${flg} ${snap.country}</code>`,
+    `<b>📱  الأجهزة</b>`,
+    thinLine(),
+    deviceLines || `<code>  — لا بيانات</code>`,
     ``,
-    `<b>📱 الأجهزة</b>`,
-    ...deviceLines,
+    `<b>📡  مصادر الزيارات</b>`,
+    thinLine(),
+    sourceLines || `<code>  — لا بيانات</code>`,
     ``,
-    `<b>📡 مصادر الزيارات</b>`,
-    ...sourceLines,
+    `<b>🌍  الموقع الجغرافي والجهاز</b>`,
+    thinLine(),
+    `<code>  ${flg} ${snap.country}   ${deviceIcon(snap.device)} ${snap.device}   🌐 ${snap.browser}</code>`,
+    `<code>  ${sourceIcon(snap.source)} ${snap.source}</code>`,
     ``,
-    `${devIco} <b>الجهاز:</b> ${snap.device}   🌐 <b>المتصفح:</b> ${snap.browser}`,
-    `${srcIco} <b>المصدر الرئيسي:</b> ${snap.source}`,
-    ``,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-    `🕐 آخر تحديث: منذ ${fmtAgo(snap.fetchedAt)}`,
+    divider(),
+    `<code>  🕐 ${now}  ·  منذ ${ago}</code>`,
   ].join('\n')
 }
 
@@ -323,30 +351,42 @@ function buildCountries(): string {
   const snap = getGa4Snapshot()
 
   if (!snap) {
-    return `🌍 <b>الدول</b>\n\n⏳ <i>البيانات غير متوفرة بعد…</i>`
+    return [
+      `🌍 <b>COUNTRIES  —  اليوم</b>`,
+      divider(),
+      ``,
+      `⏳  <i>البيانات غير متوفرة بعد…</i>`,
+    ].join('\n')
   }
 
   if (!snap.topCountries.length) {
-    return `🌍 <b>الدول</b>\n\n<i>لا توجد زيارات اليوم بعد.</i>`
+    return [
+      `🌍 <b>COUNTRIES  —  اليوم</b>`,
+      divider(),
+      ``,
+      `<i>لا توجد زيارات اليوم بعد.</i>`,
+    ].join('\n')
   }
 
   const total = snap.topCountries.reduce((s, c) => s + c.users, 0) || 1
   const lines = snap.topCountries.map((c, i) => {
     const pct = Math.round((c.users / total) * 100)
     const b   = bar(c.users / total, 7)
-    return `<code>${String(i + 1).padStart(2)}. ${flag(c.country)} ${pad(c.country, 18)} ${String(c.users).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
+    return `<code>${String(i + 1).padStart(2)}.  ${flag(c.country)} ${pad(c.country, 16)}  ${String(c.users).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
   })
 
   return [
-    `🌍 <b>الدول — اليوم</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
     ``,
-    `<code>👥 إجمالي زوار اليوم: ${snap.todayUsers}</code>`,
+    `🌍 <b>COUNTRIES  —  اليوم</b>`,
+    divider(),
     ``,
+    `<code>  👥 إجمالي زوار اليوم:  ${snap.todayUsers}   🆕 جدد: ${snap.newUsers}</code>`,
+    ``,
+    thinLine(),
     ...lines,
+    thinLine(),
     ``,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-    `🕐 منذ ${fmtAgo(snap.fetchedAt)}`,
+    `<code>  🕐 منذ ${fmtAgo(snap.fetchedAt)}</code>`,
   ].join('\n')
 }
 
@@ -354,31 +394,43 @@ function buildPages(): string {
   const snap = getGa4Snapshot()
 
   if (!snap) {
-    return `📄 <b>الصفحات</b>\n\n⏳ <i>البيانات غير متوفرة بعد…</i>`
+    return [
+      `📄 <b>PAGES  —  اليوم</b>`,
+      divider(),
+      ``,
+      `⏳  <i>البيانات غير متوفرة بعد…</i>`,
+    ].join('\n')
   }
 
   if (!snap.activePages.length) {
-    return `📄 <b>الصفحات</b>\n\n<i>لا توجد زيارات اليوم بعد.</i>`
+    return [
+      `📄 <b>PAGES  —  اليوم</b>`,
+      divider(),
+      ``,
+      `<i>لا توجد زيارات اليوم بعد.</i>`,
+    ].join('\n')
   }
 
   const total = snap.activePages.reduce((s, p) => s + p.users, 0) || 1
   const lines = snap.activePages.map((p, i) => {
-    const pct = Math.round((p.users / total) * 100)
-    const b   = bar(p.users / total, 6)
+    const pct  = Math.round((p.users / total) * 100)
+    const b    = bar(p.users / total, 6)
     const name = p.path === '/' ? '/ (الرئيسية)' : p.path
-    return `<code>${String(i + 1).padStart(2)}. ${pad(name.slice(0, 20), 20)} ${String(p.users).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
+    return `<code>${String(i + 1).padStart(2)}.  ${pad(name.slice(0, 19), 19)}  ${String(p.users).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
   })
 
   return [
-    `📄 <b>أكثر الصفحات زيارةً — اليوم</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
     ``,
-    `<code>🟢 نشطون الآن: ${snap.realtimeActive}   👥 اليوم: ${snap.todayUsers}</code>`,
+    `📄 <b>PAGES  —  اليوم</b>`,
+    divider(),
     ``,
+    `<code>  🟢 نشطون الآن: ${snap.realtimeActive}   👥 اليوم: ${snap.todayUsers}</code>`,
+    ``,
+    thinLine(),
     ...lines,
+    thinLine(),
     ``,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-    `🕐 منذ ${fmtAgo(snap.fetchedAt)}`,
+    `<code>  🕐 منذ ${fmtAgo(snap.fetchedAt)}</code>`,
   ].join('\n')
 }
 
@@ -397,55 +449,75 @@ function buildMainMenuText(rows: FeedbackRow[]): string {
     if (k in counts) counts[k]++
   }
 
-  const ga4Line = snap
-    ? `<code>🟢 نشطون الآن: ${snap.realtimeActive}   👥 اليوم: ${snap.todayUsers}   🆕 جدد: ${snap.newUsers}</code>`
-    : `<code>⏳ GA4 — جاري الاتصال…</code>`
+  const ga4Status = snap
+    ? [
+        `<code>┌─────────────────────────────┐</code>`,
+        `<code>│  🟢 نشطون الآن    ${String(snap.realtimeActive).padStart(6)}      │</code>`,
+        `<code>│  👥 زوار اليوم    ${String(snap.todayUsers).padStart(6)}      │</code>`,
+        `<code>│  🆕 جدد اليوم     ${String(snap.newUsers).padStart(6)}      │</code>`,
+        `<code>│  📋 جلسات اليوم   ${String(snap.todaySessions).padStart(6)}      │</code>`,
+        `<code>└─────────────────────────────┘</code>`,
+      ].join('\n')
+    : `<code>  ⏳ GA4 — جاري الاتصال…</code>`
+
+  const feedbackBreakdown = (['suggestion', 'bug', 'feature', 'general'] as const).map((type) => {
+    const count = counts[type]
+    const pct   = total > 0 ? Math.round((count / total) * 100) : 0
+    const b     = bar(total > 0 ? count / total : 0, 6)
+    return `<code>  ${TYPE_ICON[type]}  ${pad(TYPE_AR[type], 10)}  ${String(count).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
+  }).join('\n')
 
   return [
-    `<b>╔══════════════════════════╗</b>`,
-    `<b>║   🖥  TOOLIFY ADMIN      ║</b>`,
-    `<b>╚══════════════════════════╝</b>`,
     ``,
-    ga4Line,
+    `🖥  <b>TOOLIFY  —  ADMIN DASHBOARD</b>`,
+    divider(),
     ``,
-    `<b>📊 ملخص الفيدباك</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-    `<code>📥 الإجمالي    ${String(total).padStart(4)} رسالة</code>`,
-    `<code>🕐 آخر 24 ساعة ${String(h24).padStart(4)} رسالة</code>`,
-    `<code>📅 آخر 7 أيام  ${String(d7).padStart(4)} رسالة</code>`,
+    `<b>📡  Google Analytics 4</b>`,
+    ga4Status,
     ``,
-    ...(['suggestion', 'bug', 'feature', 'general'] as const).map((type) => {
-      const count = counts[type]
-      const pct   = total > 0 ? Math.round((count / total) * 100) : 0
-      const b     = bar(total > 0 ? count / total : 0, 6)
-      return `<code>${TYPE_ICON[type]} ${pad(TYPE_AR[type], 9)} ${String(count).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
-    }),
+    `<b>📬  الفيدباك  —  ملخص</b>`,
+    thinLine(),
+    `<code>  📥 الإجمالي       ${String(total).padStart(5)} رسالة</code>`,
+    `<code>  🕐 آخر 24 ساعة   ${String(h24).padStart(5)} رسالة</code>`,
+    `<code>  📅 آخر 7 أيام    ${String(d7).padStart(5)} رسالة</code>`,
     ``,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    feedbackBreakdown,
+    thinLine(),
+    ``,
     `<i>اختر قسماً من الأزرار أدناه 👇</i>`,
   ].join('\n')
 }
 
 function buildLatestFeedback(rows: FeedbackRow[]): string {
-  if (rows.length === 0) return `<b>🔔 آخر الرسائل</b>\n\n<i>لا توجد رسائل بعد.</i>`
+  if (rows.length === 0) {
+    return [
+      `🔔 <b>LATEST MESSAGES</b>`,
+      divider(),
+      ``,
+      `<i>لا توجد رسائل بعد.</i>`,
+    ].join('\n')
+  }
+
   const latest = rows.slice(0, 5)
   const lines: string[] = [
-    `<b>🔔 آخر ${latest.length} رسائل</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    ``,
+    `🔔 <b>LATEST MESSAGES  —  آخر ${latest.length} رسائل</b>`,
+    divider(),
   ]
   for (const r of latest) {
     const icon = TYPE_ICON[r.type] ?? '💬'
     const type = TYPE_AR[r.type]   ?? r.type
     const ago  = timeAgo(r.created_at)
-    const msg  = r.message.length > 100 ? r.message.slice(0, 100) + '…' : r.message
+    const msg  = r.message.length > 120 ? r.message.slice(0, 120) + '…' : r.message
     lines.push(``)
-    lines.push(`${icon} <b>${type}</b>  ·  <i>${ago}</i>`)
+    lines.push(`${icon}  <b>${type}</b>   <code>${ago}</code>`)
     lines.push(`<i>${escHtml(msg)}</i>`)
     const meta: string[] = []
     if (r.country)     meta.push(`${flag(r.country)} ${r.country}`)
     if (r.device_type) meta.push(r.device_type === 'mobile' ? '📱' : '🖥️')
     if (r.page_name)   meta.push(`📄 ${r.page_name}`)
-    if (meta.length)   lines.push(`<code>${meta.join('  ')}</code>`)
+    if (meta.length)   lines.push(`<code>  ${meta.join('   ')}</code>`)
+    lines.push(thinLine())
   }
   return lines.join('\n')
 }
@@ -458,24 +530,25 @@ function buildFeedbackPage(rows: FeedbackRow[], page = 0, perPage = 4): { text: 
   if (slice.length === 0) return { text: `📭 لا توجد رسائل في هذه الصفحة.`, pages }
 
   const lines: string[] = [
-    `<b>💬 الفيدباك — صفحة ${page + 1}/${pages}</b>  <code>(${total} إجمالي)</code>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    ``,
+    `💬 <b>FEEDBACK  —  صفحة ${page + 1}/${pages}</b>  <code>(${total} إجمالي)</code>`,
+    divider(),
   ]
   for (const r of slice) {
     const icon = TYPE_ICON[r.type] ?? '💬'
     const type = TYPE_AR[r.type]   ?? r.type
     const ago  = timeAgo(r.created_at)
-    const msg  = r.message.length > 180 ? r.message.slice(0, 180) + '…' : r.message
+    const msg  = r.message.length > 200 ? r.message.slice(0, 200) + '…' : r.message
     lines.push(``)
-    lines.push(`${icon} <b>${type}</b>  ·  <i>${ago}</i>`)
+    lines.push(`${icon}  <b>${type}</b>   <code>${ago}</code>`)
     lines.push(escHtml(msg))
-    if (r.email) lines.push(`📧 <code>${r.email}</code>`)
+    if (r.email) lines.push(`📧  <code>${r.email}</code>`)
     const meta: string[] = []
     if (r.page_name)   meta.push(`📄 ${r.page_name}`)
     if (r.country)     meta.push(`${flag(r.country)} ${r.country}`)
     if (r.device_type) meta.push(r.device_type === 'mobile' ? '📱 mobile' : '🖥️ desktop')
-    if (meta.length)   lines.push(`<code>${meta.join('  ')}</code>`)
-    lines.push(`<code>─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─</code>`)
+    if (meta.length)   lines.push(`<code>  ${meta.join('   ')}</code>`)
+    lines.push(thinLine())
   }
   return { text: lines.join('\n'), pages }
 }
@@ -486,66 +559,71 @@ function buildStats(rows: FeedbackRow[]): string {
 
   const ga4Block = snap ? [
     ``,
-    `<b>📊 بيانات Google Analytics — اليوم</b>`,
-    `<code>🟢 نشطون الآن:   ${String(snap.realtimeActive).padStart(5)}</code>`,
-    `<code>👥 زوار اليوم:   ${String(snap.todayUsers).padStart(5)}</code>`,
-    `<code>🆕 جدد اليوم:    ${String(snap.newUsers).padStart(5)}</code>`,
-    `<code>📋 جلسات اليوم:  ${String(snap.todaySessions).padStart(5)}</code>`,
+    `<b>📡  Google Analytics 4  —  اليوم</b>`,
+    thinLine(),
+    `<code>  🟢 نشطون الآن:    ${String(snap.realtimeActive).padStart(6)}</code>`,
+    `<code>  👥 زوار اليوم:    ${String(snap.todayUsers).padStart(6)}</code>`,
+    `<code>  🆕 جدد اليوم:     ${String(snap.newUsers).padStart(6)}</code>`,
+    `<code>  📋 جلسات اليوم:   ${String(snap.todaySessions).padStart(6)}</code>`,
     ``,
-    `<b>🌍 أهم 5 دول اليوم</b>`,
+    `<b>🌍  أهم 5 دول اليوم</b>`,
+    thinLine(),
     ...snap.topCountries.slice(0, 5).map((c, i) => {
       const pct = snap.todayUsers > 0 ? Math.round((c.users / snap.todayUsers) * 100) : 0
-      return `<code>${i + 1}. ${flag(c.country)} ${pad(c.country, 16)} ${String(c.users).padStart(3)}  ${bar(c.users / (snap.todayUsers || 1), 5)}  ${pct}%</code>`
+      const b   = bar(c.users / (snap.todayUsers || 1), 6)
+      return `<code>  ${i + 1}.  ${flag(c.country)} ${pad(c.country, 15)}  ${String(c.users).padStart(3)}  ${b}  ${pct}%</code>`
     }),
   ] : []
 
   if (total === 0) {
     return [
-      `<b>📈 إحصائيات تفصيلية</b>`,
-      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+      ``,
+      `📈 <b>DETAILED STATS  —  إحصائيات</b>`,
+      divider(),
       ...ga4Block,
       ``,
       `<i>لا توجد بيانات فيدباك بعد.</i>`,
     ].join('\n')
   }
 
-  const pageCount:   Record<string, number> = {}
+  const pageCount:    Record<string, number> = {}
   const countryCount: Record<string, number> = {}
   const deviceCount:  Record<string, number> = {}
   for (const r of rows) {
-    if (r.page_name)   pageCount[r.page_name]    = (pageCount[r.page_name]    ?? 0) + 1
-    if (r.country)     countryCount[r.country]   = (countryCount[r.country]   ?? 0) + 1
-    if (r.device_type) deviceCount[r.device_type]= (deviceCount[r.device_type]?? 0) + 1
+    if (r.page_name)   pageCount[r.page_name]     = (pageCount[r.page_name]     ?? 0) + 1
+    if (r.country)     countryCount[r.country]    = (countryCount[r.country]    ?? 0) + 1
+    if (r.device_type) deviceCount[r.device_type] = (deviceCount[r.device_type] ?? 0) + 1
   }
   const topPages   = Object.entries(pageCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
   const topCountry = Object.entries(countryCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
   const withEmail  = rows.filter(r => r.email).length
 
   return [
-    `<b>📈 إحصائيات تفصيلية</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    ``,
+    `📈 <b>DETAILED STATS  —  إحصائيات</b>`,
+    divider(),
     ...ga4Block,
     ``,
-    `<b>📊 إحصائيات الفيدباك (${total} رسالة)</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    `<b>📊  الفيدباك  —  ${total} رسالة</b>`,
+    thinLine(),
     ``,
-    `<b>📱 الأجهزة</b>`,
+    `<b>📱  الأجهزة</b>`,
     ...Object.entries(deviceCount).sort((a, b) => b[1] - a[1]).map(([d, c]) =>
-      `<code>${deviceIcon(d)} ${pad(d, 10)} ${String(c).padStart(3)}  ${bar(c / total, 6)}</code>`
+      `<code>  ${deviceIcon(d)} ${pad(d, 10)}  ${String(c).padStart(3)}  ${bar(c / total, 7)}</code>`
     ),
     ``,
-    `<b>🌍 أكثر الدول (فيدباك)</b>`,
+    `<b>🌍  أكثر الدول (فيدباك)</b>`,
     ...topCountry.map(([c, n]) =>
-      `<code>${flag(c)} ${pad(c, 14)} ${String(n).padStart(3)}  ${bar(n / total, 5)}</code>`
+      `<code>  ${flag(c)} ${pad(c, 14)}  ${String(n).padStart(3)}  ${bar(n / total, 6)}</code>`
     ),
     ``,
-    `<b>📄 أكثر الصفحات (فيدباك)</b>`,
+    `<b>📄  أكثر الصفحات (فيدباك)</b>`,
     ...topPages.map(([p, n]) =>
-      `<code>${String(n).padStart(3)}×  ${escHtml(p.slice(0, 22))}</code>`
+      `<code>  ${String(n).padStart(3)}×  ${escHtml(p.slice(0, 24))}</code>`
     ),
     ``,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-    `<code>📧 مع إيميل   ${String(withEmail).padStart(4)} / ${total}</code>`,
+    thinLine(),
+    `<code>  📧 مع إيميل:   ${String(withEmail).padStart(4)} / ${total}</code>`,
   ].join('\n')
 }
 
@@ -560,6 +638,9 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     await answerCb(cb.id, '🔒 انتهت جلستك — أرسل /start')
     return
   }
+
+  // Renew session on every interaction so active users stay logged in
+  renewSession(chatId)
 
   const data = cb.data ?? ''
   await answerCb(cb.id)
@@ -620,7 +701,16 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     const rem  = sessionRemainingMs(chatId)
     const text = rem <= 0
       ? `⏰ <b>انتهت الجلسة</b>\n\nأرسل /start للدخول مجدداً.`
-      : [`<b>🔐 الجلسة نشطة</b>`, `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`, `⏳ تنتهي بعد: <b>${formatSession(rem)}</b>`].join('\n')
+      : [
+          ``,
+          `🔐 <b>SESSION STATUS</b>`,
+          divider(),
+          ``,
+          `<code>  ✅ الجلسة نشطة</code>`,
+          `<code>  ⏳ تنتهي بعد:  ${formatSession(rem)}</code>`,
+          ``,
+          `<i>الجلسة تتجدد تلقائياً مع كل تفاعل.</i>`,
+        ].join('\n')
     if (msgId) await editText(chatId, msgId, text, BACK_MENU)
     else       await send(chatId, text, BACK_MENU)
     return
@@ -628,9 +718,14 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
 
   if (data === 'logout') {
     logout(chatId)
-    const text = `<b>👋 تم تسجيل الخروج</b>\n\nأرسل /start للدخول مجدداً.`
+    const text = [
+      ``,
+      `🔒 <b>تم تسجيل الخروج</b>`,
+      divider(),
+      ``,
+      `<i>أرسل /start للدخول مجدداً.</i>`,
+    ].join('\n')
     if (msgId) await editText(chatId, msgId, text)
-    // Remove the persistent reply keyboard
     await send(chatId, '🔒 تم قفل الجلسة.', REPLY_KB_REMOVE)
   }
 }
@@ -652,6 +747,9 @@ const REPLY_BTN_MAP: Record<string, string> = {
 // ── Command handler ───────────────────────────────────────────────────────────
 
 async function handleCommand(chatId: number, text: string): Promise<void> {
+  // Renew session on every authenticated command
+  renewSession(chatId)
+
   // Normalize reply-keyboard button text → slash command
   const normalized = REPLY_BTN_MAP[text.trim()] ?? text.trim()
   const cmd = normalized.split(/\s+/)[0].toLowerCase()
@@ -690,38 +788,69 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     const rem = sessionRemainingMs(chatId)
     const msg = rem <= 0
       ? `⏰ انتهت جلستك. أرسل /start للدخول مجدداً.`
-      : [`<b>🔐 الجلسة نشطة</b>`, `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`, `⏳ تنتهي بعد: <b>${formatSession(rem)}</b>`].join('\n')
+      : [
+          ``,
+          `🔐 <b>SESSION STATUS</b>`,
+          divider(),
+          ``,
+          `<code>  ✅ الجلسة نشطة</code>`,
+          `<code>  ⏳ تنتهي بعد:  ${formatSession(rem)}</code>`,
+          ``,
+          `<i>الجلسة تتجدد تلقائياً مع كل تفاعل.</i>`,
+        ].join('\n')
     await send(chatId, msg, BACK_MENU)
     return
   }
   if (cmd === '/logout') {
     logout(chatId)
-    // Remove the reply keyboard on logout
-    await send(chatId, `<b>👋 تم تسجيل الخروج</b>\n\nأرسل /start للدخول مجدداً.`, REPLY_KB_REMOVE)
+    await send(chatId, [
+      ``,
+      `🔒 <b>تم تسجيل الخروج</b>`,
+      divider(),
+      ``,
+      `<i>أرسل /start للدخول مجدداً.</i>`,
+    ].join('\n'), REPLY_KB_REMOVE)
     return
   }
   if (cmd === '/help') {
     await send(chatId, [
-      `<b>🤖 لوحة تحكم Toolify</b>`,
-      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
       ``,
-      `الأزرار في أسفل الشاشة للتنقل السريع 👇`,
+      `🤖 <b>TOOLIFY ADMIN  —  المساعدة</b>`,
+      divider(),
       ``,
-      `أو استخدم الأوامر:`,
-      `/ga4       — Google Analytics Live`,
-      `/countries — أكثر الدول زيارةً`,
-      `/pages     — أكثر الصفحات زيارةً`,
-      `/stats     — إحصائيات تفصيلية`,
-      `/feedback  — قائمة الفيدباك`,
-      `/latest    — آخر الرسائل`,
-      `/status    — حالة الجلسة`,
-      `/logout    — تسجيل الخروج`,
+      `<i>الأزرار في أسفل الشاشة للتنقل السريع 👇</i>`,
+      ``,
+      `<b>الأوامر المتاحة:</b>`,
+      thinLine(),
+      `<code>  /ga4        Google Analytics Live</code>`,
+      `<code>  /countries  أكثر الدول زيارةً</code>`,
+      `<code>  /pages      أكثر الصفحات زيارةً</code>`,
+      `<code>  /stats      إحصائيات تفصيلية</code>`,
+      `<code>  /feedback   قائمة الفيدباك</code>`,
+      `<code>  /latest     آخر الرسائل</code>`,
+      `<code>  /status     حالة الجلسة</code>`,
+      `<code>  /logout     تسجيل الخروج</code>`,
     ].join('\n'), BACK_MENU)
     return
   }
 
   // Unknown — show main menu
   await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
+}
+
+// ── Login prompt helper ───────────────────────────────────────────────────────
+
+function loginStartPrompt(): string {
+  const keyOnly = isKeyOnlyMode()
+  return [
+    ``,
+    `🔐 <b>TOOLIFY ADMIN  —  تسجيل الدخول</b>`,
+    divider(),
+    ``,
+    keyOnly
+      ? `أدخل <b>كلمة المرور</b>:`
+      : `أدخل <b>الاسم الثلاثي</b> للمطور:`,
+  ].join('\n')
 }
 
 // ── Main entry ────────────────────────────────────────────────────────────────
@@ -745,20 +874,19 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
 
   if (text.toLowerCase() === '/start') {
     startLogin(chatId)
-    await send(chatId, [
-      `<b>╔══════════════════════════╗</b>`,
-      `<b>║   🔐  TOOLIFY ADMIN      ║</b>`,
-      `<b>╚══════════════════════════╝</b>`,
-      ``,
-      `للدخول، أدخل <b>الاسم الثلاثي</b> للمطور:`,
-    ].join('\n'))
+    await send(chatId, loginStartPrompt())
     return
   }
 
   const loginState = getLoginState(chatId)
 
   if (loginState === 'idle') {
-    await send(chatId, `🔒 <b>هذا البوت مقيّد.</b>\n\nأرسل /start للبدء.`)
+    await send(chatId, [
+      ``,
+      `🔒 <b>هذا البوت مقيّد.</b>`,
+      ``,
+      `أرسل /start للبدء.`,
+    ].join('\n'))
     return
   }
 
@@ -797,15 +925,15 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
       break
 
     case 'success': {
-      // Show the reply keyboard (persistent bottom keyboard) right after login
       await send(chatId, [
-        `<b>╔══════════════════════════╗</b>`,
-        `<b>║  ✅  تم الدخول بنجاح     ║</b>`,
-        `<b>╚══════════════════════════╝</b>`,
         ``,
-        `🔐 جلستك نشطة لمدة <b>ساعة كاملة</b>`,
+        `✅ <b>تم الدخول بنجاح</b>`,
+        divider(),
         ``,
-        `الأزرار ظاهرة في أسفل الشاشة 👇`,
+        `<code>  🔐 جلستك نشطة لمدة ساعة كاملة</code>`,
+        `<code>  🔄 تتجدد تلقائياً مع كل تفاعل</code>`,
+        ``,
+        `<i>الأزرار ظاهرة في أسفل الشاشة 👇</i>`,
       ].join('\n'), REPLY_KB)
       await new Promise(r => setTimeout(r, 600))
       await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
