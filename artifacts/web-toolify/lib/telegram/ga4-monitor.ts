@@ -147,14 +147,19 @@ export function labelSource(raw: string): string {
 
 // ── GA4 fetch ─────────────────────────────────────────────────────────────────
 
-async function fetchSnapshot(): Promise<GA4RealtimeSnapshot> {
+/** Progress callback: pct 0-100, human-readable stage label */
+export type ProgressCb = (pct: number, label: string) => void
+
+async function fetchSnapshot(onProgress?: ProgressCb): Promise<GA4RealtimeSnapshot> {
   const client   = getClient()
   const property = `properties/${env.propertyId()}`
   const now      = Date.now()
 
   // ── 1. Truly realtime active users (no dimensions = always works) ──────────
+  onProgress?.(10, 'الاتصال بـ Google Analytics…')
   let realtimeActive = 0
   try {
+    onProgress?.(25, 'جاري جلب البيانات الفورية…')
     const [rt] = await client.runRealtimeReport({
       property,
       metrics: [{ name: 'activeUsers' }],
@@ -168,6 +173,7 @@ async function fetchSnapshot(): Promise<GA4RealtimeSnapshot> {
   } catch { /* fallback to today's data */ }
 
   // ── 2. Today's full breakdown (runReport always works) ────────────────────
+  onProgress?.(55, 'جاري جلب بيانات اليوم…')
   const [main] = await client.runReport({
     property,
     dateRanges: [{ startDate: 'today', endDate: 'today' }],
@@ -226,12 +232,16 @@ async function fetchSnapshot(): Promise<GA4RealtimeSnapshot> {
   const topDevice       = sortedDevices[0]?.[0] ?? 'N/A'
   const topBrowser      = [...browserMap.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A'
 
+  onProgress?.(85, 'معالجة الإحصائيات…')
+
   // Deduplicate page-level count
   const uniqueActive = [...pageMap.values()].reduce((a, b) => a + b, 0)
   totalActive = uniqueActive || totalActive
 
   // Prefer realtime for "right now"; fallback to today's data
   if (!realtimeActive) realtimeActive = totalActive
+
+  onProgress?.(100, 'اكتملت البيانات ✓')
 
   return {
     realtimeActive,
@@ -456,6 +466,18 @@ async function checkAlerts(snap: GA4RealtimeSnapshot): Promise<void> {
 const POLL_INTERVAL_MS = 2 * 60_000   // 2 minutes — fast enough to catch new users
 
 declare global { var __ga4monitorStarted: boolean | undefined }
+
+/**
+ * Fetch fresh GA4 data and update the cached snapshot.
+ * Optionally accepts a progress callback for UI feedback.
+ * Safe to call from bot-handler for "Refresh" button presses.
+ */
+export async function fetchFreshSnapshot(onProgress?: ProgressCb): Promise<GA4RealtimeSnapshot> {
+  if (!isConfigured()) throw new Error('GA4 not configured')
+  const snap = await fetchSnapshot(onProgress)
+  _snap.value = snap
+  return snap
+}
 
 async function runOnce(): Promise<void> {
   if (!isConfigured()) return
