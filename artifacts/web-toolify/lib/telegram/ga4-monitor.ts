@@ -24,7 +24,8 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data'
 // ── Env helpers ───────────────────────────────────────────────────────────────
 
 const env = {
-  propertyId:    () => process.env.GA_PROPERTY_ID ?? '',
+  // Strip any accidental "properties/" prefix the user may have included
+  propertyId:    () => (process.env.GA_PROPERTY_ID ?? '').replace(/^properties\//i, '').trim(),
   saKey:         () => process.env.GOOGLE_SERVICE_ACCOUNT_KEY ?? '',
   botToken:      () => process.env.TELEGRAM_BOT_TOKEN ?? '',
   chatId:        () => process.env.TELEGRAM_CHAT_ID ?? '',
@@ -42,10 +43,22 @@ declare global { var __ga4client: BetaAnalyticsDataClient | undefined }
 function getClient(): BetaAnalyticsDataClient {
   if (!globalThis.__ga4client) {
     const raw = env.saKey()
-    const credentials = JSON.parse(raw) as Record<string, unknown>
-    globalThis.__ga4client = new BetaAnalyticsDataClient({ credentials })
+    // Support both raw JSON string and base64-encoded JSON
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(raw) as Record<string, unknown>
+    } catch {
+      // Try base64 decode
+      const decoded = Buffer.from(raw, 'base64').toString('utf-8')
+      parsed = JSON.parse(decoded) as Record<string, unknown>
+    }
+    globalThis.__ga4client = new BetaAnalyticsDataClient({ credentials: parsed })
   }
   return globalThis.__ga4client
+}
+
+function resetClient(): void {
+  globalThis.__ga4client = undefined
 }
 void KEY_CLIENT
 
@@ -112,84 +125,77 @@ const IMPORTANT_TOOLS = ['/merge-pdf', '/compress-pdf', '/split-pdf', '/pdf-to-w
 const MILESTONES      = [5, 10, 25, 50, 100]
 
 async function fetchRealtime(): Promise<GA4RealtimeSnapshot> {
-  const client     = getClient()
-  const property   = `properties/${env.propertyId()}`
-  const now        = Date.now()
+  const client   = getClient()
+  const property = `properties/${env.propertyId()}`
+  const now      = Date.now()
 
-  // ── 1. Realtime report: active users, top pages, device, country, source ──
-  const [realtimeRes] = await client.runRealtimeReport({
+  // ── Single combined report: today's data with all needed dimensions ────────
+  // Note: runRealtimeReport with dimensions fails for many GA4 property types.
+  // runReport (standard) is fully supported and returns today's aggregated data.
+  const [mainRes] = await client.runReport({
     property,
+    dateRanges: [{ startDate: 'today', endDate: 'today' }],
     dimensions: [
       { name: 'pagePath' },
       { name: 'deviceCategory' },
       { name: 'country' },
       { name: 'sessionMedium' },
+      { name: 'browser' },
     ],
-    metrics: [{ name: 'activeUsers' }],
-    minuteRanges: [{ name: 'last30min', startMinutesAgo: 29, endMinutesAgo: 0 }],
-    limit: 20,
-  })
-
-  // ── 2. Realtime browser breakdown ─────────────────────────────────────────
-  const [browserRes] = await client.runRealtimeReport({
-    property,
-    dimensions: [{ name: 'browser' }],
-    metrics:    [{ name: 'activeUsers' }],
-    minuteRanges: [{ name: 'last30min', startMinutesAgo: 29, endMinutesAgo: 0 }],
-    limit: 3,
-  })
-
-  // ── 3. Today's new-users report ───────────────────────────────────────────
-  const [newUsersRes] = await client.runReport({
-    property,
-    dateRanges: [{ startDate: 'today', endDate: 'today' }],
-    metrics:    [{ name: 'newUsers' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'newUsers' },
+      { name: 'sessions' },
+    ],
+    limit: 50,
   })
 
   // ── Aggregate rows ────────────────────────────────────────────────────────
 
-  const pageMap:   Map<string, number> = new Map()
+  const pageMap:    Map<string, number> = new Map()
   const countryMap: Map<string, number> = new Map()
-  const deviceMap: Map<string, number> = new Map()
-  const sourceMap: Map<string, number> = new Map()
-  let totalActive = 0
+  const deviceMap:  Map<string, number> = new Map()
+  const sourceMap:  Map<string, number> = new Map()
+  const browserMap: Map<string, number> = new Map()
+  let totalActive  = 0
+  let totalNewUsers = 0
 
-  for (const row of realtimeRes.rows ?? []) {
+  for (const row of mainRes.rows ?? []) {
     const page    = row.dimensionValues?.[0]?.value ?? '/'
     const device  = row.dimensionValues?.[1]?.value ?? 'unknown'
     const country = row.dimensionValues?.[2]?.value ?? 'Unknown'
     const source  = row.dimensionValues?.[3]?.value ?? '(none)'
-    const users   = parseInt(row.metricValues?.[0]?.value ?? '0', 10)
+    const browser = row.dimensionValues?.[4]?.value ?? 'N/A'
+    const active  = parseInt(row.metricValues?.[0]?.value ?? '0', 10)
+    const newU    = parseInt(row.metricValues?.[1]?.value ?? '0', 10)
 
-    pageMap.set(page,    (pageMap.get(page)    ?? 0) + users)
-    countryMap.set(country, (countryMap.get(country) ?? 0) + users)
-    deviceMap.set(device, (deviceMap.get(device)  ?? 0) + users)
-    sourceMap.set(source, (sourceMap.get(source)  ?? 0) + users)
-    totalActive += users
+    pageMap.set(page,       (pageMap.get(page)        ?? 0) + active)
+    countryMap.set(country, (countryMap.get(country)  ?? 0) + active)
+    deviceMap.set(device,   (deviceMap.get(device)    ?? 0) + active)
+    sourceMap.set(source,   (sourceMap.get(source)    ?? 0) + active)
+    browserMap.set(browser, (browserMap.get(browser)  ?? 0) + active)
+    totalActive   += active
+    totalNewUsers += newU
   }
 
-  // Deduplicate: GA4 realtime returns cross-product of dimensions
-  // Sum per page is the right aggregation; total active may exceed raw sum — use max
-  const totalFromPages = [...pageMap.values()].reduce((a, b) => a + b, 0)
-  totalActive = Math.max(
-    parseInt(realtimeRes.totals?.[0]?.metricValues?.[0]?.value ?? '0', 10),
-    totalFromPages > 0 ? totalActive : 0
-  )
-
+  // Deduplicate aggregation — sum across dimension cross-product may double-count;
+  // use the unique page-level aggregation as the canonical active count.
   const sortedPages   = [...pageMap.entries()].sort((a, b) => b[1] - a[1])
   const topCountry    = [...countryMap.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A'
   const topDevice     = [...deviceMap.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A'
-  const topSource     = [...sourceMap.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '(direct)'
-  const activeSources = [...sourceMap.keys()].filter(Boolean)
+  const topSource     = [...sourceMap.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '(none)'
+  const topBrowser    = [...browserMap.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A'
+  const activeSources = [...sourceMap.keys()].filter(s => s && s !== '(not set)')
 
-  const topBrowser = browserRes.rows?.[0]?.dimensionValues?.[0]?.value ?? 'N/A'
-  const newUsers30m = parseInt(newUsersRes.rows?.[0]?.metricValues?.[0]?.value ?? '0', 10)
+  // Use the page-map total as unique active user count (avoids double-counting)
+  const uniqueActive = [...pageMap.values()].reduce((a, b) => a + b, 0)
+  totalActive = uniqueActive || totalActive
 
   const activePages = sortedPages.slice(0, 5).map(([path, users]) => ({ path, users }))
 
   return {
     activeUsers:   totalActive,
-    newUsers30m,
+    newUsers30m:   totalNewUsers,
     topPage:       sortedPages[0]?.[0] ?? '/',
     topPageUsers:  sortedPages[0]?.[1] ?? 0,
     country:       topCountry,
@@ -366,12 +372,29 @@ async function runOnce(): Promise<void> {
     const snap = await fetchRealtime()
     _snap.value = snap
     await checkAlerts(snap)
-    console.log(`[GA4Monitor] Active: ${snap.activeUsers} | New today: ${snap.newUsers30m} | Top: ${snap.topPage}`)
+    console.log(`[GA4Monitor] ✓ Active: ${snap.activeUsers} | New today: ${snap.newUsers30m} | Top: ${snap.topPage}`)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    // Suppress auth errors from polluting logs if creds not set yet
-    if (!msg.includes('GOOGLE_SERVICE_ACCOUNT_KEY') && !msg.includes('Could not load the default credentials')) {
-      console.warn('[GA4Monitor] Poll failed:', msg)
+    const propId = env.propertyId()
+
+    // Always log the full error with diagnostics so misconfiguration is obvious
+    if (msg.includes('INVALID_ARGUMENT')) {
+      console.warn(
+        `[GA4Monitor] INVALID_ARGUMENT — GA_PROPERTY_ID="${propId}". ` +
+        `Make sure: (1) GA_PROPERTY_ID is the numeric ID only (e.g. "123456789"), ` +
+        `(2) the Service Account email has "Viewer" access to this GA4 property. ` +
+        `Full error: ${msg.slice(0, 300)}`
+      )
+      // Reset client so fresh credentials are used next attempt
+      resetClient()
+    } else if (msg.includes('PERMISSION_DENIED') || msg.includes('403')) {
+      console.warn(
+        `[GA4Monitor] PERMISSION_DENIED — The service account does not have access to property "${propId}". ` +
+        `Grant it "Viewer" role in GA4 Admin → Property Access Management.`
+      )
+      resetClient()
+    } else if (!msg.includes('Could not load the default credentials')) {
+      console.warn('[GA4Monitor] Poll failed:', msg.slice(0, 400))
     }
   }
 }

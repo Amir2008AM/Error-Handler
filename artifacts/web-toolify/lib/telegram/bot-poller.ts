@@ -6,43 +6,66 @@
  * needing a public URL.
  *
  * Started once from instrumentation.ts via globalThis guard.
+ * Uses AbortController so old loop is cleanly cancelled before a new one starts.
  */
 
 import { handleUpdate, type TgUpdate } from './bot-handler'
 
 declare global {
-  // eslint-disable-next-line no-var
   var __botPollingActive: boolean | undefined
+  var __botAbortController: AbortController | undefined
 }
 
-const POLL_TIMEOUT = 25          // seconds — Telegram holds connection this long
-const RETRY_DELAY  = 5_000      // ms — wait before retrying on error
+const POLL_TIMEOUT = 25        // seconds — Telegram holds connection this long
+const RETRY_DELAY  = 5_000     // ms — wait before retrying on error
 
-async function poll(): Promise<void> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function poll(signal: AbortSignal): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) {
     console.warn('[Bot] TELEGRAM_BOT_TOKEN not set — polling disabled')
     return
   }
 
-  // Delete webhook first — required before getUpdates works
+  // Delete webhook + drop any pending session conflicts
   try {
-    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`)
-    console.log('[Bot] Webhook deleted ✓')
+    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook?drop_pending_updates=false`, {
+      signal: AbortSignal.timeout(8_000),
+    })
+    // Close any existing getUpdates sessions
+    await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=-1&timeout=0`, {
+      signal: AbortSignal.timeout(8_000),
+    })
+    console.log('[Bot] Session cleared, long polling starting ✓')
   } catch { /* non-fatal */ }
 
   let offset = 0
-  console.log('[Bot] Long polling started ✓')
 
-  while (true) {
+  while (!signal.aborted) {
     try {
+      // Combine our signal with a timeout signal
+      const timeoutSignal = AbortSignal.timeout((POLL_TIMEOUT + 10) * 1000)
+      const combined = AbortSignal.any
+        ? AbortSignal.any([signal, timeoutSignal])
+        : timeoutSignal
+
       const res = await fetch(
-        `https://api.telegram.org/bot${token}/getUpdates?timeout=${POLL_TIMEOUT}&offset=${offset}&allowed_updates=${encodeURIComponent(JSON.stringify(['message','callback_query']))}`,
-        { signal: AbortSignal.timeout((POLL_TIMEOUT + 10) * 1000) },
+        `https://api.telegram.org/bot${token}/getUpdates?timeout=${POLL_TIMEOUT}&offset=${offset}&allowed_updates=${encodeURIComponent(JSON.stringify(['message', 'callback_query']))}`,
+        { signal: combined },
       )
+
+      if (signal.aborted) break
 
       if (!res.ok) {
         const body = await res.text().catch(() => '')
+        // 409 Conflict: another instance is running — wait and retry
+        if (res.status === 409) {
+          await sleep(10_000)
+          continue
+        }
         console.warn(`[Bot] getUpdates error ${res.status}:`, body.slice(0, 200))
         await sleep(RETRY_DELAY)
         continue
@@ -61,7 +84,7 @@ async function poll(): Promise<void> {
         )
       }
     } catch (err: unknown) {
-      // Timeout or network error — just retry
+      if (signal.aborted) break
       const msg = err instanceof Error ? err.message : String(err)
       if (!msg.includes('TimeoutError') && !msg.includes('aborted')) {
         console.warn('[Bot] poll error:', msg)
@@ -71,18 +94,30 @@ async function poll(): Promise<void> {
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-/** Call once at server startup — safe to call multiple times (guarded) */
+/** Call once at server startup — safe to call multiple times (cancels previous loop first) */
 export function startBotPolling(): void {
-  if (globalThis.__botPollingActive) return
+  // Cancel any existing polling loop
+  if (globalThis.__botAbortController) {
+    globalThis.__botAbortController.abort()
+    globalThis.__botAbortController = undefined
+  }
+
+  if (globalThis.__botPollingActive) {
+    // Let the old loop die, then restart after a short delay
+    globalThis.__botPollingActive = false
+    setTimeout(() => startBotPolling(), 3_000)
+    return
+  }
+
+  const controller = new AbortController()
+  globalThis.__botAbortController = controller
   globalThis.__botPollingActive = true
 
-  // Run in background — don't await
-  poll().catch((err) => {
+  poll(controller.signal).catch((err) => {
     console.error('[Bot] polling crashed:', err)
+    globalThis.__botPollingActive = false
+    globalThis.__botAbortController = undefined
+  }).finally(() => {
     globalThis.__botPollingActive = false
   })
 }
