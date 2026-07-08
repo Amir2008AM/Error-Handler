@@ -1,12 +1,13 @@
 /**
  * Telegram Bot — Message & Callback Handler
  *
- * Full inline-keyboard UI. Every section is a button — no manual commands needed.
+ * Full inline-keyboard navigation. Every section has Refresh + Home buttons.
  *
- * Keyboard layout after login:
- *   [📊 GA4 Live]       [📈 إحصائيات]
- *   [💬 الفيدباك]       [🔔 آخر الرسائل]
- *   [🔧 حالة الجلسة]   [👋 تسجيل الخروج]
+ * Main keyboard:
+ *   [📊 GA4 Live]     [🌍 الدول]
+ *   [📈 إحصائيات]    [📄 الصفحات]
+ *   [💬 الفيدباك]    [🔔 آخر الرسائل]
+ *   [🔧 الجلسة]      [👋 خروج]
  */
 
 import {
@@ -29,18 +30,13 @@ interface TgUser    { id: number; first_name: string }
 interface TgChat    { id: number }
 interface TgMessage { message_id: number; from?: TgUser; chat: TgChat; text?: string }
 interface TgCallbackQuery {
-  id: string
-  from: TgUser
-  message?: TgMessage
-  data?: string
+  id: string; from: TgUser; message?: TgMessage; data?: string
 }
 export interface TgUpdate {
   update_id:       number
   message?:        TgMessage
   callback_query?: TgCallbackQuery
 }
-
-// ── Inline keyboard types ─────────────────────────────────────────────────────
 
 interface IKButton { text: string; callback_data: string }
 type IKMarkup = { inline_keyboard: IKButton[][] }
@@ -53,22 +49,21 @@ async function tgPost(method: string, body: Record<string, unknown>): Promise<un
   const token = TOKEN()
   if (!token) return
   const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(body),
-    signal:  AbortSignal.timeout(10_000),
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body:   JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
   }).catch((err: Error) => { console.warn(`[Bot] ${method} failed:`, err.message); return null })
   return res ? res.json().catch(() => null) : null
 }
 
 async function send(chatId: number, text: string, keyboard?: IKMarkup): Promise<void> {
-  const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML' }
+  const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }
   if (keyboard) body.reply_markup = keyboard
   await tgPost('sendMessage', body)
 }
 
 async function editText(chatId: number, msgId: number, text: string, keyboard?: IKMarkup): Promise<void> {
-  const body: Record<string, unknown> = { chat_id: chatId, message_id: msgId, text, parse_mode: 'HTML' }
+  const body: Record<string, unknown> = { chat_id: chatId, message_id: msgId, text, parse_mode: 'HTML', disable_web_page_preview: true }
   if (keyboard) body.reply_markup = keyboard
   await tgPost('editMessageText', body)
 }
@@ -77,29 +72,25 @@ async function answerCb(callbackId: string, text?: string): Promise<void> {
   await tgPost('answerCallbackQuery', { callback_query_id: callbackId, text: text ?? '' })
 }
 
-async function sendAll(chatId: number, messages: string[], keyboard?: IKMarkup): Promise<void> {
-  for (let i = 0; i < messages.length; i++) {
-    const isLast = i === messages.length - 1
-    await send(chatId, messages[i], isLast ? keyboard : undefined)
-    if (!isLast) await new Promise((r) => setTimeout(r, 350))
-  }
-}
-
 // ── Keyboards ─────────────────────────────────────────────────────────────────
 
 const MAIN_MENU: IKMarkup = {
   inline_keyboard: [
     [
-      { text: '📊 GA4 Live',     callback_data: 'ga4' },
-      { text: '📈 إحصائيات',     callback_data: 'stats' },
+      { text: '📊 GA4 Live',      callback_data: 'ga4' },
+      { text: '🌍 الدول',          callback_data: 'countries' },
     ],
     [
-      { text: '💬 الفيدباك',     callback_data: 'feedback:0' },
-      { text: '🔔 آخر الرسائل',  callback_data: 'latest' },
+      { text: '📈 إحصائيات',       callback_data: 'stats' },
+      { text: '📄 الصفحات',        callback_data: 'pages' },
     ],
     [
-      { text: '🔧 حالة الجلسة',  callback_data: 'status' },
-      { text: '👋 تسجيل الخروج', callback_data: 'logout' },
+      { text: '💬 الفيدباك',       callback_data: 'feedback:0' },
+      { text: '🔔 آخر الرسائل',    callback_data: 'latest' },
+    ],
+    [
+      { text: '🔧 حالة الجلسة',    callback_data: 'status' },
+      { text: '👋 تسجيل الخروج',   callback_data: 'logout' },
     ],
   ],
 }
@@ -110,28 +101,75 @@ const BACK_MENU: IKMarkup = {
   ],
 }
 
-function feedbackNav(page: number, totalPages: number): IKMarkup {
-  const nav: IKButton[] = []
-  if (page > 0)             nav.push({ text: '⬅️ السابق', callback_data: `feedback:${page - 1}` })
-  if (page < totalPages - 1) nav.push({ text: 'التالي ➡️', callback_data: `feedback:${page + 1}` })
-  return {
-    inline_keyboard: [
-      nav.length ? nav : [],
-      [{ text: '🏠 القائمة الرئيسية', callback_data: 'menu' }],
-    ].filter((r) => r.length > 0),
-  }
-}
-
 const GA4_KEYBOARD: IKMarkup = {
   inline_keyboard: [
     [
-      { text: '🔄 تحديث',             callback_data: 'ga4' },
-      { text: '🏠 القائمة الرئيسية', callback_data: 'menu' },
+      { text: '🔄 تحديث',          callback_data: 'ga4' },
+      { text: '🌍 الدول',           callback_data: 'countries' },
+    ],
+    [
+      { text: '📄 الصفحات',         callback_data: 'pages' },
+      { text: '🏠 القائمة',         callback_data: 'menu' },
     ],
   ],
 }
 
-// ── Formatters ────────────────────────────────────────────────────────────────
+const COUNTRIES_KEYBOARD: IKMarkup = {
+  inline_keyboard: [
+    [
+      { text: '🔄 تحديث',           callback_data: 'countries' },
+      { text: '📊 GA4 Live',        callback_data: 'ga4' },
+    ],
+    [{ text: '🏠 القائمة الرئيسية', callback_data: 'menu' }],
+  ],
+}
+
+const PAGES_KEYBOARD: IKMarkup = {
+  inline_keyboard: [
+    [
+      { text: '🔄 تحديث',           callback_data: 'pages' },
+      { text: '📊 GA4 Live',        callback_data: 'ga4' },
+    ],
+    [{ text: '🏠 القائمة الرئيسية', callback_data: 'menu' }],
+  ],
+}
+
+const STATS_KEYBOARD: IKMarkup = {
+  inline_keyboard: [
+    [
+      { text: '🔄 تحديث',           callback_data: 'stats' },
+      { text: '📊 GA4 Live',        callback_data: 'ga4' },
+    ],
+    [{ text: '🏠 القائمة الرئيسية', callback_data: 'menu' }],
+  ],
+}
+
+const LATEST_KEYBOARD: IKMarkup = {
+  inline_keyboard: [
+    [
+      { text: '🔄 تحديث',           callback_data: 'latest' },
+      { text: '💬 الفيدباك',        callback_data: 'feedback:0' },
+    ],
+    [{ text: '🏠 القائمة الرئيسية', callback_data: 'menu' }],
+  ],
+}
+
+function feedbackNav(page: number, totalPages: number): IKMarkup {
+  const nav: IKButton[] = []
+  if (page > 0)              nav.push({ text: '⬅️ السابق',  callback_data: `feedback:${page - 1}` })
+  if (page < totalPages - 1) nav.push({ text: 'التالي ➡️', callback_data: `feedback:${page + 1}` })
+  return {
+    inline_keyboard: [
+      ...(nav.length ? [nav] : []),
+      [
+        { text: '🔄 تحديث',           callback_data: 'feedback:0' },
+        { text: '🏠 القائمة',         callback_data: 'menu' },
+      ],
+    ],
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const TYPE_ICON: Record<string, string> = {
   suggestion: '💡', bug: '🐛', feature: '✨', general: '💬',
@@ -140,37 +178,195 @@ const TYPE_AR: Record<string, string> = {
   suggestion: 'اقتراح', bug: 'مشكلة', feature: 'طلب ميزة', general: 'عام',
 }
 
-function bar(ratio: number, total = 8): string {
-  const filled = Math.round(ratio * total)
-  return '█'.repeat(filled) + '░'.repeat(total - filled)
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Saudi Arabia': '🇸🇦', 'United States': '🇺🇸', 'United Arab Emirates': '🇦🇪',
+  'Egypt': '🇪🇬', 'Kuwait': '🇰🇼', 'Qatar': '🇶🇦', 'Bahrain': '🇧🇭',
+  'Jordan': '🇯🇴', 'Iraq': '🇮🇶', 'Lebanon': '🇱🇧', 'Morocco': '🇲🇦',
+  'Tunisia': '🇹🇳', 'Algeria': '🇩🇿', 'Libya': '🇱🇾', 'Sudan': '🇸🇩',
+  'Yemen': '🇾🇪', 'Oman': '🇴🇲', 'Syria': '🇸🇾', 'Palestine': '🇵🇸',
+  'United Kingdom': '🇬🇧', 'Germany': '🇩🇪', 'France': '🇫🇷', 'Canada': '🇨🇦',
+  'Australia': '🇦🇺', 'India': '🇮🇳', 'Pakistan': '🇵🇰', 'Turkey': '🇹🇷',
+  'Indonesia': '🇮🇩', 'Malaysia': '🇲🇾', 'Netherlands': '🇳🇱', 'Spain': '🇪🇸',
+  'Italy': '🇮🇹', 'Russia': '🇷🇺', 'Brazil': '🇧🇷', 'China': '🇨🇳',
+  'Japan': '🇯🇵', 'South Korea': '🇰🇷', 'Nigeria': '🇳🇬', 'Singapore': '🇸🇬',
 }
 
+function flag(country: string): string { return COUNTRY_FLAGS[country] ?? '🌐' }
+function bar(ratio: number, len = 8): string {
+  const f = Math.max(0, Math.min(len, Math.round(ratio * len)))
+  return '█'.repeat(f) + '░'.repeat(len - f)
+}
+function pad(s: string, n: number): string {
+  return s.length >= n ? s.slice(0, n) : s + ' '.repeat(n - s.length)
+}
 function timeAgo(ms: number): string {
-  const diff = Date.now() - ms
-  const min  = Math.floor(diff / 60_000)
-  const hr   = Math.floor(diff / 3_600_000)
-  const day  = Math.floor(diff / 86_400_000)
-  if (day >= 1) return `${day}ي`
-  if (hr  >= 1) return `${hr}س`
-  if (min >= 1) return `${min}د`
+  const d = Date.now() - ms
+  const m = Math.floor(d / 60_000), h = Math.floor(d / 3_600_000), dy = Math.floor(d / 86_400_000)
+  if (dy >= 1) return `${dy}ي`
+  if (h  >= 1) return `${h}س`
+  if (m  >= 1) return `${m}د`
   return 'الآن'
 }
-
-function pad(s: string, len: number): string {
-  return s.length >= len ? s.slice(0, len) : s + ' '.repeat(len - s.length)
+function fmtAgo(ts: number): string {
+  const m = Math.round((Date.now() - ts) / 60_000)
+  return m === 0 ? 'أقل من دقيقة' : `${m} دقيقة`
 }
-
 function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
+function deviceIcon(d: string): string {
+  if (d === 'mobile') return '📱'
+  if (d === 'tablet') return '📟'
+  return '🖥'
+}
+function sourceIcon(s: string): string {
+  if (s.includes('Organic')) return '🔍'
+  if (s.includes('Social'))  return '📲'
+  if (s.includes('Referral'))return '🔗'
+  return '🚀'
+}
 
-// ── Section builders ──────────────────────────────────────────────────────────
+// ── GA4 section builders ──────────────────────────────────────────────────────
+
+function buildGa4(): string {
+  const snap = getGa4Snapshot()
+
+  if (!snap) {
+    return [
+      `📊 <b>Google Analytics 4 — Live</b>`,
+      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+      ``,
+      `⏳ <b>جاري جمع البيانات…</b>`,
+      ``,
+      `<i>تأكد من ضبط:</i>`,
+      `<code>GA_PROPERTY_ID</code>`,
+      `<code>GOOGLE_SERVICE_ACCOUNT_KEY</code>`,
+    ].join('\n')
+  }
+
+  const devIco = deviceIcon(snap.device)
+  const srcIco = sourceIcon(snap.source)
+  const flg    = COUNTRY_FLAGS[snap.country] ?? '🌐'
+
+  // Device breakdown bar
+  const totalDevUsers = snap.devices.reduce((s, d) => s + d.users, 0) || 1
+  const deviceLines = snap.devices.map(d =>
+    `<code>${deviceIcon(d.device)} ${pad(d.device, 8)} ${String(d.users).padStart(3)}  ${bar(d.users / totalDevUsers, 6)}  ${Math.round((d.users / totalDevUsers) * 100)}%</code>`
+  )
+
+  // Source breakdown
+  const totalSrcUsers = snap.sources.reduce((s, x) => s + x.users, 0) || 1
+  const sourceLines = snap.sources.slice(0, 4).map(s =>
+    `<code>${sourceIcon(s.source)} ${pad(s.source, 14)} ${String(s.users).padStart(3)}  ${bar(s.users / totalSrcUsers, 5)}</code>`
+  )
+
+  // Pages
+  const pagesBlock = snap.activePages.length
+    ? snap.activePages.slice(0, 5).map((p, i) =>
+        `<code>${i + 1}. ${pad(p.path.slice(0, 22), 22)} ${String(p.users).padStart(3)} 👤</code>`
+      ).join('\n')
+    : `<code>  — لا يوجد نشاط حالياً</code>`
+
+  return [
+    `📊 <b>Google Analytics — Live</b>`,
+    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    ``,
+    `<code>🟢 نشطون الآن          ${String(snap.realtimeActive).padStart(5)}</code>`,
+    `<code>👥 زوار اليوم          ${String(snap.todayUsers).padStart(5)}</code>`,
+    `<code>🆕 جدد اليوم           ${String(snap.newUsers).padStart(5)}</code>`,
+    `<code>📋 جلسات اليوم         ${String(snap.todaySessions).padStart(5)}</code>`,
+    ``,
+    `<b>📄 أكثر الصفحات نشاطاً</b>`,
+    pagesBlock,
+    ``,
+    `<b>🌍 الموقع الجغرافي</b>`,
+    `<code>${flg} ${snap.country}</code>`,
+    ``,
+    `<b>📱 الأجهزة</b>`,
+    ...deviceLines,
+    ``,
+    `<b>📡 مصادر الزيارات</b>`,
+    ...sourceLines,
+    ``,
+    `${devIco} <b>الجهاز:</b> ${snap.device}   🌐 <b>المتصفح:</b> ${snap.browser}`,
+    `${srcIco} <b>المصدر الرئيسي:</b> ${snap.source}`,
+    ``,
+    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    `🕐 آخر تحديث: منذ ${fmtAgo(snap.fetchedAt)}`,
+  ].join('\n')
+}
+
+function buildCountries(): string {
+  const snap = getGa4Snapshot()
+
+  if (!snap) {
+    return `🌍 <b>الدول</b>\n\n⏳ <i>البيانات غير متوفرة بعد…</i>`
+  }
+
+  if (!snap.topCountries.length) {
+    return `🌍 <b>الدول</b>\n\n<i>لا توجد زيارات اليوم بعد.</i>`
+  }
+
+  const total = snap.topCountries.reduce((s, c) => s + c.users, 0) || 1
+  const lines = snap.topCountries.map((c, i) => {
+    const pct = Math.round((c.users / total) * 100)
+    const b   = bar(c.users / total, 7)
+    return `<code>${String(i + 1).padStart(2)}. ${flag(c.country)} ${pad(c.country, 18)} ${String(c.users).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
+  })
+
+  return [
+    `🌍 <b>الدول — اليوم</b>`,
+    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    ``,
+    `<code>👥 إجمالي زوار اليوم: ${snap.todayUsers}</code>`,
+    ``,
+    ...lines,
+    ``,
+    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    `🕐 منذ ${fmtAgo(snap.fetchedAt)}`,
+  ].join('\n')
+}
+
+function buildPages(): string {
+  const snap = getGa4Snapshot()
+
+  if (!snap) {
+    return `📄 <b>الصفحات</b>\n\n⏳ <i>البيانات غير متوفرة بعد…</i>`
+  }
+
+  if (!snap.activePages.length) {
+    return `📄 <b>الصفحات</b>\n\n<i>لا توجد زيارات اليوم بعد.</i>`
+  }
+
+  const total = snap.activePages.reduce((s, p) => s + p.users, 0) || 1
+  const lines = snap.activePages.map((p, i) => {
+    const pct = Math.round((p.users / total) * 100)
+    const b   = bar(p.users / total, 6)
+    const name = p.path === '/' ? '/ (الرئيسية)' : p.path
+    return `<code>${String(i + 1).padStart(2)}. ${pad(name.slice(0, 20), 20)} ${String(p.users).padStart(3)}  ${b}  ${String(pct).padStart(3)}%</code>`
+  })
+
+  return [
+    `📄 <b>أكثر الصفحات زيارةً — اليوم</b>`,
+    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    ``,
+    `<code>🟢 نشطون الآن: ${snap.realtimeActive}   👥 اليوم: ${snap.todayUsers}</code>`,
+    ``,
+    ...lines,
+    ``,
+    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    `🕐 منذ ${fmtAgo(snap.fetchedAt)}`,
+  ].join('\n')
+}
+
+// ── Feedback section builders ─────────────────────────────────────────────────
 
 function buildMainMenuText(rows: FeedbackRow[]): string {
+  const snap  = getGa4Snapshot()
   const total = rows.length
   const now   = Date.now()
-  const h24   = rows.filter((r) => now - r.created_at < 86_400_000).length
-  const d7    = rows.filter((r) => now - r.created_at < 7 * 86_400_000).length
+  const h24   = rows.filter(r => now - r.created_at < 86_400_000).length
+  const d7    = rows.filter(r => now - r.created_at < 7 * 86_400_000).length
 
   const counts = { suggestion: 0, bug: 0, feature: 0, general: 0 }
   for (const r of rows) {
@@ -178,10 +374,16 @@ function buildMainMenuText(rows: FeedbackRow[]): string {
     if (k in counts) counts[k]++
   }
 
+  const ga4Line = snap
+    ? `<code>🟢 نشطون الآن: ${snap.realtimeActive}   👥 اليوم: ${snap.todayUsers}   🆕 جدد: ${snap.newUsers}</code>`
+    : `<code>⏳ GA4 — جاري الاتصال…</code>`
+
   return [
     `<b>╔══════════════════════════╗</b>`,
     `<b>║   🖥  TOOLIFY ADMIN      ║</b>`,
     `<b>╚══════════════════════════╝</b>`,
+    ``,
+    ga4Line,
     ``,
     `<b>📊 ملخص الفيدباك</b>`,
     `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
@@ -202,11 +404,9 @@ function buildMainMenuText(rows: FeedbackRow[]): string {
 }
 
 function buildLatestFeedback(rows: FeedbackRow[]): string {
-  if (rows.length === 0) {
-    return `<b>🔔 آخر الرسائل</b>\n\n<i>لا توجد رسائل بعد.</i>`
-  }
+  if (rows.length === 0) return `<b>🔔 آخر الرسائل</b>\n\n<i>لا توجد رسائل بعد.</i>`
   const latest = rows.slice(0, 5)
-  const lines  = [
+  const lines: string[] = [
     `<b>🔔 آخر ${latest.length} رسائل</b>`,
     `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
   ]
@@ -219,7 +419,7 @@ function buildLatestFeedback(rows: FeedbackRow[]): string {
     lines.push(`${icon} <b>${type}</b>  ·  <i>${ago}</i>`)
     lines.push(`<i>${escHtml(msg)}</i>`)
     const meta: string[] = []
-    if (r.country)     meta.push(`🌍 ${r.country}`)
+    if (r.country)     meta.push(`${flag(r.country)} ${r.country}`)
     if (r.device_type) meta.push(r.device_type === 'mobile' ? '📱' : '🖥️')
     if (r.page_name)   meta.push(`📄 ${r.page_name}`)
     if (meta.length)   lines.push(`<code>${meta.join('  ')}</code>`)
@@ -228,15 +428,13 @@ function buildLatestFeedback(rows: FeedbackRow[]): string {
 }
 
 function buildFeedbackPage(rows: FeedbackRow[], page = 0, perPage = 4): { text: string; pages: number } {
-  const total  = rows.length
-  const pages  = Math.max(1, Math.ceil(total / perPage))
-  const slice  = rows.slice(page * perPage, (page + 1) * perPage)
+  const total = rows.length
+  const pages = Math.max(1, Math.ceil(total / perPage))
+  const slice = rows.slice(page * perPage, (page + 1) * perPage)
 
-  if (slice.length === 0) {
-    return { text: `📭 لا توجد رسائل في هذه الصفحة.`, pages }
-  }
+  if (slice.length === 0) return { text: `📭 لا توجد رسائل في هذه الصفحة.`, pages }
 
-  const lines = [
+  const lines: string[] = [
     `<b>💬 الفيدباك — صفحة ${page + 1}/${pages}</b>  <code>(${total} إجمالي)</code>`,
     `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
   ]
@@ -248,10 +446,10 @@ function buildFeedbackPage(rows: FeedbackRow[], page = 0, perPage = 4): { text: 
     lines.push(``)
     lines.push(`${icon} <b>${type}</b>  ·  <i>${ago}</i>`)
     lines.push(escHtml(msg))
-    if (r.email)       lines.push(`📧 <code>${r.email}</code>`)
+    if (r.email) lines.push(`📧 <code>${r.email}</code>`)
     const meta: string[] = []
     if (r.page_name)   meta.push(`📄 ${r.page_name}`)
-    if (r.country)     meta.push(`🌍 ${r.country}`)
+    if (r.country)     meta.push(`${flag(r.country)} ${r.country}`)
     if (r.device_type) meta.push(r.device_type === 'mobile' ? '📱 mobile' : '🖥️ desktop')
     if (meta.length)   lines.push(`<code>${meta.join('  ')}</code>`)
     lines.push(`<code>─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─</code>`)
@@ -260,36 +458,65 @@ function buildFeedbackPage(rows: FeedbackRow[], page = 0, perPage = 4): { text: 
 }
 
 function buildStats(rows: FeedbackRow[]): string {
+  const snap  = getGa4Snapshot()
   const total = rows.length
-  if (total === 0) return `📈 <b>الإحصائيات</b>\n\n<i>لا توجد بيانات بعد.</i>`
+
+  const ga4Block = snap ? [
+    ``,
+    `<b>📊 بيانات Google Analytics — اليوم</b>`,
+    `<code>🟢 نشطون الآن:   ${String(snap.realtimeActive).padStart(5)}</code>`,
+    `<code>👥 زوار اليوم:   ${String(snap.todayUsers).padStart(5)}</code>`,
+    `<code>🆕 جدد اليوم:    ${String(snap.newUsers).padStart(5)}</code>`,
+    `<code>📋 جلسات اليوم:  ${String(snap.todaySessions).padStart(5)}</code>`,
+    ``,
+    `<b>🌍 أهم 5 دول اليوم</b>`,
+    ...snap.topCountries.slice(0, 5).map((c, i) => {
+      const pct = snap.todayUsers > 0 ? Math.round((c.users / snap.todayUsers) * 100) : 0
+      return `<code>${i + 1}. ${flag(c.country)} ${pad(c.country, 16)} ${String(c.users).padStart(3)}  ${bar(c.users / (snap.todayUsers || 1), 5)}  ${pct}%</code>`
+    }),
+  ] : []
+
+  if (total === 0) {
+    return [
+      `<b>📈 إحصائيات تفصيلية</b>`,
+      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+      ...ga4Block,
+      ``,
+      `<i>لا توجد بيانات فيدباك بعد.</i>`,
+    ].join('\n')
+  }
 
   const pageCount:   Record<string, number> = {}
   const countryCount: Record<string, number> = {}
-  const deviceCount: Record<string, number> = {}
+  const deviceCount:  Record<string, number> = {}
   for (const r of rows) {
-    if (r.page_name)   pageCount[r.page_name]     = (pageCount[r.page_name]     ?? 0) + 1
-    if (r.country)     countryCount[r.country]     = (countryCount[r.country]     ?? 0) + 1
-    if (r.device_type) deviceCount[r.device_type]  = (deviceCount[r.device_type]  ?? 0) + 1
+    if (r.page_name)   pageCount[r.page_name]    = (pageCount[r.page_name]    ?? 0) + 1
+    if (r.country)     countryCount[r.country]   = (countryCount[r.country]   ?? 0) + 1
+    if (r.device_type) deviceCount[r.device_type]= (deviceCount[r.device_type]?? 0) + 1
   }
   const topPages   = Object.entries(pageCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
   const topCountry = Object.entries(countryCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
-  const withEmail  = rows.filter((r) => r.email).length
+  const withEmail  = rows.filter(r => r.email).length
 
   return [
     `<b>📈 إحصائيات تفصيلية</b>`,
     `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
+    ...ga4Block,
+    ``,
+    `<b>📊 إحصائيات الفيدباك (${total} رسالة)</b>`,
+    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
     ``,
     `<b>📱 الأجهزة</b>`,
     ...Object.entries(deviceCount).sort((a, b) => b[1] - a[1]).map(([d, c]) =>
-      `<code>${d === 'mobile' ? '📱' : '🖥️'} ${pad(d, 10)} ${String(c).padStart(3)}  ${bar(c / total, 6)}</code>`
+      `<code>${deviceIcon(d)} ${pad(d, 10)} ${String(c).padStart(3)}  ${bar(c / total, 6)}</code>`
     ),
     ``,
-    `<b>🌍 أكثر الدول</b>`,
+    `<b>🌍 أكثر الدول (فيدباك)</b>`,
     ...topCountry.map(([c, n]) =>
-      `<code>🌐 ${pad(c, 12)} ${String(n).padStart(3)}  ${bar(n / total, 6)}</code>`
+      `<code>${flag(c)} ${pad(c, 14)} ${String(n).padStart(3)}  ${bar(n / total, 5)}</code>`
     ),
     ``,
-    `<b>📄 أكثر الصفحات</b>`,
+    `<b>📄 أكثر الصفحات (فيدباك)</b>`,
     ...topPages.map(([p, n]) =>
       `<code>${String(n).padStart(3)}×  ${escHtml(p.slice(0, 22))}</code>`
     ),
@@ -299,62 +526,13 @@ function buildStats(rows: FeedbackRow[]): string {
   ].join('\n')
 }
 
-function buildGa4(): string {
-  const snap = getGa4Snapshot()
-
-  if (!snap) {
-    return [
-      `📊 <b>Google Analytics 4 — Live</b>`,
-      `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-      ``,
-      `⏳ <b>جاري جمع البيانات…</b>`,
-      ``,
-      `<i>تأكد من ضبط المتغيرات:</i>`,
-      `<code>GA_PROPERTY_ID</code>`,
-      `<code>GOOGLE_SERVICE_ACCOUNT_KEY</code>`,
-    ].join('\n')
-  }
-
-  const deviceIcon = snap.device === 'mobile' ? '📱' : snap.device === 'tablet' ? '📟' : '🖥️'
-  const srcIcon    = snap.source.includes('Organic')  ? '🔍'
-                   : snap.source.includes('Social')   ? '📲'
-                   : snap.source.includes('Referral') ? '🔗' : '🚀'
-  const updatedAgo = Math.round((Date.now() - snap.fetchedAt) / 60_000)
-
-  const pagesBlock = snap.activePages.length
-    ? snap.activePages.map((p, i) =>
-        `<code>${i + 1}. ${p.path.slice(0, 25).padEnd(25)} ${String(p.users).padStart(3)} 👤</code>`
-      ).join('\n')
-    : `<code>  — لا يوجد نشاط حالياً</code>`
-
-  return [
-    `📊 <b>Google Analytics — Live</b>`,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-    ``,
-    `👥 <b>نشطون الآن (30 د):</b>  <b>${snap.activeUsers}</b>`,
-    `🆕 <b>جدد اليوم:</b>           <b>${snap.newUsers30m}</b>`,
-    ``,
-    `<b>📄 أكثر الصفحات نشاطاً</b>`,
-    pagesBlock,
-    ``,
-    `🌍 <b>الدولة:</b>    ${snap.country}`,
-    `${deviceIcon} <b>الجهاز:</b>   ${snap.device}`,
-    `🌐 <b>المتصفح:</b>  ${snap.browser}`,
-    `${srcIcon} <b>المصدر:</b>   ${snap.source}`,
-    ``,
-    `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
-    `🕐 آخر تحديث: منذ ${updatedAgo === 0 ? 'أقل من دقيقة' : `${updatedAgo} دقيقة`}`,
-  ].join('\n')
-}
-
-// ── Handle callback_query (button press) ──────────────────────────────────────
+// ── Callback handler ──────────────────────────────────────────────────────────
 
 async function handleCallback(cb: TgCallbackQuery): Promise<void> {
   const chatId = cb.message?.chat.id
   const msgId  = cb.message?.message_id
   if (!chatId) return
 
-  // Must be authenticated
   if (!isAuthenticated(chatId)) {
     await answerCb(cb.id, '🔒 انتهت جلستك — أرسل /start')
     return
@@ -363,16 +541,13 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
   const data = cb.data ?? ''
   await answerCb(cb.id)
 
-  // ── menu ──────────────────────────────────────────────────────────────────
   if (data === 'menu') {
-    const rows = dbGetFeedback(200)
-    const text = buildMainMenuText(rows)
+    const text = buildMainMenuText(dbGetFeedback(200))
     if (msgId) await editText(chatId, msgId, text, MAIN_MENU)
     else       await send(chatId, text, MAIN_MENU)
     return
   }
 
-  // ── ga4 ───────────────────────────────────────────────────────────────────
   if (data === 'ga4') {
     const text = buildGa4()
     if (msgId) await editText(chatId, msgId, text, GA4_KEYBOARD)
@@ -380,25 +555,34 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     return
   }
 
-  // ── stats ─────────────────────────────────────────────────────────────────
+  if (data === 'countries') {
+    const text = buildCountries()
+    if (msgId) await editText(chatId, msgId, text, COUNTRIES_KEYBOARD)
+    else       await send(chatId, text, COUNTRIES_KEYBOARD)
+    return
+  }
+
+  if (data === 'pages') {
+    const text = buildPages()
+    if (msgId) await editText(chatId, msgId, text, PAGES_KEYBOARD)
+    else       await send(chatId, text, PAGES_KEYBOARD)
+    return
+  }
+
   if (data === 'stats') {
-    const rows = dbGetFeedback(500)
-    const text = buildStats(rows)
-    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
-    else       await send(chatId, text, BACK_MENU)
+    const text = buildStats(dbGetFeedback(500))
+    if (msgId) await editText(chatId, msgId, text, STATS_KEYBOARD)
+    else       await send(chatId, text, STATS_KEYBOARD)
     return
   }
 
-  // ── latest ────────────────────────────────────────────────────────────────
   if (data === 'latest') {
-    const rows = dbGetFeedback(200)
-    const text = buildLatestFeedback(rows)
-    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
-    else       await send(chatId, text, BACK_MENU)
+    const text = buildLatestFeedback(dbGetFeedback(200))
+    if (msgId) await editText(chatId, msgId, text, LATEST_KEYBOARD)
+    else       await send(chatId, text, LATEST_KEYBOARD)
     return
   }
 
-  // ── feedback:<page> ───────────────────────────────────────────────────────
   if (data.startsWith('feedback:')) {
     const page = parseInt(data.split(':')[1] ?? '0', 10) || 0
     const rows = dbGetFeedback(500)
@@ -409,7 +593,6 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     return
   }
 
-  // ── status ────────────────────────────────────────────────────────────────
   if (data === 'status') {
     const rem  = sessionRemainingMs(chatId)
     const text = rem <= 0
@@ -420,48 +603,52 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     return
   }
 
-  // ── logout ────────────────────────────────────────────────────────────────
   if (data === 'logout') {
     logout(chatId)
-    const text = [`<b>👋 تم تسجيل الخروج</b>`, ``, `أرسل /start للدخول مجدداً.`].join('\n')
+    const text = `<b>👋 تم تسجيل الخروج</b>\n\nأرسل /start للدخول مجدداً.`
     if (msgId) await editText(chatId, msgId, text)
     else       await send(chatId, text)
   }
 }
 
-// ── Handle text commands (kept for power users) ───────────────────────────────
+// ── Command handler ───────────────────────────────────────────────────────────
 
 async function handleCommand(chatId: number, text: string): Promise<void> {
   const cmd = text.trim().split(/\s+/)[0].toLowerCase()
 
   if (cmd === '/dashboard' || cmd === '/start') {
-    const rows = dbGetFeedback(200)
-    await sendAll(chatId, [buildMainMenuText(rows)], MAIN_MENU)
+    await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
     return
   }
   if (cmd === '/ga4') {
     await send(chatId, buildGa4(), GA4_KEYBOARD)
     return
   }
+  if (cmd === '/countries') {
+    await send(chatId, buildCountries(), COUNTRIES_KEYBOARD)
+    return
+  }
+  if (cmd === '/pages') {
+    await send(chatId, buildPages(), PAGES_KEYBOARD)
+    return
+  }
   if (cmd === '/stats') {
-    const rows = dbGetFeedback(500)
-    await send(chatId, buildStats(rows), BACK_MENU)
+    await send(chatId, buildStats(dbGetFeedback(500)), STATS_KEYBOARD)
     return
   }
   if (cmd === '/feedback') {
-    const rows        = dbGetFeedback(500)
+    const rows = dbGetFeedback(500)
     const { text: t, pages } = buildFeedbackPage(rows, 0)
     await send(chatId, t, feedbackNav(0, pages))
     return
   }
   if (cmd === '/latest') {
-    const rows = dbGetFeedback(200)
-    await send(chatId, buildLatestFeedback(rows), BACK_MENU)
+    await send(chatId, buildLatestFeedback(dbGetFeedback(200)), LATEST_KEYBOARD)
     return
   }
   if (cmd === '/status') {
-    const rem  = sessionRemainingMs(chatId)
-    const msg  = rem <= 0
+    const rem = sessionRemainingMs(chatId)
+    const msg = rem <= 0
       ? `⏰ انتهت جلستك. أرسل /start للدخول مجدداً.`
       : [`<b>🔐 الجلسة نشطة</b>`, `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`, `⏳ تنتهي بعد: <b>${formatSession(rem)}</b>`].join('\n')
     await send(chatId, msg, BACK_MENU)
@@ -477,11 +664,12 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
       `<b>🤖 لوحة تحكم Toolify</b>`,
       `<code>━━━━━━━━━━━━━━━━━━━━━━━━━━</code>`,
       ``,
-      `استخدم <b>الأزرار</b> في الداشبورد للتنقل بين الأقسام.`,
+      `استخدم <b>الأزرار</b> في الداشبورد للتنقل.`,
       ``,
-      `أوامر متاحة:`,
       `/dashboard — الداشبورد الرئيسي`,
       `/ga4       — Google Analytics Live`,
+      `/countries — أكثر الدول زيارةً`,
+      `/pages     — أكثر الصفحات زيارةً`,
       `/stats     — إحصائيات تفصيلية`,
       `/feedback  — قائمة الفيدباك`,
       `/latest    — آخر الرسائل`,
@@ -491,16 +679,13 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     return
   }
 
-  // Unknown command — show main menu
-  const rows = dbGetFeedback(200)
-  await send(chatId, buildMainMenuText(rows), MAIN_MENU)
+  // Unknown — show main menu
+  await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
 }
 
 // ── Main entry ────────────────────────────────────────────────────────────────
 
 export async function handleUpdate(update: TgUpdate): Promise<void> {
-
-  // ── callback_query (button press) ─────────────────────────────────────────
   if (update.callback_query) {
     await handleCallback(update.callback_query)
     return
@@ -512,13 +697,11 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   const chatId = message.chat.id
   const text   = message.text.trim()
 
-  // ── Already authenticated ─────────────────────────────────────────────────
   if (isAuthenticated(chatId)) {
     await handleCommand(chatId, text)
     return
   }
 
-  // ── /start → begin login ──────────────────────────────────────────────────
   if (text.toLowerCase() === '/start') {
     startLogin(chatId)
     await send(chatId, [
@@ -531,7 +714,6 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
     return
   }
 
-  // ── In login flow ─────────────────────────────────────────────────────────
   const loginState = getLoginState(chatId)
 
   if (loginState === 'idle') {
@@ -583,9 +765,8 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
         ``,
         `جاري تحميل الداشبورد…`,
       ].join('\n'))
-      await new Promise((r) => setTimeout(r, 600))
-      const rows = dbGetFeedback(200)
-      await send(chatId, buildMainMenuText(rows), MAIN_MENU)
+      await new Promise(r => setTimeout(r, 600))
+      await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
       break
     }
 
