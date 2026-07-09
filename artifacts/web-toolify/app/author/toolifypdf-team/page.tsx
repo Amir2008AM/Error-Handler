@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Script from 'next/script'
-import { PILLAR_ARTICLE, BLOG_ARTICLES, ALL_BLOG_ARTICLES } from '@/lib/blog'
+import { PILLAR_ARTICLES, BLOG_ARTICLES } from '@/lib/blog'
 
 export const metadata: Metadata = {
   title: { absolute: 'ToolifyPDF Team — Author Profile | Toolify' },
@@ -42,7 +42,7 @@ const schema = {
 }
 
 export default function AuthorPage() {
-  const articles = [PILLAR_ARTICLE, ...BLOG_ARTICLES]
+  const articles = [...PILLAR_ARTICLES, ...BLOG_ARTICLES]
 
   return (
     <>

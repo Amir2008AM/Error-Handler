@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PILLAR_ARTICLE, BLOG_ARTICLES, type BlogArticle } from '@/lib/blog'
+import { PILLAR_ARTICLES, BLOG_ARTICLES, type BlogArticle } from '@/lib/blog'
 
 export const metadata: Metadata = {
   title: { absolute: 'Blog — PDF & Image Tips and Guides | Toolify' },
@@ -19,17 +19,18 @@ export const metadata: Metadata = {
 
 /* ── Pillar card (featured, pinned) ───────────────────────────────────── */
 
-function PillarArticleCard() {
+function PillarArticleCard({ article }: { article: BlogArticle }) {
   return (
     <Link
-      href={`/blog/${PILLAR_ARTICLE.slug}`}
-      className="group block rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-white border-2 border-amber-200"
-      aria-label={`Featured: ${PILLAR_ARTICLE.title}`}
+      href={`/blog/${article.slug}`}
+      className="group block rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-white border-2"
+      style={{ borderColor: `${article.color}33` }}
+      aria-label={`Featured: ${article.title}`}
     >
       {/* Gradient header — taller than regular cards */}
       <div
         className="px-8 py-9 relative overflow-hidden"
-        style={{ background: PILLAR_ARTICLE.gradient }}
+        style={{ background: article.gradient }}
       >
         {/* Decorative background circle */}
         <div
@@ -46,12 +47,12 @@ function PillarArticleCard() {
         <div className="relative z-10">
           {/* Badges row */}
           <div className="flex flex-wrap items-center gap-2 mb-5">
-            {/* Ultimate Guide badge */}
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white text-amber-700 shadow-sm">
+            {/* Category badge */}
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white shadow-sm" style={{ color: article.color }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
-              Ultimate Guide
+              {article.category}
             </span>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 text-white">
               Pinned
@@ -60,28 +61,28 @@ function PillarArticleCard() {
 
           {/* Title */}
           <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white leading-tight mb-4 group-hover:opacity-90 transition-opacity max-w-2xl">
-            {PILLAR_ARTICLE.title}
+            {article.title}
           </h2>
 
           {/* Description */}
           <p className="text-white/85 text-sm md:text-base leading-relaxed max-w-2xl">
-            {PILLAR_ARTICLE.description}
+            {article.description}
           </p>
         </div>
       </div>
 
       {/* Card footer */}
-      <div className="px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-amber-50 border-t border-amber-200">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-amber-800">
-          <time>{PILLAR_ARTICLE.date}</time>
+      <div className="px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t" style={{ backgroundColor: `${article.color}0d`, borderColor: `${article.color}33` }}>
+        <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: article.color }}>
+          <time>{article.date}</time>
           <span aria-hidden="true">·</span>
-          <span>{PILLAR_ARTICLE.readTime}</span>
+          <span>{article.readTime}</span>
           <span aria-hidden="true">·</span>
           <span className="font-medium">ToolifyPDF</span>
         </div>
         <span
           className="inline-flex items-center gap-1.5 text-sm font-bold group-hover:gap-3 transition-all duration-200"
-          style={{ color: PILLAR_ARTICLE.color }}
+          style={{ color: article.color }}
         >
           Read the Full Guide
           <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1">→</span>
@@ -151,13 +152,15 @@ export default function BlogPage() {
 
       <section className="max-w-6xl mx-auto px-4 py-12 space-y-10">
 
-        {/* Pinned pillar article — full-width, above the grid */}
-        <div>
+        {/* Pinned pillar articles — full-width, above the grid */}
+        <div className="space-y-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-5 rounded-full bg-amber-400" aria-hidden="true" />
-            <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Featured Guide</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Featured Guides</p>
           </div>
-          <PillarArticleCard />
+          {PILLAR_ARTICLES.map((article) => (
+            <PillarArticleCard key={article.slug} article={article} />
+          ))}
         </div>
 
         {/* Divider */}

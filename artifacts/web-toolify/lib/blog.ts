@@ -25,6 +25,23 @@ export const PILLAR_ARTICLE: BlogArticle = {
   isPillar: true,
 }
 
+export const PILLAR_ARTICLE_2: BlogArticle = {
+  slug: 'convert-pdf-to-word-fast-and-free-online-tool',
+  title: 'PDF to Word: Convert PDF to Word Online for Free',
+  description:
+    "Convert your documents easily with our free tool! Learn how to effortlessly transform your files from PDF to Word online in minutes — including OCR for scanned files.",
+  date: 'July 8, 2026',
+  lastModified: '2026-07-08',
+  readTime: '9 min read',
+  category: "Editor's Choice",
+  gradient: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #3b82f6 100%)',
+  color: '#1e3a8a',
+  isPillar: true,
+}
+
+// All pinned/pillar articles, in display order (most important first).
+export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE, PILLAR_ARTICLE_2]
+
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
     slug: 'how-to-merge-pdf-files-online',
@@ -208,4 +225,4 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
 ]
 
-export const ALL_BLOG_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE, ...BLOG_ARTICLES]
+export const ALL_BLOG_ARTICLES: BlogArticle[] = [...PILLAR_ARTICLES, ...BLOG_ARTICLES]
