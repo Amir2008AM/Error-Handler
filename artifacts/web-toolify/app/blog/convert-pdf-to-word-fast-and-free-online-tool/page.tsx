@@ -499,7 +499,24 @@ export default function ArticlePage() {
             </p>
           </section>
 
-          {/* Image 1 */}
+          {/* Image 1 — glowing PDF file icon */}
+          <figure className="mb-10 -mx-4 sm:mx-0">
+            <div className="relative w-full aspect-[3/2] sm:rounded-2xl overflow-hidden bg-muted">
+              <Image
+                src="/blog/pdf-to-word/pdf-to-word-inline-1.jpg"
+                alt="Glowing red PDF file icon representing a PDF document ready to be converted"
+                fill
+                sizes="(min-width: 768px) 768px, 100vw"
+                className="object-cover"
+                loading="lazy"
+              />
+            </div>
+            <figcaption className="text-center text-xs text-muted-foreground mt-3 px-4 sm:px-0">
+              A PDF file is the starting point before conversion to an editable Word document.
+            </figcaption>
+          </figure>
+
+          {/* Image 2 */}
           <div className="hidden sm:block mb-12 p-6 bg-muted/40 rounded-2xl border border-border">
             <IllustrationConversionFlow />
           </div>
