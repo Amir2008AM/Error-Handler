@@ -370,6 +370,20 @@ export default function ArticlePage() {
             </ol>
           </nav>
 
+          {/* ── Hero image from article ── */}
+          <figure className="mb-8 rounded-2xl overflow-hidden border border-border shadow-md">
+            <div className="relative w-full" style={{ aspectRatio: '3/2' }}>
+              <Image
+                src="/merge-pdf-guide.png"
+                alt="Multiple PDF files being merged into one combined PDF document, showing the merge process with a progress bar"
+                fill
+                sizes="(max-width: 768px) 100vw, 768px"
+                className="object-cover"
+                priority
+              />
+            </div>
+          </figure>
+
           <AdBanner slot="6978025975" format="horizontal" className="mb-8" />
 
           {/* ══════════════════════════════════════════════════
