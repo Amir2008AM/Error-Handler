@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 import { RelatedArticles } from '@/components/related-articles'
@@ -34,7 +35,7 @@ const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: 'PDF to WORD Online for Free | Convert PDF to Word with ToolifyPDF',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://www.toolifypdf.online/blog/pdf-to-word/pdf-to-word-hero.jpg',
   description:
     'Convert PDF to Word online for free with ToolifyPDF. Turn PDF files into editable DOCX documents, use OCR for scanned PDFs, and preserve formatting in your Word file.',
   datePublished: '2026-07-08T00:00:00.000Z',
@@ -448,6 +449,24 @@ export default function ArticlePage() {
               </span>
             </div>
           </header>
+
+          {/* Hero photo */}
+          <figure className="mb-10 -mx-4 sm:mx-0">
+            <div className="relative w-full aspect-[3/2] sm:rounded-2xl overflow-hidden bg-muted">
+              <Image
+                src="/blog/pdf-to-word/pdf-to-word-hero.jpg"
+                alt="A desktop computer screen showing a PDF to Word converter app transforming a PDF file named Annual_Report_2024.pdf into an editable Annual_Report_2024.docx Word document"
+                fill
+                sizes="(min-width: 768px) 768px, 100vw"
+                className="object-cover"
+                loading="lazy"
+                priority={false}
+              />
+            </div>
+            <figcaption className="text-center text-xs text-muted-foreground mt-3 px-4 sm:px-0">
+              Converting a PDF file into an editable Word document with a PDF to Word converter.
+            </figcaption>
+          </figure>
 
           <AdBanner slot="6978025975" format="horizontal" className="my-6" />
 
