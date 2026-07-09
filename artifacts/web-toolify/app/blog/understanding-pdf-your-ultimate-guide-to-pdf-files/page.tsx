@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 import { RelatedArticles } from '@/components/related-articles'
@@ -556,6 +557,23 @@ export default function ArticlePage() {
               <span>12 min read</span>
             </div>
           </header>
+
+          {/* Hero photo */}
+          <figure className="mb-10 -mx-4 sm:mx-0">
+            <div className="relative w-full aspect-[3/2] sm:rounded-2xl overflow-hidden bg-muted">
+              <Image
+                src="/blog/understanding-pdf/understanding-pdf-hero.jpg"
+                alt="Glowing red PDF file icon representing the portable document format"
+                fill
+                sizes="(min-width: 768px) 768px, 100vw"
+                className="object-cover"
+                loading="lazy"
+              />
+            </div>
+            <figcaption className="text-center text-xs text-muted-foreground mt-3 px-4 sm:px-0">
+              The PDF (Portable Document Format) keeps documents consistent across devices and platforms.
+            </figcaption>
+          </figure>
 
           <AdBanner slot="6978025975" format="horizontal" className="my-6" />
 
