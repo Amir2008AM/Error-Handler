@@ -580,7 +580,7 @@ export default function ArticlePage() {
 
           <AdBanner slot="6978025975" format="horizontal" className="my-8" />
 
-          <RelatedArticles slugs={['how-to-split-pdf-online', 'how-to-compress-pdf-online', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
+          <RelatedArticles slugs={['merge-pdf-and-pdf-combine-files-for-free-online', 'how-to-split-pdf-online', 'how-to-compress-pdf-online']} />
         </article>
       </main>
     </>
