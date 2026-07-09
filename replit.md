@@ -1,139 +1,69 @@
-# Workspace
+# Web-Toolify (ToolifyPDF)
 
-## Overview
-
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+A comprehensive PDF and image processing platform at [toolifypdf.online](https://www.toolifypdf.online).
 
 ## Stack
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+| Layer | Tech |
+|-------|------|
+| Frontend / App | Next.js 16 (App Router), TypeScript, Tailwind CSS |
+| Background jobs | BullMQ + Redis (5 queues: pdf-fast, pdf-heavy, image, ocr, document) |
+| Database | SQLite via Drizzle ORM (`analytics.db`) |
+| Monorepo | pnpm workspaces |
 
-## Key Commands
+## How to run
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+The workflow `Start application` starts everything:
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+```
+pip install -q -r requirements.txt
+redis-server --daemonize yes --loglevel warning
+pnpm install
+cd artifacts/web-toolify && PORT=5000 REDIS_URL=redis://localhost:6379 UV_THREADPOOL_SIZE=8 pnpm run dev
+```
 
-## Toolify (artifacts/web-toolify)
+The app is served on **port 5000**.
 
-Next.js 16 + React 19 web app providing free PDF/image/text utilities. Workflow: `Web Toolify` starts Redis then runs the dev server at `PORT=5000` with `REDIS_URL=redis://localhost:6379`.
+## Project structure
 
-### Queue Architecture (BullMQ + Redis)
+```
+artifacts/
+  web-toolify/        ← Next.js app (main frontend + API routes)
+    app/
+      blog/           ← Blog articles (one folder per post)
+      api/            ← API routes for PDF/image tools
+    lib/
+      blog.ts         ← Blog article registry (PILLAR_ARTICLES + BLOG_ARTICLES)
+      bull-queue/     ← BullMQ job queues and workers
+    components/       ← Shared UI components
+  api-server/         ← Secondary Node.js API server
+scripts/
+  warmup.py           ← Python warmup script for PDF/OCR tools
+```
 
-`lib/queue/bullmq-backend.ts` — production queue backend:
-- Four typed worker pools: **pdf** (concurrency 4), **image** (concurrency 8), **ocr** (concurrency 4), **document** (concurrency 1).
-- `enqueueJob(type, payload)` → returns BullMQ job ID prefixed `bq-<group>-<id>`.
-- `getBullMQJobStatus(id)` → maps BullMQ state to the internal `JobStatus` type with progress.
-- `isRedisAvailable()` — tests the connection before committing to the BullMQ path.
-- Workers dispatch to `processJob()` from `lib/queue/job-processor.ts` via `registerJobWithId()` on the in-memory manager.
-- Jobs/create route checks REDIS_URL + connectivity → BullMQ path if available, in-memory fallback otherwise.
-- Status route (`jobs/[id]`) detects `bq-` prefix and queries BullMQ; otherwise queries in-memory manager.
-- Workers are started in `instrumentation.ts` (Next.js instrumentation hook) at server boot.
+## Secrets needed for full functionality
 
-### Migration / setup notes
+| Secret | Purpose |
+|--------|---------|
+| `TELEGRAM_BOT_TOKEN` | Telegram bot for admin notifications |
+| `TELEGRAM_ADMIN_IDS` | Comma-separated admin Telegram IDs |
+| `ADMIN_PASSWORD` | Admin panel access |
+| `DEV_ADMIN_KEY` | Dev/ops admin key |
+| `BREVO_API_KEY` | Email via Brevo (contact form) |
+| `OPS_ALLOWED_IPS` | IP allowlist for ops endpoints |
+| `REDIS_URL` | Redis connection (default: `redis://localhost:6379`) |
 
-- Native modules: `canvas` requires the `libuuid` system dependency.
-- `lib/storage/temp-storage.ts` uses filesystem storage at `/tmp/toolify/{uuid}/` (data + meta.json) with **fully async** `fs/promises` APIs and `crypto.randomUUID()`. Default TTL is 20 minutes; cleanup interval is 60 seconds. Exposes `storeStream()` / `getStream()` for backpressured I/O and a cached `totalSize` so writes don't walk the directory each time.
-- `lib/queue/job-processor.ts` was rewritten to use the modern processor option-object API and includes `unwrap()` / `toArrayBuffer()` helpers. Every operation is wrapped in `withTimeout` from `lib/processing/timeout.ts`, and batch image-compression uses `mapWithConcurrency` from `lib/processing/concurrency.ts` (cap = libuv pool size).
-- `lib/processing/image-processor.ts` runs every op as a single sharp pipeline with `failOn:'error'`, `limitInputPixels` (decompression-bomb defense), and `toBuffer({resolveWithObject:true})` — no double `metadata()` reads, no extra encode passes.
-- `lib/validation.ts` performs **magic-byte sniffing** on the first 12 bytes of every upload (PDF/PNG/JPEG/GIF/BMP/TIFF/WebP). All `validateFile()` callers in `app/api/*` were converted to `await`.
-- `app/api/files/[id]/route.ts` returns a `NextResponse` whose body is a Web `ReadableStream` adapted from `fs.createReadStream` — large downloads never hit the JS heap.
-- `next.config.mjs` lists `pdf-parse`, `sharp`, `canvas`, `pdfjs-dist`, and `tesseract.js` in `serverExternalPackages`. `experimental.proxyClientMaxBodySize: '100mb'` raises Next.js 16's default 10MB request cap for file-processing routes.
+`SESSION_SECRET` is already configured in Replit Secrets.
 
-### CLI Tool Integration (Ghostscript + qpdf)
+## Blog system
 
-System binaries used for real PDF processing — no JavaScript fallbacks:
+Blog posts are stored as static Next.js pages under `app/blog/[slug]/page.tsx`. Metadata (title, description, dates, category) is registered in `lib/blog.ts`.
 
-- **Ghostscript (`gs` 10.05.1)** — powers `compress-pdf`. Three levels:
-  - `low` → `-dPDFSETTINGS=/ebook` (150 dpi images)
-  - `medium` → `-dPDFSETTINGS=/screen` (72 dpi)
-  - `high` → `/screen` + aggressive downsampling + font subsetting flags
-  - Implementation: `lib/processing/pdf-processor.ts` → `PDFProcessor.compress()`
-  - `runGs()` helper wraps `spawn('gs', ...)` with a 2-minute `SIGKILL` timeout
-  - `withGsTempDir()` guarantees temp-file cleanup via `rm -rf` in `finally`
-- **qpdf (11.10.1)** — powers `protect-pdf` and `unlock-pdf`:
-  - `protect`: AES-256 encryption via `--encrypt`; passwords written to an `@argfile` (not exposed in `ps` output)
-  - `unlock`: `--decrypt` with `--password-file=<tmp>` to avoid shell-visible password
-  - Wrong password → `WrongPasswordError` → HTTP 400 with clear user message
-  - Implementation: `lib/processing/pdf-security.ts` → `PDFSecurityProcessor`
+- **Pillar articles** appear pinned at the top of `/blog` using `PILLAR_ARTICLES[]`
+- **Regular articles** appear in the grid below via `BLOG_ARTICLES[]`
+- To add a new post: create the page file and add an entry to `lib/blog.ts`
 
-**Dockerfile** (root of repo) targets Railway deployment:
-- Base: `node:24-bookworm-slim`
-- Installs `ghostscript`, `qpdf`, `libuuid1`, native build deps (canvas, tesseract)
-- Installs `libreoffice-impress`, `libreoffice-writer`, `libreoffice-calc` + `fonts-liberation`, `fonts-dejavu-core` for PPT/Word/Excel → PDF
-- Runs `pnpm install --frozen-lockfile` then `next build`
-- `CMD ["pnpm", "start"]` from `artifacts/web-toolify/`
-- Validates `gs --version && qpdf --version && soffice --version` at build time
+## User preferences
 
-### Streaming Upload System
-
-`lib/stream-upload.ts` — replaces `request.formData()` buffering:
-- `streamUpload(request)` pipes the multipart body through `busboy` directly to disk (`os.tmpdir()`), never reading the full payload into RAM.
-- Returns `{ fields, files, cleanup }`. Each `file` has `.path` (absolute temp path), `.size`, `.filename`, `.fieldname`.
-- `validateStreamedFile(file, type)` reads only the first 12 bytes from disk (magic bytes) for type validation.
-- All three PDF routes (`compress-pdf`, `protect-pdf`, `unlock-pdf`) pass the on-disk path directly to Ghostscript/qpdf — no memory copy during or after upload.
-
-### Processed-File Download System
-
-After processing, all PDF tools store results in `TempStorage` (20-min TTL) and return JSON `{ success, fileId, filename, ...metadata }` — the file is **not** streamed in the response body (avoids double bandwidth).
-
-**Flow:**
-1. API route processes file → stores result via `getTempStorage().store()` → returns `{ fileId }` JSON.
-2. Client reads `fileId`, stores in state, renders `<ProcessedFileCard>`.
-3. `ProcessedFileCard` (`components/processed-file-card.tsx`) auto-downloads from `/api/files/<fileId>` on mount, then shows a persistent **Download** button.
-4. If auto-download is blocked (popup blocker, mobile browser), a "Didn't start?" hint appears after 4 s.
-5. The manual Download button fetches the file from `/api/files/<fileId>` — re-download without any reprocessing — and shows "Retry" on fetch failure.
-6. `GET /api/files/[id]` streams the file from disk via `getStream()` (never buffers into JS heap).
-
-**Progress bar stages** (`components/real-progress-bar.tsx` `PROGRESS_STAGES`):
-- `UPLOAD_END: 50` — upload occupies 0–50% of the bar (XHR `upload.progress` events)
-- `VALIDATION_END: 55` — brief server validation
-- `PROCESSING_END: 90` — server-side work (Ghostscript/qpdf)
-- `DONE: 100`
-
-### Telegram Admin Bot
-
-Webhook endpoint: `POST /api/telegram/admin-webhook`
-
-Files: `lib/telegram/` — config, api, analytics, metrics, alerts, rate-limiter, worker-control, commands.
-
-- **Security**: admin-only (TELEGRAM_ADMIN_IDS env), rate-limited (5s window), all actions audit-logged.
-- **Commands**: `/stats` `/health` `/tools` `/queue` `/users` `/errors` `/live` `/files` `/insights` `/pause-workers` `/resume-workers` `/clear-queue` `/language` `/help`
-- **Language switching**: `/language` sends an inline keyboard (🇬🇧 English / 🇸🇦 العربية). Preference stored per admin userId in `user_preferences` SQLite table. All command responses use the stored language via `lib/telegram/i18n.ts`. Defaults to English. `callback_query` updates handled in the webhook route.
-- **Alerts**: CPU >90%, queue backlog >50, error rate >20% — sent to all admins with 5-min cooldown.
-- **Analytics**: Two-layer store. `recordJob()` / `recordError()` called from `job-processor.ts` on every job completion/failure.
-  - **In-memory ring buffer** — used only by `/live` (last 60 s), zero-latency, ephemeral.
-  - **SQLite (`analytics.db`)** — persistent store for all historical bot commands. Uses `node:sqlite` built-in (Node.js 24, SQLite 3.51.2 — no native compilation). WAL mode. Writes are fire-and-forget (`setImmediate`). Tables: `jobs_history`, `user_activity`, `errors_log`, `file_stats`. DB init happens at server boot in `instrumentation.ts`. Auto-cleanup deletes rows >30 days old hourly. DB file: `./analytics.db` (override via `ANALYTICS_DB_PATH` env var). Logic lives in `lib/telegram/db.ts`. Strictly isolated from all core processing / job-queue code.
-- **Webhook registration**: auto-registered at server boot in `instrumentation.ts` using `REPLIT_DEV_DOMAIN` / `RAILWAY_PUBLIC_DOMAIN`.
-- **Required secrets**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_IDS` (comma-separated user IDs).
-
-### PPT to PDF (`/ppt-to-pdf`)
-
-`lib/processing/document-converter.ts` → `DocumentConverter.pptToPdf()`:
-- Converts `.pptx` / `.ppt` files via **LibreOffice headless** (`soffice --headless --convert-to pdf`).
-- Streams input from TempStorage to a temp file, spawns LibreOffice, reads output PDF back into TempStorage.
-- Job type: `ppt-to-pdf`; dispatched through the **document** BullMQ worker.
-- Accepts files up to 100 MB; validates `.pptx`/`.ppt` magic bytes via `validateStreamedFile`.
-
-### PDF to JPG (`/pdf-to-jpg`)
-
-`lib/processing/pdf-to-image.ts`:
-- Uses the **pdfjs-dist v5 legacy build** (`pdfjs-dist/legacy/build/pdf.mjs`) — required for Node.js compatibility.
-- Provides `standardFontDataUrl` and `cMapUrl` (both `file://` URLs derived from the installed `pdfjs-dist` package) so embedded fonts and CJK CMaps render correctly. `disableFontFace: true`, `useSystemFonts: false`, `isEvalSupported: false`.
-- `GlobalWorkerOptions.workerSrc` is set to the local `pdf.worker.mjs` file URL — pdfjs v5 requires this even for its in-process fake worker.
-- The `createRequire` anchor uses `process.cwd() + '/package.json'`, **not** `import.meta.url`. Next.js webpack rewrites `import.meta.url` in the bundled server file to a virtual `[externals]/...` URL, which breaks `nodeRequire.resolve('pdfjs-dist/...')`.
-- Renders into a `node-canvas` Canvas, passing both `canvas` and `canvasContext` (cast through `unknown`) to satisfy the v5 `RenderParameters` type.
-- The previous silent "blank-image fallback" path has been removed — render errors now propagate so the API returns a real 500 instead of a blank zip.
-- The client (`app/pdf-to-jpg/client.tsx`) shows a disclaimer that PDF rendering uses an open-source engine and may not perfectly match Adobe Acrobat for uncommon fonts or complex vector graphics.
+- Preserve the existing project structure and stack — do not restructure or migrate.
+- Keep all blog content exactly as provided (no summarising or rewriting).

@@ -11,6 +11,20 @@ export interface BlogArticle {
   isPillar?: boolean
 }
 
+export const PILLAR_ARTICLE_MERGE_PDF: BlogArticle = {
+  slug: 'merge-pdf-and-pdf-combine-files-for-free-online',
+  title: 'Merge PDF and PDF: Combine Files for Free Online',
+  description:
+    'Need to merge pdf and pdf files? Discover how to combine PDF files for free online with our easy-to-follow guide. Start merging now!',
+  date: 'July 9, 2026',
+  lastModified: '2026-07-09',
+  readTime: '9 min read',
+  category: 'Ultimate Guide',
+  gradient: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 50%, #ef4444 100%)',
+  color: '#7f1d1d',
+  isPillar: true,
+}
+
 export const PILLAR_ARTICLE: BlogArticle = {
   slug: 'understanding-pdf-your-ultimate-guide-to-pdf-files',
   title: 'Understanding PDF: Your Complete Guide to PDF Files',
@@ -54,7 +68,7 @@ export const PILLAR_ARTICLE_2: BlogArticle = {
 }
 
 // All pinned/pillar articles, in display order (most important first).
-export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE_3, PILLAR_ARTICLE, PILLAR_ARTICLE_2]
+export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE_MERGE_PDF, PILLAR_ARTICLE_3, PILLAR_ARTICLE, PILLAR_ARTICLE_2]
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
