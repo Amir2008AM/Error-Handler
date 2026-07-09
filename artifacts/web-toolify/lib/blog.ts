@@ -25,6 +25,20 @@ export const PILLAR_ARTICLE: BlogArticle = {
   isPillar: true,
 }
 
+export const PILLAR_ARTICLE_3: BlogArticle = {
+  slug: 'convert-pdf-to-jpg-easily-with-our-free-tool',
+  title: 'Convert PDF to JPG Easily with Our Free Tool',
+  description:
+    'Convert your files easily with our free PDF to JPG converter. Learn how to transform your PDFs into high-quality JPG images on our blog today!',
+  date: 'July 9, 2026',
+  lastModified: '2026-07-09',
+  readTime: '10 min read',
+  category: 'Featured Guide',
+  gradient: 'linear-gradient(135deg, #065f46 0%, #059669 50%, #10b981 100%)',
+  color: '#065f46',
+  isPillar: true,
+}
+
 export const PILLAR_ARTICLE_2: BlogArticle = {
   slug: 'convert-pdf-to-word-fast-and-free-online-tool',
   title: 'PDF to Word: Convert PDF to Word Online for Free',
@@ -40,7 +54,7 @@ export const PILLAR_ARTICLE_2: BlogArticle = {
 }
 
 // All pinned/pillar articles, in display order (most important first).
-export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE, PILLAR_ARTICLE_2]
+export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE_3, PILLAR_ARTICLE, PILLAR_ARTICLE_2]
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
