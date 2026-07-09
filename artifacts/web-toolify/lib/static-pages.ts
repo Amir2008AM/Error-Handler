@@ -27,8 +27,10 @@ export const LEGAL_PAGES: StaticPage[] = [
   { path: '/disclaimer',           lastModified: '2026-06-01', changeFrequency: 'yearly', priority: 0.3 },
 ]
 
+// UTILITY_PAGES (age-calculator, percentage-calculator, text-case, word-counter)
+// are registered in the tools registry and already appear in tools-sitemap.xml.
+// Excluding them here prevents duplicate URLs across pages-sitemap.xml and tools-sitemap.xml.
 export const ALL_STATIC_PAGES: StaticPage[] = [
   ...MAIN_PAGES,
-  ...UTILITY_PAGES,
   ...LEGAL_PAGES,
 ]
