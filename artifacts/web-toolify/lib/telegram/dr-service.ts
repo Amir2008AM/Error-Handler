@@ -44,8 +44,8 @@ interface AhrefsResponse {
 const DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i
 
 /**
- * Strip protocol, www., paths, and query strings.
- * Returns the cleaned hostname, or null if it is not a valid domain.
+ * Strip protocol, www., paths, query strings, port numbers, and trailing dots.
+ * Returns the cleaned lowercase hostname, or null if it is not a valid domain.
  */
 export function normalizeDomain(input: string): string | null {
   let s = input.trim()
@@ -54,6 +54,8 @@ export function normalizeDomain(input: string): string | null {
   s = s.split('/')[0]                   // remove path
   s = s.split('?')[0]                   // remove query string
   s = s.split('#')[0]                   // remove fragment
+  s = s.replace(/:\d+$/, '')            // remove :port (e.g. example.com:8080)
+  s = s.replace(/\.+$/, '')             // remove trailing dots
   s = s.toLowerCase()
   return DOMAIN_RE.test(s) ? s : null
 }
@@ -69,7 +71,7 @@ export async function getDomainRating(rawDomain: string): Promise<DomainRatingRe
   // 1. Validate and normalise domain
   const domain = normalizeDomain(rawDomain)
   if (!domain) {
-    console.warn(`[DR] Invalid domain input: "${rawDomain}"`)
+    console.warn(`[Bot] DR invalid domain input: "${rawDomain}"`)
     return { ok: false, error: 'invalid_domain', message: 'Invalid domain format' }
   }
 
@@ -79,18 +81,25 @@ export async function getDomainRating(rawDomain: string): Promise<DomainRatingRe
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`
 
-  console.log(`[DR] Fetching DR for "${domain}" — ${url}`)
+  console.log(`[Bot] DR lookup for "${domain}" — ${url}`)
 
-  // 3. Execute request
+  // 3. Execute request — retry without auth header if the key is rejected,
+  //    since the public endpoint works unauthenticated per Ahrefs docs.
+  async function doFetch(hdrs: Record<string, string>): Promise<Response> {
+    return fetch(url, { headers: hdrs, signal: AbortSignal.timeout(12_000) })
+  }
+
   let res: Response
   try {
-    res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(12_000),
-    })
+    res = await doFetch(headers)
+    // If a supplied key is invalid fall back to unauthenticated request
+    if ((res.status === 401 || res.status === 403) && apiKey) {
+      console.warn(`[Bot] DR auth error ${res.status} for "${domain}" — retrying without key`)
+      res = await doFetch({ Accept: 'application/json' })
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[DR] Network error for "${domain}":`, msg)
+    console.error(`[Bot] DR network error for "${domain}":`, msg)
     return { ok: false, error: 'api_error', message: msg }
   }
 
@@ -98,14 +107,10 @@ export async function getDomainRating(rawDomain: string): Promise<DomainRatingRe
   if (!res.ok) {
     const body = await res.text().catch(() => '')
     if (res.status === 404) {
-      console.warn(`[DR] 404 Not found for "${domain}"`)
+      console.warn(`[Bot] DR 404 for "${domain}"`)
       return { ok: false, error: 'not_found', message: 'Domain not found in Ahrefs index' }
     }
-    if (res.status === 401 || res.status === 403) {
-      console.error(`[DR] Auth error ${res.status} for "${domain}" — check AHREFS_API_KEY`)
-      return { ok: false, error: 'api_error', message: `Auth error (HTTP ${res.status})` }
-    }
-    console.error(`[DR] API error ${res.status} for "${domain}":`, body.slice(0, 200))
+    console.error(`[Bot] DR API error ${res.status} for "${domain}":`, body.slice(0, 200))
     return { ok: false, error: 'api_error', message: `HTTP ${res.status}` }
   }
 
@@ -114,14 +119,14 @@ export async function getDomainRating(rawDomain: string): Promise<DomainRatingRe
   try {
     json = (await res.json()) as AhrefsResponse
   } catch {
-    console.error(`[DR] Failed to parse JSON response for "${domain}"`)
+    console.error(`[Bot] DR invalid JSON response for "${domain}"`)
     return { ok: false, error: 'api_error', message: 'Invalid JSON from API' }
   }
 
   // 6. Extract data
   const dr = json?.domain_rating
   if (!dr || dr.domain_rating === undefined || dr.domain_rating === null) {
-    console.warn(`[DR] No DR value in response for "${domain}":`, JSON.stringify(json))
+    console.warn(`[Bot] DR no value in response for "${domain}":`, JSON.stringify(json))
     return { ok: false, error: 'not_found', message: 'No Domain Rating data in response' }
   }
 
@@ -132,6 +137,6 @@ export async function getDomainRating(rawDomain: string): Promise<DomainRatingRe
     fetchedAt:    new Date().toISOString(),
   }
 
-  console.log(`[DR] Success: "${domain}" → DR ${result.domainRating}`)
+  console.log(`[Bot] DR success: "${domain}" → DR ${result.domainRating}`)
   return { ok: true, data: result }
 }

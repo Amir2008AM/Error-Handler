@@ -813,6 +813,98 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     ].join('\n'), REPLY_KB_REMOVE)
     return
   }
+  if (cmd === '/dr') {
+    // ── /dr <domain> — Ahrefs Domain Rating lookup ───────────────────────────
+    const arg = normalized.slice(cmd.length).trim()
+    if (!arg) {
+      await send(chatId, [
+        ``,
+        `📊 <b>DOMAIN RATING CHECKER</b>`,
+        divider(),
+        ``,
+        `❌ الرجاء تحديد نطاق.`,
+        ``,
+        `<b>الاستخدام:</b>  <code>/dr &lt;domain&gt;</code>`,
+        `<b>مثال:</b>`,
+        `<code>  /dr google.com</code>`,
+        `<code>  /dr toolifypdf.online</code>`,
+      ].join('\n'), BACK_MENU)
+      return
+    }
+
+    // Show a "checking…" message immediately so the user knows we're working
+    await send(chatId, `⏳ جاري الاستعلام عن <code>${escHtml(arg)}</code>…`)
+
+    const result = await getDomainRating(arg)
+
+    if (!result.ok) {
+      switch (result.error) {
+        case 'invalid_domain':
+          await send(chatId, [
+            ``,
+            `📊 <b>DOMAIN RATING CHECKER</b>`,
+            divider(),
+            ``,
+            `❌ Invalid domain. Please enter a valid domain name.`,
+            ``,
+            `<b>Example:</b>  <code>/dr google.com</code>`,
+          ].join('\n'), BACK_MENU)
+          break
+        case 'not_found':
+          await send(chatId, [
+            ``,
+            `📊 <b>DOMAIN RATING CHECKER</b>`,
+            divider(),
+            ``,
+            `❌ No Domain Rating data was found for this domain.`,
+          ].join('\n'), BACK_MENU)
+          break
+        case 'api_error':
+          await send(chatId, [
+            ``,
+            `📊 <b>DOMAIN RATING CHECKER</b>`,
+            divider(),
+            ``,
+            `❌ Unable to retrieve Domain Rating at the moment. Please try again later.`,
+          ].join('\n'), BACK_MENU)
+          break
+      }
+      return
+    }
+
+    const { domain, domainRating, license, fetchedAt } = result.data
+    const fetchedTime = new Date(fetchedAt).toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+    }) + ' UTC'
+
+    // DR badge: colour-code the score tier in a monospace bar
+    const drScore   = Math.max(0, Math.min(100, domainRating))
+    const drBar     = bar(drScore / 100, 10)
+    const drTier    =
+      drScore >= 70 ? '🟢 High' :
+      drScore >= 40 ? '🟡 Medium' :
+      drScore >= 10 ? '🟠 Low' :
+                      '🔴 Very Low'
+
+    await send(chatId, [
+      ``,
+      `📊 <b>DOMAIN RATING CHECKER</b>`,
+      divider(),
+      ``,
+      `🌐 <b>Domain:</b>  <code>${escHtml(domain)}</code>`,
+      ``,
+      `<code>┌──────────────────────────────┐</code>`,
+      `<code>│  📈 DR Score   ${String(drScore).padStart(3)} / 100       │</code>`,
+      `<code>│  ${drBar}  ${drTier.padEnd(11)}│</code>`,
+      `<code>└──────────────────────────────┘</code>`,
+      ``,
+      `🕒 <b>Last Updated:</b>  <code>${fetchedTime}</code>`,
+      license ? `<code>  License: ${escHtml(license)}</code>` : ``,
+    ].filter(Boolean).join('\n'), BACK_MENU)
+    return
+  }
+
   if (cmd === '/help') {
     await send(chatId, [
       ``,
@@ -831,6 +923,11 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
       `<code>  /latest     آخر الرسائل</code>`,
       `<code>  /status     حالة الجلسة</code>`,
       `<code>  /logout     تسجيل الخروج</code>`,
+      ``,
+      `<b>🔍 SEO Tools:</b>`,
+      thinLine(),
+      `<code>  /dr &lt;domain&gt;   Domain Rating (Ahrefs)</code>`,
+      `<code>  Example: /dr google.com</code>`,
     ].join('\n'), BACK_MENU)
     return
   }
