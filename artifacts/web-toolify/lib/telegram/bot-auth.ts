@@ -4,11 +4,13 @@
  * Single-step login using DEV_ADMIN_KEY as the master password.
  * If DEV_AUTH_NAME + DEV_AUTH_PASSWORD are also set, uses 2-step flow.
  *
- * - 1-hour session after success
+ * - 1-hour session after success (persisted to Redis — survives server restarts)
  * - 5 wrong attempts → 10-minute lockout
  * - Comparison is whitespace-normalized and Unicode-normalized (NFKC)
  * - Name check is case-insensitive; password check is case-sensitive
  */
+
+import Redis from 'ioredis'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,11 +32,63 @@ declare global {
   var __botSessions: Map<number, SessionEntry>  | undefined
   var __botLocks:    Map<number, LockEntry>     | undefined
   var __botPending:  Map<number, PendingEntry>  | undefined
+  var __botRedis:    Redis                      | undefined
 }
 
 const sessions = (globalThis.__botSessions ??= new Map<number, SessionEntry>())
 const locks    = (globalThis.__botLocks    ??= new Map<number, LockEntry>())
 const pending  = (globalThis.__botPending  ??= new Map<number, PendingEntry>())
+
+// ── Redis — persistent session store ──────────────────────────────────────────
+// Sessions are written to Redis so they survive server restarts.
+// Falls back gracefully if Redis is unavailable.
+
+function getRedis(): Redis | null {
+  if (globalThis.__botRedis) return globalThis.__botRedis
+  const url = process.env.REDIS_URL
+  if (!url) return null
+  try {
+    const client = new Redis(url, { maxRetriesPerRequest: 1, connectTimeout: 2000 })
+    client.on('error', (err: Error) => console.warn('[BotAuth] Redis:', err.message))
+    globalThis.__botRedis = client
+    return client
+  } catch { return null }
+}
+
+const R_KEY = (chatId: number) => `tgbot:session:${chatId}`
+
+function _rSaveSession(chatId: number, expiresAt: number): void {
+  const r = getRedis(); if (!r) return
+  const ttlSec = Math.max(1, Math.ceil((expiresAt - Date.now()) / 1000))
+  r.set(R_KEY(chatId), String(expiresAt), 'EX', ttlSec).catch(() => {})
+}
+
+function _rDeleteSession(chatId: number): void {
+  getRedis()?.del(R_KEY(chatId)).catch(() => {})
+}
+
+/**
+ * Call this before isAuthenticated() in async contexts (e.g. handleUpdate).
+ * Restores a Redis-persisted session into the in-memory map when the process
+ * restarted and lost its globalThis state.
+ */
+export async function tryRestoreSession(chatId: number): Promise<void> {
+  if (sessions.has(chatId)) return   // already warm
+  const r = getRedis(); if (!r) return
+  try {
+    const raw = await r.get(R_KEY(chatId))
+    if (!raw) return
+    const expiresAt = parseInt(raw, 10)
+    if (expiresAt > Date.now()) {
+      sessions.set(chatId, { expiresAt })
+      console.log(`[BotAuth] Session restored from Redis for ${chatId}`)
+    } else {
+      r.del(R_KEY(chatId)).catch(() => {})
+    }
+  } catch (err) {
+    console.warn('[BotAuth] tryRestoreSession:', (err as Error).message)
+  }
+}
 
 // ── Text normalization ────────────────────────────────────────────────────────
 // Handles: leading/trailing spaces, multiple spaces, non-breaking spaces,
@@ -121,7 +175,11 @@ function recordFailure(chatId: number): AuthResult {
 export function isAuthenticated(chatId: number): boolean {
   const session = sessions.get(chatId)
   if (!session) return false
-  if (session.expiresAt < ts()) { sessions.delete(chatId); return false }
+  if (session.expiresAt < ts()) {
+    sessions.delete(chatId)
+    _rDeleteSession(chatId)
+    return false
+  }
   return true
 }
 
@@ -176,7 +234,9 @@ export function processAuthInput(chatId: number, text: string): AuthResult {
       return { action: 'need_password' }
     }
     if (matchCS(text, creds.password)) {
-      sessions.set(chatId, { expiresAt: ts() + SESSION_DURATION_MS })
+      const expiresAt = ts() + SESSION_DURATION_MS
+      sessions.set(chatId, { expiresAt })
+      _rSaveSession(chatId, expiresAt)
       pending.delete(chatId)
       locks.delete(chatId)
       return { action: 'success' }
@@ -195,7 +255,9 @@ export function processAuthInput(chatId: number, text: string): AuthResult {
 
   if (state === 'awaiting_password') {
     if (matchCS(text, creds.password)) {
-      sessions.set(chatId, { expiresAt: ts() + SESSION_DURATION_MS })
+      const expiresAt = ts() + SESSION_DURATION_MS
+      sessions.set(chatId, { expiresAt })
+      _rSaveSession(chatId, expiresAt)
       pending.delete(chatId)
       locks.delete(chatId)
       return { action: 'success' }
@@ -209,6 +271,7 @@ export function processAuthInput(chatId: number, text: string): AuthResult {
 export function logout(chatId: number): void {
   sessions.delete(chatId)
   pending.delete(chatId)
+  _rDeleteSession(chatId)
 }
 
 /**
@@ -220,6 +283,7 @@ export function renewSession(chatId: number): void {
   const session = sessions.get(chatId)
   if (session) {
     session.expiresAt = ts() + SESSION_DURATION_MS
+    _rSaveSession(chatId, session.expiresAt)
   }
 }
 

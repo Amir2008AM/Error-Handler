@@ -22,6 +22,7 @@ import {
   formatCountdown,
   formatSession,
   LOCKOUT_DURATION_MS,
+  tryRestoreSession,
 } from './bot-auth'
 import { dbGetFeedback, type FeedbackRow } from './db'
 import { getGa4Snapshot } from './ga4-monitor'
@@ -58,6 +59,7 @@ const REPLY_KB: RKMarkup = {
     [{ text: '🌍 الدول' },      { text: '📄 الصفحات' }],
     [{ text: '📈 إحصائيات' },  { text: '💬 الفيدباك' }],
     [{ text: '🔔 آخر الرسائل' }, { text: '🔧 الجلسة' }],
+    [{ text: '🔍 DR Checker' }],
     [{ text: '👋 خروج' }],
   ],
   resize_keyboard: true,
@@ -117,6 +119,9 @@ const MAIN_MENU: IKMarkup = {
     [
       { text: '🔧 حالة الجلسة',    callback_data: 'status' },
       { text: '👋 تسجيل الخروج',   callback_data: 'logout' },
+    ],
+    [
+      { text: '🔍 Domain Rating Checker', callback_data: 'dr_help' },
     ],
   ],
 }
@@ -728,6 +733,30 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     ].join('\n')
     if (msgId) await editText(chatId, msgId, text)
     await send(chatId, '🔒 تم قفل الجلسة.', REPLY_KB_REMOVE)
+    return
+  }
+
+  if (data === 'dr_help') {
+    const text = [
+      ``,
+      `📊 <b>DOMAIN RATING CHECKER</b>`,
+      divider(),
+      ``,
+      `اعرف قوة أي موقع بدرجة الـ DR من Ahrefs.`,
+      ``,
+      `<b>الاستخدام:</b>`,
+      `<code>  /dr &lt;domain&gt;</code>`,
+      ``,
+      `<b>أمثلة:</b>`,
+      `<code>  /dr google.com</code>`,
+      `<code>  /dr toolifypdf.online</code>`,
+      `<code>  /dr https://example.com/page</code>`,
+      ``,
+      `<i>أرسل الأمر في الشات مباشرةً 👇</i>`,
+    ].join('\n')
+    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
+    else       await send(chatId, text, BACK_MENU)
+    return
   }
 }
 
@@ -742,6 +771,7 @@ const REPLY_BTN_MAP: Record<string, string> = {
   '💬 الفيدباك':    '/feedback',
   '🔔 آخر الرسائل': '/latest',
   '🔧 الجلسة':      '/status',
+  '🔍 DR Checker':  '/dr',
   '👋 خروج':         '/logout',
 }
 
@@ -985,6 +1015,11 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   if (!isAllowed(chatId)) return
 
   const text = message.text.trim()
+
+  // Restore session from Redis if process restarted and lost in-memory state
+  if (!isAuthenticated(chatId)) {
+    await tryRestoreSession(chatId)
+  }
 
   if (isAuthenticated(chatId)) {
     await handleCommand(chatId, text)
