@@ -4,10 +4,6 @@ modules = ["nodejs-22", "python-3.12", "web"]
 router = "application"
 deploymentTarget = "autoscale"
 
-[deployment.postBuild]
-args = ["pnpm", "store", "prune"]
-env = { "CI" = "true" }
-
 [workflows]
 runButton = "Project"
 

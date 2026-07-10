@@ -2,11 +2,7 @@
 FROM node:24-bookworm-slim
 
 # ── System packages ────────────────────────────────────────────────────────────
-# Cache mount keeps apt lists + downloaded .deb files between builds.
-# After the first build these layers are served from cache — no re-download.
-RUN --mount=type=cache,id=s/eeb2312e-0af3-4344-9ef5-cbe7bcf3aa85-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=s/eeb2312e-0af3-4344-9ef5-cbe7bcf3aa85-apt-lists,target=/var/lib/apt/lists,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
       ghostscript \
       qpdf \
       libuuid1 \
@@ -36,9 +32,7 @@ RUN --mount=type=cache,id=s/eeb2312e-0af3-4344-9ef5-cbe7bcf3aa85-apt-cache,targe
     && fc-cache -fv
 
 # ── Python packages ────────────────────────────────────────────────────────────
-# pip cache mount avoids re-downloading wheels that haven't changed.
-RUN --mount=type=cache,id=s/eeb2312e-0af3-4344-9ef5-cbe7bcf3aa85-pip,target=/root/.cache/pip \
-    pip3 install --break-system-packages \
+RUN pip3 install --break-system-packages \
       arabic-reshaper==3.0.0 \
       python-bidi==0.4.2 \
       "reportlab>=4.0.0" \
@@ -72,10 +66,7 @@ COPY artifacts/web-toolify/package.json   ./artifacts/web-toolify/package.json
 COPY artifacts/api-server/package.json    ./artifacts/api-server/package.json
 
 # ── Node modules ───────────────────────────────────────────────────────────────
-# pnpm store cache mount: packages are fetched once and reused across builds.
-# The layer itself is still rebuilt when lockfile changes, but download is free.
-RUN --mount=type=cache,id=s/eeb2312e-0af3-4344-9ef5-cbe7bcf3aa85-pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # ── Full source ────────────────────────────────────────────────────────────────
 COPY . .
@@ -89,10 +80,7 @@ RUN test -f /app/pdf_table_extractor.py \
     || (echo "ERROR: pdf_table_extractor.py missing!" && exit 1)
 
 # ── Next.js production build ───────────────────────────────────────────────────
-# .next/cache mount preserves Turbopack's incremental compilation cache.
-# Unchanged pages are not recompiled — huge win on repeated deploys.
-RUN --mount=type=cache,id=s/eeb2312e-0af3-4344-9ef5-cbe7bcf3aa85-nextjs-cache,target=/app/artifacts/web-toolify/.next/cache \
-    pnpm --filter @workspace/web-toolify run build
+RUN pnpm --filter @workspace/web-toolify run build
 
 # ── Validate CLI tools ─────────────────────────────────────────────────────────
 RUN gs --version && qpdf --version && soffice --version
