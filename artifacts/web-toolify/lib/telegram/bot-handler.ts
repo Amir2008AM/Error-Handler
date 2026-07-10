@@ -25,6 +25,7 @@ import {
 } from './bot-auth'
 import { dbGetFeedback, type FeedbackRow } from './db'
 import { getGa4Snapshot } from './ga4-monitor'
+import { getDomainRating } from './dr-service'
 
 // ── Telegram types ────────────────────────────────────────────────────────────
 
