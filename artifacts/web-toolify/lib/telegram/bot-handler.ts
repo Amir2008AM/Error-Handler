@@ -10,20 +10,7 @@
  *   [🔧 الجلسة]      [👋 خروج]
  */
 
-import {
-  isAuthenticated,
-  isKeyOnlyMode,
-  sessionRemainingMs,
-  getLoginState,
-  startLogin,
-  processAuthInput,
-  logout,
-  renewSession,
-  formatCountdown,
-  formatSession,
-  LOCKOUT_DURATION_MS,
-  tryRestoreSession,
-} from './bot-auth'
+// Auth system disabled — bot is always open
 import { dbGetFeedback, type FeedbackRow } from './db'
 import { getGa4Snapshot } from './ga4-monitor'
 import { getDomainMetrics } from './dr-service'
@@ -60,7 +47,6 @@ const REPLY_KB: RKMarkup = {
     [{ text: '📈 إحصائيات' },  { text: '💬 الفيدباك' }],
     [{ text: '🔔 آخر الرسائل' }, { text: '🔧 الجلسة' }],
     [{ text: '🔍 DR Checker' }],
-    [{ text: '👋 خروج' }],
   ],
   resize_keyboard: true,
   persistent:      true,
@@ -640,14 +626,6 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
   const msgId  = cb.message?.message_id
   if (!chatId) return
 
-  if (!isAuthenticated(chatId)) {
-    await answerCb(cb.id, '🔒 انتهت جلستك — أرسل /start')
-    return
-  }
-
-  // Renew session on every interaction so active users stay logged in
-  renewSession(chatId)
-
   const data = cb.data ?? ''
   await answerCb(cb.id)
 
@@ -704,35 +682,23 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
   }
 
   if (data === 'status') {
-    const rem  = sessionRemainingMs(chatId)
-    const text = rem <= 0
-      ? `⏰ <b>انتهت الجلسة</b>\n\nأرسل /start للدخول مجدداً.`
-      : [
-          ``,
-          `🔐 <b>SESSION STATUS</b>`,
-          divider(),
-          ``,
-          `<code>  ✅ الجلسة نشطة</code>`,
-          `<code>  ⏳ تنتهي بعد:  ${formatSession(rem)}</code>`,
-          ``,
-          `<i>الجلسة تتجدد تلقائياً مع كل تفاعل.</i>`,
-        ].join('\n')
+    const text = [
+      ``,
+      `🔐 <b>SESSION STATUS</b>`,
+      divider(),
+      ``,
+      `<code>  ✅ البوت مفتوح دائماً</code>`,
+      `<code>  🔓 لا يوجد نظام جلسات</code>`,
+    ].join('\n')
     if (msgId) await editText(chatId, msgId, text, BACK_MENU)
     else       await send(chatId, text, BACK_MENU)
     return
   }
 
   if (data === 'logout') {
-    logout(chatId)
-    const text = [
-      ``,
-      `🔒 <b>تم تسجيل الخروج</b>`,
-      divider(),
-      ``,
-      `<i>أرسل /start للدخول مجدداً.</i>`,
-    ].join('\n')
-    if (msgId) await editText(chatId, msgId, text)
-    await send(chatId, '🔒 تم قفل الجلسة.', REPLY_KB_REMOVE)
+    const text = buildMainMenuText(dbGetFeedback(200))
+    if (msgId) await editText(chatId, msgId, text, MAIN_MENU)
+    else       await send(chatId, text, MAIN_MENU)
     return
   }
 
@@ -778,9 +744,6 @@ const REPLY_BTN_MAP: Record<string, string> = {
 // ── Command handler ───────────────────────────────────────────────────────────
 
 async function handleCommand(chatId: number, text: string): Promise<void> {
-  // Renew session on every authenticated command
-  renewSession(chatId)
-
   // Normalize reply-keyboard button text → slash command
   const normalized = REPLY_BTN_MAP[text.trim()] ?? text.trim()
   const cmd = normalized.split(/\s+/)[0].toLowerCase()
@@ -816,31 +779,19 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     return
   }
   if (cmd === '/status') {
-    const rem = sessionRemainingMs(chatId)
-    const msg = rem <= 0
-      ? `⏰ انتهت جلستك. أرسل /start للدخول مجدداً.`
-      : [
-          ``,
-          `🔐 <b>SESSION STATUS</b>`,
-          divider(),
-          ``,
-          `<code>  ✅ الجلسة نشطة</code>`,
-          `<code>  ⏳ تنتهي بعد:  ${formatSession(rem)}</code>`,
-          ``,
-          `<i>الجلسة تتجدد تلقائياً مع كل تفاعل.</i>`,
-        ].join('\n')
-    await send(chatId, msg, BACK_MENU)
+    await send(chatId, [
+      ``,
+      `🔐 <b>SESSION STATUS</b>`,
+      divider(),
+      ``,
+      `<code>  ✅ البوت مفتوح دائماً</code>`,
+      `<code>  🔓 لا يوجد نظام جلسات</code>`,
+    ].join('\n'), BACK_MENU)
     return
   }
   if (cmd === '/logout') {
-    logout(chatId)
-    await send(chatId, [
-      ``,
-      `🔒 <b>تم تسجيل الخروج</b>`,
-      divider(),
-      ``,
-      `<i>أرسل /start للدخول مجدداً.</i>`,
-    ].join('\n'), REPLY_KB_REMOVE)
+    // No session system — just show the main menu
+    await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
     return
   }
   if (cmd === '/dr') {
@@ -997,21 +948,6 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
   await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
 }
 
-// ── Login prompt helper ───────────────────────────────────────────────────────
-
-function loginStartPrompt(): string {
-  const keyOnly = isKeyOnlyMode()
-  return [
-    ``,
-    `🔐 <b>TOOLIFY ADMIN  —  تسجيل الدخول</b>`,
-    divider(),
-    ``,
-    keyOnly
-      ? `أدخل <b>كلمة المرور</b>:`
-      : `أدخل <b>الاسم الثلاثي</b> للمطور:`,
-  ].join('\n')
-}
-
 // ── Allowlist — only respond to known admin chat IDs ─────────────────────────
 // Parsed once and cached; env var is a comma-separated list of numeric IDs.
 // When the list is empty the check is skipped (fail-open during initial setup).
@@ -1031,7 +967,6 @@ function isAllowed(chatId: number): boolean {
 
 export async function handleUpdate(update: TgUpdate): Promise<void> {
   if (update.callback_query) {
-    // Silently drop callbacks from non-admin accounts
     if (!isAllowed(update.callback_query.from.id)) return
     await handleCallback(update.callback_query)
     return
@@ -1041,106 +976,7 @@ export async function handleUpdate(update: TgUpdate): Promise<void> {
   if (!message?.text) return
 
   const chatId = message.chat.id
-
-  // Silently drop messages from non-admin accounts — do NOT reveal bot existence
   if (!isAllowed(chatId)) return
 
-  const text = message.text.trim()
-
-  // Restore session from Redis if process restarted and lost in-memory state
-  if (!isAuthenticated(chatId)) {
-    await tryRestoreSession(chatId)
-  }
-
-  if (isAuthenticated(chatId)) {
-    await handleCommand(chatId, text)
-    return
-  }
-
-  if (text.toLowerCase() === '/start') {
-    startLogin(chatId)
-    await send(chatId, loginStartPrompt())
-    return
-  }
-
-  const loginState = getLoginState(chatId)
-
-  if (loginState === 'idle') {
-    await send(chatId, [
-      ``,
-      `🔒 <b>هذا البوت مقيّد.</b>`,
-      ``,
-      `أرسل /start للبدء.`,
-    ].join('\n'))
-    return
-  }
-
-  const result = processAuthInput(chatId, text)
-
-  switch (result.action) {
-    case 'locked':
-      await send(chatId, [
-        `🚫 <b>الوصول مجمّد مؤقتاً</b>`,
-        ``,
-        `يمكنك المحاولة بعد:`,
-        `⏳ <b>${formatCountdown(result.remainingMs)}</b>`,
-      ].join('\n'))
-      break
-
-    case 'locked_now':
-      await send(chatId, [
-        `🚫 <b>تم قفل الوصول ${formatCountdown(LOCKOUT_DURATION_MS)}</b>`,
-        ``,
-        `تجاوزت الحد الأقصى للمحاولات الخاطئة.`,
-        `سيُفتح الوصول تلقائياً بعد انتهاء المدة.`,
-      ].join('\n'))
-      break
-
-    case 'name_ok':
-      await send(chatId, `✅ الاسم صحيح.\n\nأدخل الآن <b>كلمة المرور</b>:`)
-      break
-
-    case 'wrong_name':
-      await send(chatId, [
-        `❌ <b>الاسم غير صحيح.</b>`,
-        ``,
-        `المحاولات المتبقية: <b>${result.attemptsLeft}</b>`,
-        result.attemptsLeft === 1 ? `⚠️ <b>محاولة أخيرة!</b> بعدها قفل 10 دقائق.` : ``,
-      ].filter(Boolean).join('\n'))
-      break
-
-    case 'success': {
-      await send(chatId, [
-        ``,
-        `✅ <b>تم الدخول بنجاح</b>`,
-        divider(),
-        ``,
-        `<code>  🔐 جلستك نشطة لمدة ساعة كاملة</code>`,
-        `<code>  🔄 تتجدد تلقائياً مع كل تفاعل</code>`,
-        ``,
-        `<i>الأزرار ظاهرة في أسفل الشاشة 👇</i>`,
-      ].join('\n'), REPLY_KB)
-      await new Promise(r => setTimeout(r, 600))
-      await send(chatId, buildMainMenuText(dbGetFeedback(200)), MAIN_MENU)
-      break
-    }
-
-    case 'wrong_password':
-      await send(chatId, [
-        `❌ <b>كلمة المرور غير صحيحة.</b>`,
-        ``,
-        `المحاولات المتبقية: <b>${result.attemptsLeft}</b>`,
-        result.attemptsLeft === 1 ? `⚠️ <b>محاولة أخيرة!</b> بعدها قفل 10 دقائق.` : ``,
-      ].filter(Boolean).join('\n'))
-      break
-
-    case 'need_name':
-      startLogin(chatId)
-      await send(chatId, `🔐 أدخل <b>الاسم الثلاثي</b> للمطور:`)
-      break
-
-    case 'need_password':
-      await send(chatId, `✏️ أدخل <b>كلمة المرور</b>:`)
-      break
-  }
+  await handleCommand(chatId, message.text.trim())
 }
