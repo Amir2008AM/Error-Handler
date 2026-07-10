@@ -26,7 +26,7 @@ import {
 } from './bot-auth'
 import { dbGetFeedback, type FeedbackRow } from './db'
 import { getGa4Snapshot } from './ga4-monitor'
-import { getDomainRating } from './dr-service'
+import { getDomainMetrics } from './dr-service'
 
 // ── Telegram types ────────────────────────────────────────────────────────────
 
@@ -865,73 +865,104 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     // Show a "checking…" message immediately so the user knows we're working
     await send(chatId, `⏳ جاري الاستعلام عن <code>${escHtml(arg)}</code>…`)
 
-    const result = await getDomainRating(arg)
+    const result = await getDomainMetrics(arg)
 
     if (!result.ok) {
-      switch (result.error) {
-        case 'invalid_domain':
-          await send(chatId, [
-            ``,
-            `📊 <b>DOMAIN RATING CHECKER</b>`,
-            divider(),
-            ``,
-            `❌ Invalid domain. Please enter a valid domain name.`,
-            ``,
-            `<b>Example:</b>  <code>/dr google.com</code>`,
-          ].join('\n'), BACK_MENU)
-          break
-        case 'not_found':
-          await send(chatId, [
-            ``,
-            `📊 <b>DOMAIN RATING CHECKER</b>`,
-            divider(),
-            ``,
-            `❌ No Domain Rating data was found for this domain.`,
-          ].join('\n'), BACK_MENU)
-          break
-        case 'api_error':
-          await send(chatId, [
-            ``,
-            `📊 <b>DOMAIN RATING CHECKER</b>`,
-            divider(),
-            ``,
-            `❌ Unable to retrieve Domain Rating at the moment. Please try again later.`,
-          ].join('\n'), BACK_MENU)
-          break
+      const errMsgs: Record<string, string> = {
+        invalid_domain: `❌ <b>Invalid domain.</b>\n\nPlease enter a valid domain name.\n\n<b>Example:</b>  <code>/dr google.com</code>`,
+        not_found:      `❌ <b>Not found.</b>\n\nThis domain was not found in the Ahrefs index.`,
+        blocked:        `⚠️ <b>Request blocked.</b>\n\nThe API is behind Cloudflare and blocked this server's IP.\n\n<i>This works normally on the production server.</i>`,
+        api_error:      `❌ <b>API error.</b>\n\nUnable to retrieve data at the moment. Please try again later.`,
       }
+      await send(chatId, [
+        ``,
+        `📊 <b>DOMAIN RATING CHECKER</b>`,
+        divider(),
+        ``,
+        errMsgs[result.error] ?? `❌ Unknown error.`,
+      ].join('\n'), BACK_MENU)
       return
     }
 
-    const { domain, domainRating, license, fetchedAt } = result.data
+    const { domain, domainRating, fetchedAt, full, hasFull } = result.data
     const fetchedTime = new Date(fetchedAt).toLocaleString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
     }) + ' UTC'
 
-    // DR badge: colour-code the score tier in a monospace bar
-    const drScore   = Math.max(0, Math.min(100, domainRating))
-    const drBar     = bar(drScore / 100, 10)
-    const drTier    =
+    // DR score bar and tier label
+    const drScore = Math.max(0, Math.min(100, domainRating))
+    const drBar   = bar(drScore / 100, 10)
+    const drTier  =
       drScore >= 70 ? '🟢 High' :
       drScore >= 40 ? '🟡 Medium' :
       drScore >= 10 ? '🟠 Low' :
                       '🔴 Very Low'
 
-    await send(chatId, [
+    // Helper: format large numbers with K/M suffix
+    function fmtNum(n: number | null): string {
+      if (n === null) return '—'
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+      if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`
+      return String(n)
+    }
+
+    // ── Build message ─────────────────────────────────────────────────────────
+    const lines: string[] = [
       ``,
       `📊 <b>DOMAIN RATING CHECKER</b>`,
       divider(),
       ``,
       `🌐 <b>Domain:</b>  <code>${escHtml(domain)}</code>`,
       ``,
+      // DR score block — always shown
       `<code>┌──────────────────────────────┐</code>`,
       `<code>│  📈 DR Score   ${String(drScore).padStart(3)} / 100       │</code>`,
       `<code>│  ${drBar}  ${drTier.padEnd(11)}│</code>`,
       `<code>└──────────────────────────────┘</code>`,
+    ]
+
+    // Full metrics block — only when site-explorer call succeeded
+    if (hasFull && full) {
+      const arRankStr = full.ahrefsRank !== null ? `#${full.ahrefsRank.toLocaleString()}` : '—'
+
+      lines.push(
+        ``,
+        `<b>🔗  Backlinks</b>`,
+        thinLine(),
+        `<code>  🔗 Total Backlinks    ${fmtNum(full.backlinks).padStart(8)}</code>`,
+        `<code>  ✅ Dofollow           ${fmtNum(full.dofollowLinks).padStart(8)}</code>`,
+        `<code>  🚫 Nofollow           ${fmtNum(full.nofollowLinks).padStart(8)}</code>`,
+        ``,
+        `<b>🌍  Referring Domains</b>`,
+        thinLine(),
+        `<code>  🌍 Total Ref Domains  ${fmtNum(full.refdomains).padStart(8)}</code>`,
+        `<code>  ✅ Dofollow Domains   ${fmtNum(full.dofollowDomains).padStart(8)}</code>`,
+        `<code>  🔗 Linked Out (RD)   ${fmtNum(full.linkedDomains).padStart(8)}</code>`,
+        ``,
+        `<b>🔍  Organic Search</b>`,
+        thinLine(),
+        `<code>  🔑 Keywords           ${fmtNum(full.orgKeywords).padStart(8)}</code>`,
+        `<code>  👥 Est. Traffic/mo    ${fmtNum(full.orgTraffic).padStart(8)}</code>`,
+        `<code>  💵 Traffic Value      ${fmtNum(full.orgCost).padStart(7)}</code>`,
+        ``,
+        `<b>📊  Ahrefs Rank</b>`,
+        thinLine(),
+        `<code>  🏆 AR                 ${arRankStr.padStart(8)}</code>`,
+      )
+    } else if (hasFull === false && process.env.AHREFS_API_KEY) {
+      // Key is set but paid call failed — show a note
+      lines.push(``, `<i>⚠️ Full metrics unavailable (API error). DR only shown.</i>`)
+    }
+
+    lines.push(
       ``,
-      `🕒 <b>Last Updated:</b>  <code>${fetchedTime}</code>`,
-      license ? `<code>  License: ${escHtml(license)}</code>` : ``,
-    ].filter(Boolean).join('\n'), BACK_MENU)
+      divider(),
+      `<code>  🕒 ${fetchedTime}</code>`,
+      hasFull ? `<code>  📡 Source: Ahrefs (DR + Site Explorer)</code>` : `<code>  📡 Source: Ahrefs (free tier — DR only)</code>`,
+    )
+
+    await send(chatId, lines.filter(l => l !== undefined).join('\n'), BACK_MENU)
     return
   }
 
