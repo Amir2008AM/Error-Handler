@@ -114,13 +114,20 @@ export function proxy(request: NextRequest) {
   }
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // ── www redirect: non-www → www (301) to prevent duplicate canonical issues ──
+  // ── www → non-www redirect (301) ────────────────────────────────────────────
+  // Behind Railway + Cloudflare the real public host arrives in
+  // x-forwarded-host; fall back to the Host header.  We never touch
+  // request.nextUrl here because it carries the *internal* port (e.g. :8080)
+  // and would produce https://www.toolifypdf.online:8080/…
   if (process.env.NODE_ENV === 'production') {
-    const host = request.headers.get('host') ?? ''
-    if (host === 'toolifypdf.online') {
-      const url = request.nextUrl.clone()
-      url.host = 'www.toolifypdf.online'
-      return NextResponse.redirect(url, { status: 301 })
+    const publicHost =
+      request.headers.get('x-forwarded-host')?.split(',')[0].trim() ??
+      request.headers.get('host') ??
+      ''
+    if (publicHost.startsWith('www.')) {
+      const bareHost    = publicHost.slice(4)           // strip "www."
+      const destination = `https://${bareHost}${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`
+      return NextResponse.redirect(destination, { status: 301 })
     }
   }
 
