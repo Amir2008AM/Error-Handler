@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
-import { Menu, X, Zap } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 
 export function Navbar() {
@@ -25,9 +26,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-primary-foreground" fill="currentColor" />
-            </div>
+            <Image src="/favicon.png" alt="ToolifyPDF logo" width={32} height={32} className="rounded-lg" />
             <span className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
               ToolifyPDF
             </span>

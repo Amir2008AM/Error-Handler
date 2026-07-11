@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Zap } from 'lucide-react'
+import Image from 'next/image'
 
 export function Footer() {
   return (
@@ -12,9 +12,7 @@ export function Footer() {
           {/* Brand — full width on mobile/tablet, 1 col on desktop */}
           <div className="col-span-2 lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                <Zap className="w-4 h-4 text-white" fill="currentColor" />
-              </div>
+              <Image src="/favicon.png" alt="ToolifyPDF logo" width={32} height={32} className="rounded-lg shrink-0" />
               <span className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
                 ToolifyPDF
               </span>
