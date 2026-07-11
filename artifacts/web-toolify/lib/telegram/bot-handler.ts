@@ -14,6 +14,7 @@
 import { dbGetFeedback, type FeedbackRow } from './db'
 import { getGa4Snapshot } from './ga4-monitor'
 import { getDomainMetrics } from './dr-service'
+import { checkRank } from './rank-checker'
 
 // ── Telegram types ────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ const REPLY_KB: RKMarkup = {
     [{ text: '🌍 الدول' },      { text: '📄 الصفحات' }],
     [{ text: '📈 إحصائيات' },  { text: '💬 الفيدباك' }],
     [{ text: '🔔 آخر الرسائل' }, { text: '🔧 الجلسة' }],
-    [{ text: '🔍 DR Checker' }],
+    [{ text: '🔍 DR Checker' }, { text: '📈 ترتيب الكلمة' }],
   ],
   resize_keyboard: true,
   persistent:      true,
@@ -74,6 +75,14 @@ async function send(chatId: number, text: string, keyboard?: AnyMarkup): Promise
   const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }
   if (keyboard) body.reply_markup = keyboard
   await tgPost('sendMessage', body)
+}
+
+/** Send a message and return its message_id (needed for later edits). */
+async function sendGetId(chatId: number, text: string, keyboard?: AnyMarkup): Promise<number | null> {
+  const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }
+  if (keyboard) body.reply_markup = keyboard
+  const res = await tgPost('sendMessage', body) as { result?: { message_id?: number } } | null
+  return (res as any)?.result?.message_id ?? null
 }
 
 async function editText(chatId: number, msgId: number, text: string, keyboard?: IKMarkup): Promise<void> {
@@ -108,6 +117,7 @@ const MAIN_MENU: IKMarkup = {
     ],
     [
       { text: '🔍 Domain Rating Checker', callback_data: 'dr_help' },
+      { text: '📈 ترتيب الكلمة',          callback_data: 'rank_help' },
     ],
   ],
 }
@@ -724,6 +734,29 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     else       await send(chatId, text, BACK_MENU)
     return
   }
+
+  if (data === 'rank_help') {
+    const text = [
+      ``,
+      `📈 <b>RANK CHECKER  —  ترتيب الكلمة</b>`,
+      divider(),
+      ``,
+      `تحقق من ترتيب موقعك على Google لأي كلمة مفتاحية.`,
+      `يفحص حتى <b>1000 نتيجة</b> (100 صفحة) بدون حد.`,
+      ``,
+      `<b>الاستخدام:</b>`,
+      `<code>  /rank موقع.com كلمة مفتاحية</code>`,
+      ``,
+      `<b>أمثلة:</b>`,
+      `<code>  /rank toolifypdf.online أدوات PDF مجانية</code>`,
+      `<code>  /rank google.com free pdf tools online</code>`,
+      ``,
+      `⏱ <i>قد يستغرق البحث 1-5 دقائق حسب الترتيب.</i>`,
+    ].join('\n')
+    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
+    else       await send(chatId, text, BACK_MENU)
+    return
+  }
 }
 
 // ── Reply keyboard button labels → canonical command mapping ──────────────────
@@ -737,8 +770,9 @@ const REPLY_BTN_MAP: Record<string, string> = {
   '💬 الفيدباك':    '/feedback',
   '🔔 آخر الرسائل': '/latest',
   '🔧 الجلسة':      '/status',
-  '🔍 DR Checker':  '/dr',
-  '👋 خروج':         '/logout',
+  '🔍 DR Checker':    '/dr',
+  '📈 ترتيب الكلمة': '/rank',
+  '👋 خروج':          '/logout',
 }
 
 // ── Command handler ───────────────────────────────────────────────────────────
@@ -917,6 +951,177 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     return
   }
 
+  if (cmd === '/rank') {
+    const arg   = normalized.slice(cmd.length).trim()
+    const parts = arg.split(/\s+/)
+
+    if (parts.length < 2) {
+      await send(chatId, [
+        ``,
+        `📈 <b>RANK CHECKER</b>`,
+        divider(),
+        ``,
+        `❌ يجب تحديد الموقع والكلمة المفتاحية.`,
+        ``,
+        `<b>الاستخدام:</b>`,
+        `<code>  /rank موقع.com كلمة مفتاحية</code>`,
+        ``,
+        `<b>أمثلة:</b>`,
+        `<code>  /rank toolifypdf.online أدوات PDF مجانية</code>`,
+        `<code>  /rank google.com free pdf tools</code>`,
+      ].join('\n'), BACK_MENU)
+      return
+    }
+
+    const domain  = parts[0]
+    const keyword = parts.slice(1).join(' ')
+
+    // ── Send live progress message ───────────────────────────────────────────
+    const progressMsgId = await sendGetId(chatId, [
+      `⏳ <b>RANK CHECKER  —  جاري البحث</b>`,
+      divider(),
+      ``,
+      `🎯 <b>الكلمة:</b>  <code>${escHtml(keyword)}</code>`,
+      `🌐 <b>الموقع:</b>  <code>${escHtml(domain)}</code>`,
+      ``,
+      `<code>  📄 الصفحة:   1 / 100</code>`,
+      `<code>  🔍 النتائج:  0 / 1000</code>`,
+      ``,
+      `<code>${bar(0, 15)}</code>   0%`,
+      ``,
+      `<i>⏱ قد يستغرق البحث عدة دقائق…</i>`,
+    ].join('\n'))
+
+    // Track current page for periodic progress updates
+    let currentPage = 0
+
+    const progressTimer = setInterval(async () => {
+      if (!progressMsgId || currentPage === 0) return
+      const p   = Math.min(currentPage, 100)
+      const pct = Math.min(99, Math.round((p / 100) * 100))
+      await editText(chatId, progressMsgId, [
+        `⏳ <b>RANK CHECKER  —  جاري البحث</b>`,
+        divider(),
+        ``,
+        `🎯 <b>الكلمة:</b>  <code>${escHtml(keyword)}</code>`,
+        `🌐 <b>الموقع:</b>  <code>${escHtml(domain)}</code>`,
+        ``,
+        `<code>  📄 الصفحة:   ${String(p).padStart(3)} / 100</code>`,
+        `<code>  🔍 النتائج:  ${String(p * 10).padStart(4)} / 1000</code>`,
+        ``,
+        `<code>${bar(p / 100, 15)}</code>  ${pct}%`,
+        ``,
+        `<i>⏱ جاري الفحص…</i>`,
+      ].join('\n')).catch(() => {})
+    }, 6_000)
+
+    const result = await checkRank({
+      keyword,
+      domain,
+      maxPages:   100,
+      lang:       'ar',
+      country:    'sa',
+      onProgress: (page) => { currentPage = page },
+    })
+
+    clearInterval(progressTimer)
+
+    // ── Build result card ────────────────────────────────────────────────────
+    let resultText: string
+
+    if (result.blocked) {
+      resultText = [
+        `🚫 <b>RANK CHECKER  —  محظور مؤقتاً</b>`,
+        divider(),
+        ``,
+        `⚠️ <b>Google أوقف الطلبات مؤقتاً عند الصفحة ${result.blockedAtPage}</b>`,
+        ``,
+        `🎯 <code>${escHtml(keyword)}</code>`,
+        `🌐 <code>${escHtml(domain)}</code>`,
+        ``,
+        `<code>  🔍 فُحص ${result.resultsSearched} نتيجة قبل الحظر</code>`,
+        ``,
+        thinLine(),
+        `<i>حاول مرة أخرى بعد 15-20 دقيقة.</i>`,
+      ].join('\n')
+    } else if (result.found) {
+      const r    = result.rank!
+      const tier =
+        r <= 3   ? '🏆 أول 3 نتائج!'   :
+        r <= 10  ? '🥇 الصفحة الأولى'  :
+        r <= 20  ? '🥈 الصفحة الثانية' :
+        r <= 30  ? '🥉 الصفحة الثالثة' :
+        r <= 100 ? '📊 أول 100 نتيجة'  :
+        r <= 300 ? '📈 أول 300 نتيجة'  :
+                   '📉 ترتيب متأخر'
+      const scoreBar = bar(Math.max(0, (1000 - r) / 1000), 13)
+      const urlShort = result.url!.length > 55
+        ? result.url!.slice(0, 55) + '…'
+        : result.url!
+      resultText = [
+        `📊 <b>RANK CHECKER  —  النتيجة</b>`,
+        divider(),
+        ``,
+        `✅ <b>تم العثور على موقعك!</b>`,
+        ``,
+        `<code>┌───────────────────────────────┐</code>`,
+        `<code>│  🎯 ${pad(escHtml(keyword).slice(0, 25), 26)}│</code>`,
+        `<code>│  🌐 ${pad(escHtml(domain).slice(0, 25), 26)}│</code>`,
+        `<code>│                               │</code>`,
+        `<code>│  📊 الترتيب  #${String(r).padEnd(16)}│</code>`,
+        `<code>│  ${scoreBar}  ${String(Math.round(Math.max(0,(1000-r)/10))).padStart(3)}%  │</code>`,
+        `<code>│  ${tier.slice(0, 28).padEnd(29)}│</code>`,
+        `<code>└───────────────────────────────┘</code>`,
+        ``,
+        `🔗 <b>الرابط:</b>`,
+        `<code>${escHtml(urlShort)}</code>`,
+        ``,
+        thinLine(),
+        `<code>  🔍 فُحص ${result.resultsSearched} نتيجة / ${result.pagesSearched} صفحة</code>`,
+      ].join('\n')
+    } else if (result.noMoreResults) {
+      resultText = [
+        `📊 <b>RANK CHECKER  —  النتيجة</b>`,
+        divider(),
+        ``,
+        `❌ <b>الموقع غير مرتب لهذه الكلمة المفتاحية</b>`,
+        ``,
+        `🎯 <code>${escHtml(keyword)}</code>`,
+        `🌐 <code>${escHtml(domain)}</code>`,
+        ``,
+        `<code>  🔍 فُحص ${result.resultsSearched} نتيجة (جميع ما وجده Google)</code>`,
+        ``,
+        thinLine(),
+        `<i>الموقع غير موجود ضمن نتائج Google لهذه الكلمة.</i>`,
+      ].join('\n')
+    } else {
+      resultText = [
+        `📊 <b>RANK CHECKER  —  النتيجة</b>`,
+        divider(),
+        ``,
+        `📉 <b>الموقع خارج أول 1000 نتيجة</b>`,
+        ``,
+        `🎯 <code>${escHtml(keyword)}</code>`,
+        `🌐 <code>${escHtml(domain)}</code>`,
+        ``,
+        `<code>  🔍 فُحص ${result.resultsSearched} نتيجة / ${result.pagesSearched} صفحة</code>`,
+        ``,
+        thinLine(),
+        `<i>Google لا يُظهر أكثر من 1000 نتيجة لأي بحث.</i>`,
+        `<i>الموقع غير مرتب في أول 1000 نتيجة لهذه الكلمة.</i>`,
+      ].join('\n')
+    }
+
+    if (progressMsgId) {
+      await editText(chatId, progressMsgId, resultText, BACK_MENU).catch(() =>
+        send(chatId, resultText, BACK_MENU),
+      )
+    } else {
+      await send(chatId, resultText, BACK_MENU)
+    }
+    return
+  }
+
   if (cmd === '/help') {
     await send(chatId, [
       ``,
@@ -934,12 +1139,15 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
       `<code>  /feedback   قائمة الفيدباك</code>`,
       `<code>  /latest     آخر الرسائل</code>`,
       `<code>  /status     حالة الجلسة</code>`,
-      `<code>  /logout     تسجيل الخروج</code>`,
       ``,
       `<b>🔍 SEO Tools:</b>`,
       thinLine(),
-      `<code>  /dr &lt;domain&gt;   Domain Rating (Ahrefs)</code>`,
-      `<code>  Example: /dr google.com</code>`,
+      `<code>  /dr &lt;domain&gt;            Domain Rating</code>`,
+      `<code>  /rank &lt;domain&gt; &lt;keyword&gt; ترتيب الكلمة</code>`,
+      ``,
+      `<b>أمثلة:</b>`,
+      `<code>  /dr toolifypdf.online</code>`,
+      `<code>  /rank toolifypdf.online أدوات PDF مجانية</code>`,
     ].join('\n'), BACK_MENU)
     return
   }
