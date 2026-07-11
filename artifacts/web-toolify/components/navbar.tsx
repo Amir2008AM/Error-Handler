@@ -29,7 +29,7 @@ export function Navbar() {
               <Zap className="w-4 h-4 text-primary-foreground" fill="currentColor" />
             </div>
             <span className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
-              Toolify
+              ToolifyPDF
             </span>
           </Link>
 

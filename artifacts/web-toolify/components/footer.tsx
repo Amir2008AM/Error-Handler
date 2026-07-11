@@ -16,7 +16,7 @@ export function Footer() {
                 <Zap className="w-4 h-4 text-white" fill="currentColor" />
               </div>
               <span className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                Toolify
+                ToolifyPDF
               </span>
             </Link>
             <p className="text-sm text-white/60 leading-relaxed max-w-xs mb-3">
