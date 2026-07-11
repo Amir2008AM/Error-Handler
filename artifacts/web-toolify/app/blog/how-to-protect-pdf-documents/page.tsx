@@ -9,29 +9,29 @@ export const metadata: Metadata = {
   title: { absolute: 'How to Protect PDF Documents with a Password | ToolifyPDF Blog' },
   description:
     'Learn how to add password protection to a PDF document online for free. Covers when to protect files, how PDF protection works, removing passwords, and practical security tips.',
-  alternates: { canonical: 'https://www.toolifypdf.online/blog/how-to-protect-pdf-documents' },
+  alternates: { canonical: 'https://toolifypdf.online/blog/how-to-protect-pdf-documents' },
   openGraph: {
     title: 'How to Protect PDF Documents with a Password',
     description: 'Add password protection to PDF files online for free. Practical guide covering how PDF security works and best practices.',
     type: 'article',
     publishedTime: '2026-06-14T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/how-to-protect-pdf-documents',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/how-to-protect-pdf-documents',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: 'How to Protect PDF Documents with a Password', description: 'Password-protect PDF files online for free. Practical security guide.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
+  twitter: { card: 'summary_large_image', title: 'How to Protect PDF Documents with a Password', description: 'Password-protect PDF files online for free. Practical security guide.' , images: ['https://toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Protect PDF Documents with a Password',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description: 'Learn how to add password protection to a PDF document online for free — covering when to use protection, how it works, and how to remove passwords.',
   datePublished: '2026-06-14T00:00:00.000Z',
   dateModified: '2026-06-14T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-protect-pdf-documents' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-protect-pdf-documents' },
   articleSection: 'PDF Security',
   keywords: 'protect pdf, password protect pdf, add password to pdf, pdf security, lock pdf online free, pdf encryption',
 }

@@ -4,7 +4,7 @@ import { SplitPdfClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
-  alternates: { canonical: 'https://www.toolifypdf.online/split-pdf' },
+  alternates: { canonical: 'https://toolifypdf.online/split-pdf' },
   robots: { index: true, follow: true },
   title: { absolute: 'Split PDF — Extract PDF Pages Online Free | Toolify' },
   description: 'Split a PDF into multiple files or extract specific pages online for free. Define page ranges, download as individual PDFs or ZIP.',
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Split PDF — Extract PDF Pages Online Free | Toolify',
     description: 'Split a PDF into multiple files or extract specific pages online for free. Define page ranges, download as individual PDFs or ZIP.',
-    url: 'https://www.toolifypdf.online/split-pdf',
+    url: 'https://toolifypdf.online/split-pdf',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Split PDF — Extract PDF Pages Online Free | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Split PDF — Extract PDF Pages Online Free | Toolify' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Split PDF — Extract PDF Pages Online Free | Toolify',
     description: 'Split a PDF into multiple files or extract specific pages online for free. Define page ranges, download as individual PDFs or ZIP.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 export default function SplitPdfPage() {

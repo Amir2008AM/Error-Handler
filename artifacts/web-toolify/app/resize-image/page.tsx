@@ -4,7 +4,7 @@ import { ResizeImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
-  alternates: { canonical: 'https://www.toolifypdf.online/resize-image' },
+  alternates: { canonical: 'https://toolifypdf.online/resize-image' },
   robots: { index: true, follow: true },
   title: { absolute: 'Resize Image — Change Image Dimensions Free | Toolify' },
   description: 'Resize images to exact dimensions or by percentage online for free. Maintain aspect ratio or set custom width and height. No sign-up required.',
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Resize Image — Change Image Dimensions Free | Toolify',
     description: 'Resize images to exact dimensions or by percentage online for free. Maintain aspect ratio or set custom width and height. No sign-up required.',
-    url: 'https://www.toolifypdf.online/resize-image',
+    url: 'https://toolifypdf.online/resize-image',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Resize Image — Change Image Dimensions Free | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Resize Image — Change Image Dimensions Free | Toolify' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Resize Image — Change Image Dimensions Free | Toolify',
     description: 'Resize images to exact dimensions or by percentage online for free. Maintain aspect ratio or set custom width and height. No sign-up required.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 export default function ResizeImagePage() {

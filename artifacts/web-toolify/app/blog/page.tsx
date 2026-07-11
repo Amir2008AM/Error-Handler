@@ -6,14 +6,14 @@ export const metadata: Metadata = {
   title: { absolute: 'Blog — PDF & Image Tips and Guides | Toolify' },
   description: 'Tips, guides, and tutorials on PDF processing, image conversion, and free online tools. Learn how to work smarter with documents.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/blog',
+    canonical: 'https://toolifypdf.online/blog',
   },
   openGraph: {
     title: 'Blog — PDF & Image Tips and Guides | Toolify',
     description: 'Tips, guides, and tutorials on PDF processing, image conversion, and free online tools. Learn how to work smarter with documents.',
-    url: 'https://www.toolifypdf.online/blog',
+    url: 'https://toolifypdf.online/blog',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Blog — PDF & Image Tips and Guides | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Blog — PDF & Image Tips and Guides | Toolify' }],
   },
 }
 

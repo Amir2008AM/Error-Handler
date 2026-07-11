@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description:
     'Convert your files easily with our free PDF to JPG converter. Learn how to transform your PDFs into high-quality JPG images on our blog today!',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/blog/convert-pdf-to-jpg-easily-with-our-free-tool',
+    canonical: 'https://toolifypdf.online/blog/convert-pdf-to-jpg-easily-with-our-free-tool',
   },
   openGraph: {
     title: 'Convert PDF to JPG Easily with Our Free Tool',
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     type: 'article',
     publishedTime: '2026-07-09T00:00:00.000Z',
     modifiedTime: '2026-07-09T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/convert-pdf-to-jpg-easily-with-our-free-tool',
-    images: [{ url: 'https://www.toolifypdf.online/blog/pdf-to-jpg/pdf-to-jpg-hero.jpg', width: 1600, height: 1067, alt: 'Convert PDF to JPG Easily with Our Free Tool' }],
+    url: 'https://toolifypdf.online/blog/convert-pdf-to-jpg-easily-with-our-free-tool',
+    images: [{ url: 'https://toolifypdf.online/blog/pdf-to-jpg/pdf-to-jpg-hero.jpg', width: 1600, height: 1067, alt: 'Convert PDF to JPG Easily with Our Free Tool' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,21 +34,21 @@ const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: 'Free PDF to JPG Converter',
-  image: 'https://www.toolifypdf.online/blog/pdf-to-jpg/pdf-to-jpg-hero.jpg',
+  image: 'https://toolifypdf.online/blog/pdf-to-jpg/pdf-to-jpg-hero.jpg',
   description:
     'Convert your files easily with our free PDF to JPG converter. Learn how to transform your PDFs into high-quality JPG images on our blog today!',
   datePublished: '2026-07-09T00:00:00.000Z',
   dateModified: '2026-07-09T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
   publisher: {
     '@type': 'Organization',
     name: 'ToolifyPDF',
-    url: 'https://www.toolifypdf.online',
-    logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' },
+    url: 'https://toolifypdf.online',
+    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' },
   },
   mainEntityOfPage: {
     '@type': 'WebPage',
-    '@id': 'https://www.toolifypdf.online/blog/convert-pdf-to-jpg-easily-with-our-free-tool',
+    '@id': 'https://toolifypdf.online/blog/convert-pdf-to-jpg-easily-with-our-free-tool',
   },
   inLanguage: 'en-US',
   keywords: 'pdf to jpg, pdf converter, jpg converter, image extraction, batch conversion, online converter',
@@ -377,7 +377,7 @@ export default function ArticlePage() {
           <section id="introduction" className="mb-12">
             <h2 className="text-2xl font-bold text-foreground mb-4">Introduction</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Need a quick way to turn a pdf file into a jpg file? A free pdf converter can do that in just a few clicks, often right inside your browser. If you want an easy option, you can use <Link href="/pdf-to-jpg" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> at <a href="https://www.toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://www.toolifypdf.online</a> to handle common document tasks online. This guide explains when conversion makes sense, how the process works, what tools to compare, and how to keep your files clear, secure, and easy to share.
+              Need a quick way to turn a pdf file into a jpg file? A free pdf converter can do that in just a few clicks, often right inside your browser. If you want an easy option, you can use <Link href="/pdf-to-jpg" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> at <a href="https://toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://toolifypdf.online</a> to handle common document tasks online. This guide explains when conversion makes sense, how the process works, what tools to compare, and how to keep your files clear, secure, and easy to share.
             </p>
           </section>
 
@@ -477,12 +477,12 @@ export default function ArticlePage() {
               A browser-based online converter is usually the easiest way to convert pdf files without installing software. Most tools follow the same pattern: upload the file, choose page conversion or image extraction, wait a few seconds, then download the result.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-8">
-              A good pdf converter or jpg tool should work on desktop and mobile and should not require extra setup for basic use. If you want a free pdf workflow with a clean interface, <Link href="/pdf-to-jpg" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> at <a href="https://www.toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://www.toolifypdf.online</a> is worth checking alongside other browser tools.
+              A good pdf converter or jpg tool should work on desktop and mobile and should not require extra setup for basic use. If you want a free pdf workflow with a clean interface, <Link href="/pdf-to-jpg" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> at <a href="https://toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://toolifypdf.online</a> is worth checking alongside other browser tools.
             </p>
 
             <h3 className="text-xl font-bold text-foreground mb-3">Step-by-Step Guide to Using ToolifyPDF Online Converter</h3>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              If you need a quick answer to &ldquo;How can I quickly convert a pdf file to JPG format online?&rdquo; the process is simple. Open ToolifyPDF at <a href="https://www.toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://www.toolifypdf.online</a> in your browser, upload the file, choose the conversion option, and download the output once the jpg conversion finishes.
+              If you need a quick answer to &ldquo;How can I quickly convert a pdf file to JPG format online?&rdquo; the process is simple. Open ToolifyPDF at <a href="https://toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://toolifypdf.online</a> in your browser, upload the file, choose the conversion option, and download the output once the jpg conversion finishes.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-4">
               Because it is an online converter, you only need a stable internet connection and a browser. There is no need to install extra programs for a basic task.
@@ -682,7 +682,7 @@ export default function ArticlePage() {
 
             <h3 className="text-xl font-bold text-foreground mt-8 mb-3">Using ToolifyPDF for Image Extraction from PDFs</h3>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              If you are looking for an easy browser workflow, <Link href="/pdf-to-jpg" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> provides a simple way to handle document tasks online at <a href="https://www.toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://www.toolifypdf.online</a>. For users who need extraction features, it helps to choose a tool page that clearly separates page conversion from image extraction.
+              If you are looking for an easy browser workflow, <Link href="/pdf-to-jpg" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> provides a simple way to handle document tasks online at <a href="https://toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://toolifypdf.online</a>. For users who need extraction features, it helps to choose a tool page that clearly separates page conversion from image extraction.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-4">
               Is there a way to extract all images from a pdf file and save them as JPGs? Yes, some online services in the source material specifically offer that option. Instead of creating page screenshots, they pull out embedded visuals as separate jpg images. That is better when you need the actual graphics from the document.

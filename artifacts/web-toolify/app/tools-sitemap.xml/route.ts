@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { tools } from '@/lib/tools'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.toolifypdf.online'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolifypdf.online'
 
 const TODAY = new Date().toISOString().split('T')[0]
 

@@ -12,21 +12,21 @@ export const metadata: Metadata = {
   title: { absolute: 'Merge PDF and PDF: Combine Files for Free Online | ToolifyPDF Blog' },
   description:
     'Need to merge pdf and pdf files? Discover how to combine PDF files for free online with our easy-to-follow guide. Start merging now!',
-  alternates: { canonical: 'https://www.toolifypdf.online/blog/merge-pdf-and-pdf-combine-files-for-free-online' },
+  alternates: { canonical: 'https://toolifypdf.online/blog/merge-pdf-and-pdf-combine-files-for-free-online' },
   openGraph: {
     title: 'Merge PDF and PDF: Combine Files for Free Online',
     description: 'Need to merge pdf and pdf files? Discover how to combine PDF files for free online with our easy-to-follow guide. Start merging now!',
     type: 'article',
     publishedTime: '2026-07-09T00:00:00.000Z',
     modifiedTime: '2026-07-09T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/merge-pdf-and-pdf-combine-files-for-free-online',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/merge-pdf-and-pdf-combine-files-for-free-online',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Merge PDF and PDF: Combine Files for Free Online',
     description: 'Need to merge pdf and pdf files? Discover how to combine PDF files for free online with our easy-to-follow guide.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 
@@ -38,23 +38,23 @@ const articleSchema = {
   headline: 'Merge PDFs for Free - Combine PDF Files Online With the Best Free Tools',
   description:
     'A practical guide to merging PDF files for free online, comparing popular tools, explaining safe browser-based steps, and helping readers choose the right option.',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   datePublished: '2026-07-09T00:00:00.000Z',
   dateModified: '2026-07-09T00:00:00.000Z',
   author: {
     '@type': 'Organization',
     name: 'ToolifyPDF',
-    url: 'https://www.toolifypdf.online/author/toolifypdf-team',
+    url: 'https://toolifypdf.online/author/toolifypdf-team',
   },
   publisher: {
     '@type': 'Organization',
     name: 'ToolifyPDF',
-    url: 'https://www.toolifypdf.online',
-    logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' },
+    url: 'https://toolifypdf.online',
+    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' },
   },
   mainEntityOfPage: {
     '@type': 'WebPage',
-    '@id': 'https://www.toolifypdf.online/blog/merge-pdf-and-pdf-combine-files-for-free-online',
+    '@id': 'https://toolifypdf.online/blog/merge-pdf-and-pdf-combine-files-for-free-online',
   },
   articleSection: [
     'Key Highlights',

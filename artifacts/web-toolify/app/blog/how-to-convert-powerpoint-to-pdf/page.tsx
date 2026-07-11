@@ -9,29 +9,29 @@ export const metadata: Metadata = {
   title: { absolute: 'How to Convert PowerPoint to PDF Online for Free | ToolifyPDF Blog' },
   description:
     'Learn how to convert PowerPoint presentations to PDF for free online. Covers when and why to convert, what gets preserved, common issues, and step-by-step instructions.',
-  alternates: { canonical: 'https://www.toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf' },
+  alternates: { canonical: 'https://toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf' },
   openGraph: {
     title: 'How to Convert PowerPoint to PDF Online for Free',
     description: 'Convert PowerPoint presentations to PDF online. Practical guide covering formatting, use cases, and common issues.',
     type: 'article',
     publishedTime: '2026-06-12T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: 'How to Convert PowerPoint to PDF Online for Free', description: 'Convert PowerPoint files to PDF online for free — no software needed.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
+  twitter: { card: 'summary_large_image', title: 'How to Convert PowerPoint to PDF Online for Free', description: 'Convert PowerPoint files to PDF online for free — no software needed.' , images: ['https://toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Convert PowerPoint to PDF Online for Free',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description: 'Learn how to convert PowerPoint presentations to PDF online for free, including what gets preserved and common formatting issues.',
   datePublished: '2026-06-12T00:00:00.000Z',
   dateModified: '2026-06-12T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf' },
   articleSection: 'Presentation Guide',
   keywords: 'convert powerpoint to pdf, pptx to pdf online free, presentation to pdf, ppt to pdf converter, export slides as pdf',
 }

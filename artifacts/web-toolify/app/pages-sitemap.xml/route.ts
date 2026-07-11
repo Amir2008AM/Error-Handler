@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { ALL_STATIC_PAGES } from '@/lib/static-pages'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.toolifypdf.online'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolifypdf.online'
 
 export async function GET() {
   const urls = ALL_STATIC_PAGES.map(({ path, lastModified, changeFrequency, priority }) => `

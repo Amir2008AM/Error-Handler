@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { ALL_BLOG_ARTICLES } from '@/lib/blog'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.toolifypdf.online'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolifypdf.online'
 
 export async function GET() {
   const urls = ALL_BLOG_ARTICLES.map((article) => `

@@ -4,7 +4,7 @@ import { ConvertImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
-  alternates: { canonical: 'https://www.toolifypdf.online/convert-image' },
+  alternates: { canonical: 'https://toolifypdf.online/convert-image' },
   robots: { index: true, follow: true },
   title: { absolute: 'Convert Image — JPG PNG WebP AVIF Converter | Toolify' },
   description: 'Convert images between JPG, PNG, WebP, and AVIF formats online for free. Fast, no registration, instant download.',
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Convert Image — JPG PNG WebP AVIF Converter | Toolify',
     description: 'Convert images between JPG, PNG, WebP, and AVIF formats online for free. Fast, no registration, instant download.',
-    url: 'https://www.toolifypdf.online/convert-image',
+    url: 'https://toolifypdf.online/convert-image',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Convert Image — JPG PNG WebP AVIF Converter | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Convert Image — JPG PNG WebP AVIF Converter | Toolify' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Convert Image — JPG PNG WebP AVIF Converter | Toolify',
     description: 'Convert images between JPG, PNG, WebP, and AVIF formats online for free. Fast, no registration, instant download.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 export default function ConvertImagePage() {

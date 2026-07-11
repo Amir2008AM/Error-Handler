@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.toolifypdf.online'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolifypdf.online'
 
 const CATEGORY_SLUGS: Array<{ slug: string; lastModified: string }> = [
   { slug: 'pdf-tools',      lastModified: '2026-06-01' },

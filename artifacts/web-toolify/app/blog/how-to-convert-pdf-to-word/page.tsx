@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description:
     'Learn 3 easy ways to convert a PDF into an editable Word document at no cost. This guide covers free online tools, Google Docs, and Microsoft Word with step-by-step instructions and troubleshooting tips.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/blog/how-to-convert-pdf-to-word',
+    canonical: 'https://toolifypdf.online/blog/how-to-convert-pdf-to-word',
   },
   openGraph: {
     title: 'How to Convert PDF to Word for Free',
@@ -18,8 +18,8 @@ export const metadata: Metadata = {
       'Learn 3 easy ways to convert a PDF into an editable Word document at no cost — free online tools, Google Docs, and Microsoft Word.',
     type: 'article',
     publishedTime: '2026-06-01T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/how-to-convert-pdf-to-word',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/how-to-convert-pdf-to-word',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -33,14 +33,14 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Convert PDF to Word for Free',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description:
     'Learn 3 easy ways to convert a PDF into an editable Word document at no cost. This guide covers free online tools, Google Docs, and Microsoft Word.',
   datePublished: '2026-06-01T00:00:00.000Z',
   dateModified: '2026-06-01T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-pdf-to-word' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-pdf-to-word' },
   articleSection: 'PDF Guide',
   keywords: 'convert pdf to word, pdf to docx, free pdf converter, pdf to word online',
 }

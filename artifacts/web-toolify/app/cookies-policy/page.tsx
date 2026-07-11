@@ -5,21 +5,21 @@ export const metadata: Metadata = {
   title: { absolute: 'Cookies Policy | Toolify' },
   description: 'Cookies Policy for ToolifyPDF — learn how we use cookies and similar technologies to improve your experience on our platform.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/cookies-policy',
+    canonical: 'https://toolifypdf.online/cookies-policy',
   },
   robots: { index: true, follow: true },
   openGraph: {
     title: 'Cookies Policy | Toolify',
     description: 'Cookies Policy for ToolifyPDF — learn how we use cookies and similar technologies to improve your experience on our platform.',
-    url: 'https://www.toolifypdf.online/cookies-policy',
+    url: 'https://toolifypdf.online/cookies-policy',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Cookies Policy | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Cookies Policy | Toolify' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Cookies Policy | Toolify',
     description: 'Cookies Policy for ToolifyPDF — learn how we use cookies and similar technologies to improve your experience on our platform.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 

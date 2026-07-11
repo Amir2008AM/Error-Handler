@@ -9,29 +9,29 @@ export const metadata: Metadata = {
   title: { absolute: 'How to Reduce Image File Size Without Losing Quality | ToolifyPDF Blog' },
   description:
     'A practical guide to reducing image file size through compression, resizing, cropping, and format conversion — without visible quality loss. Covers all major image formats.',
-  alternates: { canonical: 'https://www.toolifypdf.online/blog/how-to-reduce-image-file-size' },
+  alternates: { canonical: 'https://toolifypdf.online/blog/how-to-reduce-image-file-size' },
   openGraph: {
     title: 'How to Reduce Image File Size Without Losing Quality',
     description: 'Compress, resize, crop, and convert images to reduce file size without visible quality loss.',
     type: 'article',
     publishedTime: '2026-06-07T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/how-to-reduce-image-file-size',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/how-to-reduce-image-file-size',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: 'How to Reduce Image File Size Without Losing Quality', description: 'Compress, resize, and optimize images online for free.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
+  twitter: { card: 'summary_large_image', title: 'How to Reduce Image File Size Without Losing Quality', description: 'Compress, resize, and optimize images online for free.' , images: ['https://toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Reduce Image File Size Without Losing Quality',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description: 'A practical guide to reducing image file size through compression, resizing, cropping, and format conversion.',
   datePublished: '2026-06-07T00:00:00.000Z',
   dateModified: '2026-06-07T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-reduce-image-file-size' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-reduce-image-file-size' },
   articleSection: 'Image Guide',
   keywords: 'reduce image file size, compress image online, resize image, optimize image, image compression without quality loss',
 }

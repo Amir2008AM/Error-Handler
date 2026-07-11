@@ -9,29 +9,29 @@ export const metadata: Metadata = {
   title: { absolute: '8 Common PDF Problems and How to Fix Them | ToolifyPDF Blog' },
   description:
     'Practical solutions to the most common PDF problems — files too large to send, password issues, text you cannot copy, corrupted files, and more. Solve each problem without software.',
-  alternates: { canonical: 'https://www.toolifypdf.online/blog/common-pdf-problems-and-solutions' },
+  alternates: { canonical: 'https://toolifypdf.online/blog/common-pdf-problems-and-solutions' },
   openGraph: {
     title: '8 Common PDF Problems and How to Fix Them',
     description: 'Fix the most common PDF problems online for free — large files, passwords, unselectable text, and more.',
     type: 'article',
     publishedTime: '2026-06-15T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/common-pdf-problems-and-solutions',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/common-pdf-problems-and-solutions',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: '8 Common PDF Problems and How to Fix Them', description: 'Practical solutions to the most common PDF problems — no software needed.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
+  twitter: { card: 'summary_large_image', title: '8 Common PDF Problems and How to Fix Them', description: 'Practical solutions to the most common PDF problems — no software needed.' , images: ['https://toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: '8 Common PDF Problems and How to Fix Them',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description: 'Practical solutions to the most common PDF problems — files too large to send, password issues, text you cannot copy, and more.',
   datePublished: '2026-06-15T00:00:00.000Z',
   dateModified: '2026-06-15T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/common-pdf-problems-and-solutions' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/common-pdf-problems-and-solutions' },
   articleSection: 'Troubleshooting',
   keywords: 'pdf problems, pdf too large to email, pdf password forgot, cannot select text in pdf, pdf not opening, fix pdf online, pdf corrupted',
 }

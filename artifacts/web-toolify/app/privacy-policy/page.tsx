@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: { absolute: 'Privacy Policy | Toolify' },
   description: 'Privacy Policy for ToolifyPDF — learn how we collect, use, and protect your information when using our free online PDF and image tools.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/privacy-policy',
+    canonical: 'https://toolifypdf.online/privacy-policy',
   },
   robots: { index: true, follow: true },
 }

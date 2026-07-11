@@ -4,7 +4,7 @@ import { PdfEditorClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
-  alternates: { canonical: 'https://www.toolifypdf.online/pdf-editor' },
+  alternates: { canonical: 'https://toolifypdf.online/pdf-editor' },
   robots: { index: true, follow: true },
   title: { absolute: 'PDF Editor — Edit PDF Online Free | Toolify' },
   description:
@@ -21,11 +21,11 @@ export const metadata: Metadata = {
     title: 'PDF Editor — Edit PDF Online Free | Toolify',
     description:
       'Edit PDF files online for free. Add text, images, drawings, highlights, and signatures. Manage pages — no sign-up required.',
-    url: 'https://www.toolifypdf.online/pdf-editor',
+    url: 'https://toolifypdf.online/pdf-editor',
     type: 'website',
     images: [
       {
-        url: 'https://www.toolifypdf.online/og-image.jpg',
+        url: 'https://toolifypdf.online/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'PDF Editor — Edit PDF Online Free | Toolify',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     title: 'PDF Editor — Edit PDF Online Free | Toolify',
     description:
       'Edit PDF files online for free. Add text, images, drawings, highlights, and signatures. Manage pages — no sign-up required.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 

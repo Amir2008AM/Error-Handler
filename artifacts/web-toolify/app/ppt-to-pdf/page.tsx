@@ -4,22 +4,22 @@ import { getToolBySlug } from '@/lib/tools'
 import { PptToPdfClient } from './client'
 
 export const metadata: Metadata = {
-  alternates: { canonical: 'https://www.toolifypdf.online/ppt-to-pdf' },
+  alternates: { canonical: 'https://toolifypdf.online/ppt-to-pdf' },
   robots: { index: true, follow: true },
   title: { absolute: 'PPT to PDF — Convert PowerPoint to PDF | Toolify' },
   description: 'Convert PowerPoint presentations (.pptx, .ppt) to PDF files. Free online PPT to PDF converter — preserves slides and formatting perfectly.',
   openGraph: {
     title: 'PPT to PDF — Convert PowerPoint to PDF | Toolify',
     description: 'Convert PowerPoint presentations (.pptx, .ppt) to PDF files. Free online PPT to PDF converter — preserves slides and formatting perfectly.',
-    url: 'https://www.toolifypdf.online/ppt-to-pdf',
+    url: 'https://toolifypdf.online/ppt-to-pdf',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'PPT to PDF — Convert PowerPoint to PDF | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'PPT to PDF — Convert PowerPoint to PDF | Toolify' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'PPT to PDF — Convert PowerPoint to PDF | Toolify',
     description: 'Convert PowerPoint presentations (.pptx, .ppt) to PDF files. Free online PPT to PDF converter — preserves slides and formatting perfectly.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 export default function Page() {

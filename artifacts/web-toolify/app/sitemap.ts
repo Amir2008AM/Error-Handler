@@ -3,7 +3,7 @@ import { tools } from '@/lib/tools'
 import { ALL_BLOG_ARTICLES } from '@/lib/blog'
 import { ALL_STATIC_PAGES } from '@/lib/static-pages'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.toolifypdf.online'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolifypdf.online'
 
 const TODAY = new Date()
 

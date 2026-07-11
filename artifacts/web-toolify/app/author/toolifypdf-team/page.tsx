@@ -8,16 +8,16 @@ export const metadata: Metadata = {
   description:
     'Meet the ToolifyPDF Team — the writers and developers behind our free PDF, image, and document guides. Browse every article we have published.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/author/toolifypdf-team',
+    canonical: 'https://toolifypdf.online/author/toolifypdf-team',
   },
   robots: { index: true, follow: true },
   openGraph: {
     title: 'ToolifyPDF Team — Author Profile',
     description:
       'Meet the ToolifyPDF Team — the writers and developers behind our free PDF, image, and document guides.',
-    url: 'https://www.toolifypdf.online/author/toolifypdf-team',
+    url: 'https://toolifypdf.online/author/toolifypdf-team',
     type: 'profile',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'ToolifyPDF Team' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'ToolifyPDF Team' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -33,11 +33,11 @@ const schema = {
   mainEntity: {
     '@type': 'Organization',
     name: 'ToolifyPDF Team',
-    url: 'https://www.toolifypdf.online/author/toolifypdf-team',
-    logo: 'https://www.toolifypdf.online/favicon.png',
+    url: 'https://toolifypdf.online/author/toolifypdf-team',
+    logo: 'https://toolifypdf.online/favicon.png',
     description:
       'The ToolifyPDF Team builds and writes about free, browser-based PDF, image, and document tools.',
-    sameAs: ['https://www.toolifypdf.online/about'],
+    sameAs: ['https://toolifypdf.online/about'],
   },
 }
 

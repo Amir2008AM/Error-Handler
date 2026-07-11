@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description:
     'Learn how to convert Word documents to PDF online for free. Follow this simple guide to preserve formatting, improve security, and share documents easily.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/blog/how-to-convert-word-to-pdf',
+    canonical: 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf',
   },
   openGraph: {
     title: 'How to Convert Word to PDF Online for Free',
@@ -18,8 +18,8 @@ export const metadata: Metadata = {
       'Learn how to convert Word documents to PDF online for free. Preserve formatting, improve security, and share documents easily.',
     type: 'article',
     publishedTime: '2026-06-01T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/how-to-convert-word-to-pdf',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -33,14 +33,14 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Convert Word to PDF Online for Free',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description:
     'Learn how to convert Word documents to PDF online for free. Preserve formatting, improve security, and share documents easily.',
   datePublished: '2026-06-01T00:00:00.000Z',
   dateModified: '2026-06-01T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-word-to-pdf' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf' },
   articleSection: 'Word Guide',
   keywords: 'convert word to pdf, word to pdf online, docx to pdf free, word to pdf converter',
 }

@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: { absolute: 'Terms of Use | Toolify' },
   description: 'Terms of Use for ToolifyPDF — the rules and guidelines for using our free online PDF, image, and document processing tools.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/terms-and-conditions',
+    canonical: 'https://toolifypdf.online/terms-and-conditions',
   },
   robots: { index: true, follow: true },
 }

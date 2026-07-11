@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description:
     'Learn how to convert JPG images to PDF files for free online. Follow this easy step-by-step guide to combine your JPGs into high-quality PDFs in seconds.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
+    canonical: 'https://toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
   },
   openGraph: {
     title: 'How to Convert JPG to PDF Online for Free',
@@ -18,8 +18,8 @@ export const metadata: Metadata = {
       'Learn how to convert JPG images to PDF files for free online. Combine your JPGs into high-quality PDFs in seconds.',
     type: 'article',
     publishedTime: '2026-06-03T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/how-to-convert-jpg-to-pdf',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -33,14 +33,14 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Convert JPG to PDF Online for Free',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description:
     'Learn how to convert JPG images to PDF files for free online. Follow this easy step-by-step guide to combine your JPGs into high-quality PDFs in seconds.',
   datePublished: '2026-06-03T00:00:00.000Z',
   dateModified: '2026-06-03T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-convert-jpg-to-pdf' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-jpg-to-pdf' },
   articleSection: 'Image Guide',
   keywords: 'jpg to pdf, convert jpg to pdf, image to pdf, jpg to pdf online free, convert jpeg to pdf',
 }

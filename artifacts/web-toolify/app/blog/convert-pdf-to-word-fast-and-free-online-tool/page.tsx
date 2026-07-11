@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description:
     'Convert your documents easily with our free tool! Learn how to effortlessly transform your files from PDF to Word online in minutes.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
+    canonical: 'https://toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
   },
   openGraph: {
     title: 'Convert PDF to Word: Fast & Free Online Tool',
@@ -20,8 +20,8 @@ export const metadata: Metadata = {
     type: 'article',
     publishedTime: '2026-07-08T00:00:00.000Z',
     modifiedTime: '2026-07-08T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Convert PDF to Word: Fast & Free Online Tool' }],
+    url: 'https://toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Convert PDF to Word: Fast & Free Online Tool' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -35,21 +35,21 @@ const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: 'PDF to WORD Online for Free | Convert PDF to Word with ToolifyPDF',
-  image: 'https://www.toolifypdf.online/blog/pdf-to-word/pdf-to-word-hero.jpg',
+  image: 'https://toolifypdf.online/blog/pdf-to-word/pdf-to-word-hero.jpg',
   description:
     'Convert PDF to Word online for free with ToolifyPDF. Turn PDF files into editable DOCX documents, use OCR for scanned PDFs, and preserve formatting in your Word file.',
   datePublished: '2026-07-08T00:00:00.000Z',
   dateModified: '2026-07-08T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
   publisher: {
     '@type': 'Organization',
     name: 'ToolifyPDF',
-    url: 'https://www.toolifypdf.online',
-    logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' },
+    url: 'https://toolifypdf.online',
+    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' },
   },
   mainEntityOfPage: {
     '@type': 'WebPage',
-    '@id': 'https://www.toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
+    '@id': 'https://toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
   },
   inLanguage: 'en-US',
   articleSection: [
@@ -485,7 +485,7 @@ export default function ArticlePage() {
                   'The pdf converter supports OCR, which helps with scanned files and image-based pages.',
                   'Online tools like this work across desktop and mobile, so your files stay easy to access.',
                   'Good word conversion keeps formatting, fonts, and layout closer to the original document.',
-                  <>You can use <a href="https://www.toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://www.toolifypdf.online</a> for quick DOCX output and easier editing.</>,
+                  <>You can use <a href="https://toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://toolifypdf.online</a> for quick DOCX output and easier editing.</>,
                 ]}
               />
             </HighlightBox>
@@ -528,7 +528,7 @@ export default function ArticlePage() {
               The easiest way to handle pdf to word conversion is to use browser-based online tools that also support Linux. You upload the online pdf, let the converter process it, and then download an editable word file in seconds. It is much easier than copying text page by page.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              If you want a reliable free option, ToolifyPDF at <a href="https://www.toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://www.toolifypdf.online</a> is a practical place to start. It helps you create a word doc for editing while aiming to keep layout and text usable. Next, let&rsquo;s walk through the exact steps and then look at OCR for scanned files.
+              If you want a reliable free option, ToolifyPDF at <a href="https://toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://toolifypdf.online</a> is a practical place to start. It helps you create a word doc for editing while aiming to keep layout and text usable. Next, let&rsquo;s walk through the exact steps and then look at OCR for scanned files.
             </p>
           </section>
 
@@ -541,7 +541,7 @@ export default function ArticlePage() {
             <p className="text-muted-foreground leading-relaxed mb-4 font-medium text-foreground">Here is a simple flow you can follow:</p>
             <NumberedList
               items={[
-                <>Open <Link href="/pdf-to-word" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> at <a href="https://www.toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://www.toolifypdf.online</a>.</>,
+                <>Open <Link href="/pdf-to-word" className="hover:underline" style={{ color: ACCENT }}>ToolifyPDF</Link> at <a href="https://toolifypdf.online" className="hover:underline" style={{ color: ACCENT }}>https://toolifypdf.online</a>.</>,
                 'Upload your pdf file from your device.',
                 'Choose PDF to Word and start the conversion.',
                 'Wait while the tool creates your DOCX output.',

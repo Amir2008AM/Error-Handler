@@ -80,7 +80,7 @@ export function ToolPageServerLayout(props: Props) {
 
   const categoryLabel = CATEGORY_LABELS[tool.category] ?? tool.category
 
-  const BASE_URL = 'https://www.toolifypdf.online'
+  const BASE_URL = 'https://toolifypdf.online'
   const toolUrl  = `${BASE_URL}/${tool.slug}`
 
   const jsonLd = {

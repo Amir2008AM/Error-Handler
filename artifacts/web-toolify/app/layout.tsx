@@ -47,14 +47,14 @@ export const metadata: Metadata = {
     'ocr',
     'image to text',
   ],
-  metadataBase: new URL('https://www.toolifypdf.online'),
+  metadataBase: new URL('https://toolifypdf.online'),
   openGraph: {
     title: 'Toolify — Free Online PDF, Image & Document Tools',
     description: 'Free, fast online tools for PDF processing, image conversion, and document editing. No sign-up required.',
     type: 'website',
     images: [
       {
-        url: 'https://www.toolifypdf.online/og-image.jpg',
+        url: 'https://toolifypdf.online/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'Toolify — Free Online PDF & Image Tools',
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Toolify — All Tools in One Place',
     description: 'Free online tools for PDF, images, text, and more.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
   robots: {
     index: true,
@@ -112,11 +112,11 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
               name: 'Toolify',
-              url: 'https://www.toolifypdf.online',
+              url: 'https://toolifypdf.online',
               description: 'Free online tools for PDF, images, text, and conversions. No sign-up required.',
               potentialAction: {
                 '@type': 'SearchAction',
-                target: 'https://www.toolifypdf.online/?q={search_term_string}',
+                target: 'https://toolifypdf.online/?q={search_term_string}',
                 'query-input': 'required name=search_term_string',
               },
             }),

@@ -9,29 +9,29 @@ export const metadata: Metadata = {
   title: { absolute: 'How to Split a PDF File Online for Free | ToolifyPDF Blog' },
   description:
     'Learn how to split a PDF into separate pages or sections online for free. A practical step-by-step guide covering use cases, tips, and what to do after splitting.',
-  alternates: { canonical: 'https://www.toolifypdf.online/blog/how-to-split-pdf-online' },
+  alternates: { canonical: 'https://toolifypdf.online/blog/how-to-split-pdf-online' },
   openGraph: {
     title: 'How to Split a PDF File Online for Free',
     description: 'Split any PDF into individual pages or custom sections in seconds — no software, no sign-up.',
     type: 'article',
     publishedTime: '2026-06-06T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/how-to-split-pdf-online',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
+    url: 'https://toolifypdf.online/blog/how-to-split-pdf-online',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: 'How to Split a PDF File Online for Free', description: 'Split any PDF into pages or sections online in seconds.' , images: ['https://www.toolifypdf.online/og-image.jpg'] },
+  twitter: { card: 'summary_large_image', title: 'How to Split a PDF File Online for Free', description: 'Split any PDF into pages or sections online in seconds.' , images: ['https://toolifypdf.online/og-image.jpg'] },
 }
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: 'How to Split a PDF File Online for Free',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description: 'Learn how to split a PDF into separate pages or sections online for free.',
   datePublished: '2026-06-06T00:00:00.000Z',
   dateModified: '2026-06-06T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://www.toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' } },
-  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://www.toolifypdf.online/blog/how-to-split-pdf-online' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-split-pdf-online' },
   articleSection: 'PDF Guide',
   keywords: 'split pdf, split pdf online free, separate pdf pages, extract pdf pages, divide pdf',
 }

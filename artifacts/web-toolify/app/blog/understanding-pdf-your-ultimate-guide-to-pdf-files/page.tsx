@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description:
     'Dive into our ultimate guide on pdf files! Discover everything you need to know about pdf, its features, and how to use it effectively in 2026.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/blog/understanding-pdf-your-ultimate-guide-to-pdf-files',
+    canonical: 'https://toolifypdf.online/blog/understanding-pdf-your-ultimate-guide-to-pdf-files',
   },
   openGraph: {
     title: 'Understanding PDF: Your Ultimate Guide to PDF Files',
@@ -20,8 +20,8 @@ export const metadata: Metadata = {
     type: 'article',
     publishedTime: '2026-07-05T00:00:00.000Z',
     modifiedTime: '2026-07-05T00:00:00.000Z',
-    url: 'https://www.toolifypdf.online/blog/understanding-pdf-your-ultimate-guide-to-pdf-files',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Understanding PDF: Your Ultimate Guide to PDF Files' }],
+    url: 'https://toolifypdf.online/blog/understanding-pdf-your-ultimate-guide-to-pdf-files',
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Understanding PDF: Your Ultimate Guide to PDF Files' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -35,21 +35,21 @@ const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: 'Understanding PDF: Your Complete Guide to PDF Files',
-  image: 'https://www.toolifypdf.online/og-image.jpg',
+  image: 'https://toolifypdf.online/og-image.jpg',
   description:
     'Dive into our ultimate guide on pdf files! Discover everything you need to know about pdf, its features, and how to use it effectively in 2026.',
   datePublished: '2026-07-05T00:00:00.000Z',
   dateModified: '2026-07-05T00:00:00.000Z',
-  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://www.toolifypdf.online/author/toolifypdf-team' },
+  author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
   publisher: {
     '@type': 'Organization',
     name: 'ToolifyPDF',
-    url: 'https://www.toolifypdf.online',
-    logo: { '@type': 'ImageObject', url: 'https://www.toolifypdf.online/favicon.png' },
+    url: 'https://toolifypdf.online',
+    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' },
   },
   mainEntityOfPage: {
     '@type': 'WebPage',
-    '@id': 'https://www.toolifypdf.online/blog/understanding-pdf-your-ultimate-guide-to-pdf-files',
+    '@id': 'https://toolifypdf.online/blog/understanding-pdf-your-ultimate-guide-to-pdf-files',
   },
   keywords: 'pdf, pdf file, portable document format, what is pdf, pdf format, pdf guide, pdf tools',
   articleSection: 'PDF Guide',

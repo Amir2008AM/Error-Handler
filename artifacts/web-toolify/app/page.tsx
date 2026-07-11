@@ -6,20 +6,20 @@ import { PartnerBadges } from '@/components/partner-badges'
 export const metadata: Metadata = {
   title: { absolute: 'Toolify — Free PDF, Image & Document Tools Online' },
   description: 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
-  alternates: { canonical: 'https://www.toolifypdf.online' },
+  alternates: { canonical: 'https://toolifypdf.online' },
   robots: { index: true, follow: true },
   openGraph: {
     title: 'Toolify — Free PDF, Image & Document Tools Online',
     description: 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
-    url: 'https://www.toolifypdf.online',
+    url: 'https://toolifypdf.online',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Toolify — Free PDF, Image & Document Tools Online' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Toolify — Free PDF, Image & Document Tools Online' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Toolify — Free PDF, Image & Document Tools Online',
     description: 'Free online tools for PDF, images, text, and conversions. Compress images, merge PDFs, convert files, and more — no registration needed.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 

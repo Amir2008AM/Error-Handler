@@ -5,21 +5,21 @@ export const metadata: Metadata = {
   title: { absolute: 'Disclaimer | Toolify' },
   description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/disclaimer',
+    canonical: 'https://toolifypdf.online/disclaimer',
   },
   robots: { index: true, follow: true },
   openGraph: {
     title: 'Disclaimer | Toolify',
     description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
-    url: 'https://www.toolifypdf.online/disclaimer',
+    url: 'https://toolifypdf.online/disclaimer',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Disclaimer | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Disclaimer | Toolify' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Disclaimer | Toolify',
     description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 

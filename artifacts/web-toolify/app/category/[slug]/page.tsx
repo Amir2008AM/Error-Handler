@@ -40,7 +40,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   'Calculators':    'Free online calculators for everyday tasks — age, percentage, and more.',
 }
 
-const BASE_URL = 'https://www.toolifypdf.online'
+const BASE_URL = 'https://toolifypdf.online'
 
 type Props = { params: Promise<{ slug: string }> }
 

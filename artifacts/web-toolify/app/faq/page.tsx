@@ -5,7 +5,7 @@ import { ChevronRight, ChevronDown, ArrowRight } from 'lucide-react'
 export const metadata: Metadata = {
   title: { absolute: 'FAQ — Frequently Asked Questions | Toolify' },
   description: 'Precise answers about every Toolify tool — file limits, supported formats, security practices, and accuracy. Get help fast.',
-  alternates: { canonical: 'https://www.toolifypdf.online/faq' },
+  alternates: { canonical: 'https://toolifypdf.online/faq' },
   keywords: [
     'toolify faq', 'pdf tools faq', 'compress pdf questions', 'merge pdf help',
     'pdf to word questions', 'protect pdf faq', 'free pdf tools faq',
@@ -13,9 +13,9 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'FAQ — Frequently Asked Questions | Toolify',
     description: 'Precise answers about every Toolify tool — file limits, supported formats, security practices, and accuracy. Get help fast.',
-    url: 'https://www.toolifypdf.online/faq',
+    url: 'https://toolifypdf.online/faq',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'FAQ — Frequently Asked Questions | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'FAQ — Frequently Asked Questions | Toolify' }],
   },
   robots: { index: true, follow: true },
 }

@@ -4,7 +4,7 @@ import { ImageToPdfClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
 
 export const metadata: Metadata = {
-  alternates: { canonical: 'https://www.toolifypdf.online/image-to-pdf' },
+  alternates: { canonical: 'https://toolifypdf.online/image-to-pdf' },
   robots: { index: true, follow: true },
   title: { absolute: 'Image to PDF — Convert JPG & PNG to PDF | Toolify' },
   description: 'Convert multiple images to a PDF file online for free. Upload JPG or PNG images, arrange their order, and download your PDF instantly.',
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Image to PDF — Convert JPG & PNG to PDF | Toolify',
     description: 'Convert multiple images to a PDF file online for free. Upload JPG or PNG images, arrange their order, and download your PDF instantly.',
-    url: 'https://www.toolifypdf.online/image-to-pdf',
+    url: 'https://toolifypdf.online/image-to-pdf',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Image to PDF — Convert JPG & PNG to PDF | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Image to PDF — Convert JPG & PNG to PDF | Toolify' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Image to PDF — Convert JPG & PNG to PDF | Toolify',
     description: 'Convert multiple images to a PDF file online for free. Upload JPG or PNG images, arrange their order, and download your PDF instantly.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 export default function ImageToPdfPage() {

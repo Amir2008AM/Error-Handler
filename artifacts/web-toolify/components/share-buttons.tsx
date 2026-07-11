@@ -9,7 +9,7 @@ interface ShareButtonsProps {
   fileId?: string
 }
 
-const SITE_TEXT = 'Free PDF, Image & Document Tools — No Registration Required.\nhttps://www.toolifypdf.online'
+const SITE_TEXT = 'Free PDF, Image & Document Tools — No Registration Required.\nhttps://toolifypdf.online'
 
 export function ShareButtons({ filename, downloadUrl, fileId }: ShareButtonsProps) {
   const [sharingFile, setSharingFile] = useState(false)

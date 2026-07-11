@@ -5,21 +5,21 @@ export const metadata: Metadata = {
   title: { absolute: 'About Toolify — Free Online PDF & Image Tools' },
   description: 'Learn about Toolify — a free, fast platform for PDF processing, image conversion, and document tools. No account required, instant results.',
   alternates: {
-    canonical: 'https://www.toolifypdf.online/about',
+    canonical: 'https://toolifypdf.online/about',
   },
   robots: { index: true, follow: true },
   openGraph: {
     title: 'About Toolify — Free Online PDF & Image Tools',
     description: 'Learn about Toolify — a free, fast platform for PDF processing, image conversion, and document tools. No account required, instant results.',
-    url: 'https://www.toolifypdf.online/about',
+    url: 'https://toolifypdf.online/about',
     type: 'website',
-    images: [{ url: 'https://www.toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'About Toolify — Free Online PDF & Image Tools' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'About Toolify — Free Online PDF & Image Tools' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'About Toolify — Free Online PDF & Image Tools',
     description: 'Learn about Toolify — a free, fast platform for PDF processing, image conversion, and document tools. No account required, instant results.',
-    images: ['https://www.toolifypdf.online/og-image.jpg'],
+    images: ['https://toolifypdf.online/og-image.jpg'],
   },
 }
 
