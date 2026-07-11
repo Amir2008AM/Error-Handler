@@ -15,6 +15,7 @@ import { dbGetFeedback, type FeedbackRow } from './db'
 import { getGa4Snapshot } from './ga4-monitor'
 import { getDomainMetrics } from './dr-service'
 import { checkRank } from './rank-checker'
+import { analyzeSeo } from './seo-analyzer'
 
 // ── Telegram types ────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ const REPLY_KB: RKMarkup = {
     [{ text: '📈 إحصائيات' },  { text: '💬 الفيدباك' }],
     [{ text: '🔔 آخر الرسائل' }, { text: '🔧 الجلسة' }],
     [{ text: '🔍 DR Checker' }, { text: '📈 ترتيب الكلمة' }],
+    [{ text: '📊 تقييم SEO' }],
   ],
   resize_keyboard: true,
   persistent:      true,
@@ -118,6 +120,9 @@ const MAIN_MENU: IKMarkup = {
     [
       { text: '🔍 Domain Rating Checker', callback_data: 'dr_help' },
       { text: '📈 ترتيب الكلمة',          callback_data: 'rank_help' },
+    ],
+    [
+      { text: '📊 تقييم SEO للمقال',       callback_data: 'seo_help' },
     ],
   ],
 }
@@ -757,6 +762,35 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
     else       await send(chatId, text, BACK_MENU)
     return
   }
+
+  if (data === 'seo_help') {
+    const text = [
+      ``,
+      `📊 <b>SEO ANALYZER  —  تقييم المقال</b>`,
+      divider(),
+      ``,
+      `حلل أي مقال أو صفحة ويب وتحصل على تقرير SEO شامل:`,
+      ``,
+      `<code>  ✅ العنوان والطول</code>`,
+      `<code>  ✅ Meta Description</code>`,
+      `<code>  ✅ هيكل العناوين H1/H2/H3</code>`,
+      `<code>  ✅ كثافة الكلمة المفتاحية</code>`,
+      `<code>  ✅ طول المحتوى</code>`,
+      `<code>  ✅ الروابط الداخلية</code>`,
+      `<code>  ✅ تقييم كلي / 100 + مقترحات</code>`,
+      ``,
+      `<b>الاستخدام:</b>`,
+      `<code>  /seo رابط-المقال</code>`,
+      `<code>  /seo رابط-المقال كلمة مفتاحية</code>`,
+      ``,
+      `<b>أمثلة:</b>`,
+      `<code>  /seo toolifypdf.online/blog/pdf-tools</code>`,
+      `<code>  /seo example.com/article أدوات PDF مجانية</code>`,
+    ].join('\n')
+    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
+    else       await send(chatId, text, BACK_MENU)
+    return
+  }
 }
 
 // ── Reply keyboard button labels → canonical command mapping ──────────────────
@@ -772,6 +806,7 @@ const REPLY_BTN_MAP: Record<string, string> = {
   '🔧 الجلسة':      '/status',
   '🔍 DR Checker':    '/dr',
   '📈 ترتيب الكلمة': '/rank',
+  '📊 تقييم SEO':   '/seo',
   '👋 خروج':          '/logout',
 }
 
@@ -951,6 +986,104 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     return
   }
 
+  if (cmd === '/seo') {
+    const arg   = normalized.slice(cmd.length).trim()
+    const parts = arg.split(/\s+/)
+
+    if (!arg || !parts[0]) {
+      await send(chatId, [
+        ``,
+        `📊 <b>SEO ANALYZER</b>`,
+        divider(),
+        ``,
+        `❌ يجب تحديد رابط المقال.`,
+        ``,
+        `<b>الاستخدام:</b>`,
+        `<code>  /seo رابط-المقال</code>`,
+        `<code>  /seo رابط-المقال كلمة مفتاحية</code>`,
+        ``,
+        `<b>أمثلة:</b>`,
+        `<code>  /seo toolifypdf.online/blog/pdf-tools</code>`,
+        `<code>  /seo example.com/article أدوات PDF مجانية</code>`,
+      ].join('\n'), BACK_MENU)
+      return
+    }
+
+    const url     = parts[0]
+    const keyword = parts.length > 1 ? parts.slice(1).join(' ') : undefined
+
+    // Send static waiting message
+    const msgId = await sendGetId(chatId, [
+      `⏳ <b>SEO ANALYZER  —  جاري التحليل</b>`,
+      divider(),
+      ``,
+      `🔗 <code>${escHtml(url)}</code>`,
+      keyword ? `🎯 <b>الكلمة:</b>  <code>${escHtml(keyword)}</code>` : ``,
+      ``,
+      `<i>جاري تحميل الصفحة وتحليلها…</i>`,
+    ].filter(Boolean).join('\n'))
+
+    const r = await analyzeSeo(url, keyword)
+
+    // ── Build result card ────────────────────────────────────────────────────
+    let text: string
+
+    if (!r.ok) {
+      text = [
+        `📊 <b>SEO ANALYZER  —  خطأ</b>`,
+        divider(),
+        ``,
+        `❌ <b>${escHtml(r.error ?? 'فشل التحليل')}</b>`,
+        ``,
+        `🔗 <code>${escHtml(url)}</code>`,
+      ].join('\n')
+    } else {
+      // Score bar & grade colour
+      const pct        = r.total
+      const scoreBar   = bar(pct / 100, 14)
+      const gradeEmoji = pct >= 80 ? '🏆' : pct >= 60 ? '📊' : pct >= 40 ? '⚠️' : '❌'
+
+      // Factor rows — fixed-width to align columns
+      const fRows = r.factors.map(f => {
+        const label  = f.label.slice(0, 18).padEnd(18)
+        const sc     = `${f.score}/${f.max}`.padEnd(6)
+        return `  ${f.icon} <code>${label} ${sc}</code> <i>${f.note}</i>`
+      })
+
+      // Suggestion list
+      const sRows = r.suggestions.length
+        ? r.suggestions.map((s, i) => `  <b>${i + 1}.</b> ${escHtml(s)}`)
+        : [`  ✅ المقال ممتاز — لا مقترحات رئيسية`]
+
+      text = [
+        `📊 <b>SEO REPORT  —  ${escHtml(r.domain)}</b>`,
+        divider(),
+        ``,
+        `${gradeEmoji} <b>التقييم الكلي:  ${pct} / 100</b>  (${r.grade})`,
+        `<code>${scoreBar}</code>`,
+        keyword ? `🎯 <b>الكلمة:</b>  <code>${escHtml(keyword)}</code>` : ``,
+        ``,
+        `📋 <b>التفاصيل:</b>`,
+        thinLine(),
+        ...fRows,
+        ``,
+        `💡 <b>مقترحات التحسين:</b>`,
+        thinLine(),
+        ...sRows,
+        ``,
+        divider(),
+        `<code>  📄 ${r.wordCount} كلمة  |  H1:${r.h1} H2:${r.h2} H3:${r.h3}  |  🔗${r.internalLinks} رابط داخلي</code>`,
+      ].filter(l => l !== '').join('\n')
+    }
+
+    if (msgId) {
+      await editText(chatId, msgId, text, BACK_MENU).catch(() => send(chatId, text, BACK_MENU))
+    } else {
+      await send(chatId, text, BACK_MENU)
+    }
+    return
+  }
+
   if (cmd === '/rank') {
     const arg   = normalized.slice(cmd.length).trim()
     const parts = arg.split(/\s+/)
@@ -976,7 +1109,7 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     const domain  = parts[0]
     const keyword = parts.slice(1).join(' ')
 
-    // ── Send live progress message ───────────────────────────────────────────
+    // ── Send static waiting message ──────────────────────────────────────────
     const progressMsgId = await sendGetId(chatId, [
       `⏳ <b>RANK CHECKER  —  جاري البحث</b>`,
       divider(),
@@ -984,47 +1117,16 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
       `🎯 <b>الكلمة:</b>  <code>${escHtml(keyword)}</code>`,
       `🌐 <b>الموقع:</b>  <code>${escHtml(domain)}</code>`,
       ``,
-      `<code>  📄 الصفحة:   1 / 100</code>`,
-      `<code>  🔍 النتائج:  0 / 1000</code>`,
-      ``,
-      `<code>${bar(0, 15)}</code>   0%`,
-      ``,
       `<i>⏱ قد يستغرق البحث عدة دقائق…</i>`,
     ].join('\n'))
-
-    // Track current page for periodic progress updates
-    let currentPage = 0
-
-    const progressTimer = setInterval(async () => {
-      if (!progressMsgId || currentPage === 0) return
-      const p   = Math.min(currentPage, 100)
-      const pct = Math.min(99, Math.round((p / 100) * 100))
-      await editText(chatId, progressMsgId, [
-        `⏳ <b>RANK CHECKER  —  جاري البحث</b>`,
-        divider(),
-        ``,
-        `🎯 <b>الكلمة:</b>  <code>${escHtml(keyword)}</code>`,
-        `🌐 <b>الموقع:</b>  <code>${escHtml(domain)}</code>`,
-        ``,
-        `<code>  📄 الصفحة:   ${String(p).padStart(3)} / 100</code>`,
-        `<code>  🔍 النتائج:  ${String(p * 10).padStart(4)} / 1000</code>`,
-        ``,
-        `<code>${bar(p / 100, 15)}</code>  ${pct}%`,
-        ``,
-        `<i>⏱ جاري الفحص…</i>`,
-      ].join('\n')).catch(() => {})
-    }, 6_000)
 
     const result = await checkRank({
       keyword,
       domain,
-      maxPages:   100,
-      lang:       'ar',
-      country:    'sa',
-      onProgress: (page) => { currentPage = page },
+      maxPages: 100,
+      lang:     'ar',
+      country:  'sa',
     })
-
-    clearInterval(progressTimer)
 
     // ── Build result card ────────────────────────────────────────────────────
     let resultText: string
@@ -1142,12 +1244,14 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
       ``,
       `<b>🔍 SEO Tools:</b>`,
       thinLine(),
-      `<code>  /dr &lt;domain&gt;            Domain Rating</code>`,
-      `<code>  /rank &lt;domain&gt; &lt;keyword&gt; ترتيب الكلمة</code>`,
+      `<code>  /dr   &lt;domain&gt;              Domain Rating</code>`,
+      `<code>  /rank &lt;domain&gt; &lt;keyword&gt;  ترتيب الكلمة</code>`,
+      `<code>  /seo  &lt;url&gt; [keyword]     تقييم مقال SEO</code>`,
       ``,
       `<b>أمثلة:</b>`,
       `<code>  /dr toolifypdf.online</code>`,
       `<code>  /rank toolifypdf.online أدوات PDF مجانية</code>`,
+      `<code>  /seo toolifypdf.online/blog/pdf أدوات PDF</code>`,
     ].join('\n'), BACK_MENU)
     return
   }
