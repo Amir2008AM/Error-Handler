@@ -129,9 +129,10 @@ function ToolCard({
 }: {
   number: number
   name: string
-  intro: string
+  intro: string | string[]
   bullets: string[]
 }) {
+  const paragraphs = Array.isArray(intro) ? intro : [intro]
   return (
     <div className="border border-border rounded-2xl overflow-hidden bg-card">
       <div
@@ -147,7 +148,9 @@ function ToolCard({
         <h3 className="font-bold text-foreground text-base">{name}</h3>
       </div>
       <div className="px-5 py-4 space-y-3">
-        <p className="text-sm text-muted-foreground leading-relaxed">{intro}</p>
+        {paragraphs.map((p, i) => (
+          <p key={i} className="text-sm text-muted-foreground leading-relaxed">{p}</p>
+        ))}
         <ul className="space-y-1.5 mt-2">
           {bullets.map((b) => (
             <li key={b} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -430,9 +433,12 @@ export default function ArticlePage() {
               <Link href="/merge-pdf" className="font-medium hover:underline" style={{ color: ACCENT }}>
                 pdf combiner
               </Link>{' '}
-              to upload, arrange, and download a single file in minutes. This guide keeps things simple. You will see which
-              tools are easiest to use, what privacy trade-offs to watch for, and how to choose the option that fits your
-              everyday document workflow.
+              to upload, arrange, and download a single file in minutes.
+            </p>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              This merge pdf guide keeps things practical. You will see which tools are easiest to use, what merge pdf benefits
+              to expect for your workflow, and what privacy trade-offs to watch for. Real merge pdf examples — like combining
+              contracts, invoices, and scanned pages — are included so you can see exactly where this fits into everyday document tasks.
             </p>
           </section>
 
@@ -466,7 +472,11 @@ export default function ArticlePage() {
               <ToolCard
                 number={1}
                 name="ToolifyPDF – Fast, Secure PDF Merging Without Registration"
-                intro="ToolifyPDF is one of the best tools if you want quick pdf merging without extra steps. It runs in your browser, works across devices, and does not ask you to create an account before using the pdf merger. That makes it a strong fit for quick jobs and everyday document tasks. Just upload your files, arrange them, and download the combined result. The interface is simple, processing is fast, and the service is completely free. Because it is browser-based, you avoid software installs while still getting a practical pdf combiner for routine use. You can try it here: toolifypdf.online. It is especially useful when you want speed and convenience, but you should still be cautious with highly confidential documents on any online platform."
+                intro={[
+                  "ToolifyPDF is one of the best tools if you want quick pdf merging without extra steps. It runs in your browser, works across devices, and does not ask you to create an account before using the pdf merger.",
+                  "Just upload your files, arrange them, and download the combined result. The interface is simple, processing is fast, and the service is completely free — no hidden limits on the free plan.",
+                  "It is especially useful when you need speed and convenience. That said, be cautious with highly confidential documents on any online platform, just as you would with any browser-based pdf combiner.",
+                ]}
                 bullets={[
                   'Completely free with no registration required',
                   'Fast browser-based processing with a simple interface',
@@ -477,7 +487,11 @@ export default function ArticlePage() {
               <ToolCard
                 number={2}
                 name="Merge2PDF – Combine PDFs Instantly on Any Device"
-                intro="Merge2PDF is built for convenience. If you need a pdf merge tool that opens in a browser and works with your internet connection on desktop, tablet, or phone, it fits the job. That also means you can merge PDFs on Windows without using Adobe Acrobat. The layout is easy to follow. You upload files, place them in order, start the process, and then download the finished file. For beginners, that simplicity is a real advantage. You do not need a full pdf editor just to join a few files. Before using it, check its limits. Some online tools restrict file sizes or the number of files in the free version."
+                intro={[
+                  "Merge2PDF is built for convenience. If you need a pdf merge tool that opens in a browser and works on desktop, tablet, or phone, it fits the job. That also means you can merge PDFs on Windows without Adobe Acrobat.",
+                  "The layout is easy to follow — upload files, place them in order, start the process, and download the finished file. For beginners, that simplicity is a real advantage. You do not need a full pdf editor just to join a few files.",
+                  "Before using it, check its limits. Some online tools restrict file sizes or the number of files in the free version.",
+                ]}
                 bullets={[
                   'Works through a browser on many devices',
                   'Simple upload, arrange, and download process',
@@ -488,7 +502,11 @@ export default function ArticlePage() {
               <ToolCard
                 number={3}
                 name="Smallpdf – User-Friendly PDF Combiner with Cloud Support"
-                intro="Smallpdf is a well-known pdf combiner for users who like a clean interface. Its biggest draw is cloud support, letting you import files from Google Drive or Dropbox instead of only from local storage. That helps if your documents already live online. From a usability standpoint, it is easy to learn. You add files, arrange them, and export the merged result. The platform also offers advanced features beyond a basic pdf merger, which may appeal if you handle document tasks often. The free version is useful for light work, but some advanced features sit behind a paid plan. That matters if you need frequent access or more flexibility."
+                intro={[
+                  "Smallpdf is a well-known pdf combiner for users who like a clean interface. Its biggest draw is cloud support — you can import files directly from Google Drive or Dropbox instead of uploading from local storage.",
+                  "From a usability standpoint, it is easy to learn. Add files, arrange them, and export the merged result. The platform also offers features beyond a basic pdf merger if you handle document tasks regularly.",
+                  "The free version works well for light use, but some advanced features sit behind a paid plan. That matters if you need frequent merging or more flexibility.",
+                ]}
                 bullets={[
                   'Google Drive and Dropbox support',
                   'Clean interface for fast combining',
