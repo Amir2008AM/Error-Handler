@@ -16,6 +16,11 @@ import { getGa4Snapshot } from './ga4-monitor'
 import { getDomainMetrics } from './dr-service'
 import { checkRank } from './rank-checker'
 import { analyzeSeo } from './seo-analyzer'
+import { analyzeCompetitors, type CompetitorAnalysis } from './seo-compare'
+import {
+  suggestTitle, suggestMeta, suggestKeywords,
+  formatTitleSuggestion, formatMetaSuggestion, formatKeywordSuggestion,
+} from './seo-suggestions'
 
 // ── Telegram types ────────────────────────────────────────────────────────────
 
@@ -95,6 +100,58 @@ async function editText(chatId: number, msgId: number, text: string, keyboard?: 
 
 async function answerCb(callbackId: string, text?: string): Promise<void> {
   await tgPost('answerCallbackQuery', { callback_query_id: callbackId, text: text ?? '' })
+}
+
+/** Send a message with ForceReply so the next user message is auto-routed. */
+async function sendPrompt(chatId: number, text: string, placeholder: string): Promise<void> {
+  await tgPost('sendMessage', {
+    chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true,
+    reply_markup: { force_reply: true, input_field_placeholder: placeholder, selective: true },
+  })
+}
+
+// ── Pending-input state (force-reply routing) ─────────────────────────────────
+// When a button triggers a force-reply prompt, we store chatId → command here.
+// The next non-command message from that user is forwarded to that command.
+
+const pendingInput = new Map<number, 'dr' | 'rank' | 'seo'>()
+
+// ── SEO analysis sessions (for suggestion buttons) ────────────────────────────
+
+import type { SeoResult } from './seo-analyzer'
+
+interface SeoSession {
+  url:      string
+  keyword?: string
+  analysis: SeoResult
+  comp:     CompetitorAnalysis
+  expires:  number
+}
+
+const seoSessions = new Map<string, SeoSession>()
+
+function mkSeoKey(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase()
+}
+
+function cleanSeoSessions(): void {
+  const now = Date.now()
+  for (const [k, v] of seoSessions) if (v.expires < now) seoSessions.delete(k)
+}
+
+function seoSuggestionKb(key: string): IKMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: '📝 اقترح عنوان',  callback_data: `seo_title:${key}` },
+        { text: '📄 اقترح وصف',    callback_data: `seo_meta:${key}`  },
+      ],
+      [
+        { text: '🔑 كلمات مقترحة', callback_data: `seo_kw:${key}` },
+      ],
+      [{ text: '🏠 القائمة الرئيسية', callback_data: 'menu' }],
+    ],
+  }
 }
 
 // ── Keyboards ─────────────────────────────────────────────────────────────────
@@ -718,77 +775,69 @@ async function handleCallback(cb: TgCallbackQuery): Promise<void> {
   }
 
   if (data === 'dr_help') {
-    const text = [
-      ``,
-      `📊 <b>DOMAIN RATING CHECKER</b>`,
+    pendingInput.set(chatId, 'dr')
+    if (msgId) await editText(chatId, msgId, [
+      `🔍 <b>Domain Rating Checker</b>`,
       divider(),
-      ``,
-      `اعرف قوة أي موقع بدرجة الـ DR من Ahrefs.`,
-      ``,
-      `<b>الاستخدام:</b>`,
-      `<code>  /dr &lt;domain&gt;</code>`,
-      ``,
-      `<b>أمثلة:</b>`,
-      `<code>  /dr google.com</code>`,
-      `<code>  /dr toolifypdf.online</code>`,
-      `<code>  /dr https://example.com/page</code>`,
-      ``,
-      `<i>أرسل الأمر في الشات مباشرةً 👇</i>`,
-    ].join('\n')
-    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
-    else       await send(chatId, text, BACK_MENU)
+      `اكتب اسم الدومين مباشرةً 👇`,
+      `<i>مثال:  toolifypdf.online</i>`,
+    ].join('\n'), BACK_MENU)
+    await sendPrompt(chatId, `🔍 أرسل الدومين:`, 'toolifypdf.online')
     return
   }
 
   if (data === 'rank_help') {
-    const text = [
-      ``,
-      `📈 <b>RANK CHECKER  —  ترتيب الكلمة</b>`,
+    pendingInput.set(chatId, 'rank')
+    if (msgId) await editText(chatId, msgId, [
+      `📈 <b>Rank Checker</b>`,
       divider(),
-      ``,
-      `تحقق من ترتيب موقعك على Google لأي كلمة مفتاحية.`,
-      `يفحص حتى <b>1000 نتيجة</b> (100 صفحة) بدون حد.`,
-      ``,
-      `<b>الاستخدام:</b>`,
-      `<code>  /rank موقع.com كلمة مفتاحية</code>`,
-      ``,
-      `<b>أمثلة:</b>`,
-      `<code>  /rank toolifypdf.online أدوات PDF مجانية</code>`,
-      `<code>  /rank google.com free pdf tools online</code>`,
-      ``,
-      `⏱ <i>قد يستغرق البحث 1-5 دقائق حسب الترتيب.</i>`,
-    ].join('\n')
-    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
-    else       await send(chatId, text, BACK_MENU)
+      `اكتب: <code>دومين.com كلمة مفتاحية</code> 👇`,
+      `<i>مثال:  toolifypdf.online free pdf tools</i>`,
+    ].join('\n'), BACK_MENU)
+    await sendPrompt(chatId, `📈 أرسل الدومين والكلمة المفتاحية:`, 'toolifypdf.online free pdf tools')
     return
   }
 
   if (data === 'seo_help') {
-    const text = [
-      ``,
-      `📊 <b>SEO ANALYZER  —  تقييم المقال</b>`,
+    pendingInput.set(chatId, 'seo')
+    if (msgId) await editText(chatId, msgId, [
+      `📊 <b>SEO Analyzer</b>`,
       divider(),
-      ``,
-      `حلل أي مقال أو صفحة ويب وتحصل على تقرير SEO شامل:`,
-      ``,
-      `<code>  ✅ العنوان والطول</code>`,
-      `<code>  ✅ Meta Description</code>`,
-      `<code>  ✅ هيكل العناوين H1/H2/H3</code>`,
-      `<code>  ✅ كثافة الكلمة المفتاحية</code>`,
-      `<code>  ✅ طول المحتوى</code>`,
-      `<code>  ✅ الروابط الداخلية</code>`,
-      `<code>  ✅ تقييم كلي / 100 + مقترحات</code>`,
-      ``,
-      `<b>الاستخدام:</b>`,
-      `<code>  /seo رابط-المقال</code>`,
-      `<code>  /seo رابط-المقال كلمة مفتاحية</code>`,
-      ``,
-      `<b>أمثلة:</b>`,
-      `<code>  /seo toolifypdf.online/blog/pdf-tools</code>`,
-      `<code>  /seo example.com/article أدوات PDF مجانية</code>`,
-    ].join('\n')
-    if (msgId) await editText(chatId, msgId, text, BACK_MENU)
-    else       await send(chatId, text, BACK_MENU)
+      `اكتب: <code>رابط-المقال [كلمة مفتاحية]</code> 👇`,
+      `<i>مثال:  example.com/article free pdf tools</i>`,
+    ].join('\n'), BACK_MENU)
+    await sendPrompt(chatId, `📊 أرسل رابط المقال (ويمكن إضافة الكلمة المفتاحية بعده):`, 'example.com/article keyword')
+    return
+  }
+
+  // ── SEO suggestion callbacks ───────────────────────────────────────────────
+  if (data.startsWith('seo_title:') || data.startsWith('seo_meta:') || data.startsWith('seo_kw:')) {
+    const [type, key] = data.split(':') as [string, string]
+    cleanSeoSessions()
+    const session = seoSessions.get(key)
+    if (!session) {
+      if (msgId) await editText(chatId, msgId,
+        `⚠️ انتهت صلاحية الجلسة. أعد تشغيل /seo للحصول على نتائج جديدة.`, BACK_MENU)
+      return
+    }
+    const { analysis: r, comp, keyword } = session
+    const plainText = r.title + ' ' + r.metaDesc  // used for keyword check
+
+    let text = ''
+    if (type === 'seo_title') {
+      const s = suggestTitle(r.title, keyword ?? '', comp)
+      text = formatTitleSuggestion(s, r.title)
+    } else if (type === 'seo_meta') {
+      const s = suggestMeta(r.metaDesc, keyword ?? '', r.wordCount, comp)
+      text = formatMetaSuggestion(s, r.metaDesc)
+    } else {
+      const s = suggestKeywords(keyword ?? '', plainText, comp)
+      text = formatKeywordSuggestion(s)
+    }
+
+    if (msgId) await editText(chatId, msgId, text, seoSuggestionKb(key)).catch(() =>
+      send(chatId, text, seoSuggestionKb(key)))
+    else await send(chatId, text, seoSuggestionKb(key))
     return
   }
 }
@@ -813,6 +862,14 @@ const REPLY_BTN_MAP: Record<string, string> = {
 // ── Command handler ───────────────────────────────────────────────────────────
 
 async function handleCommand(chatId: number, text: string): Promise<void> {
+  // ── Pending force-reply routing ────────────────────────────────────────────
+  // If user is replying to a force-reply prompt, route their input directly.
+  const pending = pendingInput.get(chatId)
+  if (pending && !text.trim().startsWith('/')) {
+    pendingInput.delete(chatId)
+    return handleCommand(chatId, `/${pending} ${text.trim()}`)
+  }
+
   // Normalize reply-keyboard button text → slash command
   const normalized = REPLY_BTN_MAP[text.trim()] ?? text.trim()
   const cmd = normalized.split(/\s+/)[0].toLowerCase()
@@ -867,18 +924,8 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     // ── /dr <domain> — Ahrefs Domain Rating lookup ───────────────────────────
     const arg = normalized.slice(cmd.length).trim()
     if (!arg) {
-      await send(chatId, [
-        ``,
-        `📊 <b>DOMAIN RATING CHECKER</b>`,
-        divider(),
-        ``,
-        `❌ الرجاء تحديد نطاق.`,
-        ``,
-        `<b>الاستخدام:</b>  <code>/dr &lt;domain&gt;</code>`,
-        `<b>مثال:</b>`,
-        `<code>  /dr google.com</code>`,
-        `<code>  /dr toolifypdf.online</code>`,
-      ].join('\n'), BACK_MENU)
+      pendingInput.set(chatId, 'dr')
+      await sendPrompt(chatId, `🔍 <b>DR Checker</b>\n\nأرسل اسم الدومين:`, 'toolifypdf.online')
       return
     }
 
@@ -991,69 +1038,78 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     const parts = arg.split(/\s+/)
 
     if (!arg || !parts[0]) {
-      await send(chatId, [
-        ``,
-        `📊 <b>SEO ANALYZER</b>`,
-        divider(),
-        ``,
-        `❌ يجب تحديد رابط المقال.`,
-        ``,
-        `<b>الاستخدام:</b>`,
-        `<code>  /seo رابط-المقال</code>`,
-        `<code>  /seo رابط-المقال كلمة مفتاحية</code>`,
-        ``,
-        `<b>أمثلة:</b>`,
-        `<code>  /seo toolifypdf.online/blog/pdf-tools</code>`,
-        `<code>  /seo example.com/article أدوات PDF مجانية</code>`,
-      ].join('\n'), BACK_MENU)
+      pendingInput.set(chatId, 'seo')
+      await sendPrompt(chatId,
+        `📊 <b>SEO Analyzer</b>\n\nأرسل رابط المقال (ويمكن إضافة الكلمة المفتاحية بعده):`,
+        'example.com/article keyword here')
       return
     }
 
     const url     = parts[0]
     const keyword = parts.length > 1 ? parts.slice(1).join(' ') : undefined
+    const ownDomain = (() => { try { const u = url.startsWith('http') ? url : 'https://' + url; return new URL(u).hostname.replace(/^www\./, '') } catch { return url } })()
 
     // Send static waiting message
     const msgId = await sendGetId(chatId, [
       `⏳ <b>SEO ANALYZER  —  جاري التحليل</b>`,
       divider(),
-      ``,
       `🔗 <code>${escHtml(url)}</code>`,
-      keyword ? `🎯 <b>الكلمة:</b>  <code>${escHtml(keyword)}</code>` : ``,
-      ``,
-      `<i>جاري تحميل الصفحة وتحليلها…</i>`,
+      keyword ? `🎯 <b>الكلمة:</b> <code>${escHtml(keyword)}</code>` : ``,
+      keyword ? `<i>+ جاري تحليل المنافسين على Google…</i>` : `<i>جاري تحميل الصفحة…</i>`,
     ].filter(Boolean).join('\n'))
 
-    const r = await analyzeSeo(url, keyword)
+    // Run page analysis + competitor analysis in parallel
+    const [r, comp] = await Promise.all([
+      analyzeSeo(url, keyword),
+      keyword ? analyzeCompetitors(keyword, ownDomain, 5) : Promise.resolve({ pages: [], avgTitleLen: 55, avgMetaLen: 150, avgWordCount: 1200, kwInTitle: 0, kwAtTitleStart: 0, kwInMeta: 0, topWords: [], topPhrases: [], titleExamples: [], metaExamples: [] } as CompetitorAnalysis),
+    ])
 
-    // ── Build result card ────────────────────────────────────────────────────
     let text: string
+    let kb: IKMarkup = BACK_MENU
 
     if (!r.ok) {
       text = [
         `📊 <b>SEO ANALYZER  —  خطأ</b>`,
         divider(),
-        ``,
         `❌ <b>${escHtml(r.error ?? 'فشل التحليل')}</b>`,
-        ``,
         `🔗 <code>${escHtml(url)}</code>`,
       ].join('\n')
     } else {
-      // Score bar & grade colour
+      // Store session for suggestion buttons
+      cleanSeoSessions()
+      const sessionKey = mkSeoKey()
+      seoSessions.set(sessionKey, { url, keyword, analysis: r, comp, expires: Date.now() + 30 * 60_000 })
+
       const pct        = r.total
       const scoreBar   = bar(pct / 100, 14)
       const gradeEmoji = pct >= 80 ? '🏆' : pct >= 60 ? '📊' : pct >= 40 ? '⚠️' : '❌'
 
-      // Factor rows — fixed-width to align columns
       const fRows = r.factors.map(f => {
-        const label  = f.label.slice(0, 18).padEnd(18)
-        const sc     = `${f.score}/${f.max}`.padEnd(6)
+        const label = f.label.slice(0, 18).padEnd(18)
+        const sc    = `${f.score}/${f.max}`.padEnd(6)
         return `  ${f.icon} <code>${label} ${sc}</code> <i>${f.note}</i>`
       })
 
-      // Suggestion list
       const sRows = r.suggestions.length
         ? r.suggestions.map((s, i) => `  <b>${i + 1}.</b> ${escHtml(s)}`)
         : [`  ✅ المقال ممتاز — لا مقترحات رئيسية`]
+
+      // Competitor comparison block (when keyword + competitor data available)
+      const compBlock: string[] = []
+      if (keyword && comp.pages.length > 0) {
+        compBlock.push(
+          ``,
+          `🔍 <b>مقارنة مع المنافسين (أول ${comp.pages.length} نتائج):</b>`,
+          thinLine(),
+          `<code>  📄 متوسط الكلمات:   ${comp.avgWordCount}  (مقالك: ${r.wordCount})</code>`,
+          `<code>  📝 متوسط العنوان:   ${comp.avgTitleLen} حرف  (مقالك: ${r.title.length})</code>`,
+          `<code>  📋 متوسط الوصف:     ${comp.avgMetaLen} حرف  (مقالك: ${r.metaDesc.length})</code>`,
+          `<code>  🎯 الكلمة في العنوان: ${comp.kwInTitle}/${comp.pages.length} منافس</code>`,
+        )
+        if (comp.topWords.length > 0) {
+          compBlock.push(``, `<b>🔑 كلمات شائعة عند المنافسين:</b>  <code>${comp.topWords.slice(0,6).join(' · ')}</code>`)
+        }
+      }
 
       text = [
         `📊 <b>SEO REPORT  —  ${escHtml(r.domain)}</b>`,
@@ -1066,20 +1122,24 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
         `📋 <b>التفاصيل:</b>`,
         thinLine(),
         ...fRows,
+        ...compBlock,
         ``,
         `💡 <b>مقترحات التحسين:</b>`,
         thinLine(),
         ...sRows,
         ``,
         divider(),
-        `<code>  📄 ${r.wordCount} كلمة  |  H1:${r.h1} H2:${r.h2} H3:${r.h3}  |  🔗${r.internalLinks} رابط داخلي</code>`,
+        `<code>  📄 ${r.wordCount} كلمة  |  H1:${r.h1} H2:${r.h2} H3:${r.h3}  |  🔗${r.internalLinks}</code>`,
       ].filter(l => l !== '').join('\n')
+
+      // Show suggestion buttons only when keyword is provided (competitor data exists)
+      kb = keyword ? seoSuggestionKb(sessionKey) : BACK_MENU
     }
 
     if (msgId) {
-      await editText(chatId, msgId, text, BACK_MENU).catch(() => send(chatId, text, BACK_MENU))
+      await editText(chatId, msgId, text, kb).catch(() => send(chatId, text, kb))
     } else {
-      await send(chatId, text, BACK_MENU)
+      await send(chatId, text, kb)
     }
     return
   }
@@ -1089,20 +1149,10 @@ async function handleCommand(chatId: number, text: string): Promise<void> {
     const parts = arg.split(/\s+/)
 
     if (parts.length < 2) {
-      await send(chatId, [
-        ``,
-        `📈 <b>RANK CHECKER</b>`,
-        divider(),
-        ``,
-        `❌ يجب تحديد الموقع والكلمة المفتاحية.`,
-        ``,
-        `<b>الاستخدام:</b>`,
-        `<code>  /rank موقع.com كلمة مفتاحية</code>`,
-        ``,
-        `<b>أمثلة:</b>`,
-        `<code>  /rank toolifypdf.online أدوات PDF مجانية</code>`,
-        `<code>  /rank google.com free pdf tools</code>`,
-      ].join('\n'), BACK_MENU)
+      pendingInput.set(chatId, 'rank')
+      await sendPrompt(chatId,
+        `📈 <b>Rank Checker</b>\n\nأرسل الدومين والكلمة المفتاحية:`,
+        'toolifypdf.online free pdf tools')
       return
     }
 
