@@ -29,11 +29,11 @@ const plusJakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Toolify — All Tools in One Place',
-    template: '%s | Toolify',
+    default: 'ToolifyPDF — All Tools in One Place',
+    template: '%s | ToolifyPDF',
   },
   description:
-    'Toolify is a free, fast multi-tools platform for PDF, images, text, and conversions. No sign-up required. Process files instantly online.',
+    'ToolifyPDF is a free, fast multi-tools platform for PDF, images, text, and conversions. No sign-up required. Process files instantly online.',
   keywords: [
     'online tools',
     'pdf tools',
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   ],
   metadataBase: new URL('https://toolifypdf.online'),
   openGraph: {
-    title: 'Toolify — Free Online PDF, Image & Document Tools',
+    title: 'ToolifyPDF — Free Online PDF, Image & Document Tools',
     description: 'Free, fast online tools for PDF processing, image conversion, and document editing. No sign-up required.',
     type: 'website',
     images: [
@@ -57,13 +57,13 @@ export const metadata: Metadata = {
         url: 'https://toolifypdf.online/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Toolify — Free Online PDF & Image Tools',
+        alt: 'ToolifyPDF — Free Online PDF & Image Tools',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Toolify — All Tools in One Place',
+    title: 'ToolifyPDF — All Tools in One Place',
     description: 'Free online tools for PDF, images, text, and more.',
     images: ['https://toolifypdf.online/og-image.jpg'],
   },
@@ -111,7 +111,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
-              name: 'Toolify',
+              name: 'ToolifyPDF',
               url: 'https://toolifypdf.online',
               description: 'Free online tools for PDF, images, text, and conversions. No sign-up required.',
               potentialAction: {
