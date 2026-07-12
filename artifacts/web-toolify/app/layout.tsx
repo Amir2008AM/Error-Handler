@@ -79,11 +79,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon.png', type: 'image/png', sizes: '256x256' },
+      { url: '/favicon-48.png', type: 'image/png', sizes: '48x48' },
+      { url: '/icon-192.png',   type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png',   type: 'image/png', sizes: '512x512' },
+      { url: '/favicon.ico',    sizes: 'any' },
     ],
-    apple: { url: '/apple-icon.png', type: 'image/png', sizes: '256x256' },
-    shortcut: '/favicon.ico',
+    apple: { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+    shortcut: '/favicon-48.png',
   },
 }
 
