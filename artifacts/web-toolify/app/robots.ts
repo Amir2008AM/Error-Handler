@@ -12,10 +12,7 @@ export default function robots(): MetadataRoute.Robots {
       // ── General crawlers ──────────────────────────────────────────────────
       {
         userAgent: '*',
-        allow: [
-          '/',
-          '/category/',
-        ],
+        allow: ['/'],
         disallow: [
           '/api/',
           '/_next/',
@@ -65,10 +62,6 @@ export default function robots(): MetadataRoute.Robots {
     ],
     // Both sitemaps declared so crawlers discover all 62 URLs regardless of
     // which path they follow: the flat combined file or the indexed sub-sitemaps.
-    sitemap: [
-      `${BASE_URL}/sitemap_index.xml`,
-      `${BASE_URL}/sitemap.xml`,
-    ],
-    host: BASE_URL,
+    sitemap: [`${BASE_URL}/sitemap.xml`],
   }
 }
