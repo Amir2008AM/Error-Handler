@@ -38,9 +38,14 @@ const articleSchema = {
   headline: 'Merge PDFs for Free - Combine PDF Files Online With the Best Free Tools',
   description:
     'A practical guide to merging PDF files for free online, comparing popular tools, explaining safe browser-based steps, and helping readers choose the right option.',
-  image: 'https://toolifypdf.online/og-image.jpg',
+  image: {
+    '@type': 'ImageObject',
+    url: 'https://toolifypdf.online/og-image.jpg',
+    width: 1200,
+    height: 630,
+  },
   datePublished: '2026-07-09T00:00:00.000Z',
-  dateModified: '2026-07-09T00:00:00.000Z',
+  dateModified: '2026-07-12T00:00:00.000Z',
   author: {
     '@type': 'Organization',
     name: 'ToolifyPDF',
@@ -50,7 +55,7 @@ const articleSchema = {
     '@type': 'Organization',
     name: 'ToolifyPDF',
     url: 'https://toolifypdf.online',
-    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' },
+    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/icon-512.png', width: 512, height: 512 },
   },
   mainEntityOfPage: {
     '@type': 'WebPage',
