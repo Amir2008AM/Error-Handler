@@ -279,6 +279,7 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
                   { label: 'Privacy Policy',     href: '/privacy-policy' },
                   { label: 'Terms & Conditions', href: '/terms-and-conditions' },
                   { label: 'Cookies Policy',     href: '/cookies-policy' },
+                  { label: 'Disclaimer',         href: '/disclaimer' },
                 ].map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
