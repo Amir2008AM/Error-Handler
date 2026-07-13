@@ -49,7 +49,7 @@ const TRUST_BADGES = [
 ]
 
 type Props = (
-  | { tool: Tool; toolId?: never; title?: never; description?: never }
+  | { tool: Tool; toolId?: never; title?: string; description?: never }
   | { toolId: string; title?: string; description?: string; tool?: never }
 ) & { children: React.ReactNode }
 
