@@ -724,7 +724,23 @@ export function ToolSeoContent({ slug }: { slug: string }) {
   // Split about into paragraphs
   const aboutParas = data.about.split('\n\n').filter(Boolean)
 
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: data.faqs.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  }
+
   return (
+    <>
+      {/* FAQPage JSON-LD — server-side rendered for Google rich results */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
     <div className="mt-12 space-y-10">
 
       {/* ── About ─────────────────────────────────────────────────────────── */}
@@ -858,5 +874,6 @@ export function ToolSeoContent({ slug }: { slug: string }) {
       </section>
 
     </div>
+    </>
   )
 }

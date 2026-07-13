@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
@@ -265,8 +264,8 @@ export default function ArticlePage() {
   return (
     <>
       <ReadingProgress color={ACCENT} />
-      <Script id="article-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
-      <Script id="faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/Article">

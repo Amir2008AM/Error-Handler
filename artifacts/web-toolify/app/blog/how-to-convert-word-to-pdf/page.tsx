@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
@@ -43,6 +42,38 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf' },
   articleSection: 'Word Guide',
   keywords: 'convert word to pdf, word to pdf online, docx to pdf free, word to pdf converter',
+}
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Is it safe to convert Word files online?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Yes. Trusted conversion tools use secure file processing and automatically remove uploaded documents after a limited period. ToolifyPDF deletes files after 10 minutes.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Will my formatting stay the same?',
+      acceptedAnswer: { '@type': 'Answer', text: 'In most cases, yes. Fonts, images, tables, and layouts are usually preserved during conversion. Complex custom formatting may occasionally need minor corrections.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Do I need to install software?',
+      acceptedAnswer: { '@type': 'Answer', text: 'No. Online converters work directly in your browser without downloads or installation.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Can I convert files on my phone?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Yes. ToolifyPDF works on both desktop and mobile devices including Android and iPhone.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'What file types are supported?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Most Word to PDF converters support DOC and DOCX files, which are the most common Microsoft Word formats.' },
+    },
+  ],
 }
 
 const ACCENT = '#0d9488'
@@ -272,7 +303,8 @@ export default function ArticlePage() {
   return (
     <>
       <ReadingProgress color={ACCENT} />
-      <Script id="blog-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">

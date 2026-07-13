@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Script from 'next/script'
 import { PILLAR_ARTICLES, BLOG_ARTICLES } from '@/lib/blog'
 
 export const metadata: Metadata = {
@@ -46,7 +45,7 @@ export default function AuthorPage() {
 
   return (
     <>
-      <Script id="author-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 
       <main className="min-h-screen bg-background py-12 px-4">
         <div className="max-w-3xl mx-auto">

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Script from 'next/script'
 import { AdBanner } from '@/components/ad-banner'
 import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
@@ -43,6 +42,38 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-pdf-to-word' },
   articleSection: 'PDF Guide',
   keywords: 'convert pdf to word, pdf to docx, free pdf converter, pdf to word online',
+}
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Is it safe to use free PDF converters online?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Yes. Trusted PDF converters use secure encryption to protect uploaded files. ToolifyPDF transfers files over secure HTTPS connections and automatically removes uploaded documents after approximately 10 minutes, helping protect user privacy.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Will the formatting be preserved?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Usually, yes. Most text, tables, and images are preserved. However, highly complex layouts may require minor adjustments after conversion.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Can I convert scanned PDFs?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Yes. OCR technology allows scanned PDFs and image-based documents to be converted into editable Word files.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Do I need to install software?',
+      acceptedAnswer: { '@type': 'Answer', text: 'No. Online PDF converters work directly inside your browser without requiring installation.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Can I convert PDFs on my phone?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Yes. Most modern PDF converters, including ToolifyPDF, work on smartphones and tablets as well as desktop computers.' },
+    },
+  ],
 }
 
 const ACCENT = '#0369a1'
@@ -286,7 +317,8 @@ export default function ArticlePage() {
   return (
     <>
       <ReadingProgress color={ACCENT} />
-      <Script id="blog-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">

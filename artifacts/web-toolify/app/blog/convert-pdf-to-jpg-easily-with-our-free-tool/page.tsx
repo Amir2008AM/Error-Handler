@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import Script from 'next/script'
 import { RelatedArticles } from '@/components/related-articles'
 import { ReadingProgress } from '@/components/reading-progress'
 
@@ -273,7 +272,7 @@ function TableOfContents() {
 export default function ArticlePage() {
   return (
     <>
-      <Script id="article-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <ReadingProgress color={ACCENT} />
