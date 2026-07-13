@@ -9,7 +9,7 @@ import { RelatedArticles } from '@/components/related-articles'
 /* ─── Meta ─────────────────────────────────────────────────────────────── */
 
 export const metadata: Metadata = {
-  title: { absolute: 'Merge PDF and PDF: Combine Files for Free Online | ToolifyPDF Blog' },
+  title: { absolute: 'Merge PDF and PDF: Combine Files for Free Online | ToolifyPDF' },
   description:
     'Need to merge pdf and pdf files? Discover how to combine PDF files for free online with our easy-to-follow guide. Start merging now!',
   alternates: { canonical: 'https://toolifypdf.online/blog/merge-pdf-and-pdf-combine-files-for-free-online' },

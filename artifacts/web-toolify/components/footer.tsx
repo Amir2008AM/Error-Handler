@@ -109,6 +109,7 @@ export function Footer() {
                 { label: 'About Us',   href: '/about' },
                 { label: 'Contact Us', href: '/contact-us' },
                 { label: 'Blog',       href: '/blog' },
+                { label: 'FAQ',        href: '/faq' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link

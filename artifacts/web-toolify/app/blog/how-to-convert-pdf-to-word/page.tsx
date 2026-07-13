@@ -6,7 +6,7 @@ import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
-  title: 'How to Convert PDF to Word for Free | Toolify Blog',
+  title: { absolute: 'How to Convert PDF to Word for Free | ToolifyPDF' },
   description:
     'Learn 3 easy ways to convert a PDF into an editable Word document at no cost. This guide covers free online tools, Google Docs, and Microsoft Word with step-by-step instructions and troubleshooting tips.',
   alternates: {

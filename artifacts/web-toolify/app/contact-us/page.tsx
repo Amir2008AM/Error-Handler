@@ -148,6 +148,17 @@ export default function ContactUsPage() {
             </button>
           </form>
         )}
+
+        <div className="border-t border-border pt-6 mt-8">
+          <p className="text-sm font-medium text-foreground mb-3">Explore our free tools:</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <a href="/merge-pdf" className="hover:text-foreground transition-colors">Merge PDF</a>
+            <a href="/compress-pdf" className="hover:text-foreground transition-colors">Compress PDF</a>
+            <a href="/pdf-to-word" className="hover:text-foreground transition-colors">PDF to Word</a>
+            <a href="/image-to-pdf" className="hover:text-foreground transition-colors">Image to PDF</a>
+            <a href="/split-pdf" className="hover:text-foreground transition-colors">Split PDF</a>
+          </div>
+        </div>
       </div>
     </main>
   )

@@ -6,7 +6,7 @@ import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
-  title: 'How to Convert JPG to PDF Online for Free | Toolify Blog',
+  title: { absolute: 'How to Convert JPG to PDF Online for Free | ToolifyPDF' },
   description:
     'Learn how to convert JPG images to PDF files for free online. Follow this easy step-by-step guide to combine your JPGs into high-quality PDFs in seconds.',
   alternates: {

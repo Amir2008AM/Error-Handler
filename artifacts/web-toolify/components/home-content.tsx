@@ -259,6 +259,7 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
                   { label: 'About Us',   href: '/about' },
                   { label: 'Contact Us', href: '/contact-us' },
                   { label: 'Blog',       href: '/blog' },
+                  { label: 'FAQ',        href: '/faq' },
                 ].map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">

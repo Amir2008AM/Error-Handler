@@ -2,22 +2,22 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: { absolute: 'Disclaimer | Toolify' },
+  title: { absolute: 'Disclaimer — ToolifyPDF Limitations & Liability' },
   description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
   alternates: {
     canonical: 'https://toolifypdf.online/disclaimer',
   },
   robots: { index: true, follow: true },
   openGraph: {
-    title: 'Disclaimer | Toolify',
+    title: 'Disclaimer — ToolifyPDF Limitations & Liability',
     description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
     url: 'https://toolifypdf.online/disclaimer',
     type: 'website',
-    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Disclaimer | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Disclaimer — ToolifyPDF' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Disclaimer | Toolify',
+    title: 'Disclaimer — ToolifyPDF Limitations & Liability',
     description: 'Disclaimer for ToolifyPDF — important information about the limitations and proper use of our free online PDF and image tools.',
     images: ['https://toolifypdf.online/og-image.jpg'],
   },
@@ -86,6 +86,17 @@ export default function DisclaimerPage() {
               If you have any questions about this Disclaimer, please contact us at contact@toolifypdf.online or through our Contact page.
             </p>
           </section>
+        </div>
+
+        <div className="border-t border-border pt-6 mt-2">
+          <p className="text-sm font-medium text-foreground mb-3">Explore our free tools:</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <Link href="/merge-pdf" className="hover:text-foreground transition-colors">Merge PDF</Link>
+            <Link href="/compress-pdf" className="hover:text-foreground transition-colors">Compress PDF</Link>
+            <Link href="/pdf-to-word" className="hover:text-foreground transition-colors">PDF to Word</Link>
+            <Link href="/image-to-pdf" className="hover:text-foreground transition-colors">Image to PDF</Link>
+            <Link href="/split-pdf" className="hover:text-foreground transition-colors">Split PDF</Link>
+          </div>
         </div>
       </div>
     </main>

@@ -7,7 +7,7 @@ import { RelatedArticles } from '@/components/related-articles'
 import { ReadingProgress } from '@/components/reading-progress'
 
 export const metadata: Metadata = {
-  title: { absolute: 'Understanding PDF: Your Ultimate Guide to PDF Files | Toolify' },
+  title: { absolute: 'Understanding PDF: Your Ultimate Guide to PDF Files' },
   description:
     'Dive into our ultimate guide on pdf files! Discover everything you need to know about pdf, its features, and how to use it effectively in 2026.',
   alternates: {

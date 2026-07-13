@@ -6,7 +6,7 @@ import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
-  title: { absolute: 'PDF vs Word: Which Document Format Should You Use? | ToolifyPDF Blog' },
+  title: { absolute: 'PDF vs Word: Which Document Format Should You Use?' },
   description:
     'A practical comparison of PDF and Word formats — when each is appropriate, their key differences, and how to convert between them when your needs change.',
   alternates: { canonical: 'https://toolifypdf.online/blog/pdf-vs-word-which-format-to-use' },

@@ -6,7 +6,7 @@ import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
-  title: { absolute: 'How to Reduce Image File Size Without Losing Quality | ToolifyPDF Blog' },
+  title: { absolute: 'How to Reduce Image File Size Without Losing Quality' },
   description:
     'A practical guide to reducing image file size through compression, resizing, cropping, and format conversion — without visible quality loss. Covers all major image formats.',
   alternates: { canonical: 'https://toolifypdf.online/blog/how-to-reduce-image-file-size' },

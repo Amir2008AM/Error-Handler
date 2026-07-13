@@ -2,22 +2,22 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: { absolute: 'Cookies Policy | Toolify' },
+  title: { absolute: 'Cookies Policy — How ToolifyPDF Uses Cookies' },
   description: 'Cookies Policy for ToolifyPDF — learn how we use cookies and similar technologies to improve your experience on our platform.',
   alternates: {
     canonical: 'https://toolifypdf.online/cookies-policy',
   },
   robots: { index: true, follow: true },
   openGraph: {
-    title: 'Cookies Policy | Toolify',
+    title: 'Cookies Policy — How ToolifyPDF Uses Cookies',
     description: 'Cookies Policy for ToolifyPDF — learn how we use cookies and similar technologies to improve your experience on our platform.',
     url: 'https://toolifypdf.online/cookies-policy',
     type: 'website',
-    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Cookies Policy | Toolify' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Cookies Policy — ToolifyPDF' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cookies Policy | Toolify',
+    title: 'Cookies Policy — How ToolifyPDF Uses Cookies',
     description: 'Cookies Policy for ToolifyPDF — learn how we use cookies and similar technologies to improve your experience on our platform.',
     images: ['https://toolifypdf.online/og-image.jpg'],
   },
@@ -100,6 +100,17 @@ export default function CookiesPolicyPage() {
               If you have questions about our use of cookies, please contact us at contact@toolifypdf.online or through our Contact page.
             </p>
           </section>
+        </div>
+
+        <div className="border-t border-border pt-6 mt-2">
+          <p className="text-sm font-medium text-foreground mb-3">Explore our free tools:</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <Link href="/merge-pdf" className="hover:text-foreground transition-colors">Merge PDF</Link>
+            <Link href="/compress-pdf" className="hover:text-foreground transition-colors">Compress PDF</Link>
+            <Link href="/pdf-to-word" className="hover:text-foreground transition-colors">PDF to Word</Link>
+            <Link href="/image-to-pdf" className="hover:text-foreground transition-colors">Image to PDF</Link>
+            <Link href="/split-pdf" className="hover:text-foreground transition-colors">Split PDF</Link>
+          </div>
         </div>
       </div>
     </main>

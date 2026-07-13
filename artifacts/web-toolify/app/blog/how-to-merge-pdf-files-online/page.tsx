@@ -6,7 +6,7 @@ import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
-  title: 'How to Merge PDF Files Online for Free | Toolify Blog',
+  title: { absolute: 'How to Merge PDF Files Online for Free | ToolifyPDF' },
   description:
     'Learn how to merge PDF files online for free. Combine multiple PDF documents into one organized file quickly, securely, and without installing software.',
   alternates: {

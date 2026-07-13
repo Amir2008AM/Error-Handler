@@ -6,7 +6,7 @@ import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
-  title: 'How to Compress PDF Online for Free | Toolify Blog',
+  title: { absolute: 'How to Compress PDF Online for Free | ToolifyPDF' },
   description:
     'Learn how to compress PDF files online for free without losing quality. Follow this step-by-step guide to reduce PDF file size quickly, securely, and easily.',
   alternates: {
