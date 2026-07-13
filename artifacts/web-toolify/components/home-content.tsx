@@ -276,10 +276,11 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
               </h3>
               <ul className="space-y-3">
                 {[
-                  { label: 'Privacy Policy',     href: '/privacy-policy' },
-                  { label: 'Terms & Conditions', href: '/terms-and-conditions' },
-                  { label: 'Cookies Policy',     href: '/cookies-policy' },
-                  { label: 'Disclaimer',         href: '/disclaimer' },
+                  { label: 'Privacy Policy',         href: '/privacy-policy' },
+                  { label: 'Terms & Conditions',   href: '/terms-and-conditions' },
+                  { label: 'Cookies Policy',       href: '/cookies-policy' },
+                  { label: 'Disclaimer',           href: '/disclaimer' },
+                  { label: 'Editorial Guidelines', href: '/editorial-guidelines' },
                 ].map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} style={{ color: '#9ca3af' }} className="text-sm hover:text-white transition-colors">
