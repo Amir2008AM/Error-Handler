@@ -5,7 +5,9 @@ import { ALL_STATIC_PAGES } from '@/lib/static-pages'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolifypdf.online'
 
-const TODAY = new Date()
+// Pinned to the date we last audited + deployed all structured-data and
+// canonical fixes. Update this whenever content is significantly changed.
+const TODAY = new Date('2026-07-14')
 
 const CATEGORY_SLUGS = [
   'pdf-tools', 'security-tools', 'converters',

@@ -63,5 +63,6 @@ export default function robots(): MetadataRoute.Robots {
     // Both sitemaps declared so crawlers discover all 62 URLs regardless of
     // which path they follow: the flat combined file or the indexed sub-sitemaps.
     sitemap: [`${BASE_URL}/sitemap.xml`],
+    host: 'https://toolifypdf.online',
   }
 }
