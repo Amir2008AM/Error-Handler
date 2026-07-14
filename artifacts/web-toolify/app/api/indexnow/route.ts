@@ -61,7 +61,6 @@ const ALL_URLS = [
   '/blog/how-to-compress-pdf-online',
   '/blog/how-to-convert-jpg-to-pdf',
   '/blog/how-to-lock-and-unlock-pdf',
-  '/blog/how-to-convert-pdf-to-word',
   '/blog/how-to-convert-word-to-pdf',
   '/blog/how-to-split-pdf-online',
   '/blog/how-to-reduce-image-file-size',

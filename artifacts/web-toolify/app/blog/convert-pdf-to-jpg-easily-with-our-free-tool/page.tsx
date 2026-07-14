@@ -803,7 +803,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
-          <RelatedArticles slugs={['how-to-convert-pdf-to-word', 'how-to-convert-word-to-pdf', 'pdf-vs-word-which-format-to-use']} />
+          <RelatedArticles slugs={['convert-pdf-to-word-fast-and-free-online-tool', 'how-to-convert-word-to-pdf', 'pdf-vs-word-which-format-to-use']} />
 
           {/* Related PDF Tools */}
           <section className="mb-4 pt-8 border-t border-border">

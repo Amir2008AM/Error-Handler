@@ -6,39 +6,39 @@ import { RelatedArticles } from '@/components/related-articles'
 import { ReadingProgress } from '@/components/reading-progress'
 
 export const metadata: Metadata = {
-  title: { absolute: 'Convert PDF to Word: Fast & Free Online Tool | Toolify' },
+  title: { absolute: 'How to Convert PDF to Word Online: Free OCR Guide | ToolifyPDF' },
   description:
-    'Convert your documents easily with our free tool! Learn how to effortlessly transform your files from PDF to Word online in minutes.',
+    'Step-by-step guide to converting PDF to Word for free, including OCR for scanned files, formatting-preservation tips, and troubleshooting advice — no software or registration required.',
   alternates: {
     canonical: 'https://toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
   },
   openGraph: {
-    title: 'Convert PDF to Word: Fast & Free Online Tool',
+    title: 'How to Convert PDF to Word Online: Free OCR Guide',
     description:
-      'Convert your documents easily with our free tool! Learn how to effortlessly transform your files from PDF to Word online in minutes.',
+      'Step-by-step guide to converting PDF to Word for free, including OCR for scanned files, formatting-preservation tips, and troubleshooting advice.',
     type: 'article',
     publishedTime: '2026-07-08T00:00:00.000Z',
-    modifiedTime: '2026-07-08T00:00:00.000Z',
+    modifiedTime: '2026-07-14T00:00:00.000Z',
     url: 'https://toolifypdf.online/blog/convert-pdf-to-word-fast-and-free-online-tool',
-    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'Convert PDF to Word: Fast & Free Online Tool' }],
+    images: [{ url: 'https://toolifypdf.online/og-image.jpg', width: 1200, height: 630, alt: 'How to Convert PDF to Word Online: Free OCR Guide' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Convert PDF to Word: Fast & Free Online Tool',
+    title: 'How to Convert PDF to Word Online: Free OCR Guide',
     description:
-      'Convert your documents easily with our free tool! Learn how to effortlessly transform your files from PDF to Word online in minutes.',
+      'Step-by-step guide to converting PDF to Word for free, including OCR for scanned files and formatting-preservation tips.',
   },
 }
 
 const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
-  headline: 'PDF to WORD Online for Free | Convert PDF to Word with ToolifyPDF',
+  headline: 'How to Convert PDF to Word Online: Free OCR Guide | ToolifyPDF',
   image: 'https://toolifypdf.online/blog/pdf-to-word/pdf-to-word-hero.jpg',
   description:
-    'Convert PDF to Word online for free with ToolifyPDF. Turn PDF files into editable DOCX documents, use OCR for scanned PDFs, and preserve formatting in your Word file.',
+    'Step-by-step guide to converting PDF to Word for free with ToolifyPDF, including OCR for scanned PDFs, formatting-preservation tips, and troubleshooting advice.',
   datePublished: '2026-07-08T00:00:00.000Z',
-  dateModified: '2026-07-08T00:00:00.000Z',
+  dateModified: '2026-07-14T00:00:00.000Z',
   author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
   publisher: {
     '@type': 'Organization',
@@ -89,6 +89,22 @@ const faqSchema = {
       acceptedAnswer: {
         '@type': 'Answer',
         text: 'In many cases, formatting and images are carried into the converted Word output, especially with clean source files. After PDF to Word conversion on Mac, open the DOCX and review fonts, spacing, tables, and image placement. If needed, make quick edits in Word to polish the final document.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Do I need to install any software to convert a scanned PDF with OCR?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No. OCR runs directly in the browser as part of the conversion, so there is nothing to download or install. Upload the scanned PDF, enable OCR, and ToolifyPDF detects the text in the images and rebuilds it as editable content in the Word file.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Why did some tables or columns shift after converting my PDF to Word?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'PDFs store text and graphics by position rather than as a true document structure, so pages with multiple columns, dense tables, or overlapping text boxes can shift slightly when rebuilt as an editable Word document. Reviewing spacing and table borders in Word after conversion usually resolves any minor misalignment.',
       },
     },
   ],
@@ -402,7 +418,7 @@ export default function ArticlePage() {
               </li>
               <li aria-hidden="true">&rsaquo;</li>
               <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
-                <span itemProp="name" className="text-foreground font-medium">PDF to Word: Convert PDF to Word Online for Free</span>
+                <span itemProp="name" className="text-foreground font-medium">How to Convert PDF to Word Online: Free OCR Guide</span>
                 <meta itemProp="position" content="3" />
               </li>
             </ol>
@@ -429,11 +445,11 @@ export default function ArticlePage() {
             </div>
 
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-5" itemProp="headline">
-              PDF to WORD | Convert PDF to Word online for free
+              How to Convert PDF to Word Online for Free (With OCR for Scanned PDFs)
             </h1>
 
             <p className="text-muted-foreground leading-relaxed text-lg mb-6" itemProp="description">
-              Convert your documents easily with our free tool! Learn how to effortlessly transform your files from PDF to Word online in minutes.
+              A step-by-step guide to turning any PDF into an editable Word document for free — including OCR for scanned files, formatting-preservation tips, and fixes for common conversion issues.
             </p>
 
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
@@ -441,7 +457,7 @@ export default function ArticlePage() {
               <span>&middot;</span>
               <span>9 min read</span>
               <span>&middot;</span>
-              <span className="text-xs">Last updated: <time dateTime="2026-07-08" itemProp="dateModified">July 8, 2026</time></span>
+              <span className="text-xs">Last updated: <time dateTime="2026-07-14" itemProp="dateModified">July 14, 2026</time></span>
               <span>&middot;</span>
               <span itemProp="author" itemScope itemType="https://schema.org/Organization">
                 <Link href="/author/toolifypdf-team" itemProp="name" className="hover:text-foreground hover:underline">ToolifyPDF</Link>
@@ -749,6 +765,16 @@ export default function ArticlePage() {
                 question="Will the formatting and images in my PDF be preserved when I make PDF to Word using ToolifyPDF?"
                 answer="In many cases, formatting and images are carried into the converted Word output, especially with clean source files. After PDF to Word conversion on Mac, open the DOCX and review fonts, spacing, tables, and image placement. If needed, make quick edits in Word to polish the final document."
               />
+              <FaqItem
+                id="faq-4"
+                question="Do I need to install any software to convert a scanned PDF with OCR?"
+                answer="No. OCR runs directly in the browser as part of the conversion, so there is nothing to download or install. Upload the scanned PDF, enable OCR, and ToolifyPDF detects the text in the images and rebuilds it as editable content in the Word file."
+              />
+              <FaqItem
+                id="faq-5"
+                question="Why did some tables or columns shift after converting my PDF to Word?"
+                answer="PDFs store text and graphics by position rather than as a true document structure, so pages with multiple columns, dense tables, or overlapping text boxes can shift slightly when rebuilt as an editable Word document. Reviewing spacing and table borders in Word after conversion usually resolves any minor misalignment."
+              />
             </div>
           </section>
 
@@ -759,7 +785,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
-          <RelatedArticles slugs={['how-to-convert-pdf-to-word', 'how-to-convert-word-to-pdf', 'pdf-vs-word-which-format-to-use']} />
+          <RelatedArticles slugs={['how-to-convert-word-to-pdf', 'pdf-vs-word-which-format-to-use', 'how-to-convert-excel-to-pdf']} />
 
           {/* Related PDF Tools */}
           <section className="mb-4 pt-8 border-t border-border">

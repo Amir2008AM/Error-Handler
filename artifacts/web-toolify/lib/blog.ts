@@ -55,11 +55,11 @@ export const PILLAR_ARTICLE_3: BlogArticle = {
 
 export const PILLAR_ARTICLE_2: BlogArticle = {
   slug: 'convert-pdf-to-word-fast-and-free-online-tool',
-  title: 'PDF to Word: Convert PDF to Word Online for Free',
+  title: 'How to Convert PDF to Word Online: Free OCR Guide',
   description:
-    "Convert your documents easily with our free tool! Learn how to effortlessly transform your files from PDF to Word online in minutes — including OCR for scanned files.",
+    'Step-by-step guide to converting PDF to Word for free, including OCR for scanned files, formatting-preservation tips, and troubleshooting advice.',
   date: 'July 8, 2026',
-  lastModified: '2026-07-08',
+  lastModified: '2026-07-14',
   readTime: '9 min read',
   category: "Editor's Choice",
   gradient: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #3b82f6 100%)',
@@ -106,18 +106,6 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     category: 'PDF Security',
     color: '#9333ea',
     gradient: 'linear-gradient(135deg, #6b21a8 0%, #9333ea 100%)',
-  },
-  {
-    slug: 'how-to-convert-pdf-to-word',
-    title: 'How to Convert PDF to Word for Free',
-    description:
-      'Learn 3 easy ways to convert a PDF into an editable Word document at no cost — online tools, Google Docs, and Microsoft Word.',
-    date: 'June 1, 2026',
-    lastModified: '2026-06-01',
-    readTime: '5 min read',
-    category: 'PDF Guide',
-    color: '#3b6ef5',
-    gradient: 'linear-gradient(135deg, #1e40af 0%, #3b6ef5 100%)',
   },
   {
     slug: 'how-to-convert-word-to-pdf',

@@ -217,7 +217,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
-          <RelatedArticles slugs={['how-to-convert-pdf-to-word', 'how-to-convert-word-to-pdf', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
+          <RelatedArticles slugs={['convert-pdf-to-word-fast-and-free-online-tool', 'how-to-convert-word-to-pdf', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
         </article>
       </main>
     </>

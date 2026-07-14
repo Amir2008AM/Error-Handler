@@ -560,7 +560,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
-          <RelatedArticles slugs={['how-to-reduce-image-file-size', 'how-to-convert-pdf-to-word', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
+          <RelatedArticles slugs={['how-to-reduce-image-file-size', 'convert-pdf-to-word-fast-and-free-online-tool', 'understanding-pdf-your-ultimate-guide-to-pdf-files']} />
         </article>
       </main>
     </>

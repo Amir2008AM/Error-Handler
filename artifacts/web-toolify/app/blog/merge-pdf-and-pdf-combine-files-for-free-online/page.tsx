@@ -862,7 +862,7 @@ export default function ArticlePage() {
               'how-to-split-pdf-online',
               'how-to-compress-pdf-online',
               'common-pdf-problems-and-solutions',
-              'how-to-convert-pdf-to-word',
+              'convert-pdf-to-word-fast-and-free-online-tool',
             ]}
           />
 

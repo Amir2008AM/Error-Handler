@@ -649,7 +649,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
-          <RelatedArticles slugs={['how-to-convert-pdf-to-word', 'pdf-vs-word-which-format-to-use', 'how-to-convert-excel-to-pdf']} />
+          <RelatedArticles slugs={['convert-pdf-to-word-fast-and-free-online-tool', 'pdf-vs-word-which-format-to-use', 'how-to-convert-excel-to-pdf']} />
         </article>
       </main>
     </>
