@@ -859,10 +859,10 @@ export default function ArticlePage() {
           {/* ── Related Articles ── */}
           <RelatedArticles
             slugs={[
-              'how-to-merge-pdf-files-online',
+              'how-to-split-pdf-online',
               'how-to-compress-pdf-online',
               'common-pdf-problems-and-solutions',
-              'how-to-split-pdf-online',
+              'how-to-convert-pdf-to-word',
             ]}
           />
 

@@ -236,7 +236,7 @@ export default function ArticlePage() {
             </p>
           </section>
 
-          <RelatedArticles slugs={['how-to-merge-pdf-files-online', 'how-to-compress-pdf-online', 'common-pdf-problems-and-solutions']} />
+          <RelatedArticles slugs={['merge-pdf-and-pdf-combine-files-for-free-online', 'how-to-compress-pdf-online', 'common-pdf-problems-and-solutions']} />
         </article>
       </main>
     </>

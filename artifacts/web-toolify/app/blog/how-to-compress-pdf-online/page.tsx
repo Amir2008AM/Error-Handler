@@ -563,7 +563,7 @@ export default function ArticlePage() {
             </Link>
           </div>
 
-          <RelatedArticles slugs={['how-to-merge-pdf-files-online', 'common-pdf-problems-and-solutions', 'how-to-reduce-image-file-size']} />
+          <RelatedArticles slugs={['merge-pdf-and-pdf-combine-files-for-free-online', 'common-pdf-problems-and-solutions', 'how-to-reduce-image-file-size']} />
         </article>
       </main>
     </>
