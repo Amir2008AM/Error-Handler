@@ -490,7 +490,9 @@ export default function FaqPage() {
           </h1>
           <p className="text-muted-foreground text-base leading-relaxed max-w-lg mx-auto">
             Precise answers about every tool on Toolify — real limits, real formats, and honest
-            notes about what each tool can and cannot do.
+            notes about what each tool can and cannot do. Learn more{' '}
+            <Link href="/about" className="text-primary hover:underline">about ToolifyPDF</Link>{' '}
+            and how we handle your files.
           </p>
 
           {/* Section pills */}

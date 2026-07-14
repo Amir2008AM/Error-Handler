@@ -185,6 +185,10 @@ export function ToolPageServerLayout(props: Props) {
             </div>
           </section>
         )}
+
+        <p className="text-xs text-muted-foreground mt-8 text-center">
+          Learn more <Link href="/about" className="text-primary hover:underline">about ToolifyPDF</Link> and how we handle your files.
+        </p>
       </div>
     </main>
   )

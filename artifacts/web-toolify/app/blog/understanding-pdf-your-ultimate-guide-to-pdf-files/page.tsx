@@ -863,7 +863,11 @@ export default function ArticlePage() {
               <Link href="/" className="underline underline-offset-2 font-medium" style={{ color: ACCENT }}>
                 ToolifyPDF
               </Link>
-              , which can simplify many tasks related to PDF management. For a more tailored experience, consider reaching out for a free trial to discover how these tools can elevate your document handling process.
+              , which can simplify many tasks related to PDF management. Learn more{' '}
+              <Link href="/about" className="underline underline-offset-2 font-medium" style={{ color: ACCENT }}>
+                about ToolifyPDF
+              </Link>
+              , the free browser-based platform behind these guides.
             </p>
           </section>
 
