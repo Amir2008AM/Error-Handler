@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Blue rounded square background -->
+  <rect width="512" height="512" rx="110" fill="#3D5AF1"/>
+
+  <!-- Document shape: rectangle with folded top-right corner -->
+  <!-- Main body of document -->
+  <path d="M130 100 H320 L390 170 V420 Q390 440 370 440 H130 Q110 440 110 420 V120 Q110 100 130 100Z" fill="white" opacity="0.18"/>
+  <!-- Document fold triangle -->
+  <path d="M320 100 L390 170 H340 Q320 170 320 150 Z" fill="white" opacity="0.12"/>
+
+  <!-- Lightning bolt: bold, centered, solid white -->
+  <path d="M280 80 L180 290 H245 L215 432 L355 210 H285 Z" fill="white"/>
+</svg>
