@@ -1,16 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// ── IndexerNow AI-crawler tracker ────────────────────────────────────────────
+// ── IndexerNow analytics (AI-crawler + AI-citation + human pageview) ─────────
+//
+// Three non-blocking, fire-and-forget pings per qualifying GET:
+//
+//  1. AI BOT CRAWL   — UA matches a known AI-crawler token.
+//                      GET ?u=<path>&ua=<ua>
+//                      Bots never run JS — server is the only place to detect them.
+//
+//  2. AI CITATION    — Human whose Referer host is an AI answer engine.
+//                      GET ?u=<path>&ref=<referer>
+//
+//  3. HUMAN PAGEVIEW — Every non-bot, non-prefetch GET on a page document.
+//                      POST {path, referrer, utm:{source,medium,campaign}}
+//                      Real visitor UA MUST be forwarded — IndexerNow silently
+//                      drops pings whose UA looks like a server/bot (the default
+//                      fetch UA is treated as a bot and discarded).
+//
+// Steps 2 + 3 both fire for an AI-referred human visit (different signals).
+// A bot fires step 1 only — never steps 2 or 3.
+// All errors are swallowed — the visitor's request is never affected.
+
 const AI_BOTS =
   /(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|PerplexityBot|Google-Extended|GoogleOther|Applebot-Extended|Applebot|Bytespider|Amazonbot|Meta-ExternalAgent|Meta-ExternalFetcher|CCBot|Diffbot|YouBot|MistralAI-User|cohere-ai|DuckAssistBot)/i
 
-function pingIndexerNow(pathname: string, ua: string): void {
-  const url =
-    'https://www.indexernow.com/api/pixel/TlVi67OnA6oZ0cLtJ6InXjbx?u=' +
-    encodeURIComponent(pathname) +
-    '&ua=' +
-    encodeURIComponent(ua)
-  fetch(url).catch(() => {})
+const AI_REFERRERS =
+  /(chatgpt\.com|chat\.openai\.com|copilot\.microsoft\.com|copilot\.com|perplexity\.ai|gemini\.google\.com|claude\.ai|you\.com|poe\.com|phind\.com)/i
+
+const PIXEL = 'https://www.indexernow.com/api/pixel/TlVi67OnA6oZ0cLtJ6InXjbx'
+
+/**
+ * Returns true when the path looks like a page document.
+ * Excludes API routes and any path that has a file-extension segment
+ * (static assets like .js, .css, .png, .xml, .txt …).
+ */
+function isPagePath(pathname: string): boolean {
+  return !pathname.startsWith('/api/') && !/\.[^/]+$/.test(pathname)
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -97,9 +122,45 @@ const CATEGORY_TO_SLUG: Record<string, string> = {
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
-  // ── AI-crawler tracking (fire-and-forget, never blocks the response) ─────────
-  const ua = request.headers.get('user-agent') || ''
-  if (AI_BOTS.test(ua)) pingIndexerNow(pathname, ua)
+  // ── IndexerNow: fire pings on qualifying GET page-document requests ──────────
+  if (request.method === 'GET' && isPagePath(pathname)) {
+    const ua  = request.headers.get('user-agent')  ?? ''
+    const ref = request.headers.get('referer')     ?? ''
+    const enc = encodeURIComponent
+
+    if (AI_BOTS.test(ua)) {
+      // 1. AI bot crawl — bots never execute JS; this is the only detection point
+      fetch(`${PIXEL}?u=${enc(pathname)}&ua=${enc(ua)}`).catch(() => {})
+    } else {
+      // Skip link-prefetch requests (not real navigations)
+      const isPrefetch =
+        request.headers.get('next-router-prefetch') !== null ||
+        (request.headers.get('sec-purpose') ?? '').includes('prefetch')
+
+      if (!isPrefetch) {
+        // 2. AI citation click — human arriving from an AI answer engine
+        if (ref && AI_REFERRERS.test(ref)) {
+          fetch(`${PIXEL}?u=${enc(pathname)}&ref=${enc(ref)}`).catch(() => {})
+        }
+
+        // 3. Human pageview — forward the real UA or IndexerNow drops it
+        const sp = request.nextUrl.searchParams
+        fetch(PIXEL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'user-agent': ua },
+          body: JSON.stringify({
+            path:     pathname,
+            referrer: ref,
+            utm: {
+              source:   sp.get('utm_source')   ?? '',
+              medium:   sp.get('utm_medium')   ?? '',
+              campaign: sp.get('utm_campaign') ?? '',
+            },
+          }),
+        }).catch(() => {})
+      }
+    }
+  }
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ── ?category= → /category/slug permanent redirect (301, no param leak) ──────
