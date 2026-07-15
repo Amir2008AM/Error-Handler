@@ -7,7 +7,7 @@ import { RelatedArticles } from '@/components/related-articles'
 export const metadata: Metadata = {
   title: { absolute: 'How to Split a PDF File Online for Free | ToolifyPDF Blog' },
   description:
-    'Learn how to split a PDF into separate pages or sections online for free. A practical step-by-step guide covering use cases, tips, and what to do after splitting.',
+    'Split a PDF into pages or sections online for free — fast, no software, no sign-up. Step-by-step guide with tips and common questions.',
   alternates: { canonical: 'https://toolifypdf.online/blog/how-to-split-pdf-online' },
   openGraph: {
     title: 'How to Split a PDF File Online for Free',
@@ -35,6 +35,42 @@ const schema = {
   keywords: 'split pdf, split pdf online free, separate pdf pages, extract pdf pages, divide pdf',
 }
 
+const faqs = [
+  {
+    question: 'Can I split a password-protected PDF?',
+    answer: 'You will need to remove the password first. Use the Unlock PDF tool on ToolifyPDF to decrypt the file, then return to the Split PDF tool. Attempting to split a locked file without first removing the password will result in an error.',
+  },
+  {
+    question: 'What happens to my file after splitting?',
+    answer: 'Files uploaded to ToolifyPDF are processed for your requested task and automatically removed after a limited period. No account is required, and files are not stored permanently.',
+  },
+  {
+    question: 'Can I split a very large PDF?',
+    answer: 'Yes. ToolifyPDF handles multi-page documents. If your file is unusually large, you may want to compress it first to speed up the upload and processing time.',
+  },
+  {
+    question: 'Is there a limit on how many pages I can extract?',
+    answer: 'You can extract any combination of pages. There is no restriction on the number of pages you select when splitting by page range or extracting specific pages.',
+  },
+  {
+    question: 'Will the split files be searchable?',
+    answer: 'Yes — as long as the original PDF had selectable text (not a flat image scan), the split output will also have searchable, selectable text. If the original is a scanned image, consider running OCR first.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+}
+
 const ACCENT = '#16a34a'
 
 function Step({ n, title, text }: { n: number; title: string; text: string }) {
@@ -52,7 +88,7 @@ function Step({ n, title, text }: { n: number; title: string; text: string }) {
 function InfoCard({ title, body }: { title: string; body: string }) {
   return (
     <div className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
-      <p className="font-semibold text-foreground mb-1 text-sm">{title}</p>
+      <h3 className="font-semibold text-foreground mb-1 text-sm">{title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
     </div>
   )
@@ -63,6 +99,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
 
@@ -174,13 +211,11 @@ export default function ArticlePage() {
           </section>
 
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-foreground mb-6">Common Questions About PDF Splitting</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions About PDF Splitting</h2>
             <div className="space-y-4">
-              <InfoCard title="Can I split a password-protected PDF?" body="You will need to remove the password first. Use the Unlock PDF tool on ToolifyPDF to decrypt the file, then return to the Split PDF tool. Attempting to split a locked file without first removing the password will result in an error." />
-              <InfoCard title="What happens to my file after splitting?" body="Files uploaded to ToolifyPDF are processed for your requested task and automatically removed after a limited period. No account is required, and files are not stored permanently." />
-              <InfoCard title="Can I split a very large PDF?" body="Yes. ToolifyPDF handles multi-page documents. If your file is unusually large, you may want to compress it first to speed up the upload and processing time." />
-              <InfoCard title="Is there a limit on how many pages I can extract?" body="You can extract any combination of pages. There is no restriction on the number of pages you select when splitting by page range or extracting specific pages." />
-              <InfoCard title="Will the split files be searchable?" body="Yes — as long as the original PDF had selectable text (not a flat image scan), the split output will also have searchable, selectable text. If the original is a scanned image, consider running OCR first." />
+              {faqs.map((faq) => (
+                <InfoCard key={faq.question} title={faq.question} body={faq.answer} />
+              ))}
             </div>
           </section>
 
