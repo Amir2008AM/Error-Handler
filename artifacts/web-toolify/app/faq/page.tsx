@@ -561,6 +561,21 @@ export default function FaqPage() {
               <SectionBlock key={section.id} section={section} />
             ))}
 
+            {/* Key Takeaways */}
+            <section aria-labelledby="faq-key-takeaways" className="rounded-2xl border border-border bg-card p-6 md:p-8">
+              <h2 id="faq-key-takeaways" className="text-lg font-bold text-foreground mb-4">
+                Key Takeaways
+              </h2>
+              <ul className="list-disc list-outside ml-5 space-y-2 text-sm text-muted-foreground leading-relaxed">
+                <li>Every tool on Toolify is free to use, with no account, subscription, or hidden fees.</li>
+                <li>All tools run in the browser and work on desktop, tablet, and mobile — nothing to install.</li>
+                <li>The upload limit is 50 MB per file across PDF, image, Word, Excel, and PowerPoint files.</li>
+                <li>Uploaded files are automatically deleted from Toolify servers within 20 minutes, and transfers are protected by HTTPS.</li>
+                <li>Most operations complete within seconds; conversion tools that use server-side processing may take up to 5–20 seconds.</li>
+                <li>Processed files can be downloaded immediately with no login required.</li>
+              </ul>
+            </section>
+
             {/* Bottom CTA */}
             <section
               className="rounded-2xl p-8 md:p-12 text-center text-white overflow-hidden relative"

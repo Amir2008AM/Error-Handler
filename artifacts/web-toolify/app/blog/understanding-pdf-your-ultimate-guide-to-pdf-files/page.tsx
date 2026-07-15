@@ -874,6 +874,13 @@ export default function ArticlePage() {
           {/* ── FAQ ── */}
           <section id="faq" className="mb-14 scroll-mt-8">
             <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <p className="text-muted-foreground leading-relaxed mb-6">
+              For more questions about file limits, formats, and security across all Toolify tools, see the full{' '}
+              <Link href="/faq" className="underline underline-offset-2 font-medium" style={{ color: ACCENT }}>
+                FAQ page
+              </Link>
+              .
+            </p>
             <div className="space-y-4">
               <FaqItem
                 id="faq-convert"
