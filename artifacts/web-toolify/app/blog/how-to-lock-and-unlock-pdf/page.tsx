@@ -7,7 +7,7 @@ import { RelatedArticles } from '@/components/related-articles'
 export const metadata: Metadata = {
   title: { absolute: 'How to Lock and Unlock PDF Files Online for Free' },
   description:
-    'Learn how to lock and unlock PDF files online for free. Protect sensitive documents with passwords or remove passwords from PDFs you own using secure online tools.',
+    'Learn how to lock and unlock PDF files online for free with password protection or removal — fast, secure, and no sign-up required.',
   alternates: {
     canonical: 'https://toolifypdf.online/blog/how-to-lock-and-unlock-pdf',
   },
@@ -34,7 +34,7 @@ const schema = {
   headline: 'How to Lock and Unlock PDF Files Online for Free',
   image: 'https://toolifypdf.online/og-image.jpg',
   description:
-    'Learn how to lock and unlock PDF files online for free. Protect sensitive documents with passwords or remove passwords from PDFs you own using secure online tools.',
+    'Learn how to lock and unlock PDF files online for free with password protection or removal — fast, secure, and no sign-up required.',
   datePublished: '2026-06-04T00:00:00.000Z',
   dateModified: '2026-06-04T00:00:00.000Z',
   author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
@@ -42,6 +42,43 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-lock-and-unlock-pdf' },
   articleSection: 'PDF Security',
   keywords: 'lock pdf, unlock pdf, password protect pdf, remove pdf password, pdf security online free',
+}
+
+const faqs = [
+  {
+    q: 'Is it free to lock and unlock PDF files online with ToolifyPDF?',
+    a: 'Yes. ToolifyPDF\'s Lock PDF and Unlock PDF tools are free to use and do not require creating an account.',
+  },
+  {
+    q: 'What encryption does ToolifyPDF use to lock a PDF?',
+    a: 'ToolifyPDF applies AES-256 encryption when you click "Protect PDF," which is the same standard used to secure the document with your chosen password.',
+  },
+  {
+    q: 'Can I unlock a PDF without knowing the password?',
+    a: 'No. You need the correct password to remove protection from a PDF. Only unlock files that you own or are authorized to access.',
+  },
+  {
+    q: 'How long does ToolifyPDF store uploaded PDF files?',
+    a: 'Uploaded files are automatically deleted after 10 minutes, and all file transfers use secure HTTPS encryption.',
+  },
+  {
+    q: 'What is the maximum file size for locking or unlocking a PDF?',
+    a: 'ToolifyPDF supports PDF files up to 50 MB for both locking and unlocking.',
+  },
+  {
+    q: 'What should I do if I forget my PDF password?',
+    a: 'If you forget the password used to protect a PDF, you may not be able to access the document. Store passwords securely using a trusted password manager to avoid this.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map(({ q, a }) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
 }
 
 /* ── Inline SVG illustrations ───────────────────────────────────────────── */
@@ -275,6 +312,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
@@ -580,6 +618,19 @@ export default function ArticlePage() {
               'Store important PDF files securely in encrypted storage.',
               'Review access permissions for shared documents regularly.',
             ]} />
+          </section>
+
+          {/* FAQ */}
+          <section className="mb-12">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <div key={faq.q} className="border border-border rounded-xl p-5">
+                  <h3 className="font-semibold text-foreground mb-2">{faq.q}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{faq.a}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           {/* Conclusion */}
