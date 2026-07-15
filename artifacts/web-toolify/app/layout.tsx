@@ -8,6 +8,7 @@ import HeartbeatBeacon from '@/components/heartbeat-beacon'
 import { MinimalFooter } from '@/components/minimal-footer'
 import { Navbar } from '@/components/navbar'
 import ThirdPartyScripts from '@/components/third-party-scripts'
+import Script from 'next/script'
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import FeedbackWidget from '@/components/feedback-widget'
 import './globals.css'
@@ -102,10 +103,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
-      <head>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="https://analytics.ahrefs.com/analytics.js" data-key="QJVgLKTTo6yseBMo0aT08w" async></script>
-      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <script
           type="application/ld+json"
@@ -123,6 +120,11 @@ export default function RootLayout({
               },
             }),
           }}
+        />
+        <Script
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="QJVgLKTTo6yseBMo0aT08w"
+          strategy="afterInteractive"
         />
         <CookieConsentProvider>
           {process.env.NODE_ENV === 'production' && <ThirdPartyScripts />}
