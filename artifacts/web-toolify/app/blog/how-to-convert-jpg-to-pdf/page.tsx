@@ -44,6 +44,46 @@ const schema = {
   keywords: 'jpg to pdf, convert jpg to pdf, image to pdf, jpg to pdf online free, convert jpeg to pdf',
 }
 
+const faqs = [
+  {
+    question: 'Is it free to convert JPG to PDF online with ToolifyPDF?',
+    answer: 'Yes. ToolifyPDF\'s JPG to PDF converter is free to use and does not require creating an account. Upload your images, click Convert, and download the finished PDF.',
+  },
+  {
+    question: 'Can I combine multiple JPG images into a single PDF file?',
+    answer: 'Yes. You can upload several JPG images at once, arrange them in the desired order, and the converter will combine them into a single PDF, with each image becoming its own page.',
+  },
+  {
+    question: 'Does converting JPG to PDF reduce image quality?',
+    answer: 'No. The converter preserves the clarity and appearance of your original JPG files, so the images inside the PDF look the same as the source files.',
+  },
+  {
+    question: 'Why did my images appear in the wrong order in the converted PDF?',
+    answer: 'This happens when files are uploaded without a set sequence. Arrange the images in the correct order before starting the conversion, or rename the image files numerically so they upload in the right sequence.',
+  },
+  {
+    question: 'Is there a file size limit when converting JPG to PDF?',
+    answer: 'ToolifyPDF supports image uploads up to 50 MB, which is enough for high-resolution photos and large image collections.',
+  },
+  {
+    question: 'What happens to my JPG files after they are converted to PDF?',
+    answer: 'Uploaded files are transferred using secure HTTPS encryption and are automatically deleted after 10 minutes. Because files are not stored permanently, your images remain private.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+}
+
 /* ── Inline SVG illustrations ───────────────────────────────────────────── */
 
 function IllustrationJpgToPdf() {
@@ -240,6 +280,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
@@ -511,6 +552,19 @@ export default function ArticlePage() {
               'Check the Final PDF — Always review the downloaded PDF to ensure everything appears as expected.',
               'Optimize Large Images — If file size is important, resize extremely large images before converting them.',
             ]} />
+          </section>
+
+          {/* FAQ */}
+          <section className="mb-12">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <div key={faq.question} className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
+                  <h3 className="font-semibold text-foreground mb-1 text-sm">{faq.question}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           {/* Conclusion */}
