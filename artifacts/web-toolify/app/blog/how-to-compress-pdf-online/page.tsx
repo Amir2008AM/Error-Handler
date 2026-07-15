@@ -44,6 +44,46 @@ const schema = {
   keywords: 'compress pdf, reduce pdf size, pdf compressor online, compress pdf free, pdf file size reducer',
 }
 
+const faqs = [
+  {
+    question: 'Is it free to compress a PDF online with ToolifyPDF?',
+    answer: 'Yes. ToolifyPDF\'s PDF compression tool is free to use and does not require creating an account. Simply upload a PDF, click Compress PDF, and download the optimized file.',
+  },
+  {
+    question: 'Will compressing my PDF reduce its quality?',
+    answer: 'A good PDF compressor reduces file size while maintaining readability and document appearance. Very aggressive compression can affect image quality, so it is best to use moderate compression settings and review the final file before sharing it.',
+  },
+  {
+    question: 'Can I compress a password-protected PDF?',
+    answer: 'Encrypted PDFs often cannot be compressed until protection is removed. If you have permission to edit the file, remove the password protection first and then compress the unprotected version.',
+  },
+  {
+    question: 'What is the maximum PDF file size I can compress online?',
+    answer: 'ToolifyPDF supports PDF uploads up to 50 MB, which is enough for most business documents, reports, and scanned PDFs.',
+  },
+  {
+    question: 'What happens to my PDF after it is compressed online?',
+    answer: 'Uploaded files are transferred using encrypted connections and are automatically deleted after 10 minutes. Files are only processed for the purpose of compression and are not intended for long-term storage.',
+  },
+  {
+    question: 'Why is my compressed PDF still too large?',
+    answer: 'Some PDFs contain extremely high-resolution images that are difficult to compress significantly. Try reducing image resolution before creating the PDF, or compress the file again to further reduce its size.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+}
+
 /* ── Inline SVG illustrations ───────────────────────────────────────────── */
 
 function IllustrationCompress() {
@@ -238,6 +278,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
@@ -497,6 +538,19 @@ export default function ArticlePage() {
             <p className="text-muted-foreground leading-relaxed mt-4">
               These simple steps can help achieve a better balance between file size and visual quality.
             </p>
+          </section>
+
+          {/* FAQ */}
+          <section className="mb-12">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <div key={faq.question} className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
+                  <h3 className="font-semibold text-foreground mb-1 text-sm">{faq.question}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           {/* Conclusion */}
