@@ -35,6 +35,42 @@ const schema = {
   keywords: 'add watermark to pdf, pdf watermark online, watermark pdf free, text watermark pdf, confidential watermark pdf',
 }
 
+const faqs = [
+  {
+    question: 'Does a watermark prevent someone from opening or editing my PDF?',
+    answer: 'No. A watermark is a visual communication tool — it does not encrypt the file or prevent anyone from opening, reading, or altering it. If you need to control who can open or edit the document, use password protection with the Protect PDF tool instead.',
+  },
+  {
+    question: 'Can I add a watermark to every page of a PDF at once?',
+    answer: 'Yes. When you apply a watermark using ToolifyPDF, it is added to every page of the document automatically, so you do not need to repeat the process page by page.',
+  },
+  {
+    question: 'What opacity should I use for a PDF watermark?',
+    answer: 'A low opacity of around 20–30% creates a subtle background watermark that stays readable without distracting from the document content. Use a higher opacity when the watermark itself is the primary message you want to convey.',
+  },
+  {
+    question: 'Should I use a watermark or password protection for a confidential document?',
+    answer: 'It depends on the goal. A watermark communicates that a document is confidential but does not restrict access. Password protection controls who can open the file. For documents that need both a clear confidentiality notice and restricted access, use a watermark together with password protection.',
+  },
+  {
+    question: 'Do I need to install software to add a watermark to a PDF?',
+    answer: 'No. Adding a watermark using ToolifyPDF\'s Watermark PDF tool works directly in your browser on desktop or mobile, requires no software installation, and takes under a minute.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+}
+
 const ACCENT = '#0891b2'
 
 export default function ArticlePage() {
@@ -42,6 +78,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
 
@@ -205,6 +242,18 @@ export default function ArticlePage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <div key={faq.question} className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
+                  <h3 className="font-semibold text-foreground mb-1 text-sm">{faq.question}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
             </div>
           </section>
 
