@@ -116,6 +116,8 @@ export default function AboutPage() {
           images. It offers a collection of online tools — including merging, splitting,
           compression, format conversion, OCR text extraction, and image editing — that run
           directly in your browser without requiring an account or software installation.
+          It is built for students, professionals, businesses, and anyone who needs to
+          complete everyday document tasks quickly.
         </p>
         <p className="text-muted-foreground leading-relaxed mb-10">
           Our goal is to provide a collection of practical tools that help users complete
