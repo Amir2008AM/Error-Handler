@@ -362,7 +362,7 @@ export function HtmlToPdfClient() {
                   <Label htmlFor="html">HTML Content</Label>
                   <Textarea
                     id="html"
-                    placeholder={`<html>\n<head><title>My Document</title></head>\n<body>\n  <h1>Hello World</h1>\n  <p>Your content here...</p>\n</body>\n</html>`}
+                    placeholder={`<html>\n<head><title>My Document</title></head>\n<body>\n  <h2>Hello World</h2>\n  <p>Your content here...</p>\n</body>\n</html>`}
                     value={htmlContent}
                     onChange={(e) => setHtmlContent(e.target.value)}
                     className="min-h-[300px] font-mono text-sm"

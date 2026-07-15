@@ -10,12 +10,16 @@ import {
 type Step  = { title: string; desc: string }
 type Feat  = { title: string; desc: string }
 type QA    = { q: string; a: string }
+type Fact  = { label: string; value: string }
 
 type ToolSeoData = {
-  about:    string
-  steps:    Step[]
-  features: Feat[]
-  faqs:     QA[]
+  about:         string
+  aboutHeading?: string
+  steps:         Step[]
+  features:      Feat[]
+  faqs:          QA[]
+  facts?:        Fact[]
+  keyTakeaways?: string[]
 }
 
 // ── Icon resolver — picks a Lucide icon based on feature keywords ─────────────
@@ -420,7 +424,8 @@ const DATA: Record<string, ToolSeoData> = {
   },
 
   'html-to-pdf': {
-    about: 'Convert HTML pages and websites to PDF online for free with ToolifyPDF. Toolify\'s HTML to PDF converter renders your HTML and CSS into a clean, printable PDF — with styles, fonts, and images included. You can either paste HTML code directly or enter a public webpage URL to convert. No software installation needed.',
+    about: 'HTML to PDF conversion is the process of rendering HTML and CSS markup into a fixed, paginated PDF document. ToolifyPDF\'s HTML to PDF converter is a free, browser-based tool that performs this conversion automatically — either from HTML code you paste in directly or from a public webpage URL — with styles, fonts, and images preserved in the output. No software installation or account is required.',
+    aboutHeading: 'What Is HTML to PDF Conversion?',
     steps: [
       { title: 'Enter HTML or URL',      desc: 'Paste your HTML code directly or enter a webpage URL to convert.' },
       { title: 'Convert to PDF',         desc: 'Click "Convert" — the tool renders the HTML and generates a PDF.' },
@@ -432,11 +437,25 @@ const DATA: Record<string, ToolSeoData> = {
       { title: 'Handles Responsive Layouts', desc: 'The tool renders content at a standard desktop viewport for consistent output.' },
       { title: 'Clean PDF Output',           desc: 'The generated PDF is a clean, printable version of your HTML content.' },
     ],
+    facts: [
+      { label: 'Page sizes',      value: 'A4 (297×210 mm), Letter (8.5×11 in), Legal (8.5×14 in)' },
+      { label: 'Orientation',     value: 'Portrait or landscape' },
+      { label: 'Margins',         value: 'None, small, or large' },
+      { label: 'Render width',    value: 'Your screen (980px), Desktop (1280px), or Wide screen (1920px)' },
+      { label: 'Input methods',   value: 'Pasted HTML code, uploaded .html file, or a public webpage URL' },
+      { label: 'Account required', value: 'No' },
+    ],
     faqs: [
       { q: 'Can I convert a live website to PDF?',    a: 'Yes. Enter the full URL of any publicly accessible webpage into ToolifyPDF.' },
       { q: 'Will JavaScript be executed?',            a: 'Basic JavaScript is executed during rendering, but complex interactive elements may not render fully.' },
       { q: 'Are external fonts and images included?', a: 'Yes, if they are publicly accessible — the renderer fetches external resources during conversion.' },
-      { q: 'What page size is the output?',           a: 'The default output is A4. Page size options may vary.' },
+      { q: 'What page size is the output?',           a: 'You can choose A4, Letter, or Legal. A4 is selected by default.' },
+    ],
+    keyTakeaways: [
+      'ToolifyPDF\'s HTML to PDF converter turns pasted HTML code, an uploaded .html file, or a public webpage URL into a downloadable PDF.',
+      'CSS styling, fonts, and images are rendered in the output, and basic JavaScript runs during rendering.',
+      'Output settings include A4, Letter, or Legal page size, portrait or landscape orientation, and adjustable margins.',
+      'No account, sign-up, or software installation is required — the tool runs entirely in the browser.',
     ],
   },
 
@@ -750,7 +769,7 @@ export function ToolSeoContent({ slug }: { slug: string }) {
           className="text-xl font-bold text-foreground mb-4"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          What Is This Tool?
+          {data.aboutHeading || 'What Is This Tool?'}
         </h2>
         <div className="bg-white border border-border rounded-2xl p-6 space-y-3">
           {aboutParas.map((para, i) => (
@@ -758,6 +777,36 @@ export function ToolSeoContent({ slug }: { slug: string }) {
           ))}
         </div>
       </section>
+
+      {/* ── Facts table ───────────────────────────────────────────────────── */}
+      {data.facts && data.facts.length > 0 && (
+        <section aria-labelledby={`${slug}-facts`}>
+          <h2
+            id={`${slug}-facts`}
+            className="text-xl font-bold text-foreground mb-4"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            Specifications
+          </h2>
+          <div className="bg-white border border-border rounded-2xl overflow-hidden">
+            <table className="w-full text-sm">
+              <tbody>
+                {data.facts.map((fact, i) => (
+                  <tr key={fact.label} className={i % 2 === 0 ? 'bg-transparent' : 'bg-gray-50/60'}>
+                    <th
+                      scope="row"
+                      className="text-left font-semibold text-foreground px-5 py-3 w-1/3 align-top"
+                    >
+                      {fact.label}
+                    </th>
+                    <td className="text-muted-foreground px-5 py-3 leading-relaxed">{fact.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* ── How to Use ────────────────────────────────────────────────────── */}
       <section aria-labelledby={`${slug}-steps`}>
@@ -872,6 +921,24 @@ export function ToolSeoContent({ slug }: { slug: string }) {
           ))}
         </div>
       </section>
+
+      {/* ── Key Takeaways ─────────────────────────────────────────────────── */}
+      {data.keyTakeaways && data.keyTakeaways.length > 0 && (
+        <section aria-labelledby={`${slug}-key-takeaways`} className="bg-primary/5 border border-primary/10 rounded-2xl p-6">
+          <h2
+            id={`${slug}-key-takeaways`}
+            className="text-xl font-bold text-foreground mb-4"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            Key Takeaways
+          </h2>
+          <ul className="list-disc list-outside ml-5 space-y-2">
+            {data.keyTakeaways.map((point, i) => (
+              <li key={i} className="text-sm text-muted-foreground leading-relaxed">{point}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
     </div>
     </>
