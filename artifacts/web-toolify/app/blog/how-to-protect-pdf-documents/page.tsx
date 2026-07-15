@@ -35,6 +35,61 @@ const schema = {
   keywords: 'protect pdf, password protect pdf, add password to pdf, pdf security, lock pdf online free, pdf encryption',
 }
 
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'What type of encryption is used when I add a password to a PDF?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Modern PDF password protection uses AES (Advanced Encryption Standard) encryption, typically at 128-bit or 256-bit key strength. AES-256 is the current standard and the same algorithm used to protect financial and government data. When a password is applied, the file content is encrypted using this standard before being returned to you — without the correct password, the contents remain unreadable.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Can someone open my password-protected PDF without knowing the password?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'A PDF protected with a strong password and modern AES encryption cannot be opened without the correct password. However, weak passwords — short words, common phrases, or simple number sequences — are vulnerable to automated guessing attacks. Using a long password with mixed character types makes the protection effective in practice.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What is the difference between an open password and a permissions password in a PDF?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'An open password (also called a user password) prevents the file from being opened at all without the password — the recipient cannot read any content without it. A permissions password (also called an owner password) allows the file to be opened by anyone, but restricts specific actions such as printing, copying text, or editing. For controlling who can read the document, an open password is what you need.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Does password-protecting a PDF prevent the recipient from printing or copying the text?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Not by default. A standard open password controls who can open the file, but once it is open, the recipient can typically print, copy text, and save it in other formats. To restrict these actions, you need to apply permissions restrictions in addition to the open password. Some PDF tools allow both types of protection to be applied at the same time.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What happens if I forget the password I set on my own PDF?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'There is no password recovery mechanism built into the PDF format. If you forget the password, you cannot open the file without it. This is why it is important to store your password in a password manager or a secure note immediately after setting it. For documents you protect regularly, establishing a consistent password policy ensures you always know which password was applied.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is it safe to use an online tool to add a password to a sensitive PDF?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'The file is transmitted over an encrypted HTTPS connection and processed on the server, then automatically deleted after the operation is complete. For documents subject to strict compliance requirements — such as those containing health records or regulated financial data — review whether an online tool meets your compliance needs. Desktop PDF software that processes files locally without any upload provides an alternative for the most sensitive documents.',
+      },
+    },
+  ],
+}
+
 const ACCENT = '#0284c7'
 
 function SecurityCard({ title, body }: { title: string; body: string }) {
@@ -51,6 +106,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
 
@@ -222,6 +278,43 @@ export default function ArticlePage() {
               <Link href="/watermark-pdf" className="font-medium hover:underline" style={{ color: ACCENT }}>watermark</Link>{' '}
               and sending the password through a separate channel provides practical protection for most document sharing scenarios.
             </p>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {[
+                {
+                  q: 'What type of encryption is used when I add a password to a PDF?',
+                  a: 'Modern PDF password protection uses AES (Advanced Encryption Standard) encryption, typically at 128-bit or 256-bit key strength. AES-256 is the current standard and the same algorithm used to protect financial and government data. When a password is applied, the file content is encrypted using this standard before being returned to you — without the correct password, the contents remain unreadable.',
+                },
+                {
+                  q: 'Can someone open my password-protected PDF without knowing the password?',
+                  a: 'A PDF protected with a strong password and modern AES encryption cannot be opened without the correct password. However, weak passwords — short words, common phrases, or simple number sequences — are vulnerable to automated guessing attacks. Using a long password with mixed character types makes the protection effective in practice.',
+                },
+                {
+                  q: 'What is the difference between an open password and a permissions password in a PDF?',
+                  a: 'An open password (also called a user password) prevents the file from being opened at all without the password — the recipient cannot read any content without it. A permissions password (also called an owner password) allows the file to be opened by anyone, but restricts specific actions such as printing, copying text, or editing. For controlling who can read the document, an open password is what you need.',
+                },
+                {
+                  q: 'Does password-protecting a PDF prevent the recipient from printing or copying the text?',
+                  a: 'Not by default. A standard open password controls who can open the file, but once it is open, the recipient can typically print, copy text, and save it in other formats. To restrict these actions, you need to apply permissions restrictions in addition to the open password. Some PDF tools allow both types of protection to be applied at the same time.',
+                },
+                {
+                  q: 'What happens if I forget the password I set on my own PDF?',
+                  a: 'There is no password recovery mechanism built into the PDF format. If you forget the password, you cannot open the file without it. This is why it is important to store your password in a password manager or a secure note immediately after setting it. For documents you protect regularly, establishing a consistent password policy ensures you always know which password was applied.',
+                },
+                {
+                  q: 'Is it safe to use an online tool to add a password to a sensitive PDF?',
+                  a: 'The file is transmitted over an encrypted HTTPS connection and processed on the server, then automatically deleted after the operation is complete. For documents subject to strict compliance requirements — such as those containing health records or regulated financial data — review whether an online tool meets your compliance needs. Desktop PDF software that processes files locally without any upload provides an alternative for the most sensitive documents.',
+                },
+              ].map(({ q, a }) => (
+                <div key={q} className="border border-border rounded-xl p-5 bg-card">
+                  <p className="font-semibold text-foreground mb-2 text-sm">{q}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="mb-10 rounded-2xl border border-border p-6 bg-card">

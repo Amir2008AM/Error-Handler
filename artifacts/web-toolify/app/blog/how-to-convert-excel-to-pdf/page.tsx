@@ -35,6 +35,61 @@ const schema = {
   keywords: 'convert excel to pdf, excel to pdf online free, xlsx to pdf, spreadsheet to pdf, export excel as pdf',
 }
 
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Does converting Excel to PDF preserve my formulas and calculations?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No — a PDF is a fixed visual snapshot, not a live document. The PDF displays the calculated result of each formula cell, but the underlying formulas are not included. If any cells contain errors such as #DIV/0! or #REF!, those error values will appear in the converted PDF. Resolve all formula errors in the original Excel file before converting.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Why are some columns cut off or missing in my Excel to PDF output?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Columns are cut off when the spreadsheet is wider than the print area defined in Excel\'s page settings. Before uploading, check that all your columns fit within the page width. You can reduce column widths, switch the page orientation to landscape, or use Excel\'s Page Layout settings to scale the sheet to fit one page wide before converting.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Can I convert a multi-sheet Excel workbook to a single PDF?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Most online converters process the first or active sheet by default. To include all sheets in one PDF, open the workbook in Excel, select all sheet tabs, then use File > Save As > PDF to combine every sheet into a single file. Alternatively, convert each sheet separately and use a PDF merge tool to combine the resulting files.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is it safe to upload my Excel spreadsheet to an online converter?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Reputable online tools transmit your file over an encrypted HTTPS connection and automatically delete uploaded files after conversion. If your spreadsheet contains highly sensitive data, consider removing or anonymising that data before uploading, or use desktop software that converts the file locally without any upload step.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Can I convert older .xls files as well as .xlsx files to PDF?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Yes. Both the older .xls format (Excel 97–2003 binary) and the current .xlsx format are supported by ToolifyPDF. If you are working with a very old .xls file and encounter issues, try opening and re-saving it as .xlsx first — the newer format generally produces more reliable conversion output.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What causes merged cells to look wrong after Excel to PDF conversion?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Heavily merged cells can sometimes produce unexpected layout shifts during conversion, particularly when the merged area spans many columns or rows. After converting, open the PDF and verify that all merged areas have rendered as intended before sharing or submitting the document.',
+      },
+    },
+  ],
+}
+
 const ACCENT = '#e11d48'
 
 function Step({ n, title, text }: { n: number; title: string; text: string }) {
@@ -54,6 +109,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
 
@@ -236,6 +292,43 @@ export default function ArticlePage() {
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {[
+                {
+                  q: 'Does converting Excel to PDF preserve my formulas and calculations?',
+                  a: 'No — a PDF is a fixed visual snapshot, not a live document. The PDF displays the calculated result of each formula cell, but the underlying formulas are not included. If any cells contain errors such as #DIV/0! or #REF!, those error values will appear in the converted PDF. Resolve all formula errors in the original Excel file before converting.',
+                },
+                {
+                  q: 'Why are some columns cut off or missing in my Excel to PDF output?',
+                  a: "Columns are cut off when the spreadsheet is wider than the print area defined in Excel's page settings. Before uploading, check that all your columns fit within the page width. You can reduce column widths, switch the page orientation to landscape, or use Excel's Page Layout settings to scale the sheet to fit one page wide before converting.",
+                },
+                {
+                  q: 'Can I convert a multi-sheet Excel workbook to a single PDF?',
+                  a: 'Most online converters process the first or active sheet by default. To include all sheets in one PDF, open the workbook in Excel, select all sheet tabs, then use File > Save As > PDF to combine every sheet into a single file. Alternatively, convert each sheet separately and use a PDF merge tool to combine the resulting files.',
+                },
+                {
+                  q: 'Is it safe to upload my Excel spreadsheet to an online converter?',
+                  a: 'Reputable online tools transmit your file over an encrypted HTTPS connection and automatically delete uploaded files after conversion. If your spreadsheet contains highly sensitive data, consider removing or anonymising that data before uploading, or use desktop software that converts the file locally without any upload step.',
+                },
+                {
+                  q: 'Can I convert older .xls files as well as .xlsx files to PDF?',
+                  a: 'Yes. Both the older .xls format (Excel 97–2003 binary) and the current .xlsx format are supported by ToolifyPDF. If you are working with a very old .xls file and encounter issues, try opening and re-saving it as .xlsx first — the newer format generally produces more reliable conversion output.',
+                },
+                {
+                  q: 'What causes merged cells to look wrong after Excel to PDF conversion?',
+                  a: 'Heavily merged cells can sometimes produce unexpected layout shifts during conversion, particularly when the merged area spans many columns or rows. After converting, open the PDF and verify that all merged areas have rendered as intended before sharing or submitting the document.',
+                },
+              ].map(({ q, a }) => (
+                <div key={q} className="border border-border rounded-xl p-5 bg-card">
+                  <p className="font-semibold text-foreground mb-2 text-sm">{q}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="mb-10 rounded-2xl border border-border p-6 bg-card">
