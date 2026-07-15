@@ -7,7 +7,7 @@ import { RelatedArticles } from '@/components/related-articles'
 export const metadata: Metadata = {
   title: { absolute: 'How to Reduce Image File Size Without Losing Quality' },
   description:
-    'A practical guide to reducing image file size through compression, resizing, cropping, and format conversion — without visible quality loss. Covers all major image formats.',
+    'Learn how to reduce image file size without losing quality using compression, resizing, cropping, and format conversion — free online.',
   alternates: { canonical: 'https://toolifypdf.online/blog/how-to-reduce-image-file-size' },
   openGraph: {
     title: 'How to Reduce Image File Size Without Losing Quality',
@@ -35,6 +35,42 @@ const schema = {
   keywords: 'reduce image file size, compress image online, resize image, optimize image, image compression without quality loss',
 }
 
+const faqs = [
+  {
+    question: 'What is the fastest way to reduce an image file size without losing quality?',
+    answer: 'For most photographs, lossy compression at a reasonable quality setting is the fastest option — it removes data the human eye typically cannot detect while keeping the same dimensions. If the image will be displayed smaller than its original dimensions, resizing usually achieves an even greater reduction.',
+  },
+  {
+    question: 'Does compressing an image always reduce quality?',
+    answer: 'No. Lossless compression, used by default in PNG, reorganizes file data without discarding any pixel information, so the image stays bit-for-bit identical. Lossy compression, used by JPEG, discards detail the eye is unlikely to notice — at a reasonable quality setting like 80%, the difference is not visually noticeable for most photographs.',
+  },
+  {
+    question: 'Should I compress or resize an image to reduce its file size?',
+    answer: 'Use compression when you want to keep the original dimensions or are unsure how the image will be displayed. Use resizing when you know the exact pixel dimensions needed, since an image stored far larger than its display size wastes file size that compression alone cannot fully recover.',
+  },
+  {
+    question: 'Which image format produces the smallest file size?',
+    answer: 'It depends on the content. WebP is generally the most space-efficient format for web images since it supports both lossy and lossless compression. JPEG is efficient for photographs, while PNG is better suited to logos, screenshots, and images that need transparency, even though it produces larger files.',
+  },
+  {
+    question: 'Will converting a PNG to JPEG or WebP reduce file size without visible quality loss?',
+    answer: 'For photographic images, yes — converting a PNG photograph to JPEG or WebP can significantly reduce file size with no perceptible change in appearance for most use cases. This is not recommended for images that need transparency or contain sharp text and line art, since JPEG does not support transparency and lossy encoding can blur fine edges.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+}
+
 const ACCENT = '#db2777'
 
 export default function ArticlePage() {
@@ -42,6 +78,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
 
@@ -220,6 +257,18 @@ export default function ArticlePage() {
             <p className="text-muted-foreground leading-relaxed">
               Use <strong>resizing</strong> when: you know the exact pixel dimensions required (such as a standard profile photo size or a website header), or the original image is far larger than where it will be used. The <Link href="/resize-image" className="font-medium hover:underline" style={{ color: ACCENT }}>Resize Image</Link> tool lets you set exact dimensions or scale by percentage.
             </p>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <div key={faq.question} className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
+                  <h3 className="font-semibold text-foreground mb-1 text-sm">{faq.question}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="mb-10 rounded-2xl border border-border p-6 bg-card">
