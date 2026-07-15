@@ -35,6 +35,46 @@ const schema = {
   keywords: 'pdf vs word, pdf or docx, when to use pdf, convert pdf to word, convert word to pdf, document format comparison',
 }
 
+const faqs = [
+  {
+    question: 'Should I submit a job application or government form as PDF or Word?',
+    answer: 'PDF. Government applications, job submissions, and tender documents benefit from PDF because the format ensures that fields, borders, and signatures appear correctly regardless of how the recipient opens the file.',
+  },
+  {
+    question: 'Can I edit a PDF the same way I edit a Word document?',
+    answer: 'Not directly. A PDF is not editable without conversion, while a Word (.docx) file is fully editable. If a PDF needs changes, convert it to Word first, make the edits, and convert it back to PDF once finished.',
+  },
+  {
+    question: 'Why does my Word document look different when someone else opens it?',
+    answer: 'Word\'s layout may vary depending on the software or settings used to open it, since its content is reflowable. A PDF avoids this problem because its layout is fixed and identical on all devices.',
+  },
+  {
+    question: 'Should a contract or invoice be sent as PDF or Word?',
+    answer: 'PDF. Financial and legal documents should always be shared as PDF because the fixed layout prevents accidental or intentional modification by the recipient, and the document appears identically on any device.',
+  },
+  {
+    question: 'Will the formatting stay correct if I convert a PDF back to Word?',
+    answer: 'In most cases the text and formatting convert cleanly, but complex layouts with multiple columns or embedded tables may require some manual adjustment after conversion.',
+  },
+  {
+    question: 'Which format is better for long-term archiving, PDF or Word?',
+    answer: 'PDF is preferred for long-term archiving because it produces a stable, self-contained representation of a document that does not depend on specific software versions to open correctly.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+}
+
 const ACCENT = '#4f46e5'
 
 function CompareRow({ feature, pdf, word }: { feature: string; pdf: string; word: string }) {
@@ -52,6 +92,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
 
@@ -205,6 +246,18 @@ export default function ArticlePage() {
                 </li>
               ))}
             </ol>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <div key={faq.question} className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
+                  <h3 className="font-semibold text-foreground mb-1 text-sm">{faq.question}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="mb-10 rounded-2xl border border-border p-6 bg-card">
