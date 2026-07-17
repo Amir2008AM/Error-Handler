@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { HomeContent } from '@/components/home-content'
-import { PartnerBadges } from '@/components/partner-badges'
+import { PartnerBadges, BADGES } from '@/components/partner-badges'
 
 export const metadata: Metadata = {
   title: { absolute: 'ToolifyPDF — Free PDF, Image & Document Tools Online' },
@@ -488,6 +488,33 @@ export default async function HomePage() {
         badgeSlot={<PartnerBadges />}
         preFooterSlot={preFooterContent}
       />
+
+      {/*
+        SSR badge anchors — rendered server-side so crawlers and badge
+        verifiers (which use plain HTTP fetch, no JS) can always detect them.
+        Visually hidden but fully accessible to bots and link validators.
+        The visible badges inside HomeContent stay untouched for users.
+      */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          opacity: 0,
+          pointerEvents: 'none',
+          top: 0,
+          left: 0,
+        }}
+      >
+        {BADGES.map((badge) => (
+          <a key={badge.href} href={badge.href} rel="noopener">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={badge.src} alt={badge.alt} />
+          </a>
+        ))}
+      </div>
     </div>
   )
 }
