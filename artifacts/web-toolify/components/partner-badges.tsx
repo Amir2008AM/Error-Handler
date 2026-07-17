@@ -91,6 +91,12 @@ export const BADGES = [
     rel:  'noopener' as const,
     width: 150,
   },
+  {
+    href: 'https://instant-indexing.com',
+    src:  'https://instant-indexing.com/api/badge/toolifypdf.online',
+    alt:  'Indexed by Instant Indexing',
+    rel:  'noopener' as const,
+  },
 ]
 
 interface PartnerBadgesProps {
