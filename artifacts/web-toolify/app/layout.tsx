@@ -11,6 +11,7 @@ import ThirdPartyScripts from '@/components/third-party-scripts'
 import Script from 'next/script'
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import FeedbackWidget from '@/components/feedback-widget'
+import AdPlacements from '@/components/ad-placements'
 import './globals.css'
 
 const inter = Inter({
@@ -134,7 +135,10 @@ export default function RootLayout({
           <I18nProvider>
             <LoadingBarProvider>
               <Navbar />
-              {children}
+              <Script id="nap5k-ad-script" strategy="afterInteractive">
+                {`(function(s){s.dataset.zone='11374241',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
+              </Script>
+              <AdPlacements>{children}</AdPlacements>
               <MinimalFooter />
               <FeedbackWidget />
             </LoadingBarProvider>
