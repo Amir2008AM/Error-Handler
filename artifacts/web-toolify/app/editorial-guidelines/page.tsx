@@ -104,7 +104,7 @@ export default function EditorialGuidelinesPage() {
             </p>
             <p className="text-muted-foreground leading-relaxed">
               We do not claim that our tools are infallible, and our content reflects that honestly. For example, guides covering{' '}
-              <Link href="/ocr-pdf" className="text-foreground underline underline-offset-4 hover:opacity-75 transition-opacity">OCR text extraction</Link>{' '}
+              OCR text extraction{' '}
               note that accuracy depends on source image quality, and guides for document conversion explain that complex formatting may not be perfectly preserved. This transparency is a deliberate editorial choice.
             </p>
           </section>
