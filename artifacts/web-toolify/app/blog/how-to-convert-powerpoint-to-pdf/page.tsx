@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AdsterraBanner } from '@/components/adsterra-banner'
+import { AdBanner } from '@/components/ad-banner'
 import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
@@ -81,7 +81,7 @@ export default function ArticlePage() {
             </div>
           </header>
 
-          <AdsterraBanner className="my-6" />
+          <AdBanner slot="6978025975" format="horizontal" className="my-6" />
 
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-foreground mb-4">Why Convert a PowerPoint Presentation to PDF?</h2>
@@ -147,7 +147,7 @@ export default function ArticlePage() {
             </div>
           </section>
 
-          <AdsterraBanner className="my-6" />
+          <AdBanner slot="6978025975" format="horizontal" className="my-6" />
 
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-foreground mb-4">What Gets Preserved in the PDF?</h2>
