@@ -3,9 +3,9 @@
 import { useEffect, useRef } from 'react'
 import { useCookieConsent } from '@/lib/cookie-consent-context'
 
-const ADSTERRA_KEY = '56034930269e1884b03b953309d36557'
-const AD_WIDTH  = 728
-const AD_HEIGHT = 90
+const ADSTERRA_KEY = 'c1f178cc582ca4669b9965cded62a846'
+const AD_WIDTH  = 300
+const AD_HEIGHT = 250
 
 type AdsterraBannerProps = {
   className?: string
