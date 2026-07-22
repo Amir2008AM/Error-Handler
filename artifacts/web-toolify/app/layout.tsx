@@ -105,6 +105,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
+      <head>
+        <script
+          id="nap5k-ad-script"
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(s){s.dataset.zone='11374241',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
+          }}
+        />
+      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <script
           type="application/ld+json"
@@ -135,9 +144,6 @@ export default function RootLayout({
           <I18nProvider>
             <LoadingBarProvider>
               <Navbar />
-              <Script id="nap5k-ad-script" strategy="afterInteractive">
-                {`(function(s){s.dataset.zone='11374241',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
-              </Script>
               <AdPlacements>{children}</AdPlacements>
               <MinimalFooter />
               <FeedbackWidget />
