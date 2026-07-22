@@ -11,7 +11,7 @@ import {
   FileArchive, Shield, Presentation,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { AdBanner } from './ad-banner'
+import { AdsterraBanner } from './adsterra-banner'
 import { ToolCard } from './tool-card'
 import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
@@ -135,11 +135,11 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
 
       {/* Tool Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <AdBanner slot="6978025975" format="horizontal" className="mb-6" />
+        <AdsterraBanner className="mb-6" />
 
         {children}
 
-        <AdBanner slot="6978025975" format="horizontal" className="mt-8" />
+        <AdsterraBanner className="mt-8" />
 
         {/* Related Tools */}
         {relatedTools.length > 0 && (

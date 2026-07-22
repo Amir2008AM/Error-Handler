@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { AdBanner } from '@/components/ad-banner'
+import { AdsterraBanner } from '@/components/adsterra-banner'
 import { RelatedArticles } from '@/components/related-articles'
 import { ReadingProgress } from '@/components/reading-progress'
 
@@ -483,7 +483,7 @@ export default function ArticlePage() {
             </figcaption>
           </figure>
 
-          <AdBanner slot="6978025975" format="horizontal" className="my-6" />
+          <AdsterraBanner className="my-6" />
 
           <TableOfContents />
 
@@ -744,7 +744,7 @@ export default function ArticlePage() {
             </div>
           </section>
 
-          <AdBanner slot="6978025975" format="horizontal" className="my-8" />
+          <AdsterraBanner className="my-8" />
 
           {/* FAQ */}
           <section id="faq" className="mb-12">

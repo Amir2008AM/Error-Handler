@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { AdBanner } from '@/components/ad-banner'
+import { AdsterraBanner } from '@/components/adsterra-banner'
 import { RelatedArticles } from '@/components/related-articles'
 import { ReadingProgress } from '@/components/reading-progress'
 
@@ -574,7 +574,7 @@ export default function ArticlePage() {
             </figcaption>
           </figure>
 
-          <AdBanner slot="6978025975" format="horizontal" className="my-6" />
+          <AdsterraBanner className="my-6" />
 
           {/* Table of Contents */}
           <TableOfContents />
@@ -723,7 +723,7 @@ export default function ArticlePage() {
             </div>
           </section>
 
-          <AdBanner slot="6978025975" format="horizontal" className="my-8" />
+          <AdsterraBanner className="my-8" />
 
           {/* ── Key Features ── */}
           <section id="key-features" className="mb-12 scroll-mt-8">
@@ -908,7 +908,7 @@ export default function ArticlePage() {
             </div>
           </section>
 
-          <AdBanner slot="6978025975" format="horizontal" className="my-8" />
+          <AdsterraBanner className="my-8" />
 
           {/* ── Related PDF Tools ── */}
           <section className="mb-14">
