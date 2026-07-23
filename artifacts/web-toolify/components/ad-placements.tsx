@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { BannerAd } from './banner-ad'
 
 /** Pages that display ZERO ad slots */
 const NO_AD_EXACT = new Set([
@@ -33,9 +34,11 @@ function AdSlot({ slotId }: { slotId: string }) {
   return (
     <div
       id={slotId}
-      className="mx-auto my-6 flex min-h-[90px] w-full max-w-5xl items-center justify-center overflow-hidden"
+      className="mx-auto my-6 flex w-full max-w-5xl items-center justify-center overflow-hidden"
       aria-label="Advertisement"
-    />
+    >
+      <BannerAd />
+    </div>
   )
 }
 
