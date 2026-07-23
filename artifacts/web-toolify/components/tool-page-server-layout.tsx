@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ToolCard } from './tool-card'
-import { AdBanner } from './ad-banner'
 import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
 import { ToolSeoContent } from './tool-seo-content'
@@ -166,13 +165,9 @@ export function ToolPageServerLayout(props: Props) {
 
       {/* Tool Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <AdBanner slot="6978025975" format="horizontal" className="mb-6" />
-
         {children}
 
         <ToolSeoContent slug={tool.slug} />
-
-        <AdBanner slot="6978025975" format="horizontal" className="mt-8" />
 
         {/* Related Tools — server-rendered for SEO */}
         {relatedTools.length > 0 && (

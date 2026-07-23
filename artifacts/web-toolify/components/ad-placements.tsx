@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { BannerAd } from './banner-ad'
+import { AdBanner } from './ad-banner'
 
 /** Pages that display ZERO ad slots */
 const NO_AD_EXACT = new Set([
@@ -30,40 +30,34 @@ function isBlogArticle(pathname: string): boolean {
   return pathname.startsWith('/blog/') && pathname.length > '/blog/'.length
 }
 
-function AdSlot({ slotId }: { slotId: string }) {
-  return (
-    <div
-      id={slotId}
-      className="mx-auto my-6 flex w-full max-w-5xl items-center justify-center overflow-hidden"
-      aria-label="Advertisement"
-    >
-      <BannerAd />
-    </div>
-  )
-}
-
 export default function AdPlacements({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  // No ads on policy, about, faq, blog index, ops, etc.
+  // No ads on policy, about, faq, blog index, ops, homepage, etc.
   if (isNoAd(pathname)) return <>{children}</>
 
-  // Blog articles: top + bottom (2 slots)
+  // Blog articles: one AdSense slot at top, one at bottom (2 total)
   if (isBlogArticle(pathname)) {
     return (
       <>
-        <AdSlot slotId="ad-slot-top" />
+        <div className="mx-auto my-6 flex w-full max-w-4xl items-center justify-center overflow-hidden px-4">
+          <AdBanner slot="6978025975" format="horizontal" fullWidth />
+        </div>
         {children}
-        <AdSlot slotId="ad-slot-bottom" />
+        <div className="mx-auto my-8 flex w-full max-w-4xl items-center justify-center overflow-hidden px-4">
+          <AdBanner slot="6978025975" format="horizontal" fullWidth />
+        </div>
       </>
     )
   }
 
-  // Tool pages: bottom only (1 slot)
+  // Tool pages: one AdSense slot below the tool content
   return (
     <>
       {children}
-      <AdSlot slotId="ad-slot-bottom" />
+      <div className="mx-auto my-6 flex w-full max-w-5xl items-center justify-center overflow-hidden px-4">
+        <AdBanner slot="6978025975" format="horizontal" fullWidth />
+      </div>
     </>
   )
 }

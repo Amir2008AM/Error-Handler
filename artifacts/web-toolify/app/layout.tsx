@@ -78,7 +78,6 @@ export const metadata: Metadata = {
     : {}),
   other: {
     'google-adsense-account': 'ca-pub-4805747941246928',
-    monetag: 'f7a0893808349945257629abf1467414',
   },
   icons: {
     icon: [
@@ -105,15 +104,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakarta.variable} bg-background`}>
-      <head>
-        <script
-          id="nap5k-ad-script"
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(s){s.dataset.zone='11374241',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
-          }}
-        />
-      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <script
           type="application/ld+json"

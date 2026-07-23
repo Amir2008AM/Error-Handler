@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { HomeContent } from '@/components/home-content'
 import { PartnerBadges, BADGES } from '@/components/partner-badges'
-import { HomeAdBanner } from '@/components/home-ad-banner'
 
 export const metadata: Metadata = {
   title: { absolute: 'ToolifyPDF — Free PDF, Image & Document Tools Online' },
@@ -476,43 +475,10 @@ function HomeFAQSection() {
 export default async function HomePage() {
   const preFooterContent = (
     <>
-      {/* ── Ad 1: 728×90 Leaderboard ── */}
-      <HomeAdBanner width={728} height={90} label="Advertisement" />
-
       <HowItWorksSection />
-
-      {/* ── Ad 2: 300×250 Medium Rectangle ── */}
-      <HomeAdBanner width={300} height={250} label="Advertisement" />
-
-      {/* ── Ad 3: 336×280 Large Rectangle ── */}
-      <HomeAdBanner width={336} height={280} label="Advertisement" />
-
       <WhyToolifySection />
-
-      {/* ── Ad 4: 468×60 Full Banner ── */}
-      <HomeAdBanner width={468} height={60} label="Advertisement" />
-
-      {/* ── Ad 5: 320×50 Mobile Banner ── */}
-      <HomeAdBanner width={320} height={50} label="Advertisement" />
-
       <ToolCategoriesSection />
-
-      {/* ── Ad 6: 250×250 Square ── */}
-      <HomeAdBanner width={250} height={250} label="Advertisement" />
-
-      {/* ── Ad 7: 320×100 Large Mobile Banner ── */}
-      <HomeAdBanner width={320} height={100} label="Advertisement" />
-
       <HomeFAQSection />
-
-      {/* ── Ad 8: 160×600 Wide Skyscraper ── */}
-      <HomeAdBanner width={160} height={600} label="Advertisement" />
-
-      {/* ── Ad 9: 300×600 Half Page ── */}
-      <HomeAdBanner width={300} height={600} label="Advertisement" />
-
-      {/* ── Ad 10: 120×600 Skyscraper ── */}
-      <HomeAdBanner width={120} height={600} label="Advertisement" />
     </>
   )
 

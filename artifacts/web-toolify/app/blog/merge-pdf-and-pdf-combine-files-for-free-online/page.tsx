@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AdBanner } from '@/components/ad-banner'
 import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
@@ -391,7 +390,6 @@ export default function ArticlePage() {
             </div>
           </figure>
 
-          <AdBanner slot="6978025975" format="horizontal" className="mb-8" />
 
           {/* ══════════════════════════════════════════════════
               SECTION 1 — Key Highlights
@@ -590,7 +588,6 @@ export default function ArticlePage() {
             caption="Browser-based PDF tools require no installation — open, upload, merge, and download in under a minute."
           />
 
-          <AdBanner slot="6978025975" format="horizontal" className="my-8" />
 
           {/* ══════════════════════════════════════════════════
               SECTION 4 — How to Combine

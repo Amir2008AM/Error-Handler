@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AdBanner } from '@/components/ad-banner'
 import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
@@ -105,7 +104,6 @@ export default function ArticlePage() {
             </div>
           </header>
 
-          <AdBanner slot="6978025975" format="horizontal" className="my-6" />
 
           <section className="mb-12 space-y-6">
 
@@ -136,7 +134,6 @@ export default function ArticlePage() {
               toolHref="/compress-pdf"
             />
 
-            <AdBanner slot="6978025975" format="horizontal" className="my-6" />
 
             <ProblemBlock
               number={4}
