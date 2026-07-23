@@ -41,6 +41,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-word-to-pdf' },
   articleSection: 'Word Guide',
   keywords: 'convert word to pdf, word to pdf online, docx to pdf free, word to pdf converter',
+  wordCount: 2150,
 }
 
 const faqSchema = {

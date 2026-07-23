@@ -51,6 +51,7 @@ const articleSchema = {
   },
   inLanguage: 'en-US',
   keywords: 'pdf to jpg, pdf converter, jpg converter, image extraction, batch conversion, online converter',
+  wordCount: 2700,
   articleSection: 'PDF Guide',
 }
 

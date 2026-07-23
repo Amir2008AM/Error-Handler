@@ -59,6 +59,7 @@ const articleSchema = {
     'Frequently Asked Questions',
   ],
   keywords: 'pdf to word, pdf converter, editable word document, docx, ocr, scanned pdf, word conversion, formatting',
+  wordCount: 2650,
   articleSectionCount: 6,
 }
 

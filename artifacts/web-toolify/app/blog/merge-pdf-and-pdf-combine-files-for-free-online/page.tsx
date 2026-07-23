@@ -70,6 +70,7 @@ const articleSchema = {
   inLanguage: 'en-US',
   keywords:
     'merge pdf, pdf combiner, combine pdf files, merge pdf online, free pdf merger, pdf merge tool, quick pdf merging',
+  wordCount: 2900,
 }
 
 const faqSchema = {

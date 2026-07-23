@@ -192,7 +192,8 @@ export default function CookiesPolicyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">7. Contact Us</h2>
             <p className="text-muted-foreground leading-relaxed">
-              If you have questions about our use of cookies, please contact us at contact@toolifypdf.online or through our Contact page.
+              If you have questions about our use of cookies, please contact us at contact@toolifypdf.online or through our{' '}
+              <Link href="/contact-us" className="text-primary hover:underline">Contact page</Link>.
             </p>
           </section>
         </div>

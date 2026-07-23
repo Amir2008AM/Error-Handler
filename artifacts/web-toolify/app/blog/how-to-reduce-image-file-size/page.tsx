@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-reduce-image-file-size' },
   articleSection: 'Image Guide',
   keywords: 'reduce image file size, compress image online, resize image, optimize image, image compression without quality loss',
+  wordCount: 1100,
 }
 
 const faqs = [

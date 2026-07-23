@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-protect-pdf-documents' },
   articleSection: 'PDF Security',
   keywords: 'protect pdf, password protect pdf, add password to pdf, pdf security, lock pdf online free, pdf encryption',
+  wordCount: 1350,
 }
 
 const faqSchema = {

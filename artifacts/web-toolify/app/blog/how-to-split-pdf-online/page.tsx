@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-split-pdf-online' },
   articleSection: 'PDF Guide',
   keywords: 'split pdf, split pdf online free, separate pdf pages, extract pdf pages, divide pdf',
+  wordCount: 1100,
 }
 
 const faqs = [

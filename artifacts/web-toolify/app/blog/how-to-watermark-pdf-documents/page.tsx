@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-watermark-pdf-documents' },
   articleSection: 'PDF Security',
   keywords: 'add watermark to pdf, pdf watermark online, watermark pdf free, text watermark pdf, confidential watermark pdf',
+  wordCount: 1050,
 }
 
 const faqs = [

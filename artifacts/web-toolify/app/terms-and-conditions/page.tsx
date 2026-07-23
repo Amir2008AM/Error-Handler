@@ -65,10 +65,6 @@ const sections = [
     title: '12. Changes to These Terms',
     body: 'We may update these Terms of Use from time to time. Continued use of the Service after changes are posted constitutes acceptance of the updated terms. Material changes will be reflected by updating the "Last updated" date at the top of this page.',
   },
-  {
-    title: '13. Contact Us',
-    body: 'If you have any questions about these Terms of Use, please contact us at contact@toolifypdf.online or through our Contact page.',
-  },
 ]
 
 function PolicySection({
@@ -120,6 +116,13 @@ export default function TermsAndConditionsPage() {
           {sections.map((s) => (
             <PolicySection key={s.title} {...s} />
           ))}
+          <section>
+            <h2 className="text-xl font-semibold mb-3">13. Contact Us</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              If you have any questions about these Terms of Use, please contact us at contact@toolifypdf.online or through our{' '}
+              <Link href="/contact-us" className="text-primary hover:underline">Contact page</Link>.
+            </p>
+          </section>
         </div>
 
         <div className="border-t border-border pt-6 mt-2">

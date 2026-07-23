@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-powerpoint-to-pdf' },
   articleSection: 'Presentation Guide',
   keywords: 'convert powerpoint to pdf, pptx to pdf online free, presentation to pdf, ppt to pdf converter, export slides as pdf',
+  wordCount: 950,
 }
 
 const ACCENT = '#65a30d'

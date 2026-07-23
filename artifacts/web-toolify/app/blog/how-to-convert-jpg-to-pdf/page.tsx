@@ -41,6 +41,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-jpg-to-pdf' },
   articleSection: 'Image Guide',
   keywords: 'jpg to pdf, convert jpg to pdf, image to pdf, jpg to pdf online free, convert jpeg to pdf',
+  wordCount: 2050,
 }
 
 const faqs = [

@@ -41,6 +41,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-compress-pdf-online' },
   articleSection: 'PDF Guide',
   keywords: 'compress pdf, reduce pdf size, pdf compressor online, compress pdf free, pdf file size reducer',
+  wordCount: 2100,
 }
 
 const faqs = [

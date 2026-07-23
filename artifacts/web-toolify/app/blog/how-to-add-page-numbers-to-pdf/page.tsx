@@ -32,6 +32,43 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-add-page-numbers-to-pdf' },
   articleSection: 'PDF Guide',
   keywords: 'add page numbers to pdf, pdf page numbering online, number pdf pages free, pdf footer page number, add numbers to pdf',
+  wordCount: 900,
+}
+
+const faqs = [
+  {
+    question: 'Do I need to re-do the page numbers if I add or remove pages later?',
+    answer: 'Yes. Page numbers added by an online tool are embedded at fixed positions on each page. If you later add, remove, or reorder pages, the existing page numbers will no longer reflect the correct sequence. The recommended workflow is to finalize all page edits first and then add page numbers as the last step before distributing or submitting the document.',
+  },
+  {
+    question: 'Can I start page numbering from a number other than 1?',
+    answer: 'Yes. Most page numbering tools allow you to set the starting number. This is useful when a document begins with a cover page or table of contents that should not count as "page 1." For example, setting the starting number to 0 on a document with a cover page means the first content page displays "1."',
+  },
+  {
+    question: 'Will page numbers appear on every page, including the cover page?',
+    answer: 'By default, yes — page numbers are applied to all pages in the file. If you do not want a number on the cover page, either remove the cover page before adding numbers and reattach it afterward, or set the starting number to 0 so the cover page displays "0" and the first content page shows "1."',
+  },
+  {
+    question: 'Does adding page numbers change the rest of the document content?',
+    answer: 'No. Page numbers are added as a new layer on each page — they do not affect the existing text, images, or layout of the document. The original content remains exactly as it was.',
+  },
+  {
+    question: 'What is the difference between adding page numbers to a PDF and organizing its pages?',
+    answer: 'Organizing PDF pages changes the sequence of pages within the document — reordering them as needed. Adding page numbers stamps a visible number onto each page without changing their order. Both operations are independent: you can organize pages without adding numbers, or add numbers without reorganizing. If you need to do both, organize the pages first, then add page numbers.',
+  },
+]
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
 }
 
 const ACCENT = '#7c3aed'
@@ -41,6 +78,7 @@ export default function ArticlePage() {
     <>
       <ReadingProgress color={ACCENT} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <main className="min-h-screen bg-background">
         <article className="max-w-3xl mx-auto px-4 py-12" itemScope itemType="https://schema.org/BlogPosting">
 
@@ -200,6 +238,18 @@ export default function ArticlePage() {
             <p className="text-muted-foreground leading-relaxed">
               This sequential approach — organize, merge if needed, number last — ensures the page numbers in the final document accurately represent the document's actual structure.
             </p>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions About PDF Page Numbering</h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <div key={faq.question} className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
+                  <h3 className="font-semibold text-foreground mb-1 text-sm">{faq.question}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="mb-10 rounded-2xl border border-border p-6 bg-card">

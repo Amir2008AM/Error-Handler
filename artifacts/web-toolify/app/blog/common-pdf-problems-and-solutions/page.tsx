@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/common-pdf-problems-and-solutions' },
   articleSection: 'Troubleshooting',
   keywords: 'pdf problems, pdf too large to email, pdf password forgot, cannot select text in pdf, pdf not opening, fix pdf online, pdf corrupted',
+  wordCount: 1000,
 }
 
 const ACCENT = '#059669'
@@ -129,9 +130,9 @@ export default function ArticlePage() {
               number={3}
               problem="You cannot select or copy text from the PDF"
               why="There are two reasons text in a PDF cannot be selected. First, the PDF may be an image-based or scanned PDF — each page is a flat image rather than a page containing real text data. Second, the PDF may have copy restrictions applied by its creator. Both situations prevent normal text selection."
-              solution="For scanned PDFs, use an OCR (Optical Character Recognition) tool to extract the text. OCR analyses the image and identifies the characters, converting them into selectable text. For PDFs with copy restrictions, unlocking the file (if you have the right to do so) removes those restrictions."
-              toolLabel="Compress PDF"
-              toolHref="/compress-pdf"
+              solution="For scanned PDFs, convert the PDF to Word using the PDF to Word tool — it applies OCR (Optical Character Recognition) to detect and extract the text from scanned pages, producing an editable document with selectable text. For PDFs with copy restrictions, unlocking the file (if you have the right to do so) removes those restrictions."
+              toolLabel="PDF to Word"
+              toolHref="/pdf-to-word"
             />
 
 
@@ -197,6 +198,39 @@ export default function ArticlePage() {
                 <div key={item.title} className="border border-border rounded-xl p-4 bg-card">
                   <p className="font-semibold text-foreground text-sm mb-1">{item.title}</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {[
+                {
+                  q: 'How do I know if my PDF is a scanned image or a real text PDF?',
+                  a: 'Open the PDF in any viewer and try to click and drag to select text. If text highlights when you drag over it, the PDF contains real text data. If nothing happens — or if the entire page highlights as a single block — the PDF is image-based (a scanned document). Image-based PDFs require OCR to make the text selectable.',
+                },
+                {
+                  q: 'Is it safe to upload my PDF to an online tool to fix it?',
+                  a: 'Reputable online PDF tools process files using automated software, do not store your files permanently, and delete them automatically after a short period (ToolifyPDF removes files within approximately 10 minutes). For highly sensitive documents, review the tool\'s privacy policy before uploading, or use a desktop application that processes the file locally on your own device.',
+                },
+                {
+                  q: 'Why is my compressed PDF still large after compression?',
+                  a: 'PDF compression is most effective on files that contain many images. A PDF that is primarily text-based will see only a modest size reduction from compression because the text is already stored efficiently. For large text-based PDFs, splitting the file into smaller sections is a more effective strategy for meeting upload size limits than compression.',
+                },
+                {
+                  q: 'Can I undo changes after merging or splitting a PDF?',
+                  a: 'PDF processing tools produce a new output file — they do not modify your original. As long as you keep the original file, you can always start again. This is why it is important to download and verify the output before deleting the source documents.',
+                },
+                {
+                  q: 'My PDF opens but some pages are blank or missing. What causes this?',
+                  a: 'Blank or missing pages in a PDF are usually caused by a partial or interrupted download, a compatibility issue between the PDF\'s version and the viewer software, or corruption in a specific section of the file. Try opening it in a different PDF viewer first. If the problem persists across viewers, use a PDF repair tool to attempt to reconstruct the damaged sections.',
+                },
+              ].map((faq) => (
+                <div key={faq.q} className="border-l-4 p-4 rounded-r-xl bg-muted/40" style={{ borderColor: ACCENT }}>
+                  <h3 className="font-semibold text-foreground mb-1 text-sm">{faq.q}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
                 </div>
               ))}
             </div>

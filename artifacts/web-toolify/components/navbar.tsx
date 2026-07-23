@@ -43,6 +43,18 @@ export function Navbar() {
                 {t(key)}
               </Link>
             ))}
+            <Link
+              href="/about"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            >
+              About
+            </Link>
+            <Link
+              href="/contact-us"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            >
+              Contact
+            </Link>
           </nav>
 
           {/* Mobile: menu */}
@@ -71,6 +83,20 @@ export function Navbar() {
               {t(key)}
             </Link>
           ))}
+          <Link
+            href="/about"
+            onClick={() => setMobileOpen(false)}
+            className="block text-sm font-medium text-muted-foreground hover:text-foreground py-1 transition-colors"
+          >
+            About
+          </Link>
+          <Link
+            href="/contact-us"
+            onClick={() => setMobileOpen(false)}
+            className="block text-sm font-medium text-muted-foreground hover:text-foreground py-1 transition-colors"
+          >
+            Contact
+          </Link>
         </div>
       )}
     </header>

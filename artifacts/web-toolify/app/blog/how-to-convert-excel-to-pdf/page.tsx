@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-convert-excel-to-pdf' },
   articleSection: 'Spreadsheet Guide',
   keywords: 'convert excel to pdf, excel to pdf online free, xlsx to pdf, spreadsheet to pdf, export excel as pdf',
+  wordCount: 1200,
 }
 
 const faqSchema = {

@@ -41,6 +41,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-lock-and-unlock-pdf' },
   articleSection: 'PDF Security',
   keywords: 'lock pdf, unlock pdf, password protect pdf, remove pdf password, pdf security online free',
+  wordCount: 2350,
 }
 
 const faqs = [

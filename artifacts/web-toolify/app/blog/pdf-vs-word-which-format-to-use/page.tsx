@@ -32,6 +32,7 @@ const schema = {
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/pdf-vs-word-which-format-to-use' },
   articleSection: 'Document Guide',
   keywords: 'pdf vs word, pdf or docx, when to use pdf, pdf advantages, word advantages, document format comparison, pdf vs docx',
+  wordCount: 1050,
 }
 
 const faqs = [
