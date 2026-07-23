@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { ProtectPdfClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/protect-pdf' },
@@ -26,6 +27,23 @@ export default function Page() {
     <ToolPageServerLayout toolId="protect-pdf"
       title="Protect PDF">
       <ProtectPdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📧",
+                    "title": "Secure files sent by email",
+                    "text": "Encrypt a PDF with a password before emailing contracts or personal documents."
+              },
+              {
+                    "icon": "✏️",
+                    "title": "Prevent editing",
+                    "text": "Lock a form or template so recipients can read it but cannot modify the content."
+              },
+              {
+                    "icon": "🖨️",
+                    "title": "Restrict printing or copying",
+                    "text": "Allow viewing while blocking users from printing the document or copying its text."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

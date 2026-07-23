@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { PdfToJpgClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/pdf-to-jpg' },
@@ -27,6 +28,23 @@ export default function Page() {
   return (
     <ToolPageServerLayout tool={tool}>
       <PdfToJpgClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📤",
+                    "title": "Share individual pages as images",
+                    "text": "Send a single page as a JPG instead of the entire PDF — smaller and viewable on any device."
+              },
+              {
+                    "icon": "🖼️",
+                    "title": "Insert pages into presentations",
+                    "text": "Embed a PDF page as an image directly into a slide deck or document."
+              },
+              {
+                    "icon": "📱",
+                    "title": "View without a PDF reader",
+                    "text": "JPG files open on every phone and computer without needing any additional application."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

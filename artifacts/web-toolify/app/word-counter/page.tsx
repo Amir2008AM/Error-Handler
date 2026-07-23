@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { WordCounterClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/word-counter' },
@@ -28,6 +29,23 @@ export default function WordCounterPage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <WordCounterClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📝",
+                    "title": "Check essay or assignment length",
+                    "text": "Verify a draft meets a required word count before submitting to a teacher or editor."
+              },
+              {
+                    "icon": "🐦",
+                    "title": "Stay within character limits",
+                    "text": "Count characters to keep posts within Twitter's 280-character or LinkedIn's platform limits."
+              },
+              {
+                    "icon": "⏱️",
+                    "title": "Estimate reading time",
+                    "text": "Average reading speed is roughly 200–250 words per minute — use the count to gauge how long your article takes to read."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

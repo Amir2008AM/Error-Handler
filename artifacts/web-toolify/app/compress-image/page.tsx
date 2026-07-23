@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { CompressImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/compress-image' },
@@ -28,6 +29,23 @@ export default function CompressImagePage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <CompressImageClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "⚡",
+                    "title": "Speed up websites",
+                    "text": "Smaller images load faster, which directly improves page speed scores and user experience."
+              },
+              {
+                    "icon": "📤",
+                    "title": "Meet upload size limits",
+                    "text": "Many platforms cap image uploads — compress first to stay within the allowed limit."
+              },
+              {
+                    "icon": "📧",
+                    "title": "Reduce email attachment size",
+                    "text": "Compress images before attaching them to emails to avoid rejection by size-limited mail servers."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { PdfToPptClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/pdf-to-ppt' },
@@ -34,6 +35,23 @@ export default function Page() {
   return (
     <ToolPageServerLayout tool={tool}>
       <PdfToPptClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "🎤",
+                    "title": "Edit a presentation you only have as PDF",
+                    "text": "Recover slide text and images when the original PPTX file is unavailable."
+              },
+              {
+                    "icon": "🔄",
+                    "title": "Repurpose a report as a slide deck",
+                    "text": "Convert a PDF report into editable slides for a meeting or presentation."
+              },
+              {
+                    "icon": "🖊️",
+                    "title": "Update outdated slides",
+                    "text": "Modify text and images in slides without rebuilding the presentation from scratch."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

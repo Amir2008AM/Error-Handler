@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { AgeCalculatorClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/age-calculator' },
@@ -28,6 +29,23 @@ export default function AgeCalculatorPage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <AgeCalculatorClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📋",
+                    "title": "Fill official forms accurately",
+                    "text": "Calculate exact age in years, months, and days for documents that require a precise figure."
+              },
+              {
+                    "icon": "✅",
+                    "title": "Check age eligibility",
+                    "text": "Verify instantly whether someone meets an age requirement such as 18+ or 65+ for a service."
+              },
+              {
+                    "icon": "🎂",
+                    "title": "Find days until a date",
+                    "text": "Calculate how many days remain until a birthday, anniversary, or any future event."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

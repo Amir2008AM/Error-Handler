@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { TextCaseClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/text-case' },
@@ -28,6 +29,23 @@ export default function TextCasePage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <TextCaseClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "🔡",
+                    "title": "Fix ALL CAPS text",
+                    "text": "Convert text pasted from systems that force all-capitals into normal sentence case instantly."
+              },
+              {
+                    "icon": "📰",
+                    "title": "Format headings consistently",
+                    "text": "Apply title case to headings so every significant word is capitalised without doing it manually."
+              },
+              {
+                    "icon": "🗃️",
+                    "title": "Standardise data entries",
+                    "text": "Convert mixed-case entries from different sources into a single consistent format before importing."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

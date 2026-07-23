@@ -2,13 +2,32 @@
 
 import { usePathname } from 'next/navigation'
 
-const EXCLUDED_PATHS = new Set([
+/** Pages that display ZERO ad slots */
+const NO_AD_EXACT = new Set([
   '/',
   '/privacy-policy',
   '/terms-and-conditions',
   '/cookies-policy',
   '/disclaimer',
+  '/about',
+  '/contact-us',
+  '/faq',
+  '/editorial-guidelines',
+  '/blog',
+  '/ops',
 ])
+
+const NO_AD_PREFIXES = ['/ops/', '/internal/', '/author/', '/category/']
+
+function isNoAd(pathname: string): boolean {
+  if (NO_AD_EXACT.has(pathname)) return true
+  return NO_AD_PREFIXES.some(p => pathname.startsWith(p))
+}
+
+/** Blog article pages — any /blog/* path that is not the index */
+function isBlogArticle(pathname: string): boolean {
+  return pathname.startsWith('/blog/') && pathname.length > '/blog/'.length
+}
 
 function AdSlot({ slotId }: { slotId: string }) {
   return (
@@ -23,11 +42,23 @@ function AdSlot({ slotId }: { slotId: string }) {
 export default function AdPlacements({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  if (EXCLUDED_PATHS.has(pathname)) return <>{children}</>
+  // No ads on policy, about, faq, blog index, ops, etc.
+  if (isNoAd(pathname)) return <>{children}</>
 
+  // Blog articles: top + bottom (2 slots)
+  if (isBlogArticle(pathname)) {
+    return (
+      <>
+        <AdSlot slotId="ad-slot-top" />
+        {children}
+        <AdSlot slotId="ad-slot-bottom" />
+      </>
+    )
+  }
+
+  // Tool pages: bottom only (1 slot)
   return (
     <>
-      <AdSlot slotId="ad-slot-top" />
       {children}
       <AdSlot slotId="ad-slot-bottom" />
     </>

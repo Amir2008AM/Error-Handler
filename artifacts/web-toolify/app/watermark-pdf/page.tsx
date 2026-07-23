@@ -3,6 +3,7 @@ import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { WatermarkPdfClient } from './client'
 import { notFound } from 'next/navigation'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/watermark-pdf' },
@@ -30,6 +31,23 @@ export default function WatermarkPdfPage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <WatermarkPdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📝",
+                    "title": "Mark drafts clearly",
+                    "text": "Add \"DRAFT\" so reviewers know the document is not the final approved version."
+              },
+              {
+                    "icon": "🔒",
+                    "title": "Label confidential documents",
+                    "text": "Stamp \"CONFIDENTIAL\" on sensitive files before forwarding them by email."
+              },
+              {
+                    "icon": "🏷️",
+                    "title": "Brand client-facing PDFs",
+                    "text": "Add your company name as a light background watermark to any document you distribute."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

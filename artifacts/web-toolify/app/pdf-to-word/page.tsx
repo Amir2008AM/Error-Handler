@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { PdfToWordClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/pdf-to-word' },
@@ -28,6 +29,23 @@ export default function PdfToWordPage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <PdfToWordClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "✏️",
+                    "title": "Edit a received PDF",
+                    "text": "When a client sends a PDF you need to change, convert it to Word first and edit freely."
+              },
+              {
+                    "icon": "🗂️",
+                    "title": "Update archived documents",
+                    "text": "Recover text from old PDFs without retyping — convert, edit, and save in minutes."
+              },
+              {
+                    "icon": "🔍",
+                    "title": "Extract text from scanned pages",
+                    "text": "OCR reads text from scanned images, turning them into fully editable Word paragraphs."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

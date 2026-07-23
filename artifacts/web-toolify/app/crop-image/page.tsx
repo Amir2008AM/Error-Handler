@@ -3,6 +3,7 @@ import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { CropImageClient } from './client'
 import { notFound } from 'next/navigation'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/crop-image' },
@@ -30,6 +31,23 @@ export default function CropImagePage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <CropImageClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "✂️",
+                    "title": "Remove unwanted borders",
+                    "text": "Trim white space, background, or irrelevant areas from scanned documents or product photos."
+              },
+              {
+                    "icon": "📐",
+                    "title": "Crop to a standard ratio",
+                    "text": "Resize to 1:1 for profile photos, 16:9 for banners, or 4:3 for thumbnails without distorting the image."
+              },
+              {
+                    "icon": "🎯",
+                    "title": "Focus on the subject",
+                    "text": "Cut out the relevant part of a photo to highlight what matters without resizing the whole image."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

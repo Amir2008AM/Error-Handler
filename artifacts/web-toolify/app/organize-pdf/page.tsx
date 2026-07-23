@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { OrganizePdfClient } from './client'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/organize-pdf' },
@@ -25,6 +26,23 @@ export default function OrganizePdfPage() {
   return (
     <ToolPageServerLayout toolId="organize-pdf">
       <OrganizePdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📋",
+                    "title": "Fix scanning order",
+                    "text": "Scanners sometimes capture pages out of sequence — drag pages to restore the correct order."
+              },
+              {
+                    "icon": "🗑️",
+                    "title": "Remove blank or duplicate pages",
+                    "text": "Delete empty pages inserted by scanners or duplicate pages before sharing the file."
+              },
+              {
+                    "icon": "📌",
+                    "title": "Move the cover to the front",
+                    "text": "Place a title, cover, or summary page at the top without rebuilding the entire document."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

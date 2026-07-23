@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { PageNumbersClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/page-numbers' },
@@ -26,6 +27,23 @@ export default function Page() {
     <ToolPageServerLayout toolId="page-numbers"
       title="Add Page Numbers">
       <PageNumbersClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📄",
+                    "title": "Professional reports and contracts",
+                    "text": "Page numbers let readers and reviewers reference specific sections precisely."
+              },
+              {
+                    "icon": "🔢",
+                    "title": "Start from a custom number",
+                    "text": "Begin numbering at page 3 or 5 when the first pages are a cover or table of contents."
+              },
+              {
+                    "icon": "🧩",
+                    "title": "Unified numbering after merging",
+                    "text": "After combining PDFs from different sources, add consistent page numbers across the whole file."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

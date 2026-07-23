@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { PptToPdfClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/ppt-to-pdf' },
@@ -27,6 +28,23 @@ export default function Page() {
   return (
     <ToolPageServerLayout tool={tool}>
       <PptToPdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "🌍",
+                    "title": "Share without PowerPoint installed",
+                    "text": "Recipients view the PDF on any device without needing Microsoft Office or a compatible viewer."
+              },
+              {
+                    "icon": "🔒",
+                    "title": "Lock slide content",
+                    "text": "Prevent others from copying or editing slide text and images after you share the file."
+              },
+              {
+                    "icon": "📦",
+                    "title": "Reduce file size for email",
+                    "text": "PDF versions are often considerably smaller than the original PPTX, making email delivery easier."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

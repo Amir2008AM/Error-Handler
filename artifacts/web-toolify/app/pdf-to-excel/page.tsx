@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { PdfToExcelClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/pdf-to-excel' },
@@ -27,6 +28,23 @@ export default function Page() {
   return (
     <ToolPageServerLayout tool={tool}>
       <PdfToExcelClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📊",
+                    "title": "Extract tables from reports",
+                    "text": "Recover data from financial or statistical PDFs so you can analyse or chart the figures in Excel."
+              },
+              {
+                    "icon": "🔢",
+                    "title": "Edit imported numbers directly",
+                    "text": "Once in Excel, apply formulas, filters, or pivot tables to the extracted data immediately."
+              },
+              {
+                    "icon": "🔗",
+                    "title": "Combine with existing spreadsheets",
+                    "text": "Merge extracted tables with data you already have in Excel without manual copy-pasting."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

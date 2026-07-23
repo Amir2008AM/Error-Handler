@@ -3,6 +3,7 @@ import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { RotatePdfClient } from './client'
 import { notFound } from 'next/navigation'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/rotate-pdf' },
@@ -30,6 +31,23 @@ export default function RotatePdfPage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <RotatePdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📱",
+                    "title": "Fix phone scan orientation",
+                    "text": "Correct pages photographed sideways or upside down before sharing or printing."
+              },
+              {
+                    "icon": "🖨️",
+                    "title": "Prepare for printing",
+                    "text": "Match portrait and landscape pages to the correct orientation before sending to a printer."
+              },
+              {
+                    "icon": "🔄",
+                    "title": "Rotate specific pages only",
+                    "text": "Select individual pages to rotate rather than changing the entire document."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

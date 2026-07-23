@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { ResizeImageClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/resize-image' },
@@ -28,6 +29,23 @@ export default function ResizeImagePage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <ResizeImageClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📏",
+                    "title": "Meet platform requirements",
+                    "text": "Social networks, app stores, and email tools each require specific image dimensions — resize to match."
+              },
+              {
+                    "icon": "⬇️",
+                    "title": "Reduce file size before uploading",
+                    "text": "Smaller dimensions produce smaller files, which speeds up uploads and page loads."
+              },
+              {
+                    "icon": "🔲",
+                    "title": "Scale without cropping",
+                    "text": "Resize the entire image proportionally so nothing is cut off and the full content stays visible."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

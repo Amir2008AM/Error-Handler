@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { ImageToPdfClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/image-to-pdf' },
@@ -28,6 +29,23 @@ export default function ImageToPdfPage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <ImageToPdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📸",
+                    "title": "Combine multiple photos into one file",
+                    "text": "Merge scanned pages, receipts, or photos into a single PDF document for easy sharing."
+              },
+              {
+                    "icon": "📋",
+                    "title": "Submit phone photos as documents",
+                    "text": "Convert images taken on a phone — of receipts, ID cards, or forms — into a professional PDF."
+              },
+              {
+                    "icon": "📐",
+                    "title": "Control page size and layout",
+                    "text": "Set the page size and orientation for each image so the PDF looks clean and consistent."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

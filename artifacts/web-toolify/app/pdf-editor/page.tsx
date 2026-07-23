@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { PdfEditorClient } from './client'
 import { getToolBySlug } from '@/lib/tools'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/pdf-editor' },
@@ -46,6 +47,23 @@ export default function PdfEditorPage() {
   return (
     <ToolPageServerLayout tool={tool}>
       <PdfEditorClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📝",
+                    "title": "Fill PDF forms directly",
+                    "text": "Type into form fields without converting the file to another format first."
+              },
+              {
+                    "icon": "🖊️",
+                    "title": "Annotate documents for review",
+                    "text": "Highlight text, draw shapes, or add sticky notes before returning a document to a colleague."
+              },
+              {
+                    "icon": "✍️",
+                    "title": "Add signatures or labels",
+                    "text": "Insert a typed signature or a text label anywhere on a page without specialised software."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

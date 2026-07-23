@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { RepairPdfClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/repair-pdf' },
@@ -26,6 +27,23 @@ export default function Page() {
     <ToolPageServerLayout toolId="repair-pdf"
       title="Repair PDF">
       <RepairPdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "⬇️",
+                    "title": "Fix incomplete downloads",
+                    "text": "Files interrupted during download often open with errors — repair restores them to full readability."
+              },
+              {
+                    "icon": "💾",
+                    "title": "Recover after storage errors",
+                    "text": "PDFs can become unreadable after a hard drive error or failed file transfer; repair recovers the content."
+              },
+              {
+                    "icon": "📎",
+                    "title": "Rescue broken email attachments",
+                    "text": "Attachments that fail to open in any viewer can often be repaired and read normally."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

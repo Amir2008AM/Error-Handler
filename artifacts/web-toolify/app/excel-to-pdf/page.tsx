@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { ExcelToPdfClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/excel-to-pdf' },
@@ -27,6 +28,23 @@ export default function Page() {
   return (
     <ToolPageServerLayout tool={tool}>
       <ExcelToPdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📨",
+                    "title": "Send invoices and reports",
+                    "text": "Convert your spreadsheet to PDF so recipients see exactly what you intended, with no formula errors."
+              },
+              {
+                    "icon": "📐",
+                    "title": "Preserve column widths and colours",
+                    "text": "Borders, colours, and column widths are fixed in PDF format and will not shift during printing."
+              },
+              {
+                    "icon": "🖨️",
+                    "title": "Print-ready output",
+                    "text": "PDF output respects page breaks and margins so no columns are cut off when printing."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }

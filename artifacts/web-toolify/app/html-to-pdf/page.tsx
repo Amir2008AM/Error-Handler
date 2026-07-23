@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ToolPageServerLayout } from '@/components/tool-page-server-layout'
 import { getToolBySlug } from '@/lib/tools'
 import { HtmlToPdfClient } from './client'
+import { ToolInfoSection } from '@/components/tool-info-section'
 
 export const metadata: Metadata = {
   alternates: { canonical: 'https://toolifypdf.online/html-to-pdf' },
@@ -27,6 +28,23 @@ export default function Page() {
   return (
     <ToolPageServerLayout tool={tool} title="HTML to PDF Converter">
       <HtmlToPdfClient />
+      <ToolInfoSection tips={[
+              {
+                    "icon": "📰",
+                    "title": "Save articles for offline reading",
+                    "text": "Capture an article, guide, or documentation page as a PDF to read without an internet connection."
+              },
+              {
+                    "icon": "🗃️",
+                    "title": "Archive web content permanently",
+                    "text": "Preserve a page exactly as it appears today before it is updated, moved, or removed."
+              },
+              {
+                    "icon": "📊",
+                    "title": "Export web-based reports",
+                    "text": "Convert online dashboards or data tables to PDF to share with people who do not have access."
+              }
+        ]} />
     </ToolPageServerLayout>
   )
 }
