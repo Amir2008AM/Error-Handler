@@ -72,6 +72,18 @@ export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE_MERGE_PDF, PILLAR_
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
+    slug: 'add-watermark-on-pdf',
+    title: 'Add Watermark on PDF: Protect and Brand Your Documents Easily',
+    description:
+      'Add watermark on PDF online with ToolifyPDF. Protect documents, add text or image watermarks, mark drafts, and brand reports — free, no registration required.',
+    date: 'August 2, 2026',
+    lastModified: '2026-08-02',
+    readTime: '5 min read',
+    category: 'PDF Security',
+    color: '#0369a1',
+    gradient: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 50%, #0284c7 100%)',
+  },
+  {
     slug: 'how-to-compress-pdf-online',
     title: 'How to Compress PDF Online for Free',
     description:
