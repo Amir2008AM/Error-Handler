@@ -1,0 +1,322 @@
+TARGET PAGE:
+https://toolifypdf.online/watermark-pdf
+
+TARGET KEYWORD:
+add watermark to pdf
+
+GOAL:
+Improve this page and its surrounding site architecture so it can compete with iLovePDF, Smallpdf, and Sejda without copying their design, wording, or unnecessarily turning the tool page into a long article.
+
+IMPORTANT:
+Do not optimize for word count.
+Do not keyword-stuff.
+Do not copy competitor content.
+Do not add unrelated PDF topics to this page.
+Do not claim features that are not implemented.
+
+==================================================
+P0 — PRODUCT IMPROVEMENTS
+==================================================
+
+1. Add IMAGE WATERMARK support.
+
+Requirements:
+- Upload PNG/JPG/SVG where supported safely.
+- Preview the image watermark.
+- Resize it.
+- Position it.
+- Change opacity/transparency.
+- Rotate it.
+- Apply to all pages or selected page ranges.
+- Keep output quality intact.
+
+2. Expand TEXT WATERMARK customization.
+
+Add:
+- Font family
+- Font size
+- Font color
+- Optional background color
+- Opacity
+- Rotation
+- Position
+- Page range
+
+3. Add LIVE PREVIEW.
+
+The preview must update when the user changes:
+- text
+- image
+- font
+- size
+- color
+- opacity
+- rotation
+- position
+- page range
+
+4. Add specific-page support.
+
+Examples:
+- All pages
+- 1-3
+- 1,4,7
+- 1-5,8-10
+
+5. Keep the existing simple upload workflow.
+
+The tool must remain the main focus of the page.
+
+==================================================
+P1 — PAGE CONTENT
+==================================================
+
+Do NOT turn the page into a 2,000+ word article.
+
+Keep the content concise, useful, and directly related to watermarking PDFs.
+
+Use this structure:
+
+H1:
+Add Watermark to PDF Online
+
+H2:
+Why Add a Watermark to a PDF?
+
+H2:
+Text or Image Watermark
+
+H2:
+How to Add a Watermark to a PDF
+
+H2:
+Watermark Settings
+
+H2:
+When Should You Use a Watermark?
+
+H2:
+Frequently Asked Questions
+
+H2:
+Related Tools
+
+Add useful content about:
+- image watermarks
+- text watermarks
+- branding
+- confidential documents
+- drafts
+- opacity
+- transparency
+- position
+- rotation
+- font
+- page ranges
+- document protection
+- file handling/privacy
+- practical use cases
+
+Do NOT add unrelated topics such as:
+- PDF compression
+- PDF encryption
+- PDF annotation
+- General PDF editing
+
+Those belong to separate tools and should be linked contextually instead.
+
+==================================================
+P1 — SEO STRUCTURE
+==================================================
+
+Use exactly one H1.
+
+Recommended title after image watermark support is live:
+
+Add Watermark to PDF Online — Free Text & Image Watermarks | ToolifyPDF
+
+Recommended H1:
+
+Add Watermark to PDF Online
+
+Keep title and H1 closely aligned.
+
+Use logical H2/H3 hierarchy.
+
+Do not create headings solely to insert keywords.
+
+Use the keyword naturally.
+
+Use related semantic terms naturally, including:
+- PDF
+- watermark
+- text watermark
+- image watermark
+- logo
+- opacity
+- transparency
+- position
+- rotation
+- pages
+- confidential
+- draft
+- branding
+- document protection
+
+Do not repeat them unnaturally.
+
+==================================================
+P1 — FAQ
+==================================================
+
+Create 5–7 genuinely useful visible questions.
+
+Include questions such as:
+
+Can I add an image watermark to a PDF?
+Can I watermark only selected pages?
+Can I change the opacity?
+Can I change the font and color?
+Will the watermark appear on every page?
+Are uploaded files deleted after processing?
+Does the tool work with scanned PDFs?
+
+Only add FAQ structured data for questions that are actually visible on the page.
+
+==================================================
+P1 — INTERNAL LINKING
+==================================================
+
+Build a contextual internal-link cluster around the watermark page.
+
+Relevant article → watermark tool
+
+Examples:
+
+How to Watermark a PDF
+→ /watermark-pdf
+
+PDF Branding Guide
+→ /watermark-pdf
+
+How to Protect PDF Documents
+→ /watermark-pdf
+
+Also link from the watermark page to genuinely relevant ToolifyPDF tools such as:
+- PDF Editor
+- Compress PDF
+- Merge PDF
+- Protect PDF
+
+Do not create a giant link list.
+
+Use natural anchor text.
+
+==================================================
+P1 — BACKLINK SUPPORT
+==================================================
+
+Do not optimize for raw backlink count.
+
+The goal is qualified backlinks.
+
+Prioritize:
+- relevant PDF websites
+- productivity websites
+- document-management websites
+- business resources
+- design resources
+- technology resources
+
+Avoid:
+- spam
+- link farms
+- automated pages
+- irrelevant directories
+- search-result pages
+
+==================================================
+P1 — TECHNICAL SEO
+==================================================
+
+Verify and fix:
+
+- one H1
+- title/H1 alignment
+- canonical
+- indexability
+- robots
+- sitemap
+- status code
+- broken links
+- image alt text
+- structured data where appropriate
+- clean URL
+- mobile usability
+
+Ensure the page is indexable and technically clean.
+
+==================================================
+P2 — PERFORMANCE
+==================================================
+
+Improve:
+
+- LCP
+- INP
+- CLS
+- initial JavaScript load
+- unnecessary third-party scripts
+- image loading
+- mobile performance
+
+Do not sacrifice the main tool interaction for decorative UI.
+
+==================================================
+P2 — VISUAL CONTENT
+==================================================
+
+Add only useful visuals:
+
+1. Screenshot showing the actual watermark tool.
+2. Text vs image watermark comparison.
+3. Watermark settings / preview illustration.
+
+Do not add decorative images just to increase image count.
+
+Use descriptive ALT text.
+
+==================================================
+IMPORTANT — WHAT NOT TO DO
+==================================================
+
+DO NOT:
+- target a specific competitor word count
+- target a specific competitor image count
+- add 2,000+ words just because Sejda has long content
+- copy competitor text
+- add unrelated PDF tools to this page
+- keyword stuff
+- add fake features
+- claim security certifications that do not exist
+- claim image watermark support until it is implemented
+- add hundreds of internal links
+- add hundreds of low-quality backlinks
+- optimize only for an SEO score
+
+==================================================
+FINAL UX PRINCIPLE
+==================================================
+
+The visitor should immediately understand:
+
+1. What the tool does.
+2. How to use it.
+3. What customization options are available.
+4. Why it is useful.
+5. That the workflow is simple and safe.
+6. How to start immediately.
+
+The tool itself must remain the main purpose of the page.
+
+The result should be a better product and a better page, not simply a longer page.

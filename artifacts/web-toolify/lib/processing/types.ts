@@ -44,11 +44,17 @@ export interface PDFRotateOptions {
 
 export interface PDFWatermarkOptions {
   file: ArrayBuffer
-  text: string
+  text?: string
+  image?: ArrayBuffer
   opacity?: number
-  position?: 'center' | 'diagonal' | 'top' | 'bottom'
+  position?: 'center' | 'diagonal' | 'top' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   fontSize?: number
   color?: { r: number; g: number; b: number }
+  backgroundColor?: { r: number; g: number; b: number }
+  fontFamily?: 'Helvetica' | 'HelveticaBold' | 'TimesRoman' | 'TimesRomanBold' | 'Courier' | 'CourierBold'
+  rotation?: number
+  pageRange?: string
+  imageScale?: number
 }
 
 export interface PDFCompressOptions {

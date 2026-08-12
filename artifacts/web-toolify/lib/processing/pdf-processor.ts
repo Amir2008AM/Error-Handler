@@ -81,6 +81,84 @@ import type {
   PDFOrganizeOptions,
 } from './types'
 
+function resolveWatermarkPages(pageRange: string | undefined, pageCount: number): number[] {
+  if (!pageRange?.trim() || pageRange.trim().toLowerCase() === 'all') {
+    return Array.from({ length: pageCount }, (_, index) => index + 1)
+  }
+
+  const pages = new Set<number>()
+  for (const part of pageRange.split(',')) {
+    const token = part.trim()
+    if (!token) continue
+    const range = token.match(/^(\d+)\s*-\s*(\d+)$/)
+    if (range) {
+      const start = Number(range[1])
+      const end = Number(range[2])
+      if (start < 1 || end < start || end > pageCount) {
+        throw new Error(`Page range must be between 1 and ${pageCount}`)
+      }
+      for (let page = start; page <= end; page++) pages.add(page)
+      continue
+    }
+
+    if (!/^\d+$/.test(token)) {
+      throw new Error('Page range must look like 1-3,5,7')
+    }
+    const page = Number(token)
+    if (page < 1 || page > pageCount) {
+      throw new Error(`Page range must be between 1 and ${pageCount}`)
+    }
+    pages.add(page)
+  }
+
+  if (pages.size === 0) throw new Error('Choose at least one PDF page')
+  return [...pages].sort((a, b) => a - b)
+}
+
+function getWatermarkPlacement(
+  pageWidth: number,
+  pageHeight: number,
+  sourceWidth: number,
+  sourceHeight: number,
+  position: PDFWatermarkOptions['position'],
+  rotation: number,
+  imageScale: number,
+) {
+  const isImage = imageScale > 0
+  const maxWidth = isImage ? pageWidth * Math.min(0.8, Math.max(0.1, imageScale / 100)) : sourceWidth
+  const scale = sourceWidth > maxWidth ? maxWidth / sourceWidth : 1
+  const width = sourceWidth * scale
+  const height = sourceHeight * scale
+  const margin = Math.max(24, pageWidth * 0.06)
+  const centeredX = (pageWidth - width) / 2
+  const centeredY = (pageHeight - height) / 2
+
+  switch (position) {
+    case 'top-left':
+      return { x: margin, y: pageHeight - margin - height, width, height }
+    case 'top-right':
+      return { x: pageWidth - margin - width, y: pageHeight - margin - height, width, height }
+    case 'bottom-left':
+      return { x: margin, y: margin, width, height }
+    case 'bottom-right':
+      return { x: pageWidth - margin - width, y: margin, width, height }
+    case 'top':
+      return { x: centeredX, y: pageHeight - margin - height, width, height }
+    case 'bottom':
+      return { x: centeredX, y: margin, width, height }
+    case 'center':
+      return { x: centeredX, y: centeredY, width, height }
+    case 'diagonal':
+    default:
+      return {
+        x: (pageWidth - width) / 2,
+        y: (pageHeight - height) / 2,
+        width,
+        height,
+      }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Ghostscript helpers
 // ---------------------------------------------------------------------------
@@ -345,55 +423,70 @@ export class PDFProcessor extends BaseProcessor {
   async addWatermark(options: PDFWatermarkOptions): Promise<ProcessingResult<Buffer>> {
     try {
       this.validateBuffer(options.file)
+      if (!options.text?.trim() && !options.image) {
+        return this.error('A watermark text or image is required')
+      }
 
       const { result, time } = await this.measureTime(async () => {
         const pdfDoc = await PDFDocument.load(options.file)
-        const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
         const pages = pdfDoc.getPages()
-        
-        const opacity = options.opacity ?? 0.3
-        const fontSize = options.fontSize ?? 50
+        const pageNumbers = resolveWatermarkPages(options.pageRange, pages.length)
+        const targetPages = pageNumbers.map((pageNumber) => pages[pageNumber - 1])
+        const opacity = Math.min(1, Math.max(0.01, options.opacity ?? 0.3))
+        const fontSize = Math.min(200, Math.max(8, options.fontSize ?? 50))
         const color = options.color ?? { r: 0.5, g: 0.5, b: 0.5 }
         const position = options.position ?? 'diagonal'
+        const rotation = options.rotation ?? (position === 'diagonal' ? 45 : 0)
 
-        for (const page of pages) {
+        const watermarkImage = options.image
+          ? await this.prepareWatermarkImage(this.toBuffer(options.image))
+          : null
+        const embeddedImage = watermarkImage
+          ? await pdfDoc.embedPng(watermarkImage.buffer)
+          : null
+        const font = options.text?.trim()
+          ? await pdfDoc.embedFont(StandardFonts[options.fontFamily ?? 'HelveticaBold'])
+          : null
+
+        for (const page of targetPages) {
           const { width, height } = page.getSize()
-          const textWidth = font.widthOfTextAtSize(options.text, fontSize)
+          const bounds = watermarkImage && embeddedImage
+            ? getWatermarkPlacement(width, height, embeddedImage.width, embeddedImage.height, position, rotation, options.imageScale ?? 32)
+            : getWatermarkPlacement(width, height, font?.widthOfTextAtSize(options.text!.trim(), fontSize) ?? 0, fontSize * 1.2, position, rotation, 0)
 
-          let x: number
-          let y: number
-          let rotate: number = 0
-
-          switch (position) {
-            case 'center':
-              x = (width - textWidth) / 2
-              y = height / 2
-              break
-            case 'top':
-              x = (width - textWidth) / 2
-              y = height - 50
-              break
-            case 'bottom':
-              x = (width - textWidth) / 2
-              y = 50
-              break
-            case 'diagonal':
-            default:
-              x = width / 4
-              y = height / 4
-              rotate = 45
-              break
+          if (embeddedImage && watermarkImage) {
+            page.drawImage(embeddedImage, {
+              x: bounds.x,
+              y: bounds.y,
+              width: bounds.width,
+              height: bounds.height,
+              opacity,
+              rotate: degrees(rotation),
+            })
+          } else if (font && options.text?.trim()) {
+            const text = options.text.trim()
+            const padding = 6
+            if (options.backgroundColor) {
+              page.drawRectangle({
+                x: bounds.x - padding,
+                y: bounds.y - padding,
+                width: bounds.width + padding * 2,
+                height: bounds.height + padding * 2,
+                color: rgb(options.backgroundColor.r, options.backgroundColor.g, options.backgroundColor.b),
+                opacity: opacity * 0.9,
+                rotate: degrees(rotation),
+              })
+            }
+            page.drawText(text, {
+              x: bounds.x,
+              y: bounds.y,
+              size: fontSize,
+              font,
+              color: rgb(color.r, color.g, color.b),
+              opacity,
+              rotate: degrees(rotation),
+            })
           }
-
-          page.drawText(options.text, {
-            x,
-            y,
-            size: fontSize,
-            font,
-            color: rgb(color.r, color.g, color.b),
-            opacity,
-            rotate: degrees(rotate),
-          })
         }
 
         return Buffer.from(await pdfDoc.save())
@@ -407,6 +500,25 @@ export class PDFProcessor extends BaseProcessor {
     } catch (err) {
       return this.error(`Failed to add watermark: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
+  }
+
+  private async prepareWatermarkImage(raw: Buffer): Promise<{ buffer: Buffer; width: number; height: number }> {
+    const { data, info } = await sharp(raw, {
+      failOn: 'error',
+      limitInputPixels: 24_000 * 24_000,
+      sequentialRead: true,
+    })
+      .rotate()
+      .resize({
+        width: 1600,
+        height: 1600,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .png({ compressionLevel: 9 })
+      .toBuffer({ resolveWithObject: true })
+
+    return { buffer: data, width: info.width, height: info.height }
   }
 
   /**

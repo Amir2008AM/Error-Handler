@@ -125,7 +125,7 @@ export const tools: Tool[] = [
     name: 'Watermark PDF',
     description: 'Add text watermarks to your PDF documents.',
     longDescription:
-      'Add custom text watermarks to all pages of your PDF. Control position, opacity, and font size for professional document protection.',
+      'Add text or image watermarks to PDF files. Customize font, color, opacity, rotation, position, and page ranges for document protection.',
     category: 'PDF Tools',
     slug: 'watermark-pdf',
     icon: 'Droplets',
