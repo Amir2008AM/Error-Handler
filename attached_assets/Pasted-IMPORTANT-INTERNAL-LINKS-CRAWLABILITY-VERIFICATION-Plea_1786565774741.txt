@@ -1,0 +1,66 @@
+IMPORTANT — INTERNAL LINKS CRAWLABILITY VERIFICATION
+
+Please inspect the internal-linking/sidebar navigation that was recently added to the ToolifyPDF tool pages.
+
+I need you to verify that all newly added internal tool links are real, crawlable links that can be discovered normally by search engines and SEO crawlers.
+
+Requirements:
+
+1. Every internal tool link must use a standard HTML anchor element:
+
+<a href="/existing-route">Descriptive Anchor Text</a>
+
+2. Do NOT use JavaScript-only navigation such as:
+- onClick navigation
+- window.location
+- router navigation without a real <a href>
+- buttons acting as links
+- divs acting as links
+- links whose href is added only after JavaScript execution
+
+3. The actual href must point to an existing ToolifyPDF route.
+
+4. Prefer the links to be present in the initial HTML/server-rendered HTML whenever possible, not only after client-side JavaScript execution.
+
+5. The links must remain normal clickable links for users.
+
+6. Do NOT add any references to SEO tools such as Ahrefs, Semrush, Screaming Frog, etc. inside the website. These tools are only used to analyze the website externally.
+
+7. Do NOT change existing URLs, canonical URLs, SEO metadata, tool functionality, or existing content.
+
+8. Do NOT create fake routes or links.
+
+9. Verify that the sidebar/Related PDF Tools links are actually present in the page source/HTML output.
+
+10. Check several existing tool pages, not just one, to make sure the implementation is consistent across all tool pages.
+
+11. Verify that each link resolves successfully and does not lead to a 404 or unnecessary redirect.
+
+12. Keep the number of related links reasonable. Do not add excessive internal links or repeat the same destination unnecessarily.
+
+VALIDATION:
+
+After making any necessary corrections, inspect the final HTML output of several tool pages and confirm:
+
+- The internal links exist as <a> elements.
+- Each <a> has a valid href.
+- The href points to an existing internal ToolifyPDF URL.
+- The descriptive anchor text is visible.
+- The links are not dependent on JavaScript click handlers.
+- The links can be discovered by a normal HTML crawler.
+- Existing tool functionality and SEO elements remain unchanged.
+
+Do NOT assume that a link is crawlable just because it is visible in the browser.
+
+I want you to verify the actual implementation and fix anything that could prevent normal search-engine/SEO-crawler discovery.
+
+At the end, give me a short verification report:
+
+1. Number of tool pages checked.
+2. Number of internal links checked.
+3. Number of links using standard <a href>.
+4. Number of broken links.
+5. Number of redirects found.
+6. Whether the links are present in the initial HTML/server-rendered output.
+7. Whether any JavaScript-only navigation was found.
+8. Any issues fixed.
