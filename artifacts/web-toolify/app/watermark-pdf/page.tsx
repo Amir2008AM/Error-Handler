@@ -61,7 +61,7 @@ export default function WatermarkPdfPage() {
             <div className="rounded-xl border border-border bg-muted/20 p-5"><h3 className="font-semibold">Text watermark</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">Choose the font, size, color, optional background, opacity, rotation, and position for a clear status label or brand name.</p></div>
             <div className="rounded-xl border border-border bg-muted/20 p-5"><h3 className="font-semibold">Image watermark</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">Upload a PNG, JPG, or SVG logo, then adjust its scale, transparency, rotation, position, and page range in the live preview.</p></div>
           </div>
-           <figure className="mt-5 overflow-hidden rounded-xl border border-border bg-muted/20">
+           <figure className="mx-auto mt-5 max-w-4xl overflow-hidden rounded-xl border border-border bg-muted/20">
              <img
                src="/images/text-vs-image-watermark.jpg"
                alt="Comparison showing a diagonal text watermark and a logo image watermark on sample PDF pages"
