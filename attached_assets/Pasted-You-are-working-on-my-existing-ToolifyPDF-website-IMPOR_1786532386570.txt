@@ -1,0 +1,614 @@
+You are working on my existing ToolifyPDF website.
+
+IMPORTANT: DO NOT rebuild the website header from scratch.
+
+The current header/navigation already exists and must remain visually and structurally similar to the current design.
+
+The current navigation is approximately:
+
+PDF | Security | Converter | Image | Text | Calculator | Blog | About | Contact
+
+I want to KEEP THIS TOOLBAR STYLE.
+
+The goal is to improve its navigation behavior, organization, and internal linking without replacing the existing toolbar with a completely different mega-menu design.
+
+==================================================
+STRICT SCOPE
+==================================================
+
+The content-level internal linking work described in this prompt applies ONLY to:
+
+1. TOOL PAGES
+2. BLOG / ARTICLE PAGES
+
+Do NOT add content-level SEO linking sections to:
+
+- Home
+- About
+- Contact
+- Login
+- Register
+- Dashboard
+- Settings
+- Account
+- Privacy Policy
+- Terms
+- Legal pages
+- Other unrelated pages
+
+The global navigation/header is a separate UI component and may appear across the site as it currently does.
+
+==================================================
+1. PRESERVE THE EXISTING TOOLBAR
+==================================================
+
+Do NOT replace the current navigation style.
+
+Keep the existing top navigation:
+
+PDF
+Security
+Converter
+Image
+Text
+Calculator
+Blog
+About
+Contact
+
+Keep:
+- typography
+- spacing style
+- general alignment
+- existing colors
+- existing branding
+- responsive behavior
+
+Improve it rather than replacing it.
+
+==================================================
+2. ADD DROPDOWN ARROWS ONLY TO TOOL CATEGORIES
+==================================================
+
+Add a small professional downward arrow/chevron next to category items that contain multiple tools.
+
+Example:
+
+PDF ▾
+Security ▾
+Converter ▾
+Image ▾
+Text ▾
+Calculator ▾
+
+Do NOT add an arrow to:
+
+Blog
+About
+Contact
+
+because these are direct navigation pages, not tool categories.
+
+The arrow must clearly communicate that the item contains a dropdown.
+
+==================================================
+3. PDF DROPDOWN
+==================================================
+
+When the user clicks or interacts with:
+
+PDF ▾
+
+open a clean dropdown containing ONLY existing PDF tools found in the actual project.
+
+Organize them into logical groups if needed.
+
+Possible categories:
+
+ORGANIZE PDF
+- Merge PDF
+- Split PDF
+- Remove Pages
+- Extract Pages
+- Organize PDF
+
+OPTIMIZE PDF
+- Compress PDF
+- Repair PDF
+- Other existing optimization tools
+
+EDIT PDF
+- Rotate PDF
+- Add Page Numbers
+- Add Watermark
+- Crop PDF
+- Edit PDF
+- PDF Forms
+- Other existing editing tools
+
+PDF SECURITY
+- Protect PDF
+- Unlock PDF
+- Sign PDF
+- Redact PDF
+
+PDF INTELLIGENCE
+- AI Summarizer
+- Translate PDF
+- PDF to Markdown
+- Other existing AI/PDF tools
+
+IMPORTANT:
+These are examples only.
+
+Inspect the actual project first.
+
+ONLY include tools that actually exist.
+
+Do not invent URLs.
+
+==================================================
+4. SECURITY DROPDOWN
+==================================================
+
+When the user opens:
+
+Security ▾
+
+show only existing security-related tools.
+
+For example:
+
+- Protect PDF
+- Unlock PDF
+- Sign PDF
+- Redact PDF
+- Other existing security tools
+
+Verify every route before displaying it.
+
+==================================================
+5. CONVERTER DROPDOWN
+==================================================
+
+When the user opens:
+
+Converter ▾
+
+organize existing conversion tools into logical groups.
+
+Example:
+
+CONVERT TO PDF
+- JPG to PDF
+- Word to PDF
+- Excel to PDF
+- HTML to PDF
+- Other existing converters
+
+CONVERT FROM PDF
+- PDF to JPG
+- PDF to Word
+- PDF to Excel
+- PDF to PowerPoint
+- PDF to PDF/A
+- Other existing converters
+
+Only display actual existing tools.
+
+==================================================
+6. IMAGE DROPDOWN
+==================================================
+
+When the user opens:
+
+Image ▾
+
+show existing image-related tools.
+
+Examples:
+
+- Compress Image
+- Resize Image
+- Crop Image
+- Rotate Image
+- JPG to PNG
+- PNG to JPG
+- WebP tools
+- Other existing image tools
+
+Only use real routes already present in the project.
+
+==================================================
+7. TEXT DROPDOWN
+==================================================
+
+When the user opens:
+
+Text ▾
+
+show existing text-related tools.
+
+Do not invent tools.
+
+Inspect the existing application and use only real routes.
+
+==================================================
+8. CALCULATOR DROPDOWN
+==================================================
+
+When the user opens:
+
+Calculator ▾
+
+show existing calculator/conversion utilities that actually exist.
+
+Do not invent tools or routes.
+
+==================================================
+9. DROPDOWN BEHAVIOR
+==================================================
+
+Desktop:
+
+- clean dropdown
+- subtle shadow
+- rounded corners
+- proper spacing
+- clear category titles
+- small icons only if existing design supports them
+- smooth open/close interaction
+
+The dropdown should appear directly below the selected toolbar item.
+
+Do NOT create a giant full-screen mega menu.
+
+The dropdown should feel like an extension of the existing toolbar.
+
+Mobile:
+
+- keep the current mobile navigation behavior
+- category items such as PDF/Security/Converter/Image/Text/Calculator become expandable
+- show a small arrow
+- tapping the category expands its tools
+- tapping again collapses it
+
+Avoid a huge vertical list.
+
+==================================================
+10. ACCESSIBILITY
+==================================================
+
+The dropdown must work with:
+
+- mouse
+- keyboard
+- touch
+- screen readers
+
+Use proper buttons/links where appropriate.
+
+The arrow must visually indicate open/closed state.
+
+Use aria-expanded where appropriate.
+
+==================================================
+11. CRAWLABLE INTERNAL LINKS
+==================================================
+
+Every actual tool link inside the dropdown must use normal crawlable links.
+
+Prefer:
+
+<a href="/existing-tool-route">Tool Name</a>
+
+Do NOT rely only on JavaScript click handlers.
+
+Do NOT create fake navigation elements.
+
+Google generally discovers internal links reliably when they use standard HTML anchor elements with href attributes.
+
+==================================================
+12. INTERNAL LINKING SCOPE — TOOL PAGES ONLY
+==================================================
+
+This section applies ONLY to TOOL PAGES.
+
+Do NOT apply these content-level changes to unrelated pages.
+
+For each Tool Page, create a small and relevant:
+
+"Related PDF Tools"
+
+section.
+
+Example:
+
+Watermark PDF:
+- Protect PDF
+- Add Page Numbers
+- Edit PDF
+- Compress PDF
+
+Merge PDF:
+- Split PDF
+- Compress PDF
+- Organize PDF
+- Remove Pages
+
+PDF to Word:
+- PDF to Excel
+- PDF to JPG
+- Word to PDF
+- Compress PDF
+
+Only include genuinely related tools.
+
+Do not add every tool to every page.
+
+==================================================
+13. TOOL PAGES → BLOG / ARTICLES
+==================================================
+
+This applies ONLY to TOOL PAGES.
+
+If relevant existing blog articles exist, add a small:
+
+"Helpful Guides"
+or
+"Learn More"
+
+section.
+
+Example:
+
+Watermark PDF:
+- How to Add a Watermark to a PDF
+- PDF Watermark Best Practices
+
+Only use articles that actually exist.
+
+Do NOT create fake articles.
+
+Do NOT invent URLs.
+
+==================================================
+14. BLOG / ARTICLE PAGES → TOOLS
+==================================================
+
+This applies ONLY to BLOG / ARTICLE PAGES.
+
+Where appropriate, add contextual internal links from articles to relevant tools.
+
+Examples:
+
+Article about PDF watermarks
+→ Add Watermark to PDF
+
+Article about PDF compression
+→ Compress PDF
+
+Article about converting PDF to Word
+→ PDF to Word
+
+Use natural, descriptive anchor text.
+
+Do not force links into every paragraph.
+
+==================================================
+15. BLOG / ARTICLE → RELATED ARTICLE
+==================================================
+
+This applies ONLY to BLOG / ARTICLE PAGES.
+
+If two articles are genuinely related, connect them with contextual links.
+
+Do not create artificial article link networks.
+
+==================================================
+16. INTERNAL LINK QUALITY
+==================================================
+
+Avoid internal-link spam.
+
+Do NOT:
+
+- add dozens of links to every page
+- repeat the same URL excessively
+- create unrelated links
+- stuff keywords into anchor text
+- add huge link lists
+
+The goal is a logical site architecture and better user navigation.
+
+==================================================
+17. IMPORTANT PAGE DISCOVERY
+==================================================
+
+Important Tool Pages should be discoverable through:
+
+- the existing toolbar dropdowns
+- Related PDF Tools
+- contextual article links
+- relevant article-to-tool links
+
+Important pages should not become orphan pages.
+
+==================================================
+18. SEO PRESERVATION
+==================================================
+
+Do NOT break or unnecessarily rewrite:
+
+- title tags
+- meta descriptions
+- canonical URLs
+- structured data
+- Open Graph
+- robots directives
+- existing SEO content
+- existing routes
+
+Do not change URLs unless absolutely necessary.
+
+==================================================
+19. DO NOT TURN TOOL PAGES INTO LONG ARTICLES
+==================================================
+
+Tool Pages must remain focused on the actual tool.
+
+Do NOT add long keyword-heavy paragraphs simply for SEO.
+
+Prioritize:
+
+- the actual tool
+- clear title
+- short useful description
+- how the tool works
+- relevant related tools
+- relevant helpful guides
+- useful FAQ when already appropriate
+
+Do not add unnecessary text.
+
+==================================================
+20. RESPONSIVE DESIGN
+==================================================
+
+The toolbar must remain clean on:
+
+- Desktop
+- Tablet
+- Mobile
+
+Desktop:
+Keep the current horizontal toolbar style.
+
+Mobile:
+Preserve the existing mobile navigation pattern and make categories expandable.
+
+==================================================
+21. PERFORMANCE
+==================================================
+
+Keep the implementation lightweight.
+
+Avoid unnecessary JavaScript.
+
+Do not add a large UI library solely for the dropdown.
+
+Use efficient React/CSS components.
+
+The navigation must remain fast.
+
+==================================================
+22. INSPECT BEFORE IMPLEMENTING
+==================================================
+
+Before changing anything:
+
+1. Inspect the actual project structure.
+2. Inspect all routes.
+3. Identify all existing Tool Pages.
+4. Identify all existing Blog/Article Pages.
+5. Identify all existing navigation items.
+6. Identify the current header component.
+7. Identify the current footer.
+8. Identify the current internal-link structure.
+9. Verify the actual routes for every tool.
+
+Do not make assumptions.
+
+==================================================
+23. FINAL VALIDATION
+==================================================
+
+After implementation, verify:
+
+GLOBAL NAVIGATION:
+- PDF dropdown works
+- Security dropdown works
+- Converter dropdown works
+- Image dropdown works
+- Text dropdown works
+- Calculator dropdown works
+- Blog remains a direct link
+- About remains a direct link
+- Contact remains a direct link
+
+DESKTOP:
+- dropdowns open correctly
+- dropdowns close correctly
+- no layout break
+- no overlapping content
+
+MOBILE:
+- categories expand/collapse
+- links are touch-friendly
+- no excessive vertical overflow
+
+LINKS:
+- every route exists
+- no fake URLs
+- no 404 internal links
+- no duplicate routes
+- standard crawlable links are used
+
+TOOL PAGES:
+- Related Tools sections only
+- Helpful Guides only when relevant
+- no excessive linking
+
+BLOG / ARTICLE PAGES:
+- Article → relevant Tool links
+- Article → relevant Article links
+- no unrelated links
+
+OTHER PAGES:
+DO NOT add content-level internal-linking sections to pages outside Tool Pages and Blog/Article Pages.
+
+==================================================
+24. FINAL REPORT
+==================================================
+
+After completing the work, provide:
+
+1. Total Tool Pages discovered.
+2. Total Blog/Article Pages discovered.
+3. Total categories added to the toolbar.
+4. Total links inside toolbar dropdowns.
+5. Total Tool → Tool related links.
+6. Total Tool → Article links.
+7. Total Article → Tool links.
+8. Total Article → Article links.
+9. Any orphan Tool Pages.
+10. Any orphan Articles.
+11. Any broken links.
+12. Any implementation issues found.
+
+FINAL NON-NEGOTIABLE RULE:
+
+KEEP THE CURRENT TOOLBAR STYLE.
+
+Do not replace it with a completely different navigation system.
+
+Only add small dropdown arrows to category items:
+
+PDF ▾
+Security ▾
+Converter ▾
+Image ▾
+Text ▾
+Calculator ▾
+
+Blog, About, and Contact remain direct links without dropdown arrows.
+
+The dropdown should expose the real existing tools in each category.
+
+CONTENT-LEVEL INTERNAL LINKING IS STRICTLY LIMITED TO:
+
+TOOL PAGES
+and
+BLOG / ARTICLE PAGES.
+
+Do not expand this scope.
