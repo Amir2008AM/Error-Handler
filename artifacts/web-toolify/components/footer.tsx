@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import { Logo } from './logo'
 
 export function Footer() {
   return (
@@ -11,11 +11,8 @@ export function Footer() {
 
           {/* Brand — full width on mobile/tablet, 1 col on desktop */}
           <div className="col-span-2 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-3">
-              <Image src="/favicon.png" alt="ToolifyPDF logo" width={32} height={32} className="rounded-lg shrink-0" />
-              <span className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                ToolifyPDF
-              </span>
+            <Link href="/" className="mb-3 min-w-0" aria-label="ToolifyPDF home">
+              <Logo labelClassName="text-white" />
             </Link>
             <p className="text-sm text-white/60 leading-relaxed max-w-xs mb-3">
               Free online tools for everyone. No registration, no limits.

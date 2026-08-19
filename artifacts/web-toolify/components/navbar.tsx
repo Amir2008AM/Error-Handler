@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Menu, X } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { tools, type ToolCategory } from '@/lib/tools'
+import { Logo } from './logo'
 
 type CategoryNavItem = {
   key: 'nav.pdf' | 'nav.security' | 'nav.converter' | 'nav.image' | 'nav.text' | 'nav.calculator'
@@ -62,11 +62,8 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <Image src="/favicon.png" alt="ToolifyPDF logo" width={32} height={32} className="rounded-lg" />
-            <span className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
-              ToolifyPDF
-            </span>
+          <Link href="/" className="min-w-0 shrink-0" aria-label="ToolifyPDF home">
+            <Logo />
           </Link>
 
           {/* Desktop Nav */}
