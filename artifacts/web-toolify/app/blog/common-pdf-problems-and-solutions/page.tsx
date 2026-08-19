@@ -28,7 +28,7 @@ const schema = {
   datePublished: '2026-06-15T00:00:00.000Z',
   dateModified: '2026-06-15T00:00:00.000Z',
   author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/toolifypdf-logo.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/common-pdf-problems-and-solutions' },
   articleSection: 'Troubleshooting',
   keywords: 'pdf problems, pdf too large to email, pdf password forgot, cannot select text in pdf, pdf not opening, fix pdf online, pdf corrupted',

@@ -9,10 +9,10 @@ export function Logo({ className = '', labelClassName = '' }: LogoProps) {
   return (
     <span className={`flex min-w-0 items-center gap-2 overflow-hidden ${className}`}>
       <Image
-        src="/favicon.png"
+        src="/toolifypdf-logo.png"
         alt="ToolifyPDF logo"
-        width={48}
-        height={48}
+        width={1350}
+        height={1165}
         sizes="(max-width: 639px) 24px, 28px"
         className="h-auto w-6 shrink-0 object-contain sm:w-7"
       />

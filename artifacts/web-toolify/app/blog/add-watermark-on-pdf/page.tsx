@@ -54,7 +54,7 @@ const schema = {
     '@type': 'Organization',
     name: 'ToolifyPDF',
     url: 'https://toolifypdf.online',
-    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' },
+    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/toolifypdf-logo.png' },
   },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/add-watermark-on-pdf' },
   articleSection: 'PDF Security',

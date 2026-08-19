@@ -28,7 +28,7 @@ const schema = {
   datePublished: '2026-06-09T00:00:00.000Z',
   dateModified: '2026-06-09T00:00:00.000Z',
   author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/toolifypdf-logo.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/pdf-vs-word-which-format-to-use' },
   articleSection: 'Document Guide',
   keywords: 'pdf vs word, pdf or docx, when to use pdf, pdf advantages, word advantages, document format comparison, pdf vs docx',

@@ -33,7 +33,7 @@ const schema = {
     '@type': 'Organization',
     name: 'ToolifyPDF Editorial Team',
     url: 'https://toolifypdf.online/author/toolifypdf-team',
-    logo: 'https://toolifypdf.online/favicon.png',
+    logo: 'https://toolifypdf.online/toolifypdf-logo.png',
     description:
       'The ToolifyPDF editorial team comprises writers and software developers who build, test, and document free browser-based PDF, image, and document processing tools.',
     sameAs: ['https://toolifypdf.online/about'],

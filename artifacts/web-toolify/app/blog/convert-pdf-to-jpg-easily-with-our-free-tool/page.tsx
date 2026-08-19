@@ -43,7 +43,7 @@ const articleSchema = {
     '@type': 'Organization',
     name: 'ToolifyPDF',
     url: 'https://toolifypdf.online',
-    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' },
+    logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/toolifypdf-logo.png' },
   },
   mainEntityOfPage: {
     '@type': 'WebPage',

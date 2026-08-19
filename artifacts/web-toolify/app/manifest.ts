@@ -11,23 +11,23 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#3b6ef5',
     icons: [
       {
-        src: '/favicon-48.png',
+        src: '/toolifypdf-logo.png',
         sizes: '48x48',
         type: 'image/png',
       },
       {
-        src: '/icon-192.png',
+        src: '/toolifypdf-logo.png',
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: '/icon-512.png',
+        src: '/toolifypdf-logo.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icon-512.png',
+        src: '/toolifypdf-logo.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

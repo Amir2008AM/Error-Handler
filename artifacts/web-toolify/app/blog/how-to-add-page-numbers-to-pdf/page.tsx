@@ -28,7 +28,7 @@ const schema = {
   datePublished: '2026-06-13T00:00:00.000Z',
   dateModified: '2026-06-13T00:00:00.000Z',
   author: { '@type': 'Organization', name: 'ToolifyPDF Team', url: 'https://toolifypdf.online/author/toolifypdf-team' },
-  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/favicon.png' } },
+  publisher: { '@type': 'Organization', name: 'ToolifyPDF', url: 'https://toolifypdf.online', logo: { '@type': 'ImageObject', url: 'https://toolifypdf.online/toolifypdf-logo.png' } },
   mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://toolifypdf.online/blog/how-to-add-page-numbers-to-pdf' },
   articleSection: 'PDF Guide',
   keywords: 'add page numbers to pdf, pdf page numbering online, number pdf pages free, pdf footer page number, add numbers to pdf',

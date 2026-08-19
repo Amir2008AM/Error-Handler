@@ -81,13 +81,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon-48.png', type: 'image/png', sizes: '48x48' },
-      { url: '/icon-192.png',   type: 'image/png', sizes: '192x192' },
-      { url: '/icon-512.png',   type: 'image/png', sizes: '512x512' },
-      { url: '/favicon.ico',    sizes: 'any' },
+      { url: '/toolifypdf-logo.png', type: 'image/png' },
     ],
-    apple: { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
-    shortcut: '/favicon-48.png',
+    apple: { url: '/toolifypdf-logo.png', type: 'image/png' },
+    shortcut: '/toolifypdf-logo.png',
   },
 }
 
