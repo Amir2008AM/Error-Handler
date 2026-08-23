@@ -5,12 +5,12 @@ import { ReadingProgress } from '@/components/reading-progress'
 import { RelatedArticles } from '@/components/related-articles'
 
 export const metadata: Metadata = {
-  title: { absolute: 'Add Watermark on PDF Online for Free | ToolifyPDF' },
+  title: { absolute: 'How to Add Watermark to PDF Files on a Mac or PC | ToolifyPDF' },
   description:
     'Add watermark on PDF online with ToolifyPDF. Protect documents, add text or image watermarks, mark drafts, and brand reports — free, no registration required.',
   alternates: { canonical: 'https://toolifypdf.online/blog/add-watermark-on-pdf' },
   openGraph: {
-    title: 'Add Watermark on PDF Online for Free | ToolifyPDF',
+    title: 'How to Add Watermark to PDF Files on a Mac or PC | ToolifyPDF',
     description:
       'Add watermark on PDF online with ToolifyPDF. Protect documents, add text or image watermarks, mark drafts, and brand reports — free, no registration required.',
     type: 'article',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     site: '@Toolifypdf',
-    title: 'Add Watermark on PDF Online for Free | ToolifyPDF',
+    title: 'How to Add Watermark to PDF Files on a Mac or PC | ToolifyPDF',
     description: 'Add watermark on PDF online with ToolifyPDF. Free, no registration. Text or image watermarks in seconds.',
     images: ['https://toolifypdf.online/images/add-watermark-to-pdf-tool.webp'],
   },
@@ -39,7 +39,7 @@ const ACCENT = '#0369a1'
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
-  headline: 'Add Watermark on PDF: Protect and Brand Your Documents Easily',
+  headline: 'How to Add Watermark to PDF Files on a Mac or PC',
   image: 'https://toolifypdf.online/images/add-watermark-to-pdf-tool.webp',
   description:
     'Add watermark on PDF online with ToolifyPDF. Protect documents, add text or image watermarks, mark drafts, and brand reports — free, no registration required.',
@@ -143,11 +143,10 @@ export default function ArticlePage() {
               className="text-3xl md:text-4xl font-bold text-foreground leading-tight mb-4"
               itemProp="headline"
             >
-              Add Watermark on PDF: Protect and Brand Your Documents Easily
+              How to Add Watermark to PDF Files on a Mac or PC
             </h1>
             <p className="text-muted-foreground leading-relaxed text-lg mb-6" itemProp="description">
-              Mark any PDF as private, draft, or branded in seconds — no software, no sign-up.
-              Whether you need a text stamp or a logo, this guide covers everything you need to know.
+              Learn how to add a watermark to PDF files on a Mac or PC using a free, browser-based tool. Add text or image overlays, customize their appearance, and protect your documents without installing software.
             </p>
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
               <time dateTime="2026-08-02" itemProp="datePublished">August 2, 2026</time>
@@ -165,7 +164,7 @@ export default function ArticlePage() {
           {/* Hero image */}
           <figure className="mb-10 rounded-2xl overflow-hidden border border-border shadow-sm">
             <Image
-              src="/images/add-watermark-to-pdf-tool.webp"
+              src="/images/watermark-guide-hero.png"
               alt="ToolifyPDF Add Watermark tool showing a business report with a CONFIDENTIAL text watermark applied at 30% opacity and 45-degree rotation"
               width={1024}
               height={576}
@@ -194,7 +193,7 @@ export default function ArticlePage() {
 
           {/* Why use a watermark */}
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-foreground mb-4">Why use a watermark?</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">Why You Should Add a Watermark to Your PDF</h2>
             <p className="text-muted-foreground leading-relaxed mb-5">
               A watermark gives a file a visible identity. It helps with protection, review, client sharing,
               and a cleaner, more professional appearance — without blocking the text underneath.
@@ -211,6 +210,11 @@ export default function ArticlePage() {
               ))}
             </div>
           </section>
+
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/watermark-settings.png" alt="PDF preview with controls for adjusting watermark opacity, rotation, and position" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Fine-tune the watermark so the document stays readable.</figcaption>
+          </figure>
 
           {/* Text or image */}
           <section className="mb-10">
@@ -233,9 +237,14 @@ export default function ArticlePage() {
             </div>
           </section>
 
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/image-watermark.png" alt="Transparent company logo positioned as a faint watermark on a PDF page" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Transparent logos work well when you need consistent branding.</figcaption>
+          </figure>
+
           {/* How to steps */}
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-foreground mb-6">How to add a watermark to a PDF</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">How to Insert Watermark in PDF Online for Free</h2>
             <ol className="space-y-5">
               {steps.map((step, i) => (
                 <li key={i} className="flex gap-4 items-start">
@@ -263,6 +272,13 @@ export default function ArticlePage() {
             </div>
           </section>
 
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Customizing Your Watermark for Professional Results</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Adjust font, opacity, rotation, and positioning to keep your document readable while maintaining a consistent brand identity. Transparent PNG logos are especially useful for image watermarks, and saved settings can make recurring document workflows faster.
+            </p>
+          </section>
+
           {/* Best settings */}
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-foreground mb-4">Best settings for a professional watermark</h2>
@@ -285,6 +301,18 @@ export default function ArticlePage() {
                 </div>
               ))}
             </div>
+          </section>
+
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/batch-watermarking.png" alt="Several PDF files processed together with consistent watermarks" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Batch workflows help keep branding consistent across a document set.</figcaption>
+          </figure>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Advanced Options for Batch Watermarking Efficiency</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Processing multiple files together helps professionals apply the same branding across an entire document set. Coordinate-based placement and page-range controls keep watermarks consistent without repetitive manual editing.
+            </p>
           </section>
 
           {/* When to use */}
@@ -310,6 +338,18 @@ export default function ArticlePage() {
             <p className="text-muted-foreground leading-relaxed mt-4">
               A small mark is often enough to protect the file while keeping the layout clean —
               that balance matters when the reader needs to review content without distraction.
+            </p>
+          </section>
+
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/pdf-privacy.png" alt="PDF document protected by a security shield and encrypted connection" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Choose a service with clear file-handling and deletion practices.</figcaption>
+          </figure>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Keep your documents private</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Before uploading a sensitive PDF, check that the service uses an encrypted connection and explains how long files are retained. Avoid sharing documents you do not have permission to edit, and remember that a watermark is a visual deterrent—not a replacement for access controls or password protection.
             </p>
           </section>
 
