@@ -73,9 +73,9 @@ export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE_MERGE_PDF, PILLAR_
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
     slug: 'add-watermark-on-pdf',
-    title: 'Add Watermark on PDF: Protect and Brand Your Documents Easily',
+    title: 'How to Add Watermark to PDF Files on a Mac or PC',
     description:
-      'Add watermark on PDF online with ToolifyPDF. Protect documents, add text or image watermarks, mark drafts, and brand reports — free, no registration required.',
+      'Learn how to add a watermark to PDF files on Mac or PC with a free browser-based tool. Add text or image watermarks, customize them, and protect your documents without installing software.',
     date: 'August 2, 2026',
     lastModified: '2026-08-02',
     readTime: '5 min read',
