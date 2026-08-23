@@ -165,7 +165,7 @@ export default function ArticlePage() {
           {/* Hero image */}
           <figure className="mb-10 rounded-2xl overflow-hidden border border-border shadow-sm">
             <Image
-              src="/images/add-watermark-to-pdf-tool.webp"
+              src="/images/watermark-guide-hero.png"
               alt="ToolifyPDF Add Watermark tool showing a business report with a CONFIDENTIAL text watermark applied at 30% opacity and 45-degree rotation"
               width={1024}
               height={576}
@@ -212,6 +212,11 @@ export default function ArticlePage() {
             </div>
           </section>
 
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/watermark-settings.png" alt="PDF preview with controls for adjusting watermark opacity, rotation, and position" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Fine-tune the watermark so the document stays readable.</figcaption>
+          </figure>
+
           {/* Text or image */}
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-foreground mb-4">Text or image watermark?</h2>
@@ -232,6 +237,11 @@ export default function ArticlePage() {
               </div>
             </div>
           </section>
+
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/image-watermark.png" alt="Transparent company logo positioned as a faint watermark on a PDF page" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Transparent logos work well when you need consistent branding.</figcaption>
+          </figure>
 
           {/* How to steps */}
           <section className="mb-10">
@@ -287,6 +297,11 @@ export default function ArticlePage() {
             </div>
           </section>
 
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/batch-watermarking.png" alt="Several PDF files processed together with consistent watermarks" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Batch workflows help keep branding consistent across a document set.</figcaption>
+          </figure>
+
           {/* When to use */}
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-foreground mb-4">When to add watermarks to PDFs</h2>
@@ -310,6 +325,18 @@ export default function ArticlePage() {
             <p className="text-muted-foreground leading-relaxed mt-4">
               A small mark is often enough to protect the file while keeping the layout clean —
               that balance matters when the reader needs to review content without distraction.
+            </p>
+          </section>
+
+          <figure className="mb-10 overflow-hidden rounded-2xl border border-border shadow-sm">
+            <Image src="/images/pdf-privacy.png" alt="PDF document protected by a security shield and encrypted connection" width={1024} height={576} className="w-full h-auto" />
+            <figcaption className="px-4 py-2 text-center text-xs text-muted-foreground">Choose a service with clear file-handling and deletion practices.</figcaption>
+          </figure>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Keep your documents private</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Before uploading a sensitive PDF, check that the service uses an encrypted connection and explains how long files are retained. Avoid sharing documents you do not have permission to edit, and remember that a watermark is a visual deterrent—not a replacement for access controls or password protection.
             </p>
           </section>
 
