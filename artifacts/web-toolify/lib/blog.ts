@@ -72,6 +72,18 @@ export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE_MERGE_PDF, PILLAR_
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
+    slug: 'free-pdf-editor-online',
+    title: 'Free PDF Editor Online: Edit, Annotate, and Manage PDFs',
+    description:
+      'Use a free PDF editor online to edit text, annotate and highlight, fill forms, and organize pages directly in your browser — no sign-up or software required.',
+    date: 'August 24, 2026',
+    lastModified: '2026-08-24',
+    readTime: '7 min read',
+    category: 'PDF Guide',
+    color: '#86198f',
+    gradient: 'linear-gradient(135deg, #701a75 0%, #a21caf 50%, #d946ef 100%)',
+  },
+  {
     slug: 'resize-image-online',
     title: 'Resize Image Online: Change Image Dimensions Without Losing Quality',
     description: 'Learn how to resize images online, preserve aspect ratio, choose the right dimensions, and reduce image file size without losing quality.',
