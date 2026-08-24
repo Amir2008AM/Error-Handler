@@ -72,6 +72,29 @@ export const PILLAR_ARTICLES: BlogArticle[] = [PILLAR_ARTICLE_MERGE_PDF, PILLAR_
 
 export const BLOG_ARTICLES: BlogArticle[] = [
   {
+    slug: 'resize-image-online',
+    title: 'Resize Image Online: Change Image Dimensions Without Losing Quality',
+    description: 'Learn how to resize images online, preserve aspect ratio, choose the right dimensions, and reduce image file size without losing quality.',
+    date: 'August 24, 2026',
+    lastModified: '2026-08-24',
+    readTime: '6 min read',
+    category: 'Image Tools',
+    color: '#2563eb',
+    gradient: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #60a5fa 100%)',
+  },
+  {
+    slug: 'protect-your-work-with-pdf-watermark-tool',
+    title: 'Protect Your Work with a Simple PDF Watermark Tool',
+    description:
+      'Protect, brand, and label PDF documents with a simple online PDF watermark tool. Learn how to add text and image watermarks for free.',
+    date: 'August 24, 2026',
+    lastModified: '2026-08-24',
+    readTime: '7 min read',
+    category: 'PDF Security',
+    color: '#0f766e',
+    gradient: 'linear-gradient(135deg, #115e59 0%, #0f766e 50%, #14b8a6 100%)',
+  },
+  {
     slug: 'add-watermark-on-pdf',
     title: 'Add Watermark on PDF: Protect and Brand Your Documents Easily',
     description:
