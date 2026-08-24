@@ -138,24 +138,6 @@ export default function ArticlePage() {
                 <LinkText href="https://toolifypdf.online/blog/how-to-convert-word-to-pdf">convert Word to PDF</LinkText> when your work involves
                 multiple document formats.
               </p>
-              <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4">
-                <p>
-                  <LinkText href="https://www.youtube.com/watch?v=N0zbjD5ekmw">Top 3 Really Free PDF Editors in 2025</LinkText> (
-                  <LinkText href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0HxI3C35o721zg4uhJv2KGCpcWGuFiXE92AhzdeKxRxAXLi-cFWEhAA&s">
-                    image
-                  </LinkText>
-                  )
-                </p>
-                <p className="mt-3 font-semibold text-foreground">
-                  <LinkText href="https://www.youtube.com/watch?v=N0zbjD5ekmw">Top 3 Really Free PDF Editors in 2025: Edit PDFs Without ...</LinkText>
-                </p>
-                <p className="mt-3">
-                  <LinkText href="https://www.youtube.com/watch?v=N0zbjD5ekmw">
-                    Tired of paywalls, watermarks, or fake “free” PDF tools? In this video, I&apos;m reviewing the top 3 truly free PDF editors you can
-                    use in 2025.
-                  </LinkText>
-                </p>
-              </div>
             </section>
 
             <section>
