@@ -13,6 +13,7 @@ import { ToolCard } from './tool-card'
 import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
 import { ToolSeoContent } from './tool-seo-content'
+import { ToolRelatedArticles } from './tool-related-articles'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText, Image, Minimize2, FilePlus2, Scissors,
@@ -180,6 +181,9 @@ export function ToolPageServerLayout(props: Props) {
             </div>
           </section>
         )}
+
+        {/* Related Articles — topical internal linking, mapped per tool in lib/tool-articles.ts */}
+        <ToolRelatedArticles toolSlug={tool.slug} />
 
         <p className="text-xs text-muted-foreground mt-8 text-center">
           Learn more <Link href="/about" className="text-primary hover:underline">about ToolifyPDF</Link> and how we handle your files, or check the <Link href="/faq" className="text-primary hover:underline">FAQ</Link> for answers about file limits, formats, and security.
