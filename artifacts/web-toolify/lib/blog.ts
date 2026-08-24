@@ -79,8 +79,8 @@ export const BLOG_ARTICLES: BlogArticle[] = [
     lastModified: '2026-08-24',
     readTime: '6 min read',
     category: 'Image Tools',
-    color: '#2563eb',
-    gradient: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #60a5fa 100%)',
+    color: '#a16207',
+    gradient: 'linear-gradient(135deg, #854d0e 0%, #ca8a04 50%, #facc15 100%)',
   },
   {
     slug: 'protect-your-work-with-pdf-watermark-tool',
