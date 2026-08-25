@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ContactEmail } from '@/components/contact-email'
 
 export const metadata: Metadata = {
   title: { absolute: 'Terms of Use — ToolifyPDF Service Agreement' },
@@ -119,7 +120,8 @@ export default function TermsAndConditionsPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">13. Contact Us</h2>
             <p className="text-muted-foreground leading-relaxed">
-              If you have any questions about these Terms of Use, please contact us at contact@toolifypdf.online or through our{' '}
+              If you have any questions about these Terms of Use, please contact us at{' '}
+              <ContactEmail className="text-primary hover:underline" /> or through our{' '}
               <Link href="/contact-us" className="text-primary hover:underline">Contact page</Link>.
             </p>
           </section>

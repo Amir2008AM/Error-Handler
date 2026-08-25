@@ -29,6 +29,17 @@ const nextConfig = {
     },
   },
 
+  // Legacy / mis-linked tool URLs that were reported as broken internal links.
+  // Permanent redirects keep any external links and stale index entries alive.
+  async redirects() {
+    return [
+      { source: '/jpg-to-pdf', destination: '/image-to-pdf', permanent: true },
+      { source: '/png-to-pdf', destination: '/image-to-pdf', permanent: true },
+      { source: '/add-watermark-to-pdf', destination: '/watermark-pdf', permanent: true },
+      { source: '/edit-pdf', destination: '/pdf-editor', permanent: true },
+    ]
+  },
+
   async headers() {
     const isProd = process.env.NODE_ENV === 'production'
 

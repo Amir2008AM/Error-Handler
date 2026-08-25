@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ContactEmail } from '@/components/contact-email'
 
 export const metadata: Metadata = {
   title: { absolute: 'Privacy Policy — How ToolifyPDF Protects Your Data' },
@@ -85,10 +86,6 @@ const sections = [
     title: '13. Changes to This Policy',
     body: 'We may update this Privacy Policy from time to time to reflect changes in our practices or for legal, operational, or regulatory reasons. Material changes will be reflected by updating the "Last updated" date at the top of this page.',
   },
-  {
-    title: '14. Contact Us',
-    body: 'For any privacy-related questions or requests, please contact us at contact@toolifypdf.online or through our Contact page.',
-  },
 ]
 
 function PolicySection({
@@ -143,6 +140,14 @@ export default function PrivacyPolicyPage() {
           {sections.map((s) => (
             <PolicySection key={s.title} {...s} />
           ))}
+          <section>
+            <h2 className="text-xl font-semibold mb-3">14. Contact Us</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              For any privacy-related questions or requests, please contact us at{' '}
+              <ContactEmail className="text-primary hover:underline" /> or through our{' '}
+              <Link href="/contact-us" className="text-primary hover:underline">Contact page</Link>.
+            </p>
+          </section>
         </div>
 
         <div className="border-t border-border pt-6 mt-2">

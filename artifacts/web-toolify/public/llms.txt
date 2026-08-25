@@ -4,24 +4,30 @@
 
 ## Tools
 
-- [PDF to Word](https://www.toolifypdf.online/pdf-to-word): Convert PDF files to editable Word documents (.docx).
-- [PDF to Excel](https://www.toolifypdf.online/pdf-to-excel): Extract tables from PDFs into Excel spreadsheets (.xlsx).
-- [PDF to PowerPoint](https://www.toolifypdf.online/pdf-to-ppt): Convert PDF slides to editable PowerPoint (.pptx).
-- [PDF to JPG](https://www.toolifypdf.online/pdf-to-jpg): Export every PDF page as a high-quality JPG image.
-- [PDF to PNG](https://www.toolifypdf.online/pdf-to-png): Export every PDF page as a lossless PNG image.
-- [PDF to Text](https://www.toolifypdf.online/pdf-to-text): Extract all text content from a PDF file.
-- [Merge PDF](https://www.toolifypdf.online/merge-pdf): Combine multiple PDF files into one document.
-- [Split PDF](https://www.toolifypdf.online/split-pdf): Separate a PDF into individual pages or custom ranges.
-- [Compress PDF](https://www.toolifypdf.online/compress-pdf): Reduce PDF file size while preserving quality.
-- [Rotate PDF](https://www.toolifypdf.online/rotate-pdf): Rotate pages in a PDF document.
-- [Word to PDF](https://www.toolifypdf.online/word-to-pdf): Convert Word documents (.docx) to PDF format.
-- [Excel to PDF](https://www.toolifypdf.online/excel-to-pdf): Convert Excel spreadsheets (.xlsx) to PDF format.
-- [JPG to PDF](https://www.toolifypdf.online/jpg-to-pdf): Combine JPG images into a single PDF file.
-- [PNG to PDF](https://www.toolifypdf.online/png-to-pdf): Combine PNG images into a single PDF file.
-- [Image to PDF](https://www.toolifypdf.online/image-to-pdf): Convert any image format to PDF.
-- [Crop Image](https://www.toolifypdf.online/crop-image): Crop and resize images online.
-- [Compress Image](https://www.toolifypdf.online/compress-image): Reduce image file size without visible quality loss.
-- [Remove Background](https://www.toolifypdf.online/remove-background): Automatically remove the background from any image.
+- [PDF to Word](https://toolifypdf.online/pdf-to-word): Convert PDF files to editable Word documents (.docx).
+- [PDF to Excel](https://toolifypdf.online/pdf-to-excel): Extract tables from PDFs into Excel spreadsheets (.xlsx).
+- [PDF to PowerPoint](https://toolifypdf.online/pdf-to-ppt): Convert PDF slides to editable PowerPoint (.pptx).
+- [PDF to JPG](https://toolifypdf.online/pdf-to-jpg): Export every PDF page as a high-quality JPG image.
+- [Merge PDF](https://toolifypdf.online/merge-pdf): Combine multiple PDF files into one document.
+- [Split PDF](https://toolifypdf.online/split-pdf): Separate a PDF into individual pages or custom ranges.
+- [Compress PDF](https://toolifypdf.online/compress-pdf): Reduce PDF file size while preserving quality.
+- [Rotate PDF](https://toolifypdf.online/rotate-pdf): Rotate pages in a PDF document.
+- [Organize PDF](https://toolifypdf.online/organize-pdf): Reorder, rotate, or delete pages in a PDF.
+- [Repair PDF](https://toolifypdf.online/repair-pdf): Attempt to recover damaged or unreadable PDF files.
+- [Page Numbers](https://toolifypdf.online/page-numbers): Add page numbers to a PDF document.
+- [Watermark PDF](https://toolifypdf.online/watermark-pdf): Add a text or image watermark to every page of a PDF.
+- [Protect PDF](https://toolifypdf.online/protect-pdf): Add a password to a PDF document.
+- [Unlock PDF](https://toolifypdf.online/unlock-pdf): Remove a known password from a PDF document.
+- [PDF Editor](https://toolifypdf.online/pdf-editor): Add text, shapes, and signatures to a PDF.
+- [Word to PDF](https://toolifypdf.online/word-to-pdf): Convert Word documents (.docx) to PDF format.
+- [Excel to PDF](https://toolifypdf.online/excel-to-pdf): Convert Excel spreadsheets (.xlsx) to PDF format.
+- [PowerPoint to PDF](https://toolifypdf.online/ppt-to-pdf): Convert PowerPoint presentations (.pptx) to PDF format.
+- [HTML to PDF](https://toolifypdf.online/html-to-pdf): Convert a web page or HTML file to PDF.
+- [Image to PDF](https://toolifypdf.online/image-to-pdf): Convert JPG, PNG, and other image formats to PDF.
+- [Crop Image](https://toolifypdf.online/crop-image): Crop images online.
+- [Resize Image](https://toolifypdf.online/resize-image): Change image dimensions online.
+- [Convert Image](https://toolifypdf.online/convert-image): Convert images between formats such as JPG, PNG, and WebP.
+- [Compress Image](https://toolifypdf.online/compress-image): Reduce image file size without visible quality loss.
 
 ## About
 
@@ -32,5 +38,5 @@
 
 ## Contact
 
-- Website: https://www.toolifypdf.online
-- Sitemap: https://www.toolifypdf.online/sitemap.xml
+- Website: https://toolifypdf.online
+- Sitemap: https://toolifypdf.online/sitemap.xml
