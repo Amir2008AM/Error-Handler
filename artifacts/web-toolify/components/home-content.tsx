@@ -64,8 +64,11 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
       <section className="bg-white border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16 text-center">
           <h1
-            className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 text-balance"
-            style={{ fontFamily: 'var(--font-display)' }}
+            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-balance bg-clip-text text-transparent"
+            style={{
+              fontFamily: 'var(--font-display)',
+              backgroundImage: 'linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 180, 90), rgb(0, 90, 255))',
+            }}
           >
             ToolifyPDF — {t('home.hero.title')}
           </h1>
