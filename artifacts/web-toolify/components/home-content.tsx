@@ -67,7 +67,7 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
             className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 text-balance"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            {t('home.hero.title')}
+            ToolifyPDF — {t('home.hero.title')}
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-5 text-pretty leading-relaxed">
             {t('home.hero.subtitle')}
