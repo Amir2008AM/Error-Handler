@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { LanguageSwitcher } from './language-switcher'
@@ -49,7 +49,8 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
   const [activeCategory, setActiveCategory] = useState<ToolCategory | 'All' | null>(
     initialCategory ?? 'All'
   )
-
+  const [headingPosition, setHeadingPosition] = useState({ x: 0, y: 0 })
+  const dragOrigin = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 })
 
   const displayedTools = useMemo(() => {
     if (searchQuery.trim()) return searchTools(searchQuery)
@@ -58,16 +59,40 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
     return tools
   }, [searchQuery, activeCategory])
 
+  const handleHeadingPointerDown = (event: React.PointerEvent<HTMLHeadingElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragOrigin.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      x: headingPosition.x,
+      y: headingPosition.y,
+    }
+  }
+
+  const handleHeadingPointerMove = (event: React.PointerEvent<HTMLHeadingElement>) => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+    setHeadingPosition({
+      x: dragOrigin.current.x + event.clientX - dragOrigin.current.pointerX,
+      y: dragOrigin.current.y + event.clientY - dragOrigin.current.pointerY,
+    })
+  }
+
   return (
     <main className="flex-1 bg-background">
       {/* Hero Section */}
       <section className="bg-white border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16 text-center">
           <h1
-            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-balance bg-clip-text text-transparent"
+            tabIndex={0}
+            aria-label="Drag to move ToolifyPDF heading"
+            onPointerDown={handleHeadingPointerDown}
+            onPointerMove={handleHeadingPointerMove}
+            onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
+            className="touch-none cursor-grab select-none text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-balance bg-clip-text text-transparent active:cursor-grabbing"
             style={{
               fontFamily: 'var(--font-display)',
               backgroundImage: 'linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 180, 90), rgb(0, 90, 255))',
+              transform: `translate(${headingPosition.x}px, ${headingPosition.y}px)`,
             }}
           >
             ToolifyPDF — {t('home.hero.title')}
