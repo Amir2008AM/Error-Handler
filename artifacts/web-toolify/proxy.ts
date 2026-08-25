@@ -119,6 +119,22 @@ const CATEGORY_TO_SLUG: Record<string, string> = {
   'Calculators':    'calculators',
 }
 
+// next.config.mjs sets Strict-Transport-Security on ordinary page/asset
+// responses via headers(), but that pipeline never runs for redirects
+// issued directly from middleware (NextResponse.redirect() short-circuits
+// before it). Crawlers commonly hit the www → non-www or ?category=
+// redirect first, so without this those responses go out with no HSTS
+// header at all — which is exactly what "no HSTS support" audits flag.
+function withHsts(response: NextResponse): NextResponse {
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=63072000; includeSubDomains; preload'
+    )
+  }
+  return response
+}
+
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
@@ -170,7 +186,7 @@ export function proxy(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = `/category/${CATEGORY_TO_SLUG[category]}`
       url.search = ''
-      return NextResponse.redirect(url, { status: 301 })
+      return withHsts(NextResponse.redirect(url, { status: 301 }))
     }
   }
   // ─────────────────────────────────────────────────────────────────────────────
@@ -188,7 +204,7 @@ export function proxy(request: NextRequest) {
     if (publicHost.startsWith('www.')) {
       const bareHost    = publicHost.slice(4)           // strip "www."
       const destination = `https://${bareHost}${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`
-      return NextResponse.redirect(destination, { status: 301 })
+      return withHsts(NextResponse.redirect(destination, { status: 301 }))
     }
   }
 
