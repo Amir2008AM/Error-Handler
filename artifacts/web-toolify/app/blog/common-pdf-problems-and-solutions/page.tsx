@@ -49,7 +49,7 @@ function ProblemBlock({ number, problem, why, solution, toolLabel, toolHref }: {
     <div className="border border-border rounded-2xl overflow-hidden bg-card">
       <div className="px-5 py-4 flex items-center gap-3" style={{ backgroundColor: '#f0fdf4' }}>
         <span className="w-8 h-8 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0" style={{ backgroundColor: ACCENT }}>{number}</span>
-        <h3 className="font-bold text-foreground">{problem}</h3>
+        <h2 className="font-bold text-foreground">{problem}</h2>
       </div>
       <div className="px-5 py-4 space-y-3">
         <div>
