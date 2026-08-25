@@ -254,7 +254,7 @@ export default function ArticlePage() {
             </ol>
             <div className="mt-8 text-center">
               <Link
-                href="/add-watermark-to-pdf"
+                href="/watermark-pdf"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-sm transition-all hover:opacity-90 hover:shadow-md"
                 style={{ backgroundColor: ACCENT }}
               >
@@ -323,9 +323,9 @@ export default function ArticlePage() {
               {[
                 { href: '/compress-pdf', label: 'Compress PDF', desc: 'Reduce file size after adding a watermark.' },
                 { href: '/merge-pdf', label: 'Merge PDF', desc: 'Combine documents before watermarking.' },
-                { href: '/edit-pdf', label: 'Edit PDF', desc: 'Make final changes before exporting.' },
+                { href: '/pdf-editor', label: 'Edit PDF', desc: 'Make final changes before exporting.' },
                 { href: '/pdf-to-word', label: 'PDF to Word', desc: 'Convert to a different format for editing.' },
-                { href: '/jpg-to-pdf', label: 'JPG to PDF', desc: 'Create a PDF from images.' },
+                { href: '/image-to-pdf', label: 'Image to PDF', desc: 'Create a PDF from images.' },
               ].map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className="font-medium hover:underline" style={{ color: ACCENT }} title={item.label}>

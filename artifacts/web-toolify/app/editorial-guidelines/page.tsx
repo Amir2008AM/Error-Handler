@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ContactEmail } from '@/components/contact-email'
 
 export const metadata: Metadata = {
   title: { absolute: 'Editorial Guidelines | ToolifyPDF' },
@@ -142,7 +143,7 @@ export default function EditorialGuidelinesPage() {
               If you believe any content on ToolifyPDF is inaccurate, outdated, or misleading, please reach out via our{' '}
               <Link href="/contact-us" className="text-foreground underline underline-offset-4 hover:opacity-75 transition-opacity">Contact page</Link>{' '}
               or email us at{' '}
-              <a href="mailto:contact@toolifypdf.online" className="text-foreground underline underline-offset-4 hover:opacity-75 transition-opacity">contact@toolifypdf.online</a>.
+              <ContactEmail className="text-foreground underline underline-offset-4 hover:opacity-75 transition-opacity" />.
               We take all correction requests seriously and will respond accordingly.
             </p>
           </section>
