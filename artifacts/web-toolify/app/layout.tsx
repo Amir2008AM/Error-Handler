@@ -124,6 +124,10 @@ export default function RootLayout({
           data-key="QJVgLKTTo6yseBMo0aT08w"
           strategy="afterInteractive"
         />
+        <Script
+          src="https://cdn.brightserp.com/api/opportunities.js"
+          strategy="afterInteractive"
+        />
         <CookieConsentProvider>
           {process.env.NODE_ENV === 'production' && <ThirdPartyScripts />}
           <DisconnectBeacon />
