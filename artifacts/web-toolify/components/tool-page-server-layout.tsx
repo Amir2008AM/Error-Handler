@@ -83,27 +83,37 @@ export function ToolPageServerLayout(props: Props) {
   const BASE_URL = 'https://toolifypdf.online'
   const toolUrl  = `${BASE_URL}/${tool.slug}`
 
+  // Two separate top-level entities, per Google's structured-data guidelines:
+  // - WebApplication describes the tool itself. We deliberately avoid the
+  //   SoftwareApplication type here because Google requires an aggregateRating
+  //   or review for it, and we don't have genuine review data to report.
+  // - BreadcrumbList must be its own top-level item — Schema.org does not
+  //   recognize a nested "breadcrumb" property on other types.
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: displayName,
-    description: displayDescription,
-    url: toolUrl,
-    applicationCategory: 'UtilitiesApplication',
-    operatingSystem: 'Web',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    breadcrumb: {
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-        { '@type': 'ListItem', position: 2, name: categoryLabel, item: `${BASE_URL}/category/${CATEGORY_TO_SLUG[tool.category] ?? tool.category.toLowerCase().replace(/ /g, '-')}` },
-        { '@type': 'ListItem', position: 3, name: displayName, item: toolUrl },
-      ],
-    },
+    '@graph': [
+      {
+        '@type': 'WebApplication',
+        name: displayName,
+        description: displayDescription,
+        url: toolUrl,
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Web',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+          { '@type': 'ListItem', position: 2, name: categoryLabel, item: `${BASE_URL}/category/${CATEGORY_TO_SLUG[tool.category] ?? tool.category.toLowerCase().replace(/ /g, '-')}` },
+          { '@type': 'ListItem', position: 3, name: displayName, item: toolUrl },
+        ],
+      },
+    ],
   }
 
   return (
