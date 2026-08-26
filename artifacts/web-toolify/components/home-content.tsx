@@ -56,24 +56,6 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
     return tools
   }, [searchQuery, activeCategory])
 
-  const handleHeadingPointerDown = (event: React.PointerEvent<HTMLHeadingElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dragOrigin.current = {
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      x: headingPosition.x,
-      y: headingPosition.y,
-    }
-  }
-
-  const handleHeadingPointerMove = (event: React.PointerEvent<HTMLHeadingElement>) => {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
-    setHeadingPosition({
-      x: dragOrigin.current.x + event.clientX - dragOrigin.current.pointerX,
-      y: dragOrigin.current.y + event.clientY - dragOrigin.current.pointerY,
-    })
-  }
-
   return (
     <main className="flex-1 bg-background">
       {/* Hero Section */}

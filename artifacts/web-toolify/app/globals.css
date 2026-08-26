@@ -88,25 +88,18 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@keyframes heading-wave {
+@keyframes color-wave {
   0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  25% {
-    transform: translateY(-8px) rotate(-1deg);
+    background-position: 0% 50%;
   }
   50% {
-    transform: translateY(0) rotate(1deg);
-  }
-  75% {
-    transform: translateY(8px) rotate(-1deg);
+    background-position: 100% 50%;
   }
 }
 
 .wave-heading {
-  display: inline-block;
-  animation: heading-wave 2.8s ease-in-out infinite;
-  transform-origin: center;
+  background-size: 220% 100%;
+  animation: color-wave 3.2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
