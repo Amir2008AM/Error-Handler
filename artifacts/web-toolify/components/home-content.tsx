@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { Search, FileText, Image, AlignLeft, ArrowRightLeft, Calculator, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { LanguageSwitcher } from './language-switcher'
@@ -49,9 +49,6 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
   const [activeCategory, setActiveCategory] = useState<ToolCategory | 'All' | null>(
     initialCategory ?? 'All'
   )
-  const [headingPosition, setHeadingPosition] = useState({ x: 0, y: 0 })
-  const dragOrigin = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 })
-
   const displayedTools = useMemo(() => {
     if (searchQuery.trim()) return searchTools(searchQuery)
     if (activeCategory && activeCategory !== 'All')
@@ -84,15 +81,11 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16 text-center">
           <h1
             tabIndex={0}
-            aria-label="Drag to move ToolifyPDF heading"
-            onPointerDown={handleHeadingPointerDown}
-            onPointerMove={handleHeadingPointerMove}
-            onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
-            className="touch-none cursor-grab select-none text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-balance bg-clip-text text-transparent active:cursor-grabbing"
+            aria-label="ToolifyPDF — Online Tools for PDF & Image Lovers"
+            className="wave-heading select-none text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-balance bg-clip-text text-transparent"
             style={{
               fontFamily: 'var(--font-display)',
               backgroundImage: 'linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 180, 90), rgb(0, 90, 255))',
-              transform: `translate(${headingPosition.x}px, ${headingPosition.y}px)`,
             }}
           >
             ToolifyPDF — {t('home.hero.title')}

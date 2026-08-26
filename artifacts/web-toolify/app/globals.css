@@ -88,6 +88,33 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@keyframes heading-wave {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-8px) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(0) rotate(1deg);
+  }
+  75% {
+    transform: translateY(8px) rotate(-1deg);
+  }
+}
+
+.wave-heading {
+  display: inline-block;
+  animation: heading-wave 2.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-heading {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
