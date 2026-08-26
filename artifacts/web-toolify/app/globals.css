@@ -88,6 +88,26 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@keyframes color-wave {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.wave-heading {
+  background-size: 220% 100%;
+  animation: color-wave 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-heading {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
