@@ -64,7 +64,7 @@ export function HomeContent({ initialCategory, badgeSlot, preFooterSlot }: Props
           <h1
             tabIndex={0}
             aria-label="ToolifyPDF — Online Tools for PDF & Image Lovers"
-            className="wave-heading select-none text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-balance bg-clip-text text-transparent"
+            className="wave-heading select-none text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4 text-balance bg-clip-text text-transparent"
             style={{
               fontFamily: 'var(--font-display)',
               backgroundImage: 'linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 180, 90), rgb(0, 90, 255))',
