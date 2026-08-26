@@ -78,6 +78,7 @@ export const metadata: Metadata = {
     : {}),
   other: {
     'google-adsense-account': 'ca-pub-4805747941246928',
+    'backlink-exchange-verification': 'f051d3a96eb388156fa2ae263be8c652',
   },
   icons: {
     icon: [
