@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  FileText, Image, Minimize2, FilePlus2, Scissors,
+  FileText, FilePen, Image, Minimize2, FilePlus2, Scissors,
   Expand, RefreshCw, Type, CaseSensitive, Percent,
   Calendar, AlignLeft, ArrowRightLeft, Calculator,
   ImageIcon, RotateCw, Droplets, Crop, Presentation,
@@ -16,6 +16,7 @@ import { customIconMap } from '@/components/tool-icons'
 
 const lucideIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
+  FilePen,
   Image,
   Minimize2,
   FilePlus2,
