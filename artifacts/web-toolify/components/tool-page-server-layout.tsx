@@ -14,6 +14,7 @@ import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
 import { ToolSeoContent } from './tool-seo-content'
 import { ToolRelatedArticles } from './tool-related-articles'
+import { customIconMap } from './tool-icons'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText, Image, Minimize2, FilePlus2, Scissors,
@@ -73,7 +74,7 @@ export function ToolPageServerLayout(props: Props) {
   const displayName = ('title' in props && props.title) ? props.title : tool.name
   const displayDescription = ('description' in props && props.description) ? props.description : tool.longDescription
 
-  const Icon = iconMap[tool.icon] ?? FileText
+  const Icon = customIconMap[tool.icon] ?? iconMap[tool.icon] ?? FileText
   const relatedTools = tools
     .filter((t) => t.id !== tool.id && t.category === tool.category)
     .slice(0, 4)
