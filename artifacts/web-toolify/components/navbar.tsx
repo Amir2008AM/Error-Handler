@@ -23,6 +23,15 @@ const categoryNavItems: CategoryNavItem[] = [
   { key: 'nav.calculator', category: 'Calculators', href: '/category/calculators' },
 ]
 
+const pdfMegaMenuGroups = [
+  { label: 'Organize PDF', slugs: ['merge-pdf', 'split-pdf', 'remove-pages', 'extract-pages', 'organize-pdf', 'scan-to-pdf'] },
+  { label: 'Optimize PDF', slugs: ['compress-pdf', 'repair-pdf', 'ocr-pdf'] },
+  { label: 'Convert to PDF', slugs: ['jpg-to-pdf', 'word-to-pdf', 'ppt-to-pdf', 'excel-to-pdf', 'html-to-pdf'] },
+  { label: 'Convert from PDF', slugs: ['pdf-to-jpg', 'pdf-to-word', 'pdf-to-ppt', 'pdf-to-excel', 'pdf-to-pdfa'] },
+  { label: 'Edit PDF', slugs: ['rotate-pdf', 'page-numbers', 'watermark-pdf', 'crop-pdf', 'pdf-editor', 'pdf-forms'] },
+  { label: 'PDF Security', slugs: ['unlock-pdf', 'protect-pdf', 'sign-pdf', 'redact-pdf', 'compare-pdf'] },
+]
+
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openCategory, setOpenCategory] = useState<ToolCategory | null>(null)
@@ -96,35 +105,43 @@ export function Navbar() {
                       id={menuId}
                       role="menu"
                       aria-label={`${t(key)} tools`}
-                      className="absolute right-0 top-full mt-3 w-72 rounded-xl border border-border bg-white p-3 shadow-lg shadow-slate-900/10"
+                      className={category === 'PDF Tools'
+                        ? 'absolute left-1/2 top-full mt-3 w-[calc(100vw-2rem)] max-w-[1080px] -translate-x-1/2 rounded-xl border border-border bg-white p-6 shadow-lg shadow-slate-900/10'
+                        : 'absolute right-0 top-full mt-3 w-72 rounded-xl border border-border bg-white p-3 shadow-lg shadow-slate-900/10'}
                     >
-                      <div className="mb-2 flex items-center justify-between border-b border-border px-2 pb-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          {t(key)}
-                        </span>
-                        <Link
-                          href={href}
-                          role="menuitem"
-                          className="text-xs font-medium text-primary hover:underline"
-                          onClick={() => setOpenCategory(null)}
-                        >
-                          View all
-                        </Link>
-                      </div>
-                      <div className="grid gap-0.5">
-                        {categoryTools.map((tool) => (
-                          <Link
-                            key={tool.slug}
-                            href={`/${tool.slug}`}
-                            role="menuitem"
-                            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted hover:text-primary"
-                            onClick={() => setOpenCategory(null)}
-                          >
-                            <ToolIcon icon={tool.icon} className="h-4 w-4 shrink-0" />
-                            {tool.name}
-                          </Link>
-                        ))}
-                      </div>
+                      {category === 'PDF Tools' ? (
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-6 md:grid-cols-3 lg:grid-cols-6">
+                          {pdfMegaMenuGroups.map((group) => {
+                            const groupTools = group.slugs.map((slug) => tools.find((tool) => tool.slug === slug)).filter((tool): tool is (typeof tools)[number] => Boolean(tool))
+                            return (
+                              <div key={group.label} className="flex flex-col gap-2">
+                                <div className="px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</div>
+                                {groupTools.map((tool) => (
+                                  <Link key={`${group.label}-${tool.slug}`} href={`/${tool.slug}`} role="menuitem" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted hover:text-primary" onClick={() => setOpenCategory(null)}>
+                                    <ToolIcon icon={tool.icon} className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">{tool.name}</span>
+                                  </Link>
+                                ))}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="mb-2 flex items-center justify-between border-b border-border px-2 pb-2">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t(key)}</span>
+                            <Link href={href} role="menuitem" className="text-xs font-medium text-primary hover:underline" onClick={() => setOpenCategory(null)}>View all</Link>
+                          </div>
+                          <div className="grid gap-0.5">
+                            {categoryTools.map((tool) => (
+                              <Link key={tool.slug} href={`/${tool.slug}`} role="menuitem" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted hover:text-primary" onClick={() => setOpenCategory(null)}>
+                                <ToolIcon icon={tool.icon} className="h-4 w-4 shrink-0" />
+                                {tool.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
