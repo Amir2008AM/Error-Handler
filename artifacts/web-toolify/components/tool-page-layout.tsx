@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ToolCard } from './tool-card'
+import { customIconMap } from '@/components/tool-icons'
 import { tools, getToolBySlug } from '@/lib/tools'
 import type { Tool } from '@/lib/tools'
 import { useI18n } from '@/lib/i18n/context'
@@ -70,7 +71,7 @@ export function ToolPageLayout(props: ToolPageLayoutProps) {
   const displayName = ('title' in props && props.title) ? props.title : tool.name
   const displayDescription = ('description' in props && props.description) ? props.description : tool.longDescription
 
-  const Icon = iconMap[tool.icon] ?? FileText
+  const Icon = customIconMap[tool.icon] ?? iconMap[tool.icon] ?? FileText
   const relatedTools = tools
     .filter((t) => t.id !== tool.id && t.category === tool.category)
     .slice(0, 4)
