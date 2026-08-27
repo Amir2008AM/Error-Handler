@@ -188,7 +188,7 @@ export const tools: Tool[] = [
       'Transform your PDF documents into fully editable Microsoft Word (.docx) files while preserving the original formatting and layout.',
     category: 'Converters',
     slug: 'pdf-to-word',
-    icon: 'FileText',
+    icon: 'PdfToWord',
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     tags: ['pdf', 'word', 'convert', 'docx'],

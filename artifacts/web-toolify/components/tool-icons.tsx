@@ -212,20 +212,15 @@ export function UnlockPdfIcon({ className }: IconProps) {
 
 /* ─── Converter Tools ────────────────────────────────────────────────────── */
 
-/** PDF → Word: page + blue W badge */
+/** PDF → Word: branded Microsoft Word document icon */
 export function PdfToWordIcon({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <Page />
-      <line x1="6" y1="9"  x2="13" y2="9"  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <line x1="6" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      {/* W badge */}
-      <Badge color="#2563eb">
-        {/* W as path: two V strokes */}
-        <path d="M16 16.5l1.5 4 1.5-3 1.5 3 1.5-4"
-          stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </Badge>
-    </svg>
+    <img
+      src="/icons/pdf-to-word.svg"
+      alt=""
+      aria-hidden="true"
+      className={className}
+    />
   )
 }
 
