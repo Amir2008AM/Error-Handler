@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Menu, X } from 'lucide-react'
+import { ToolIcon } from './tool-card'
 import { useI18n } from '@/lib/i18n/context'
 import { tools, type ToolCategory } from '@/lib/tools'
 import { Logo } from './logo'
@@ -116,9 +117,10 @@ export function Navbar() {
                             key={tool.slug}
                             href={`/${tool.slug}`}
                             role="menuitem"
-                            className="rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted hover:text-primary"
+                            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted hover:text-primary"
                             onClick={() => setOpenCategory(null)}
                           >
+                            <ToolIcon icon={tool.icon} className="h-4 w-4 shrink-0" />
                             {tool.name}
                           </Link>
                         ))}
@@ -202,8 +204,9 @@ export function Navbar() {
                             key={tool.slug}
                             href={`/${tool.slug}`}
                             onClick={closeMobileMenu}
-                            className="block min-h-10 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                            className="flex min-h-10 items-center gap-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                           >
+                            <ToolIcon icon={tool.icon} className="h-4 w-4 shrink-0" />
                             {tool.name}
                           </Link>
                         ))}

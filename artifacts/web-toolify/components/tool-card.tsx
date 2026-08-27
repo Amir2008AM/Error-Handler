@@ -45,6 +45,11 @@ interface ToolCardProps {
   compact?: boolean
 }
 
+export function ToolIcon({ icon, className }: { icon: string; className?: string }) {
+  const Icon = customIconMap[icon] ?? lucideIconMap[icon] ?? FileText
+  return <Icon className={className} aria-hidden="true" />
+}
+
 export function ToolCard({ tool, compact = false }: ToolCardProps) {
   const { t } = useI18n()
 
