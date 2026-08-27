@@ -16,7 +16,6 @@ import { customIconMap } from '@/components/tool-icons'
 
 const lucideIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
-  FilePen,
   Image,
   Minimize2,
   FilePlus2,
