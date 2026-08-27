@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  FileText, FilePen, Image, Minimize2, FilePlus2, Scissors,
+  FileText, Image, Minimize2, FilePlus2, Scissors,
   Expand, RefreshCw, Type, CaseSensitive, Percent,
   Calendar, AlignLeft, ArrowRightLeft, Calculator,
   ImageIcon, RotateCw, Droplets, Crop, Presentation,
