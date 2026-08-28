@@ -178,6 +178,22 @@ export const tools: Tool[] = [
     tags: ['pdf', 'unlock', 'remove password', 'decrypt'],
   },
 
+  {
+    id: 'sign-pdf',
+    name: 'Sign PDF',
+    description: 'Add signatures and form fields to PDF documents.',
+    longDescription:
+      'Sign PDF documents securely in your browser with drawn or typed signatures, dates, text fields, checkboxes, and a professional document workspace.',
+    category: 'PDF Tools',
+    slug: 'sign-pdf',
+    icon: 'PenLine',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    tags: ['pdf', 'sign', 'signature', 'esign', 'form fields'],
+    popular: true,
+    isNew: true,
+  },
+
   // ── Converters ─────────────────────────────────────────────────────────────
   // Pair: PDF to Word ↔ Word to PDF
   {
