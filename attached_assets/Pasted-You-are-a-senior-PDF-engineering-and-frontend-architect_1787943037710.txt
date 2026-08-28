@@ -1,0 +1,738 @@
+You are a senior PDF-engineering and frontend architecture expert.
+
+I have an existing PDF tools website built with a modern web stack. I want you to build a production-grade "Sign PDF" feature that will later be integrated into that existing website.
+
+IMPORTANT:
+This is NOT a request for a standalone website.
+This is NOT a visual mockup.
+This is NOT a toy/demo implementation.
+
+Build a real, modular PDF signing system that can be integrated into an existing production application.
+
+The implementation must prioritize:
+1. Reliability
+2. Exact PDF coordinate accuracy
+3. PDF rendering/export correctness
+4. Excellent user experience
+5. Performance
+6. Security/privacy
+7. Maintainability
+8. Extensibility
+
+==================================================
+1. FIRST: ANALYZE THE EXISTING PROJECT
+==================================================
+
+Before writing code:
+
+- Inspect the existing project structure if source code is provided.
+- Identify the framework, language, package manager, styling system, state management, and existing PDF libraries.
+- Reuse existing architecture and dependencies whenever practical.
+- Do NOT unnecessarily rewrite unrelated parts.
+- Do NOT replace working PDF infrastructure unless there is a strong technical reason.
+- Identify reusable components and utilities.
+- Follow the existing project's conventions.
+
+If the existing project is not provided, create the feature as a clean modular package/component system that can be integrated into a modern React/Next.js application.
+
+==================================================
+2. CORE OBJECTIVE
+==================================================
+
+Build a professional browser-based PDF signing engine.
+
+The user must be able to:
+
+- Upload a PDF
+- Open and preview the PDF
+- Navigate through pages
+- Zoom in/out
+- Create a signature
+- Place the signature on any page
+- Move the signature
+- Resize the signature
+- Rotate the signature
+- Delete the signature
+- Add multiple signatures
+- Add initials
+- Add date
+- Add name
+- Add text
+- Add checkbox fields
+- Undo
+- Redo
+- Export the final signed PDF
+- Download the resulting PDF
+
+The final PDF must be a real PDF.
+
+Do NOT simply convert the entire document into images and reconstruct a fake PDF unless absolutely unavoidable.
+
+==================================================
+3. SIGNATURE CREATION
+==================================================
+
+Implement three professional signature creation methods:
+
+A. DRAW
+
+Support:
+- Mouse
+- Touch
+- Stylus where available
+- Smooth strokes
+- Anti-aliasing
+- Undo
+- Clear
+- Save
+
+The drawing experience must feel natural.
+
+Avoid jagged or low-quality strokes.
+
+B. TYPE
+
+Allow the user to type their name and generate a signature-style appearance.
+
+Provide multiple elegant signature styles.
+
+The result should look like a professional signature, not a normal text label.
+
+C. UPLOAD
+
+Allow:
+- PNG
+- JPG/JPEG
+- WebP where practical
+
+Support:
+- Transparency
+- Automatic cropping of excessive whitespace
+- Safe simple background removal where technically reliable
+- Resize
+- Rotation
+- Preview
+
+Do not destroy signature quality unnecessarily.
+
+==================================================
+4. PDF VIEWER / RENDERING ARCHITECTURE
+==================================================
+
+Use a mature, reliable PDF rendering library.
+
+Do NOT build a PDF renderer from scratch.
+
+The viewer must support:
+
+- Multi-page PDFs
+- Page thumbnails
+- Page navigation
+- Zoom
+- Fit-to-page
+- Fit-to-width
+- Scroll
+- Portrait pages
+- Landscape pages
+- Rotated pages
+- Different page sizes
+- Responsive viewport sizes
+
+The editing layer must remain perfectly synchronized with the PDF rendering layer.
+
+==================================================
+5. CRITICAL: COORDINATE TRANSFORMATION SYSTEM
+==================================================
+
+This is one of the most important parts of the project.
+
+Create a robust coordinate abstraction.
+
+The system must correctly convert between:
+
+- PDF coordinates
+- Page coordinates
+- Viewer coordinates
+- Screen coordinates
+- Zoomed coordinates
+- Device-pixel coordinates
+- Export coordinates
+
+Handle:
+
+- Zoom
+- Scroll position
+- Responsive resizing
+- Device pixel ratio
+- Page rotation
+- Different page dimensions
+- Landscape orientation
+
+If a user places a signature at a specific location in the visual editor, the signature MUST appear at the same location in the exported PDF.
+
+Do not use fragile hard-coded pixel offsets.
+
+Do not assume every PDF page has the same dimensions.
+
+Create reusable coordinate transformation utilities with strong TypeScript types and automated tests.
+
+==================================================
+6. EDITABLE SIGNATURE OBJECT
+==================================================
+
+Treat every signature as a real editor object.
+
+Each object should have a model similar to:
+
+- unique id
+- type
+- page index
+- x
+- y
+- width
+- height
+- rotation
+- source
+- source dimensions
+- signer id where applicable
+- required/optional state
+- metadata where necessary
+
+The object must support:
+
+- Drag
+- Resize
+- Rotate
+- Duplicate
+- Delete
+- Selection
+- Deselection
+- Keyboard movement
+- Optional alignment guides
+- Optional snapping
+
+Dragging and resizing must remain smooth even at high zoom.
+
+==================================================
+7. FORM FIELDS
+==================================================
+
+Support:
+
+- Signature
+- Initials
+- Full name
+- Email
+- Date
+- Text
+- Checkbox
+
+Fields must support:
+
+- Add
+- Move
+- Resize
+- Edit
+- Duplicate
+- Delete
+- Required/optional
+- Selection
+
+Keep the visual design minimal and professional.
+
+==================================================
+8. UNDO / REDO ENGINE
+==================================================
+
+Build a proper document history system.
+
+Track meaningful changes such as:
+
+- Adding objects
+- Removing objects
+- Moving objects
+- Resizing objects
+- Rotating objects
+- Editing fields
+- Adding fields
+- Removing fields
+
+Undo and redo must be deterministic and reliable.
+
+Do not record irrelevant UI state changes as document history.
+
+==================================================
+9. PDF EXPORT ENGINE
+==================================================
+
+Use a mature PDF manipulation library.
+
+The export system must:
+
+- Load the original PDF
+- Preserve existing pages
+- Preserve page dimensions
+- Preserve page orientation
+- Preserve existing text
+- Preserve existing images
+- Preserve graphics
+- Overlay signatures and fields correctly
+- Maintain the intended signature size
+- Maintain the intended signature position
+- Respect page rotation
+- Produce a valid PDF
+- Avoid unnecessary rasterization
+- Avoid unnecessary quality loss
+
+The output filename should be similar to:
+
+original-name-signed.pdf
+
+Make sure the exported PDF opens correctly in standard PDF viewers.
+
+==================================================
+10. EXPORT POSITION VERIFICATION
+==================================================
+
+Do not assume export is correct just because the file generates successfully.
+
+Create automated tests that verify:
+
+- Signature page index
+- Signature x position
+- Signature y position
+- Signature width
+- Signature height
+- Rotation
+- Different page sizes
+- Different zoom levels
+- Rotated pages
+
+Include test cases specifically designed to detect coordinate drift.
+
+==================================================
+11. PRIVACY-FIRST ARCHITECTURE
+==================================================
+
+Prefer client-side processing whenever practical.
+
+Do NOT permanently store user documents.
+
+Do NOT log document contents.
+
+Do NOT send PDF files to third-party services unnecessarily.
+
+Do NOT transmit sensitive PDF information to analytics systems.
+
+If server-side processing is technically necessary:
+- minimize retention
+- clean temporary files
+- explain the requirement clearly
+- isolate document processing
+
+Never add a privacy claim that the implementation does not actually guarantee.
+
+==================================================
+12. SECURITY
+==================================================
+
+Treat uploaded PDFs as untrusted input.
+
+Implement appropriate protections including:
+
+- File extension validation
+- MIME/type validation
+- File size limits
+- Safe parsing
+- Input sanitization
+- XSS prevention
+- Safe temporary-file handling
+- Cleanup of temporary data
+- Protection of server-side endpoints if any
+- Safe error handling
+- No arbitrary code execution paths
+- No unsafe dynamic HTML
+
+Never trust the browser-reported MIME type alone.
+
+==================================================
+13. LEGAL / SIGNATURE ACCURACY
+==================================================
+
+IMPORTANT:
+
+Do NOT falsely claim that this feature provides a legally certified digital signature unless cryptographic certificate-based signing is actually implemented.
+
+Clearly distinguish:
+
+A. Visual/electronic signature placed into a PDF
+
+from:
+
+B. Cryptographically verifiable digital signature using certificates/PKI.
+
+Do not claim:
+- eIDAS compliance
+- ESIGN compliance
+- UETA compliance
+- certificate validation
+- identity verification
+- qualified digital signatures
+
+unless those capabilities are actually implemented and properly validated.
+
+Architect the code so certificate-based signing can be integrated later.
+
+==================================================
+14. MULTI-SIGNER ARCHITECTURE
+==================================================
+
+The current version should support one user signing a document.
+
+However, design the internal models so future versions can support:
+
+- Multiple signers
+- Signer identities
+- Multiple signing fields
+- Required fields
+- Optional fields
+- Signing status
+- Per-signer colors
+- Signing order
+
+Do not unnecessarily complicate the current user interface.
+
+==================================================
+15. PERFORMANCE
+==================================================
+
+Optimize for real PDFs.
+
+Support reasonably large multi-page files.
+
+Use techniques such as:
+
+- Lazy page rendering
+- Virtualization where appropriate
+- Web Workers where beneficial
+- Efficient canvas usage
+- Efficient state updates
+- Avoiding unnecessary re-renders
+- Debouncing expensive operations
+- Releasing object URLs
+- Proper event cleanup
+- Memory-aware rendering
+
+Dragging a signature should remain smooth.
+
+Zooming should remain smooth.
+
+Do not keep duplicate copies of massive PDF data in application state.
+
+==================================================
+16. UI / COMPONENT ARCHITECTURE
+==================================================
+
+Separate the product into logical components.
+
+For example:
+
+- PdfDocumentLoader
+- PdfViewer
+- PdfPage
+- PdfPageThumbnails
+- SignatureCreator
+- SignaturePad
+- TypedSignature
+- UploadedSignature
+- SignatureObject
+- FieldObject
+- EditorCanvas
+- PropertiesPanel
+- Toolbar
+- ZoomControls
+- PageControls
+- HistoryControls
+- ExportController
+
+Do not put the entire application into one massive component.
+
+Keep PDF logic separate from presentation logic.
+
+Keep coordinate utilities separate from UI components.
+
+Keep export logic separate from viewer logic.
+
+==================================================
+17. RESPONSIVE DESIGN
+==================================================
+
+Desktop:
+
+Left:
+- Page thumbnails/navigation
+
+Center:
+- PDF workspace
+
+Right:
+- Contextual tools/properties
+
+Top:
+- Main toolbar
+
+Mobile:
+
+Use:
+- Bottom sheets
+- Drawers
+- Compact toolbar
+- Touch-friendly controls
+
+Avoid:
+- Horizontal overflow
+- Tiny buttons
+- Impossible drag interactions
+
+==================================================
+18. ACCESSIBILITY
+==================================================
+
+Support:
+
+- Keyboard navigation
+- Visible focus states
+- Accessible labels
+- ARIA where appropriate
+- Good contrast
+- Large touch targets
+- Accessible dialogs
+- Reduced-motion preferences
+
+Do not sacrifice accessibility for visual appearance.
+
+==================================================
+19. INTERNATIONALIZATION
+==================================================
+
+Do not hard-code the architecture around one language.
+
+Prepare the UI for:
+
+- English
+- Arabic
+
+Arabic must support proper RTL behavior.
+
+Do not simply flip the entire UI mechanically.
+
+Make sure dialogs, panels, toolbars, icons, text alignment, spacing, and navigation behave correctly in RTL.
+
+==================================================
+20. DEPENDENCY RULES
+==================================================
+
+Before installing a package:
+
+- Check whether an existing dependency already provides the capability.
+- Prefer mature and actively maintained packages.
+- Avoid unnecessary dependencies.
+- Avoid abandoned libraries.
+- Do not create a huge dependency footprint.
+
+Use libraries for difficult PDF functionality instead of implementing complex PDF internals from scratch.
+
+==================================================
+21. ERROR HANDLING
+==================================================
+
+Handle gracefully:
+
+- Invalid PDF
+- Corrupted PDF
+- Unsupported file
+- Large file
+- Browser memory limitations
+- Rendering failures
+- Export failures
+- Invalid signatures
+- Unexpected PDF structures
+
+Show friendly user-facing error messages.
+
+Do not expose stack traces to users.
+
+Log technical details only where appropriate for debugging and never log sensitive document contents.
+
+==================================================
+22. TESTING
+==================================================
+
+Create real tests.
+
+At minimum, test:
+
+1. One-page PDF
+2. Multi-page PDF
+3. Large PDF
+4. Portrait page
+5. Landscape page
+6. Rotated page
+7. Different page sizes
+8. Drawn signature
+9. Typed signature
+10. Uploaded signature
+11. Multiple signatures
+12. Drag
+13. Resize
+14. Rotate
+15. Undo
+16. Redo
+17. Export
+18. Coordinate conversion
+19. Zoomed placement
+20. Responsive resize
+21. Mobile/touch placement
+
+Most importantly:
+
+Verify that a signature placed in the viewer appears in the correct position in the exported PDF.
+
+==================================================
+23. NO FAKE FEATURES
+==================================================
+
+NEVER:
+
+- Create fake backend functionality
+- Create fake APIs
+- Create fake certificates
+- Create fake security claims
+- Create fake compliance claims
+- Create fake integrations
+- Use placeholders for core functionality
+- Pretend an unsupported capability works
+- Add fake testimonials or trust badges
+
+Every visible feature must actually function.
+
+==================================================
+24. CODE QUALITY
+==================================================
+
+Use:
+
+- TypeScript
+- Strong types
+- Clear interfaces
+- Reusable utilities
+- Sensible naming
+- Small focused modules
+- Error boundaries where appropriate
+- Good comments only where useful
+
+Avoid:
+
+- giant functions
+- giant components
+- duplicated logic
+- unexplained magic numbers
+- fragile DOM hacks
+- hard-coded coordinate offsets
+
+==================================================
+25. DELIVERABLES
+==================================================
+
+Provide:
+
+1. Complete file tree
+2. All required source files
+3. All required dependency changes
+4. Configuration changes
+5. Environment variables ONLY if truly required
+6. Database changes ONLY if truly required
+7. Integration instructions
+8. Testing instructions
+9. Explanation of architecture
+10. Explanation of coordinate transformation system
+11. Explanation of PDF rendering
+12. Explanation of PDF export
+13. Security/privacy explanation
+14. Known limitations
+15. Future path for certificate-based digital signatures
+
+Do not omit required files.
+
+Do not give pseudo-code for core functionality.
+
+Do not say "implement this later" for required functionality.
+
+==================================================
+26. INTEGRATION REQUIREMENTS
+==================================================
+
+The final result must be easy to integrate into an existing PDF tools website.
+
+Create a clean entry point such as:
+
+SignPdfTool
+
+or an equivalent modular feature.
+
+The feature should not require rewriting the entire application.
+
+Avoid global changes unless absolutely necessary.
+
+Clearly document:
+
+- which files belong to the feature
+- which dependencies are required
+- which existing components are expected
+- what can be copied directly
+- what must be adapted to the host project
+
+==================================================
+27. IMPORTANT OUTPUT FORMAT
+==================================================
+
+When you finish:
+
+First provide the architecture and file tree.
+
+Then provide the implementation files.
+
+For every file, clearly show its path.
+
+Do not skip important files.
+
+After the code, provide integration instructions.
+
+Then provide the test plan.
+
+Then provide known limitations.
+
+Do not stop at a conceptual answer.
+
+==================================================
+28. FINAL QUALITY STANDARD
+==================================================
+
+The result should feel like a serious modern PDF signing engine, not a beginner project.
+
+Prioritize technical correctness over flashy features.
+
+The most important success criteria are:
+
+1. Accurate PDF rendering
+2. Accurate signature placement
+3. Accurate coordinate conversion
+4. Correct PDF export
+5. Good performance
+6. Reliable undo/redo
+7. Clean architecture
+8. Security
+9. Privacy
+10. Excellent user experience
+
+Build the system so that it can realistically become a production feature of a professional PDF tools platform.
