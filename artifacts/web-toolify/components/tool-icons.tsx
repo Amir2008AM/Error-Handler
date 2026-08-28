@@ -260,6 +260,22 @@ export function PptToPdfAssetIcon({ className }: IconProps) {
   return <UploadedToolIcon asset="ppt-to-pdf" className={className} />
 }
 
+export function PdfToJpgAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="pdf-to-jpg" className={className} />
+}
+
+export function ImageToPdfAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="image-to-pdf" className={className} />
+}
+
+export function ConvertImageAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="convert-image" className={className} />
+}
+
+export function HtmlToPdfAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="html-to-pdf" className={className} />
+}
+
 /** Word → PDF: W badge + page */
 export function WordToPdfIcon({ className }: IconProps) {
   return (
@@ -420,6 +436,10 @@ export const customIconMap: Record<string, React.ComponentType<{ className?: str
   PdfToExcelAsset: PdfToExcelAssetIcon,
   PdfToPptAsset: PdfToPptAssetIcon,
   PptToPdfAsset: PptToPdfAssetIcon,
+  PdfToJpgAsset: PdfToJpgAssetIcon,
+  ImageToPdfAsset: ImageToPdfAssetIcon,
+  ConvertImageAsset: ConvertImageAssetIcon,
+  HtmlToPdfAsset: HtmlToPdfAssetIcon,
   MergePdf:    MergePdfIcon,
   SplitPdf:    SplitPdfIcon,
   CompressPdf: CompressPdfIcon,
