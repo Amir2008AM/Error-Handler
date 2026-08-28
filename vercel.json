@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/web-toolify build"
+  "buildCommand": "pnpm --filter @workspace/web-toolify build",
+  "outputDirectory": "artifacts/web-toolify/.next"
 }
