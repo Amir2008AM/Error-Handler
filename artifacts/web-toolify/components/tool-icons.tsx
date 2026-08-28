@@ -216,12 +216,48 @@ export function UnlockPdfIcon({ className }: IconProps) {
 export function PdfToWordIcon({ className }: IconProps) {
   return (
     <img
-      src="/icons/pdf-to-word.svg"
+      src="/icons/toolify/pdf-to-word.svg"
       alt=""
       aria-hidden="true"
       className={className}
     />
   )
+}
+
+/** Uploaded branded artwork for the remaining high-traffic PDF tools. */
+function UploadedToolIcon({ asset, className }: IconProps & { asset: string }) {
+  return (
+    <img
+      src={`/icons/toolify/${asset}.svg`}
+      alt=""
+      aria-hidden="true"
+      className={className}
+    />
+  )
+}
+
+export function MergePdfAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="merge-pdf" className={className} />
+}
+
+export function SplitPdfAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="split-pdf" className={className} />
+}
+
+export function CompressPdfAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="compress-pdf" className={className} />
+}
+
+export function PdfToExcelAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="pdf-to-excel" className={className} />
+}
+
+export function PdfToPptAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="pdf-to-ppt" className={className} />
+}
+
+export function PptToPdfAssetIcon({ className }: IconProps) {
+  return <UploadedToolIcon asset="ppt-to-pdf" className={className} />
 }
 
 /** Word → PDF: W badge + page */
@@ -378,6 +414,12 @@ export function PdfToPptIcon({ className }: IconProps) {
 
 /* ─── Icon Registry ─────────────────────────────────────────────────────── */
 export const customIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  MergePdfAsset: MergePdfAssetIcon,
+  SplitPdfAsset: SplitPdfAssetIcon,
+  CompressPdfAsset: CompressPdfAssetIcon,
+  PdfToExcelAsset: PdfToExcelAssetIcon,
+  PdfToPptAsset: PdfToPptAssetIcon,
+  PptToPdfAsset: PptToPdfAssetIcon,
   MergePdf:    MergePdfIcon,
   SplitPdf:    SplitPdfIcon,
   CompressPdf: CompressPdfIcon,
