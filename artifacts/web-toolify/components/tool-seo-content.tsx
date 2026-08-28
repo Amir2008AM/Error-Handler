@@ -627,6 +627,27 @@ const DATA: Record<string, ToolSeoData> = {
     ],
   },
 
+  'sign-pdf': {
+    about: 'Sign PDF documents online for free with ToolifyPDF. Create a visual electronic signature by drawing, typing, or uploading an image, then place it precisely on any page. Add initials, dates, text, and checkboxes before downloading a real PDF with the original document content preserved. Signing happens in your browser and no account is required.',
+    steps: [
+      { title: 'Upload Your PDF',       desc: 'Choose a PDF from your device or drag it into the signing workspace.' },
+      { title: 'Create and Place Your Signature', desc: 'Draw, type, or upload a signature, then drag and resize it on the correct page. Add initials, dates, text, or checkboxes as needed.' },
+      { title: 'Download the Signed PDF', desc: 'Review the document and download a signed PDF with your original pages and content intact.' },
+    ],
+    features: [
+      { title: 'Three Signature Methods', desc: 'Draw a handwritten signature, type a script-style signature, or upload a PNG/JPG signature image.' },
+      { title: 'Precise Placement', desc: 'Move, resize, rotate, duplicate, and delete signature objects on any page.' },
+      { title: 'Signing Fields', desc: 'Add initials, dates, text fields, and checkboxes to complete common documents.' },
+      { title: 'Private Browser Processing', desc: 'The PDF is opened and edited locally in your browser instead of being sent to a signing service.' },
+    ],
+    faqs: [
+      { q: 'Is this a certificate-based digital signature?', a: 'No. ToolifyPDF adds a visual electronic signature to the document. It does not provide certificate-based, legally certified, or qualified digital signatures.' },
+      { q: 'Can I sign more than one page?', a: 'Yes. Use the page thumbnails to move between pages and place multiple signatures or initials wherever they are needed.' },
+      { q: 'Can I type or upload my signature?', a: 'Yes. The signature dialog supports drawing, several script-style typed signatures, and uploaded image signatures.' },
+      { q: 'Does my PDF leave my device?', a: 'The Sign PDF editor processes the document in your browser. The file is not sent to the site for signing.' },
+    ],
+  },
+
   'delete-pages': {
     about: 'Delete specific pages from a PDF online for free with ToolifyPDF\'s Delete Pages tool. Toolify lets you remove one or more pages from any PDF document without affecting the rest of the content. Just upload your PDF, select the pages you want to delete, and download the clean result instantly. No software installation and no account required.',
     steps: [

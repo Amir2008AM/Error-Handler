@@ -14,7 +14,7 @@ import {
   Sliders, RotateCcw,
   Bold, Italic, Underline as UnderlineIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Baseline,
+  Baseline, Calendar,
 } from 'lucide-react'
 import { PDFDocument, degrees } from 'pdf-lib'
 import { cn } from '@/lib/utils'
@@ -48,12 +48,13 @@ function EditTextIcon({ size = 18 }: { size?: number }) {
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type EditorTool =
-  | 'select' | 'text' | 'editText' | 'image' | 'draw' | 'highlight' | 'eraser' | 'lasso' | 'signature'
+  | 'select' | 'text' | 'editText' | 'image' | 'draw' | 'highlight' | 'eraser' | 'lasso' | 'signature' | 'date'
   | 'rect' | 'ellipse' | 'line' | 'arrow'
   | 'sticky' | 'comment'
   | 'form-text' | 'form-check' | 'form-radio' | 'form-dropdown'
 
 type SigTab = 'draw' | 'type' | 'upload'
+type SignatureKind = 'signature' | 'initials'
 
 // ─── Lasso helper ──────────────────────────────────────────────────────────────
 function ptInPoly(px: number, py: number, poly: {x:number;y:number}[]): boolean {
@@ -70,7 +71,7 @@ type PdfTextItem = {
   str: string; x: number; y: number; w: number; h: number; fontSize: number
 }
 type PageErasure  = { x: number; y: number; w: number; h: number; bgColor: string }
-type SigResult = { dataURL: string; text?: string; font?: string; tab: SigTab }
+type SigResult = { dataURL: string; text?: string; font?: string; tab: SigTab; kind?: SignatureKind }
 
 // ─── Canvas helpers for text erasure ──────────────────────────────────────────
 
@@ -212,9 +213,11 @@ function dataURLtoBytes(dataURL: string): Uint8Array {
 function SignatureModal({
   onUse,
   onClose,
+  kind = 'signature',
 }: {
   onUse: (result: SigResult) => void
   onClose: () => void
+  kind?: SignatureKind
 }) {
   const [tab, setTab] = useState<SigTab>('draw')
   const [typedSig, setTypedSig] = useState('')
@@ -276,7 +279,7 @@ function SignatureModal({
       const fc = sigFabricRef.current
       if (!fc) return
       if (fc.getObjects().length === 0) return
-      onUse({ dataURL: fc.toDataURL({ format: 'png', multiplier: 4 }), tab: 'draw' })
+      onUse({ dataURL: fc.toDataURL({ format: 'png', multiplier: 4 }), tab: 'draw', kind })
     } else if (tab === 'type') {
       if (!typedSig.trim()) return
       const dpr = window.devicePixelRatio || 2
@@ -289,11 +292,11 @@ function SignatureModal({
       ctx.font = `62px "${sigFont}", cursive`
       ctx.textBaseline = 'middle'
       ctx.fillText(typedSig, 16, 70)
-      onUse({ dataURL: tmp.toDataURL('image/png'), text: typedSig, font: sigFont, tab: 'type' })
+      onUse({ dataURL: tmp.toDataURL('image/png'), text: typedSig, font: sigFont, tab: 'type', kind })
     } else if (tab === 'upload' && uploadPreview) {
-      onUse({ dataURL: uploadPreview, tab: 'upload' })
+      onUse({ dataURL: uploadPreview, tab: 'upload', kind })
     }
-  }, [tab, typedSig, sigFont, uploadPreview, onUse])
+  }, [tab, typedSig, sigFont, uploadPreview, onUse, kind])
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -310,7 +313,9 @@ function SignatureModal({
       />
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[440px]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">Add Signature</h3>
+          <h3 className="font-semibold text-gray-900">
+            Add {kind === 'initials' ? 'Initials' : 'Signature'}
+          </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={20} /></button>
         </div>
         <div className="flex border-b border-gray-100">
@@ -325,7 +330,9 @@ function SignatureModal({
         <div className="p-5 space-y-3">
           {tab === 'draw' && (
             <>
-              <p className="text-xs text-gray-400">Draw your signature below</p>
+              <p className="text-xs text-gray-400">
+                Draw your {kind === 'initials' ? 'initials' : 'signature'} below
+              </p>
               <div className="rounded-xl overflow-hidden bg-white" style={{ boxShadow: 'inset 0 0 0 1px #e2e8f0' }}>
                 <canvas ref={sigCanvasRef} style={{ touchAction: 'none', display: 'block' }} />
               </div>
@@ -336,12 +343,18 @@ function SignatureModal({
           {tab === 'type' && (
             <>
               <input type="text" value={typedSig} onChange={(e) => setTypedSig(e.target.value)}
-                placeholder="Write your signature…"
+                placeholder={`Write your ${kind === 'initials' ? 'initials' : 'signature'}…`}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               />
               <div className="rounded-xl px-4 py-3 min-h-[70px] flex items-center bg-white"
                 style={{ fontFamily: `"${sigFont}", cursive`, fontSize: 38, boxShadow: 'inset 0 0 0 1px #e2e8f0' }}>
-                <span className="text-gray-800">{typedSig || <span className="text-gray-300 text-2xl" style={{ fontFamily: 'inherit' }}>Your signature</span>}</span>
+                <span className="text-gray-800">
+                  {typedSig || (
+                    <span className="text-gray-300 text-2xl" style={{ fontFamily: 'inherit' }}>
+                      Your {kind === 'initials' ? 'initials' : 'signature'}
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="grid grid-cols-3 gap-1.5">
                 {['Dancing Script','Great Vibes','Pinyon Script','Sacramento','Parisienne','Alex Brush','Satisfy','Kaushan Script','Caveat'].map((f) => (
@@ -381,7 +394,7 @@ function SignatureModal({
           <button onClick={handleUse}
             disabled={(tab === 'draw' && !hasDrawing) || (tab === 'type' && !typedSig.trim()) || (tab === 'upload' && !uploadPreview)}
             className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
-          >Use Signature</button>
+          >Use {kind === 'initials' ? 'Initials' : 'Signature'}</button>
         </div>
       </div>
     </div>
@@ -390,7 +403,8 @@ function SignatureModal({
 
 // ─── Main Editor Component ──────────────────────────────────────────────────────
 
-export function PdfEditorClient() {
+export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = {}) {
+  const isSignMode = mode === 'sign'
   // ── Phase ──────────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<'upload' | 'editor'>('upload')
   const [isDragOver, setIsDragOver] = useState(false)
@@ -415,6 +429,7 @@ export function PdfEditorClient() {
   const [brushColor, setBrushColor] = useState('#3b82f6')
   const [brushSize, setBrushSize] = useState(4)
   const [showSignatureModal, setShowSignatureModal] = useState(false)
+  const [signatureKind, setSignatureKind] = useState<SignatureKind>('signature')
 
   // ── Drawing presets (per pen/hl type) ─────────────────────────────────────
   const [activePenType,  setActivePenType]  = useState<PenType>('pen')
@@ -633,6 +648,30 @@ export function PdfEditorClient() {
           fontSize: textSizeRef.current, fill: textColorRef.current,
           fontFamily: 'Helvetica, Arial, sans-serif', editable: true,
         })
+        fc.add(txt)
+        fc.setActiveObject(txt)
+        txt.enterEditing?.()
+        txt.selectAll?.()
+        fc.renderAll()
+        setTool('select')
+      })
+    })
+
+    // ── Date field ───────────────────────────────────────────────────────────
+    fc.on('mouse:down', (opt: any) => {
+      if (toolRef.current !== 'date' || opt.target) return
+      const pointer = opt.scenePoint ?? fc.getScenePoint?.(opt.e) ?? { x: opt.pointer?.x ?? 0, y: opt.pointer?.y ?? 0 }
+      import('fabric').then(({ IText }) => {
+        const date = new Intl.DateTimeFormat('en-CA').format(new Date())
+        const txt = new IText(date, {
+          left: pointer.x,
+          top: pointer.y,
+          fontSize: 14,
+          fill: textColorRef.current,
+          fontFamily: 'Helvetica, Arial, sans-serif',
+          editable: true,
+          data: { fieldType: 'date' },
+        } as any)
         fc.add(txt)
         fc.setActiveObject(txt)
         txt.enterEditing?.()
@@ -1145,7 +1184,7 @@ export function PdfEditorClient() {
       fc.isDrawingMode = (tool === 'draw' || tool === 'highlight')
       fc.selection     = (tool === 'select')
       fc.defaultCursor = isShape || isStickyOrComment || isForm
-        || tool === 'text' || tool === 'editText' || tool === 'eraser' || tool === 'lasso'
+        || tool === 'text' || tool === 'date' || tool === 'editText' || tool === 'eraser' || tool === 'lasso'
         ? 'crosshair' : 'default'
 
       if (fc.isDrawingMode) {
@@ -1288,7 +1327,13 @@ export function PdfEditorClient() {
         img.scale(scale)
         img.set({
           left: 60, top: 80,
-          data: { isSignature: true, text: result.text ?? '', font: result.font ?? '', tab: result.tab },
+          data: {
+            isSignature: true,
+            signatureKind: result.kind ?? 'signature',
+            text: result.text ?? '',
+            font: result.font ?? '',
+            tab: result.tab,
+          },
         })
         fc.add(img); fc.setActiveObject(img); fc.renderAll()
         setTool('select')
@@ -1378,13 +1423,13 @@ export function PdfEditorClient() {
       setPdfDocProxy(doc); setTotalPages(doc.numPages)
       setPageOrder(Array.from({ length: doc.numPages }, (_, i) => i + 1))
       setCurrentPage(1); currentPageRef.current = 1; setFileBytes(bytes)
-      setFileName(name.replace(/\.pdf$/i, '') + '-edited.pdf'); setZoom(1.0); setPhase('editor')
+      setFileName(name.replace(/\.pdf$/i, '') + (isSignMode ? '-signed.pdf' : '-edited.pdf')); setZoom(1.0); setPhase('editor')
     } catch {
       setLoadError('Could not open this PDF. The file may be corrupted or encrypted.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isSignMode])
 
   const handleFile = useCallback(async (file: File) => {
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
@@ -1431,8 +1476,45 @@ export function PdfEditorClient() {
               paintErasures(mergeEl, pageErasuresRef.current[origPageNum] ?? [], 1)
             }
 
-            if (hasAnnotations) {
-              // Render Fabric annotations to a separate canvas, then composite on top
+            const pw = copied.getWidth(); const ph = copied.getHeight()
+            if (hasAnnotations && isSignMode && !hasErasures) {
+              // Signatures and signing fields are transparent overlays. Render
+              // each object separately so the original PDF stays vector/text
+              // based instead of being flattened into a page-sized screenshot.
+              const { Canvas } = await import('fabric')
+              for (const objectJSON of (pageJSON?.objects ?? []) as any[]) {
+                const annEl = document.createElement('canvas')
+                annEl.width = W
+                annEl.height = H
+                const tmpFc = new Canvas(annEl, {
+                  width: W,
+                  height: H,
+                  backgroundColor: undefined as any,
+                  enableRetinaScaling: false,
+                })
+                try {
+                  await tmpFc.loadFromJSON({
+                    version: pageJSON?.version,
+                    objects: [objectJSON],
+                  })
+                  tmpFc.renderAll()
+                  const embedded = await outDoc.embedPng(
+                    dataURLtoBytes(annEl.toDataURL('image/png')),
+                  )
+                  copied.drawImage(embedded, {
+                    x: 0,
+                    y: 0,
+                    width: pw,
+                    height: ph,
+                    opacity: 1,
+                  })
+                } finally {
+                  tmpFc.dispose()
+                }
+              }
+            } else if (hasAnnotations) {
+              // The general editor still supports erasing existing PDF pixels
+              // and exporting the complete rendered page when needed.
               const annEl = document.createElement('canvas')
               annEl.width = W; annEl.height = H
               const { Canvas } = await import('fabric')
@@ -1443,11 +1525,12 @@ export function PdfEditorClient() {
               tmpFc.dispose()
             }
 
-            const pngDataURL = mergeEl.toDataURL('image/png')
-            const pngBytes   = dataURLtoBytes(pngDataURL)
-            const embedded   = await outDoc.embedPng(pngBytes)
-            const pw = copied.getWidth(); const ph = copied.getHeight()
-            copied.drawImage(embedded, { x: 0, y: 0, width: pw, height: ph, opacity: 1 })
+            if (hasErasures || (!isSignMode && hasAnnotations)) {
+              const pngDataURL = mergeEl.toDataURL('image/png')
+              const pngBytes   = dataURLtoBytes(pngDataURL)
+              const embedded   = await outDoc.embedPng(pngBytes)
+              copied.drawImage(embedded, { x: 0, y: 0, width: pw, height: ph, opacity: 1 })
+            }
           } catch (err) { console.warn('Annotation embed error:', err) }
         }
         outDoc.addPage(copied)
@@ -1476,7 +1559,7 @@ export function PdfEditorClient() {
     } finally {
       setIsSaving(false)
     }
-  }, [fileBytes, pdfDocProxy, pageOrder, pageRotations, fileName, zoom, saveCurrentAnnotations, compressOnDownload, compressionLevel])
+  }, [fileBytes, pdfDocProxy, pageOrder, pageRotations, fileName, zoom, saveCurrentAnnotations, compressOnDownload, compressionLevel, isSignMode])
 
   // ── Reset ──────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
@@ -1757,7 +1840,14 @@ export function PdfEditorClient() {
           <ToolBtn id="eraser"    icon={<Eraser size={16} />}        label="Eraser" />
           <ToolBtn id="lasso"     icon={<Spline size={16} />}        label="Lasso Select" />
           <ToolBtn id="signature" icon={<PenSquare size={16} />}     label="Signature"
-            onClick={() => setShowSignatureModal(true)} />
+            onClick={() => { setSignatureKind('signature'); setShowSignatureModal(true) }} />
+          {isSignMode && (
+            <>
+              <ToolBtn id="signature" icon={<Baseline size={16} />} label="Initials"
+                onClick={() => { setSignatureKind('initials'); setShowSignatureModal(true) }} />
+              <ToolBtn id="date" icon={<Calendar size={16} />} label="Date field" />
+            </>
+          )}
           <ToolBtn id="image"     icon={<ImageIcon size={16} />}     label="Insert Image"
             onClick={() => imageInputRef.current?.click()} />
         </div>
@@ -2261,7 +2351,13 @@ export function PdfEditorClient() {
       <input ref={imageInputRef} type="file" accept="image/*" className="sr-only"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }} />
 
-      {showSignatureModal && <SignatureModal onUse={handleUseSignature} onClose={() => setShowSignatureModal(false)} />}
+      {showSignatureModal && (
+        <SignatureModal
+          kind={signatureKind}
+          onUse={handleUseSignature}
+          onClose={() => setShowSignatureModal(false)}
+        />
+      )}
     </div>
   )
 }

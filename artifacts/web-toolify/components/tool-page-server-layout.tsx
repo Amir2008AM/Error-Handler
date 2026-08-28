@@ -52,10 +52,10 @@ const TRUST_BADGES = [
 type Props = (
   | { tool: Tool; toolId?: never; title?: string; description?: never }
   | { toolId: string; title?: string; description?: string; tool?: never }
-) & { children: React.ReactNode }
+) & { children: React.ReactNode; trustBadgeLabels?: string[] }
 
 export function ToolPageServerLayout(props: Props) {
-  const { children } = props
+  const { children, trustBadgeLabels } = props
 
   const resolvedTool: Tool | undefined =
     'tool' in props && props.tool
@@ -162,13 +162,13 @@ export function ToolPageServerLayout(props: Props) {
 
           {/* Trust badges */}
           <div className="flex flex-wrap gap-4 mt-5" aria-label="Features">
-            {TRUST_BADGES.map(({ icon: BadgeIcon, label }) => (
+            {TRUST_BADGES.map(({ icon: BadgeIcon, label }, index) => (
               <div
                 key={label}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/70 px-3 py-1.5 rounded-full"
               >
                 <BadgeIcon className="w-3 h-3" aria-hidden="true" />
-                {label}
+                {trustBadgeLabels?.[index] ?? label}
               </div>
             ))}
           </div>

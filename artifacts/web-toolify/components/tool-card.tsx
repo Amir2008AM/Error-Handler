@@ -6,7 +6,7 @@ import {
   Expand, RefreshCw, Type, CaseSensitive, Percent,
   Calendar, AlignLeft, ArrowRightLeft, Calculator,
   ImageIcon, RotateCw, Droplets, Crop, Presentation,
-  Shield, LockOpen, ScanText, FileCode,
+  Shield, LockOpen, PenTool, ScanText, FileCode,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Tool } from '@/lib/tools'
@@ -36,6 +36,7 @@ const lucideIconMap: Record<string, React.ComponentType<{ className?: string }>>
   Presentation,
   Shield,
   LockOpen,
+  PenTool,
   ScanText,
   FileCode,
 }

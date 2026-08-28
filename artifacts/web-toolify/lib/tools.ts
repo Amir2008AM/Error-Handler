@@ -177,6 +177,21 @@ export const tools: Tool[] = [
     bgColor: 'bg-green-50',
     tags: ['pdf', 'unlock', 'remove password', 'decrypt'],
   },
+  {
+    id: 'sign-pdf',
+    name: 'Sign PDF',
+    description: 'Add a signature, initials, and signing fields to a PDF.',
+    longDescription:
+      'Sign PDF documents online with a drawn, typed, or uploaded signature. Place initials, dates, text, checkboxes, and other signing elements precisely on any page, then download the signed PDF.',
+    category: 'Security Tools',
+    slug: 'sign-pdf',
+    icon: 'PenTool',
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    tags: ['pdf', 'sign', 'signature', 'esign', 'initials', 'form'],
+    popular: true,
+    isNew: true,
+  },
 
   // ── Converters ─────────────────────────────────────────────────────────────
   // Pair: PDF to Word ↔ Word to PDF

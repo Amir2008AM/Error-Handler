@@ -1,0 +1,1163 @@
+You are working on an existing production PDF tools website.
+
+Your task is to completely audit, repair, upgrade, and finish the existing "Sign PDF" tool and integrate it properly into the website.
+
+THIS IS NOT A REQUEST TO CREATE A BASIC DEMO.
+
+I want a world-class, production-quality PDF signing experience with a premium editor, extremely accurate PDF rendering/export, excellent interaction design, strong performance, responsive behavior, and a polished professional interface.
+
+The most important rule:
+
+DO NOT START BY ADDING FEATURES.
+
+FIRST inspect the current project, understand the architecture, find the existing Sign PDF implementation, verify whether the route/page/component is correctly connected, verify whether the tool is linked from the homepage, verify whether all imports/dependencies work, and identify why the current implementation is not appearing or not functioning correctly.
+
+Only after the existing implementation is verified and stabilized should you upgrade it.
+
+==================================================
+PHASE 1 — FULL EXISTING PROJECT AUDIT
+==================================================
+
+Before changing anything:
+
+1. Inspect the entire relevant project structure.
+2. Identify:
+   - framework
+   - React/Next.js structure if applicable
+   - routing
+   - styling system
+   - component architecture
+   - existing PDF libraries
+   - upload implementation
+   - download/export implementation
+   - shared tool components
+   - homepage tool registry/list
+   - navigation
+   - SEO metadata system
+   - localization system
+   - dark/light mode system
+3. Locate the current Sign PDF page/tool.
+4. Determine why it is:
+   - not visible on the homepage
+   - not reachable through the expected tool route
+   - not functioning correctly
+   - or not rendering correctly
+5. Check for:
+   - broken imports
+   - incorrect routes
+   - missing exports
+   - missing dependencies
+   - runtime errors
+   - hydration issues
+   - client/server component problems
+   - CSS/layout conflicts
+   - browser-only APIs being executed server-side
+   - PDF worker configuration problems
+   - canvas problems
+   - malformed state management
+   - broken file handling
+
+DO NOT rewrite unrelated existing tools.
+
+DO NOT remove working features.
+
+DO NOT damage existing homepage behavior.
+
+==================================================
+PHASE 2 — FIX THE TOOL INTEGRATION FIRST
+==================================================
+
+Before building advanced features, guarantee that the tool is properly integrated.
+
+The final tool MUST:
+
+- Have a valid route.
+- Be reachable directly.
+- Be linked from the homepage.
+- Use the same tool-card structure as the rest of the site.
+- Use the correct tool name.
+- Use the correct icon/logo system.
+- Appear in the appropriate homepage tools section.
+- Follow the existing site's design language.
+- Have proper SEO metadata.
+- Have proper title and description.
+- Have proper canonical handling if the project uses canonical URLs.
+- Work through direct URL navigation.
+- Work through internal navigation.
+- Not produce runtime errors.
+- Not produce console errors.
+- Not produce broken hydration.
+- Not display an empty screen.
+
+IMPORTANT:
+
+Do not consider the task complete until I can:
+Homepage → click Sign PDF → open the tool → upload a PDF → use the editor → export the signed PDF.
+
+==================================================
+PHASE 3 — PDF ENGINE STRATEGY
+==================================================
+
+Use the best technically appropriate PDF architecture for this existing project.
+
+Do NOT invent a PDF engine from scratch.
+
+First inspect the currently installed libraries.
+
+If existing PDF libraries are suitable, use them.
+
+If the current architecture is weak, choose mature PDF technologies appropriate for each responsibility.
+
+Use a dedicated PDF rendering/viewing layer and a proper PDF manipulation/export layer.
+
+Potential architecture may use technologies such as:
+
+- PDF.js / pdfjs-dist for reliable browser PDF parsing/rendering
+- pdf-lib for modifying existing PDFs and embedding images/text
+- signature_pad or an equivalent mature signature drawing library for smooth signature capture
+- a commercial-grade PDF SDK ONLY if the project already has a valid license and its use is appropriate
+
+Do not blindly install every library.
+
+Evaluate the current project first.
+
+The key requirement is that the final architecture must be reliable, maintainable, performant, and accurate.
+
+==================================================
+PHASE 4 — PDF VIEWER
+==================================================
+
+Build a premium PDF viewing/editor experience.
+
+The viewer must support:
+
+- multi-page PDFs
+- page thumbnails
+- page navigation
+- current page indicator
+- previous/next page
+- page jump
+- zoom in
+- zoom out
+- fit to page
+- fit to width
+- reset zoom
+- custom zoom percentage
+- smooth scrolling
+- responsive resizing
+- portrait pages
+- landscape pages
+- rotated pages
+- different page sizes
+- high-DPI rendering
+- high-quality preview
+- touch interaction
+- mobile interaction
+- keyboard shortcuts where appropriate
+
+The PDF preview should look crisp.
+
+Avoid blurry rendering caused by rendering at the wrong canvas scale.
+
+Correctly account for devicePixelRatio and rendering resolution.
+
+Do not render unnecessary high-resolution pages simultaneously if that creates performance problems.
+
+Use intelligent lazy rendering/virtualization where appropriate.
+
+==================================================
+PHASE 5 — CRITICAL COORDINATE ENGINE
+==================================================
+
+This is one of the most important requirements.
+
+Create a robust coordinate transformation system between:
+
+- PDF page coordinate space
+- rendered page coordinate space
+- viewport coordinate space
+- DOM coordinate space
+- screen coordinates
+- zoomed coordinates
+- device-pixel coordinates
+
+Correctly account for:
+
+- page width
+- page height
+- zoom
+- scroll
+- CSS scaling
+- device pixel ratio
+- page rotation
+- responsive resizing
+- different PDF page dimensions
+
+The signature shown in the editor MUST appear at the exact intended location in the exported PDF.
+
+There must be no:
+
+- coordinate drift
+- scaling drift
+- vertical offset
+- horizontal offset
+- rotation mismatch
+- size mismatch
+
+Test this at:
+- 50% zoom
+- 75%
+- 100%
+- 125%
+- 150%
+- 200%
+- custom zoom values
+- mobile widths
+- desktop widths
+- rotated pages
+- landscape pages
+
+==================================================
+PHASE 6 — SIGNATURE CREATION
+==================================================
+
+Create a premium signature creation experience.
+
+Three modes:
+
+1. DRAW
+2. TYPE
+3. UPLOAD
+
+DRAW:
+
+- mouse support
+- touch support
+- stylus support where possible
+- smooth strokes
+- high-DPI support
+- natural stroke interpolation
+- variable stroke width where appropriate
+- undo
+- redo
+- clear
+- restart
+- preview
+- save
+
+Do not create a cheap-looking signature pad.
+
+Use a mature smoothing approach for handwritten strokes.
+
+TYPE:
+
+Allow the user to type their name.
+
+Provide multiple professional signature fonts/styles.
+
+At least 8–12 visually distinct signature styles if the licensing of the fonts permits it.
+
+Allow:
+- font selection
+- font preview
+- font size
+- letter spacing where useful
+- italic/script variations
+- alignment
+- color
+
+Do not use unlicensed commercial fonts.
+
+Use fonts with appropriate licenses.
+
+UPLOAD:
+
+Support:
+- PNG
+- JPG/JPEG
+- WebP where appropriate
+
+Support:
+- transparency
+- cropping
+- whitespace trimming
+- preview
+- resize
+- rotation
+
+If background removal is implemented, it must be conservative and must not damage the signature.
+
+==================================================
+PHASE 7 — SIGNATURE EDITOR
+==================================================
+
+Once the signature is placed on the PDF, treat it as a true editor object.
+
+Support:
+
+- drag
+- resize
+- rotate
+- duplicate
+- delete
+- copy/paste where practical
+- keyboard movement
+- precision movement
+- selection
+- deselection
+- alignment
+- snapping where appropriate
+- lock/unlock position
+- bring forward/backward if layered elements are supported
+
+Provide professional resize handles.
+
+Use smooth interaction.
+
+Do not allow the signature to become distorted unintentionally.
+
+Preserve aspect ratio by default.
+
+Allow deliberate proportional changes only if appropriate.
+
+==================================================
+PHASE 8 — COLOR CONTROLS
+==================================================
+
+Provide professional color controls.
+
+The user should be able to control:
+
+- signature color
+- text color
+- field color where appropriate
+- opacity where appropriate
+
+Provide:
+- preset colors
+- custom color picker
+- HEX input
+- RGB/HSL control if useful
+- transparency/alpha where appropriate
+
+Do not overcomplicate the interface.
+
+Put advanced controls in a properties panel rather than cluttering the main toolbar.
+
+==================================================
+PHASE 9 — TEXT CONTROLS
+==================================================
+
+For text fields, provide advanced professional controls:
+
+- font family
+- font size
+- font weight
+- italic
+- underline where appropriate
+- text alignment
+- line height
+- letter spacing where useful
+- text color
+- opacity where appropriate
+- multiline support
+- auto-fit text
+- minimum and maximum font size
+- vertical alignment
+
+Make sure text placement is accurate in the final exported PDF.
+
+==================================================
+PHASE 10 — SIGNING FIELDS
+==================================================
+
+Support:
+
+- Signature
+- Initials
+- Name
+- Email
+- Date
+- Text
+- Checkbox
+
+Each field should support:
+
+- add
+- move
+- resize
+- edit
+- duplicate
+- delete
+- required/optional state
+- styling
+- precise placement
+
+The user should be able to place fields on any page.
+
+==================================================
+PHASE 11 — PROFESSIONAL EDITOR TOOLBAR
+==================================================
+
+Build a clear toolbar hierarchy.
+
+Primary tools:
+
+- Select
+- Signature
+- Initials
+- Text
+- Date
+- Checkbox
+
+Secondary controls:
+
+- Undo
+- Redo
+- Zoom
+- Fit
+- Page navigation
+- Delete
+- Duplicate
+
+Advanced controls should appear contextually.
+
+Do NOT put every feature into one huge toolbar.
+
+Prioritize clarity.
+
+==================================================
+PHASE 12 — MORE THAN 20 ADVANCED FEATURES
+==================================================
+
+Implement and organize useful features such as:
+
+1. Signature drawing
+2. Typed signatures
+3. Uploaded signatures
+4. Initials
+5. Signature color control
+6. Text color control
+7. Font family selection
+8. Font size control
+9. Font weight
+10. Italic text
+11. Text alignment
+12. Date field
+13. Name field
+14. Email field
+15. Checkbox
+16. Free text
+17. Drag and drop
+18. Resize
+19. Rotation
+20. Duplicate
+21. Delete
+22. Undo
+23. Redo
+24. Page thumbnails
+25. Page jump
+26. Zoom percentage
+27. Fit to width
+28. Fit to page
+29. High-DPI rendering
+30. Touch support
+31. Keyboard movement
+32. Precision positioning
+33. Alignment guides
+34. Snap-to-alignment
+35. Lock element
+36. Multiple signatures
+37. Signature preview
+38. Signature style selection
+39. Image cropping
+40. Whitespace trimming
+41. Mobile responsive editor
+42. Desktop editor
+43. Drag-and-drop PDF upload
+44. Export progress
+45. Clean filename generation
+
+Only include features that actually work.
+
+Do not create fake controls.
+
+==================================================
+PHASE 13 — PREMIUM UX
+==================================================
+
+The interface must feel significantly more polished than a typical free PDF website.
+
+Design principles:
+
+- professional
+- modern
+- minimal
+- clear
+- high information density without clutter
+- excellent typography
+- consistent spacing
+- consistent iconography
+- clear visual hierarchy
+
+Avoid:
+
+- childish gradients
+- excessive shadows
+- excessive rounded cards
+- random colors
+- inconsistent icon sizes
+- oversized empty areas
+- cluttered toolbars
+- unnecessary animations
+
+Use subtle animation only where it improves usability.
+
+==================================================
+PHASE 14 — EDITOR LAYOUT
+==================================================
+
+Desktop layout:
+
+LEFT:
+Document pages / thumbnails
+
+CENTER:
+Main PDF workspace
+
+RIGHT:
+Contextual properties and tool controls
+
+TOP:
+Global actions and navigation
+
+BOTTOM:
+Optional contextual controls/status
+
+The center document workspace should visually dominate the screen.
+
+Allow the user to focus on the document.
+
+==================================================
+PHASE 15 — MOBILE UX
+==================================================
+
+The editor must work exceptionally well on phones.
+
+Do NOT simply shrink the desktop layout.
+
+Use:
+
+- bottom sheets
+- drawers
+- compact toolbars
+- touch-friendly handles
+- pinch-to-zoom where appropriate
+- single-tap selection
+- touch drag
+- safe spacing around interactive controls
+
+Avoid tiny buttons.
+
+Avoid accidental scrolling while dragging elements.
+
+Test common mobile viewport sizes.
+
+==================================================
+PHASE 16 — ZOOM SYSTEM
+==================================================
+
+Create a proper zoom system.
+
+Support:
+
+- 50%
+- 75%
+- 100%
+- 125%
+- 150%
+- 200%
+- custom zoom
+- fit width
+- fit page
+- reset
+
+Zoom must not break:
+
+- signature position
+- field position
+- selection box
+- resize handles
+- rotation
+- scrolling
+- export coordinates
+
+The editor should stay synchronized at all zoom levels.
+
+==================================================
+PHASE 17 — HIGH QUALITY PREVIEW
+==================================================
+
+The preview must be sharp enough for users to confidently place signatures.
+
+Use appropriate rendering scale for high-DPI displays.
+
+Do not simply increase canvas resolution indefinitely.
+
+Balance:
+- visual quality
+- memory usage
+- speed
+
+Implement intelligent rendering behavior.
+
+Do not render 50 large pages at maximum resolution simultaneously.
+
+==================================================
+PHASE 18 — PDF EXPORT
+==================================================
+
+When the user exports:
+
+- preserve the original PDF
+- preserve page size
+- preserve orientation
+- preserve page rotation
+- preserve existing content
+- preserve images
+- preserve text
+- preserve quality as much as possible
+- embed signatures correctly
+- embed text correctly
+- preserve exact placement
+
+The exported PDF must be a real PDF.
+
+Do not flatten the entire PDF to low-resolution screenshots.
+
+Do not replace the original pages with poor-quality raster images.
+
+Use proper PDF embedding/overlay operations.
+
+Generate a filename such as:
+
+original-name-signed.pdf
+
+==================================================
+PHASE 19 — EXPORT VALIDATION
+==================================================
+
+After export, verify the generated PDF.
+
+At minimum:
+
+- it opens successfully
+- page count is correct
+- page sizes are unchanged
+- signatures exist
+- text exists
+- field placements are correct
+- no pages are missing
+- no unexpected blank pages
+- no major quality degradation
+
+Where practical, create an automated verification path.
+
+==================================================
+PHASE 20 — UNDO / REDO
+==================================================
+
+Implement real document-level history.
+
+Track:
+
+- add
+- remove
+- move
+- resize
+- rotate
+- text edits
+- field edits
+- signature changes
+
+Do not track irrelevant UI state.
+
+History should be predictable.
+
+==================================================
+PHASE 21 — FILE HANDLING
+==================================================
+
+Support:
+
+- drag and drop
+- file picker
+- PDF validation
+- sensible file size protection
+- filename display
+- file size display
+- page count
+- loading state
+- progress state
+- export state
+
+Handle large files gracefully.
+
+==================================================
+PHASE 22 — ERROR HANDLING
+==================================================
+
+Handle:
+
+- invalid PDF
+- corrupted PDF
+- unsupported file
+- oversized file
+- memory limitations
+- rendering errors
+- export errors
+- browser limitations
+
+Show friendly messages.
+
+Do NOT show technical stack traces.
+
+==================================================
+PHASE 23 — PRIVACY
+==================================================
+
+PDFs may contain sensitive information.
+
+Prefer client-side processing whenever practical.
+
+Do not permanently store user documents.
+
+Do not log PDF contents.
+
+Do not send document contents to analytics.
+
+Do not claim "your files never leave your device" unless the architecture truly guarantees it.
+
+If server-side processing is used, clearly understand and minimize:
+- retention
+- logging
+- temporary storage
+- data exposure
+
+==================================================
+PHASE 24 — SECURITY
+==================================================
+
+Treat all uploads as untrusted.
+
+Implement:
+
+- file validation
+- size limits
+- safe parsing
+- safe temporary files
+- cleanup
+- sanitization
+- XSS protection
+- safe server endpoints
+- no arbitrary code execution
+- no unsafe dynamic HTML
+
+Do not trust browser MIME type alone.
+
+==================================================
+PHASE 25 — ACCESSIBILITY
+==================================================
+
+Support:
+
+- keyboard navigation
+- visible focus
+- accessible labels
+- ARIA where necessary
+- sufficient contrast
+- touch targets
+- accessible dialogs
+- reduced motion preferences
+
+==================================================
+PHASE 26 — RTL / ARABIC
+==================================================
+
+The website supports Arabic.
+
+The tool must support proper RTL behavior.
+
+Do not just flip the interface.
+
+Ensure:
+- toolbar behavior
+- side panels
+- labels
+- alignment
+- spacing
+- dialogs
+- navigation
+- text fields
+- keyboard behavior
+
+work correctly in Arabic.
+
+==================================================
+PHASE 27 — DESIGN CONSISTENCY
+==================================================
+
+Match the existing ToolifyPDF visual language.
+
+Reuse:
+- existing fonts
+- design tokens
+- buttons
+- cards
+- icons
+- colors
+- spacing
+- header
+- footer
+- common components
+
+Do not make Sign PDF look like a completely different website.
+
+However, the editor itself should feel more advanced because it is a complex application.
+
+==================================================
+PHASE 28 — HOMEPAGE INTEGRATION
+==================================================
+
+This is mandatory.
+
+Make sure Sign PDF appears in the correct section of the homepage.
+
+Use the same structure and icon style used by other tools.
+
+Verify:
+
+- visible
+- clickable
+- correct name
+- correct route
+- correct icon
+- correct ordering
+- mobile visibility
+- desktop visibility
+
+Do NOT just create the route and assume homepage integration is complete.
+
+==================================================
+PHASE 29 — SEO
+==================================================
+
+Implement proper SEO for the tool page.
+
+Include appropriate:
+
+- title
+- meta description
+- canonical
+- Open Graph metadata where supported
+- structured metadata where appropriate
+- internal links
+- semantic headings
+
+Use natural keyword placement.
+
+Do not keyword-stuff.
+
+==================================================
+PHASE 30 — NO FALSE CLAIMS
+==================================================
+
+Do NOT claim that this tool provides:
+
+- legally certified digital signatures
+- certificate-based digital signatures
+- eIDAS qualified signatures
+- ESIGN/UETA compliance
+- biometric identity verification
+- certificate verification
+- blockchain verification
+
+unless those capabilities are genuinely implemented.
+
+Clearly distinguish an electronic/visual signature from a cryptographic certificate-based digital signature.
+
+==================================================
+PHASE 31 — LEGAL/TECHNICAL ARCHITECTURE
+==================================================
+
+Design the code so future versions can support:
+
+- multiple signers
+- signer identities
+- signing order
+- required fields
+- audit trails
+- document status
+- certificate-based digital signatures
+
+But do NOT fake any of these features now.
+
+==================================================
+PHASE 32 — PERFORMANCE
+==================================================
+
+The tool must remain responsive.
+
+Optimize:
+
+- PDF rendering
+- page virtualization
+- lazy loading
+- memory use
+- React re-renders
+- state updates
+- event listeners
+- object URLs
+- canvas resources
+
+Use Web Workers when technically beneficial.
+
+Do not move everything into a Web Worker just because it sounds advanced.
+
+Use them where they provide real value.
+
+==================================================
+PHASE 33 — ARCHITECTURE
+==================================================
+
+Separate:
+
+- PDF document model
+- rendering
+- editor overlay
+- signature subsystem
+- text subsystem
+- form fields
+- coordinate transformations
+- history
+- export
+- file handling
+- UI state
+
+Avoid a monolithic component.
+
+Use strong TypeScript typing.
+
+Avoid magic numbers.
+
+Avoid hard-coded PDF offsets.
+
+==================================================
+PHASE 34 — TESTING
+==================================================
+
+Create meaningful automated tests.
+
+Test:
+
+1. Upload
+2. PDF render
+3. One page
+4. Multi-page
+5. Different page sizes
+6. Landscape
+7. Rotation
+8. Signature creation
+9. Signature placement
+10. Signature movement
+11. Signature resize
+12. Signature rotation
+13. Typed signature
+14. Uploaded signature
+15. Drawn signature
+16. Text
+17. Date
+18. Checkbox
+19. Undo
+20. Redo
+21. Zoom
+22. Fit width
+23. Fit page
+24. Mobile layout
+25. Desktop layout
+26. Export
+27. Export coordinates
+28. Export quality
+29. Invalid PDF handling
+30. Large PDF handling
+
+CRITICAL:
+
+Add tests specifically for coordinate accuracy.
+
+For example:
+
+If an element is placed at a known relative position in the viewer, verify that it appears at the expected PDF coordinate after export.
+
+==================================================
+PHASE 35 — VISUAL QA
+==================================================
+
+After implementation:
+
+Actually inspect the rendered page.
+
+Check:
+
+- homepage
+- Sign PDF route
+- upload state
+- editor state
+- signature modal
+- properties panel
+- page thumbnails
+- export state
+- mobile layout
+
+Do not stop after compilation.
+
+Check the actual user experience.
+
+==================================================
+PHASE 36 — BROWSER QA
+==================================================
+
+Test where practical in:
+
+- Chrome
+- Firefox
+- Edge
+- Safari/iOS equivalent behavior if available
+
+Pay particular attention to:
+
+- canvas
+- touch
+- file upload
+- downloads
+- PDF worker behavior
+- memory
+- zoom
+- pointer events
+
+==================================================
+PHASE 37 — FINAL QUALITY GATE
+==================================================
+
+Do NOT consider the task complete until ALL of the following are true:
+
+[ ] Sign PDF appears on homepage
+[ ] Homepage link works
+[ ] Tool route works
+[ ] PDF upload works
+[ ] PDF renders correctly
+[ ] Pages can be navigated
+[ ] Zoom works
+[ ] Preview is sharp
+[ ] Signature can be created
+[ ] Signature can be dragged
+[ ] Signature can be resized
+[ ] Signature can be rotated
+[ ] Signature color can be changed
+[ ] Typed signature styles work
+[ ] Uploaded signatures work
+[ ] Text fields work
+[ ] Date field works
+[ ] Checkbox works
+[ ] Undo works
+[ ] Redo works
+[ ] Mobile layout works
+[ ] Desktop layout works
+[ ] Export works
+[ ] Exported PDF opens
+[ ] Signature placement is accurate
+[ ] No major console errors
+[ ] No obvious runtime errors
+[ ] No broken imports
+[ ] No broken routes
+[ ] No placeholder features remain
+
+==================================================
+PHASE 38 — IMPORTANT DEVELOPMENT RULE
+==================================================
+
+Work in this order:
+
+1. Inspect existing project
+2. Diagnose current Sign PDF implementation
+3. Fix broken route/integration
+4. Fix homepage visibility
+5. Fix basic PDF loading/rendering
+6. Fix core signing workflow
+7. Build accurate coordinate system
+8. Fix export
+9. Add editor controls
+10. Add advanced features
+11. Optimize rendering
+12. Improve mobile UX
+13. Improve visual design
+14. Add tests
+15. Perform visual QA
+16. Perform final integration QA
+
+Do NOT jump directly to visual polish while core PDF placement/export is broken.
+
+==================================================
+PHASE 39 — IF THE CURRENT IMPLEMENTATION IS BAD
+==================================================
+
+If the existing Sign PDF implementation is fundamentally flawed:
+
+Do not keep patching a broken architecture forever.
+
+Instead:
+
+- identify the exact problems
+- preserve reusable pieces
+- rebuild only the necessary subsystem
+- keep the public route and homepage integration stable
+- avoid touching unrelated tools
+
+==================================================
+PHASE 40 — WHAT I EXPECT FROM YOU
+==================================================
+
+You are responsible for making engineering decisions.
+
+Do not ask me to choose between obvious technical options.
+
+Inspect the project and choose the best practical implementation.
+
+If a feature is technically incompatible with the current architecture, redesign the relevant subsystem rather than creating a fake implementation.
+
+Use the highest-quality mature technology that is realistically compatible with this project.
+
+Do not optimize for "looks advanced" while sacrificing reliability.
+
+Reliability and PDF accuracy come first.
+
+==================================================
+FINAL RESPONSE
+==================================================
+
+When finished, report:
+
+1. Why the previous tool was not appearing/working.
+2. What you changed.
+3. What PDF technologies/libraries are now being used and why.
+4. How the coordinate system works.
+5. How export works.
+6. What advanced features were added.
+7. What tests were performed.
+8. Any remaining limitations.
+9. Any dependency changes.
+10. Exact homepage route and Sign PDF route.
+11. Confirm that the complete flow was tested:
+Homepage → Sign PDF → Upload → Edit → Sign → Export → Download.
+
+Do not claim success unless you actually verified the working flow.
