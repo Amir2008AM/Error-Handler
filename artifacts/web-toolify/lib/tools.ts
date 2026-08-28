@@ -33,6 +33,22 @@ export const tools: Tool[] = [
     popular: true,
     isNew: true,
   },
+  // Sign
+  {
+    id: 'sign-pdf',
+    name: 'Sign PDF',
+    description: 'Add a signature to your PDF documents.',
+    longDescription:
+      'Sign PDF documents online by adding a typed signature, signer details, and an optional signature image at a chosen position on the page.',
+    category: 'PDF Tools',
+    slug: 'sign-pdf',
+    icon: 'PenTool',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    tags: ['pdf', 'sign', 'signature', 'e-sign', 'document'],
+    popular: true,
+    isNew: true,
+  },
   // Pair: Merge ↔ Split
   {
     id: 'merge-pdf',
