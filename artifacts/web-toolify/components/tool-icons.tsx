@@ -8,6 +8,54 @@
 
 type IconProps = { className?: string }
 
+/** PDF Editor — a clean document mark with a prominent editing pen. */
+export function PdfEditorIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" className={className} aria-hidden>
+      {/* document */}
+      <path
+        d="M10 4.5h19l9 9v30H10z"
+        fill="currentColor"
+        fillOpacity=".14"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M29 4.5v9h9"
+        fill="currentColor"
+        fillOpacity=".25"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      {/* editable content */}
+      <path
+        d="M16 20h15M16 26h11"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        opacity=".6"
+      />
+      {/* pen */}
+      <path
+        d="m17 37.5 2.2-6.4L32.7 17.6a2.6 2.6 0 0 1 3.7 3.7L22.9 34.7z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m30.6 19.7 3.7 3.7M17 37.5l5.9-2.8"
+        stroke="white"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /* ─── Reusable pieces ──────────────────────────────────────────────────────── */
 
 /** Full-bleed document (portrait, folded top-right corner). */
@@ -430,6 +478,7 @@ export function PdfToPptIcon({ className }: IconProps) {
 
 /* ─── Icon Registry ─────────────────────────────────────────────────────── */
 export const customIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  PdfEditorAsset: PdfEditorIcon,
   MergePdfAsset: MergePdfAssetIcon,
   SplitPdfAsset: SplitPdfAssetIcon,
   CompressPdfAsset: CompressPdfAssetIcon,
