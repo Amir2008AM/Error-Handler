@@ -1703,7 +1703,9 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
               </div>
               <div>
                 <p className="text-lg font-semibold text-gray-800">Drop your PDF here or click to browse</p>
-                <p className="text-sm text-gray-400 mt-1">Max 50 MB · Edits stay in your browser</p>
+                 <p className="text-sm text-gray-400 mt-1">
+                   Max 50 MB · {isSignMode ? 'Signing stays in your browser' : 'Edits stay in your browser'}
+                 </p>
               </div>
               <span className="mt-2 px-5 py-2 rounded-xl bg-violet-600 text-white font-medium text-sm">Choose PDF</span>
             </div>
@@ -1717,7 +1719,9 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
           </div>
         )}
         <p className="mt-5 text-xs text-center text-gray-400">
-          All editing happens locally in your browser — your file is never uploaded to any server.
+           {isSignMode
+             ? 'All signing happens locally in your browser — your file is never uploaded to any server.'
+             : 'All editing happens locally in your browser — your file is never uploaded to any server.'}
         </p>
       </div>
     )
@@ -1762,83 +1766,88 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
         <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
           <ToolBtn id="select"    icon={<MousePointer2 size={16} />} label="Select (V)" />
 
-          {/* Edit Text — featured button: icon + visible label */}
-          <button
-            title="Edit Text — click existing text to edit, click empty area to add new text"
-            onClick={() => setTool('editText')}
-            className={cn(
-              'flex flex-col items-center justify-center gap-[3px] px-2 py-1 rounded-lg transition-colors min-w-[44px]',
-              tool === 'editText'
-                ? 'bg-violet-100 text-violet-700 ring-1 ring-violet-300'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
-            )}
-          >
-            <EditTextIcon size={16} />
-            <span className="text-[9px] font-semibold leading-none tracking-tight">Edit Text</span>
-          </button>
+          {!isSignMode && (
+            <>
+              {/* Edit Text — featured button: icon + visible label */}
+              <button
+                title="Edit Text — click existing text to edit, click empty area to add new text"
+                onClick={() => setTool('editText')}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-[3px] px-2 py-1 rounded-lg transition-colors min-w-[44px]',
+                  tool === 'editText'
+                    ? 'bg-violet-100 text-violet-700 ring-1 ring-violet-300'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+                )}
+              >
+                <EditTextIcon size={16} />
+                <span className="text-[9px] font-semibold leading-none tracking-tight">Edit Text</span>
+              </button>
 
-          {/* Pen — click once to activate, click again to open settings */}
-          <div className="relative">
-            <button title={tool === 'draw' ? 'Pen settings' : 'Pen'}
-              onClick={() => {
-                if (tool === 'draw') { setShowDrawPanel((v) => !v); setShowHlPanel(false) }
-                else { setTool('draw'); setShowDrawPanel(false); setShowHlPanel(false) }
-              }}
-              className={cn(
-                'p-2 rounded-lg transition-colors relative',
-                tool === 'draw' ? 'bg-violet-100 text-violet-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
-              )}>
-              <PenLine size={16} />
-              {tool === 'draw' && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white"
-                  style={{ background: penPresets[activePenType].color }} />
-              )}
-            </button>
-            {showDrawPanel && tool === 'draw' && (
-              <DrawPanel
-                mode="pen"
-                activePenType={activePenType} activeHlType={activeHlType}
-                penPresets={penPresets} hlPresets={hlPresets}
-                onChangePenType={(t) => { setActivePenType(t) }}
-                onChangeHlType={(t) => { setActiveHlType(t) }}
-                onUpdatePreset={(p) => setPenPresets((prev) => ({ ...prev, [activePenType]: p }))}
-                onClose={() => setShowDrawPanel(false)}
-              />
-            )}
-          </div>
+              {/* Pen — click once to activate, click again to open settings */}
+              <div className="relative">
+                <button title={tool === 'draw' ? 'Pen settings' : 'Pen'}
+                  onClick={() => {
+                    if (tool === 'draw') { setShowDrawPanel((v) => !v); setShowHlPanel(false) }
+                    else { setTool('draw'); setShowDrawPanel(false); setShowHlPanel(false) }
+                  }}
+                  className={cn(
+                    'p-2 rounded-lg transition-colors relative',
+                    tool === 'draw' ? 'bg-violet-100 text-violet-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+                  )}>
+                  <PenLine size={16} />
+                  {tool === 'draw' && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white"
+                      style={{ background: penPresets[activePenType].color }} />
+                  )}
+                </button>
+                {showDrawPanel && tool === 'draw' && (
+                  <DrawPanel
+                    mode="pen"
+                    activePenType={activePenType} activeHlType={activeHlType}
+                    penPresets={penPresets} hlPresets={hlPresets}
+                    onChangePenType={(t) => { setActivePenType(t) }}
+                    onChangeHlType={(t) => { setActiveHlType(t) }}
+                    onUpdatePreset={(p) => setPenPresets((prev) => ({ ...prev, [activePenType]: p }))}
+                    onClose={() => setShowDrawPanel(false)}
+                  />
+                )}
+              </div>
 
-          {/* Highlighter — click once to activate, click again to open settings */}
-          <div className="relative">
-            <button title={tool === 'highlight' ? 'Highlighter settings' : 'Highlight'}
-              onClick={() => {
-                if (tool === 'highlight') { setShowHlPanel((v) => !v); setShowDrawPanel(false) }
-                else { setTool('highlight'); setShowHlPanel(false); setShowDrawPanel(false) }
-              }}
-              className={cn(
-                'p-2 rounded-lg transition-colors relative',
-                tool === 'highlight' ? 'bg-violet-100 text-violet-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
-              )}>
-              <Highlighter size={16} />
-              {tool === 'highlight' && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white"
-                  style={{ background: hlPresets[activeHlType].color }} />
-              )}
-            </button>
-            {showHlPanel && tool === 'highlight' && (
-              <DrawPanel
-                mode="highlight"
-                activePenType={activePenType} activeHlType={activeHlType}
-                penPresets={penPresets} hlPresets={hlPresets}
-                onChangePenType={(t) => { setActivePenType(t) }}
-                onChangeHlType={(t) => { setActiveHlType(t) }}
-                onUpdatePreset={(p) => setHlPresets((prev) => ({ ...prev, [activeHlType]: p }))}
-                onClose={() => setShowHlPanel(false)}
-              />
-            )}
-          </div>
+              {/* Highlighter — click once to activate, click again to open settings */}
+              <div className="relative">
+                <button title={tool === 'highlight' ? 'Highlighter settings' : 'Highlight'}
+                  onClick={() => {
+                    if (tool === 'highlight') { setShowHlPanel((v) => !v); setShowDrawPanel(false) }
+                    else { setTool('highlight'); setShowHlPanel(false); setShowDrawPanel(false) }
+                  }}
+                  className={cn(
+                    'p-2 rounded-lg transition-colors relative',
+                    tool === 'highlight' ? 'bg-violet-100 text-violet-700' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+                  )}>
+                  <Highlighter size={16} />
+                  {tool === 'highlight' && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white"
+                      style={{ background: hlPresets[activeHlType].color }} />
+                  )}
+                </button>
+                {showHlPanel && tool === 'highlight' && (
+                  <DrawPanel
+                    mode="highlight"
+                    activePenType={activePenType} activeHlType={activeHlType}
+                    penPresets={penPresets} hlPresets={hlPresets}
+                    onChangePenType={(t) => { setActivePenType(t) }}
+                    onChangeHlType={(t) => { setActiveHlType(t) }}
+                    onUpdatePreset={(p) => setHlPresets((prev) => ({ ...prev, [activeHlType]: p }))}
+                    onClose={() => setShowHlPanel(false)}
+                  />
+                )}
+              </div>
 
-          <ToolBtn id="eraser"    icon={<Eraser size={16} />}        label="Eraser" />
-          <ToolBtn id="lasso"     icon={<Spline size={16} />}        label="Lasso Select" />
+              <ToolBtn id="eraser"    icon={<Eraser size={16} />}        label="Eraser" />
+              <ToolBtn id="lasso"     icon={<Spline size={16} />}        label="Lasso Select" />
+            </>
+          )}
+
           <ToolBtn id="signature" icon={<PenSquare size={16} />}     label="Signature"
             onClick={() => { setSignatureKind('signature'); setShowSignatureModal(true) }} />
           {isSignMode && (
@@ -1848,34 +1857,44 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
               <ToolBtn id="date" icon={<Calendar size={16} />} label="Date field" />
             </>
           )}
-          <ToolBtn id="image"     icon={<ImageIcon size={16} />}     label="Insert Image"
-            onClick={() => imageInputRef.current?.click()} />
+          {!isSignMode && (
+            <ToolBtn id="image"     icon={<ImageIcon size={16} />}     label="Insert Image"
+              onClick={() => imageInputRef.current?.click()} />
+          )}
         </div>
 
-        {/* Shapes */}
-        <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
-          <ToolBtn id="rect"    icon={<Square size={16} />}      label="Rectangle" />
-          <ToolBtn id="ellipse" icon={<Circle size={16} />}      label="Ellipse" />
-          <ToolBtn id="line"    icon={<Minus size={16} />}       label="Line" />
-          <ToolBtn id="arrow"   icon={<ArrowRight size={16} />}  label="Arrow" />
-        </div>
+        {!isSignMode && (
+          <>
+            {/* Shapes */}
+            <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
+              <ToolBtn id="rect"    icon={<Square size={16} />}      label="Rectangle" />
+              <ToolBtn id="ellipse" icon={<Circle size={16} />}      label="Ellipse" />
+              <ToolBtn id="line"    icon={<Minus size={16} />}       label="Line" />
+              <ToolBtn id="arrow"   icon={<ArrowRight size={16} />}  label="Arrow" />
+            </div>
 
-        {/* Annotations */}
-        <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
-          <ToolBtn id="sticky"  icon={<StickyNote size={16} />}     label="Sticky Note" />
-          <ToolBtn id="comment" icon={<MessageCircle size={16} />}  label="Comment" />
-        </div>
+            {/* Annotations */}
+            <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
+              <ToolBtn id="sticky"  icon={<StickyNote size={16} />}     label="Sticky Note" />
+              <ToolBtn id="comment" icon={<MessageCircle size={16} />}  label="Comment" />
+            </div>
+          </>
+        )}
 
         {/* Forms */}
         <div className="flex items-center gap-0.5 border-r border-gray-100 pr-2 mr-1">
           <ToolBtn id="form-text"     icon={<Type size={15} />}        label="Text Field" />
           <ToolBtn id="form-check"    icon={<CheckSquare size={16} />} label="Checkbox" />
-          <ToolBtn id="form-radio"    icon={<Circle size={14} />}      label="Radio Button" />
-          <ToolBtn id="form-dropdown" icon={<List size={16} />}        label="Dropdown" />
+          {!isSignMode && (
+            <>
+              <ToolBtn id="form-radio"    icon={<Circle size={14} />}      label="Radio Button" />
+              <ToolBtn id="form-dropdown" icon={<List size={16} />}        label="Dropdown" />
+            </>
+          )}
         </div>
 
         {/* Tool-specific options */}
-        {tool === 'text' && (
+        {!isSignMode && tool === 'text' && (
           <div className="flex items-center gap-2 border-r border-gray-100 pr-2 mr-1">
             <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)}
               className="w-7 h-7 rounded cursor-pointer border border-gray-200" title="Text color" />
@@ -1886,7 +1905,7 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
           </div>
         )}
 
-        {(tool === 'draw' || tool === 'highlight') && (
+        {!isSignMode && (tool === 'draw' || tool === 'highlight') && (
           <div className="flex items-center gap-2 border-r border-gray-100 pr-2 mr-1">
             <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)}
               className="w-7 h-7 rounded cursor-pointer border border-gray-200" title="Brush color" />
@@ -1895,7 +1914,7 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
           </div>
         )}
 
-        {isShapeTool && (
+        {!isSignMode && isShapeTool && (
           <div className="flex items-center gap-2 border-r border-gray-100 pr-2 mr-1">
             <input type="color" value={shapeStroke} onChange={(e) => setShapeStroke(e.target.value)}
               className="w-7 h-7 rounded cursor-pointer border border-gray-200" title="Stroke color" />
@@ -1938,7 +1957,7 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
             <button onClick={handleDownload} disabled={isSaving}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-l-xl bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 transition-colors disabled:opacity-60">
               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              {isSaving ? 'Saving…' : 'Download'}
+               {isSaving ? 'Saving…' : isSignMode ? 'Download Signed PDF' : 'Download'}
             </button>
             <button onClick={() => setShowDownloadMenu((v) => !v)}
               className="px-1.5 rounded-r-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors border-l border-violet-500">
@@ -1967,7 +1986,7 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
               )}
               <button onClick={handleDownload} disabled={isSaving}
                 className="w-full mt-1 py-1.5 text-xs bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium">
-                {isSaving ? 'Processing…' : 'Download PDF'}
+                 {isSaving ? 'Processing…' : isSignMode ? 'Download Signed PDF' : 'Download PDF'}
               </button>
             </div>
           )}
@@ -2002,18 +2021,22 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
               </div>
               <span className="text-[11px] text-gray-400">{di + 1}</span>
               {pageRotations[pageNum] ? <span className="text-[10px] text-violet-500">{pageRotations[pageNum]}°</span> : null}
-              <div className="absolute top-2 right-1 hidden group-hover:flex flex-col gap-0.5 z-10">
-                <button onClick={(e) => { e.stopPropagation(); rotatePage(di) }} title="Rotate 90°"
-                  className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-violet-600"><RotateCw size={10} /></button>
-                <button onClick={(e) => { e.stopPropagation(); deletePage(di) }} title="Delete page"
-                  className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-red-600"><Trash2 size={10} /></button>
-              </div>
-              <div className="absolute bottom-6 right-1 hidden group-hover:flex flex-col gap-0.5 z-10">
-                <button onClick={(e) => { e.stopPropagation(); movePage(di, di - 1) }} disabled={di === 0} title="Move up"
-                  className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-violet-600 disabled:opacity-30"><ChevronUp size={10} /></button>
-                <button onClick={(e) => { e.stopPropagation(); movePage(di, di + 1) }} disabled={di === pageOrder.length - 1} title="Move down"
-                  className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-violet-600 disabled:opacity-30"><ChevronDown size={10} /></button>
-              </div>
+              {!isSignMode && (
+                <>
+                  <div className="absolute top-2 right-1 hidden group-hover:flex flex-col gap-0.5 z-10">
+                    <button onClick={(e) => { e.stopPropagation(); rotatePage(di) }} title="Rotate 90°"
+                      className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-violet-600"><RotateCw size={10} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deletePage(di) }} title="Delete page"
+                      className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-red-600"><Trash2 size={10} /></button>
+                  </div>
+                  <div className="absolute bottom-6 right-1 hidden group-hover:flex flex-col gap-0.5 z-10">
+                    <button onClick={(e) => { e.stopPropagation(); movePage(di, di - 1) }} disabled={di === 0} title="Move up"
+                      className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-violet-600 disabled:opacity-30"><ChevronUp size={10} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); movePage(di, di + 1) }} disabled={di === pageOrder.length - 1} title="Move down"
+                      className="p-0.5 rounded bg-white shadow-sm text-gray-500 hover:text-violet-600 disabled:opacity-30"><ChevronDown size={10} /></button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
