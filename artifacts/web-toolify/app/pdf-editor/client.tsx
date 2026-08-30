@@ -1687,19 +1687,24 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
           onClick={() => !loading && document.getElementById('pdf-ed-input')?.click()}
           className={cn(
             'border-2 border-dashed rounded-2xl p-14 text-center cursor-pointer transition-all select-none',
-            isDragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50',
+             isDragOver
+               ? (isSignMode ? 'border-emerald-500 bg-emerald-50' : 'border-blue-500 bg-blue-50')
+               : (isSignMode ? 'border-gray-200 hover:border-emerald-400 hover:bg-emerald-50/40' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'),
             loading && 'cursor-wait opacity-70',
           )}
         >
           {loading ? (
             <div className="flex flex-col items-center gap-3">
-              <Loader2 className="animate-spin text-blue-500" size={44} />
+               <Loader2 className={cn('animate-spin', isSignMode ? 'text-emerald-500' : 'text-blue-500')} size={44} />
               <p className="text-gray-600 font-medium">Opening PDF…</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
-              <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center">
-                <PenLine size={30} className="text-violet-600" />
+               <div className={cn(
+                 'w-16 h-16 rounded-2xl flex items-center justify-center',
+                 isSignMode ? 'bg-emerald-50' : 'bg-violet-50',
+               )}>
+                 <PenLine size={30} className={isSignMode ? 'text-emerald-600' : 'text-violet-600'} />
               </div>
               <div>
                 <p className="text-lg font-semibold text-gray-800">Drop your PDF here or click to browse</p>
@@ -1707,7 +1712,10 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
                    Max 50 MB · {isSignMode ? 'Signing stays in your browser' : 'Edits stay in your browser'}
                  </p>
               </div>
-              <span className="mt-2 px-5 py-2 rounded-xl bg-violet-600 text-white font-medium text-sm">Choose PDF</span>
+               <span className={cn(
+                 'mt-2 px-5 py-2 rounded-xl text-white font-medium text-sm',
+                 isSignMode ? 'bg-emerald-600' : 'bg-violet-600',
+               )}>Choose PDF</span>
             </div>
           )}
         </div>
