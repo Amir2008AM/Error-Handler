@@ -2,10 +2,16 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Menu, X } from 'lucide-react'
+import {
+  AlignLeft, ArrowRightLeft, Calculator, Calendar, CaseSensitive,
+  ChevronDown, Crop, Droplets, Expand, FileText, Image, LockOpen,
+  Menu, Minimize2, PenTool, Percent, RotateCw, Shield, Type, X,
+} from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { tools, type ToolCategory } from '@/lib/tools'
 import { Logo } from './logo'
+import { customIconMap } from './tool-icons'
+import { cn } from '@/lib/utils'
 
 type CategoryNavItem = {
   key: 'nav.pdf' | 'nav.security' | 'nav.converter' | 'nav.image' | 'nav.text' | 'nav.calculator'
@@ -21,6 +27,43 @@ const categoryNavItems: CategoryNavItem[] = [
   { key: 'nav.text', category: 'Text Tools', href: '/category/text-tools' },
   { key: 'nav.calculator', category: 'Calculators', href: '/category/calculators' },
 ]
+
+const lucideIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  AlignLeft,
+  ArrowRightLeft,
+  Calculator,
+  Calendar,
+  CaseSensitive,
+  Crop,
+  Droplets,
+  Expand,
+  FileText,
+  Image,
+  LockOpen,
+  Minimize2,
+  PenTool,
+  Percent,
+  RotateCw,
+  Shield,
+  Type,
+}
+
+function ToolMenuIcon({ icon, color, bgColor }: {
+  icon: string
+  color: string
+  bgColor: string
+}) {
+  const Icon = customIconMap[icon] ?? lucideIconMap[icon] ?? FileText
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md', bgColor)}
+    >
+      <Icon className={cn('h-4 w-4', color)} />
+    </span>
+  )
+}
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -116,10 +159,11 @@ export function Navbar() {
                             key={tool.slug}
                             href={`/${tool.slug}`}
                             role="menuitem"
-                            className="rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted hover:text-primary"
+                            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted hover:text-primary"
                             onClick={() => setOpenCategory(null)}
                           >
-                            {tool.name}
+                            <ToolMenuIcon icon={tool.icon} color={tool.color} bgColor={tool.bgColor} />
+                            <span className="min-w-0 truncate">{tool.name}</span>
                           </Link>
                         ))}
                       </div>
@@ -202,9 +246,10 @@ export function Navbar() {
                             key={tool.slug}
                             href={`/${tool.slug}`}
                             onClick={closeMobileMenu}
-                            className="block min-h-10 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                            className="flex min-h-10 items-center gap-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                           >
-                            {tool.name}
+                            <ToolMenuIcon icon={tool.icon} color={tool.color} bgColor={tool.bgColor} />
+                            <span className="min-w-0 truncate">{tool.name}</span>
                           </Link>
                         ))}
                     </div>
