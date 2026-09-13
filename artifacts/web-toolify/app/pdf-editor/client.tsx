@@ -208,6 +208,36 @@ function dataURLtoBytes(dataURL: string): Uint8Array {
   return arr
 }
 
+// Fabric stores coordinates in canvas pixels. Keep annotation geometry tied to
+// the page scale so changing the viewer zoom does not resize or move objects
+// relative to the PDF.
+function scaleFabricJSONForZoom(input: any, factor: number): any {
+  if (!input || !Number.isFinite(factor) || factor === 1) return input
+  const json = JSON.parse(JSON.stringify(input))
+
+  const scaleObject = (obj: any) => {
+    if (typeof obj.left === 'number') obj.left *= factor
+    if (typeof obj.top === 'number') obj.top *= factor
+
+    // Images, paths, shapes, and signatures use scaleX/scaleY. Text uses
+    // fontSize instead, so it is not scaled twice.
+    const isText = obj.type === 'i-text' || obj.type === 'textbox'
+    if (isText) {
+      if (typeof obj.fontSize === 'number') obj.fontSize *= factor
+      if (obj.type === 'textbox' && typeof obj.width === 'number') obj.width *= factor
+    } else {
+      if (typeof obj.scaleX === 'number') obj.scaleX *= factor
+      if (typeof obj.scaleY === 'number') obj.scaleY *= factor
+    }
+
+    if (Array.isArray(obj.objects)) obj.objects.forEach(scaleObject)
+    if (obj.clipPath) scaleObject(obj.clipPath)
+  }
+
+  if (Array.isArray(json.objects)) json.objects.forEach(scaleObject)
+  return json
+}
+
 // ─── Signature Modal ────────────────────────────────────────────────────────────
 
 function SignatureModal({
@@ -420,6 +450,8 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
   const [pageOrder, setPageOrder] = useState<number[]>([])
   const [pageRotations, setPageRotations] = useState<Record<number, number>>({})
   const pageAnnotationsRef = useRef<Record<number, object>>({})
+  const pageAnnotationZoomRef = useRef<Record<number, number>>({})
+  const canvasZoomRef = useRef(1)
 
   // ── Editor UI ──────────────────────────────────────────────────────────────
   const [tool, setTool] = useState<EditorTool>('select')
@@ -1074,7 +1106,9 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
 
     const fc = fabricRef.current
     if (!skipSaveCurrent && fc) {
-      pageAnnotationsRef.current[currentPageRef.current] = fc.toJSON() as object
+      const currentPageNum = currentPageRef.current
+      pageAnnotationsRef.current[currentPageNum] = fc.toJSON() as object
+      pageAnnotationZoomRef.current[currentPageNum] = canvasZoomRef.current
     }
 
     try { renderTaskRef.current?.cancel?.() } catch {}
@@ -1121,9 +1155,14 @@ export function PdfEditorClient({ mode = 'edit' }: { mode?: 'edit' | 'sign' } = 
         isRestoringRef.current = true
         fc.clear()
         const saved = pageAnnotationsRef.current[pageNum]
-        if (saved) await fc.loadFromJSON(saved)
+        if (saved) {
+          const savedZoom = pageAnnotationZoomRef.current[pageNum] ?? 1
+          const zoomFactor = zoomLevel / savedZoom
+          await fc.loadFromJSON(scaleFabricJSONForZoom(saved, zoomFactor))
+        }
         fc.renderAll()
         isRestoringRef.current = false
+        canvasZoomRef.current = zoomLevel
       }
 
       setHistory([]); setHistoryIndex(-1); historyIndexRef.current = -1
