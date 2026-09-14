@@ -7,6 +7,7 @@ import { Download, Loader2, FileText, TrendingDown, CheckCircle2 } from 'lucide-
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { ProcessedFileCard } from '@/components/processed-file-card'
+import { ProcessingWorkspace } from '@/components/processing-workspace'
 import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
@@ -110,41 +111,41 @@ export function CompressPdfClient() {
   }
 
   const isProcessing = progress.status === 'processing'
+  const resetWorkspace = () => { setFile(null); setResult(null); progress.reset() }
+  const retryProcessing = () => { setResult(null); void handleCompress() }
 
   return (
     <>
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-2xl">
         <BackButton />
         {!file ? (
-          <UploadDropzone
-            accept=".pdf,application/pdf"
-            onFilesSelected={handleFilesSelected}
-            label={t('common.uploadPdf')}
-            sublabel={t('common.clickOrDragPdf')}
-          />
+          <ProcessingWorkspace status="idle">
+            <UploadDropzone
+              accept=".pdf,application/pdf"
+              onFilesSelected={handleFilesSelected}
+              label={t('common.uploadPdf')}
+              sublabel={t('common.clickOrDragPdf')}
+            />
+          </ProcessingWorkspace>
         ) : (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{file.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('common.originalSize')}: {formatSize(file.size)}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setFile(null); setResult(null); progress.reset() }}
-                  disabled={isProcessing}
-                >
-                  {t('common.change')}
-                </Button>
+          <ProcessingWorkspace
+            fileName={file.name}
+            status={progress.status}
+            error={progress.error}
+            onRetry={retryProcessing}
+            onChangeFile={resetWorkspace}
+          >
+            <div className="flex items-center gap-4 rounded-lg border bg-muted/30 p-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <FileText className="size-6 text-muted-foreground" />
               </div>
-            </Card>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{file.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('common.originalSize')}: {formatSize(file.size)}
+                </p>
+              </div>
+            </div>
 
             {result && progress.status === 'completed' && (() => {
               const { alreadyOptimized, compressionStatus } = result
@@ -241,7 +242,7 @@ export function CompressPdfClient() {
                 autoHide={false}
               />
             </div>
-          </div>
+          </ProcessingWorkspace>
         )}
       </div>
     </>
