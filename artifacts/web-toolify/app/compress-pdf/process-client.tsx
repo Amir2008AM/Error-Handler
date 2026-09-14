@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -8,6 +8,8 @@ import { Download, Loader2, FileText, TrendingDown, CheckCircle2 } from 'lucide-
 import { UploadDropzone } from '@/components/upload-dropzone'
 import { RealProgressBar, useRealProgress } from '@/components/real-progress-bar'
 import { ProcessedFileCard } from '@/components/processed-file-card'
+import { ProcessingWorkspace } from '@/components/processing-workspace'
+import { xhrUpload } from '@/lib/utils/xhr-upload'
 import { BackButton } from '@/components/back-button'
 import { useI18n } from '@/lib/i18n/context'
 
@@ -66,22 +68,59 @@ export function CompressPdfClient() {
     }
   }, [progress])
 
+  useEffect(() => {
+    const saved = sessionStorage.getItem('toolifypdf:compress-file')
+    if (!saved) {
+      router.replace('/compress-pdf')
+      return
+    }
+    const payload = JSON.parse(saved) as { name: string; type: string; data: string; level: CompressionLevel }
+    fetch(payload.data).then((response) => response.blob()).then((blob) => {
+      setFile(new File([blob], payload.name, { type: payload.type }))
+      setLevel(payload.level)
+    })
+  }, [router])
+
+  useEffect(() => {
+    if (file && progress.status === 'idle') void handleCompress()
+  }, [file])
+
   const handleCompress = async () => {
     if (progress.status === 'processing') return
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      sessionStorage.setItem('toolifypdf:compress-file', JSON.stringify({
-        name: file.name,
-        type: file.type,
-        data: reader.result,
-        level,
-      }))
-      router.push('/compress-pdf/process')
-    }
-    reader.readAsDataURL(file)
+    progress.startProcessing('Uploading file...')
 
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('level', level)
+
+      const response = await xhrUpload({
+        url: '/api/compress-pdf',
+        formData,
+        onUploadProgress: (pct) => {
+          progress.stageUpload(pct, 'Uploading file...')
+        },
+      })
+
+      progress.stageValidation('Validating file...')
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Compression failed' }))
+        throw new Error(errorData.error || 'Compression failed')
+      }
+
+      progress.stageProcessing(undefined, ['Analysing PDF...', 'Compressing images...', 'Optimising fonts...', 'Almost done...'])
+
+      const data = await response.json() as CompressResult
+      setResult(data)
+
+      progress.stageDone(t('compress.successPdf'))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to compress PDF'
+      progress.fail(message)
+    }
   }
 
   const formatSize = (bytes: number) => {
@@ -91,31 +130,30 @@ export function CompressPdfClient() {
   }
 
   const isProcessing = progress.status === 'processing'
+  const resetWorkspace = () => { setFile(null); setResult(null); progress.reset() }
+  const retryProcessing = () => { setResult(null); void handleCompress() }
 
   return (
     <>
       <div className="mx-auto max-w-2xl">
         <BackButton />
         {!file ? (
-          <UploadDropzone
-            accept=".pdf,application/pdf"
-            onFilesSelected={handleFilesSelected}
-            label={t('common.uploadPdf')}
-            sublabel={t('common.clickOrDragPdf')}
-          />
+          <ProcessingWorkspace status="idle">
+            <UploadDropzone
+              accept=".pdf,application/pdf"
+              onFilesSelected={handleFilesSelected}
+              label={t('common.uploadPdf')}
+              sublabel={t('common.clickOrDragPdf')}
+            />
+          </ProcessingWorkspace>
         ) : (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="flex size-12 items-center justify-center rounded-lg bg-muted">
-                  <FileText className="size-6 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{file.name}</p>
-                  <p className="text-sm text-muted-foreground">{t('common.originalSize')}: {formatSize(file.size)}</p>
-                </div>
-              </div>
-            </Card>
+          <ProcessingWorkspace
+            fileName={file.name}
+            status={progress.status}
+            error={progress.error}
+            onRetry={retryProcessing}
+            onChangeFile={resetWorkspace}
+          >
             <div className="flex items-center gap-4 rounded-lg border bg-muted/30 p-4">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted">
                 <FileText className="size-6 text-muted-foreground" />
@@ -223,7 +261,7 @@ export function CompressPdfClient() {
                 autoHide={false}
               />
             </div>
-          </div>
+          </ProcessingWorkspace>
         )}
       </div>
     </>
