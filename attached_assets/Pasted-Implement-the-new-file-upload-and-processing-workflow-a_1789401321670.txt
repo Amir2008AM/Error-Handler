@@ -1,0 +1,205 @@
+Implement the new file-upload and processing workflow across ToolifyPDF.
+
+IMPORTANT:
+Do NOT redesign, replace, or modify the existing normal tool pages/UI unnecessarily.
+The existing tool landing pages must remain visually and functionally as they are.
+
+The main change should happen AFTER the user starts the operation.
+
+GOAL:
+Create a professional processing/upload experience similar in concept to iLovePDF:
+when the user selects files and clicks the main action button such as "Start", "Merge", "Convert", "Compress", etc., transition to a dedicated processing workspace/page instead of continuing to process everything inside the original tool landing page.
+
+WORKFLOW:
+
+1. EXISTING TOOL PAGE
+- Keep the current ToolifyPDF tool page intact.
+- Keep the existing upload/dropzone design.
+- Keep existing titles, descriptions, tool options, buttons, and SEO content.
+- The user selects or uploads their files normally.
+- Do not replace this page with the new processing interface.
+
+2. START BUTTON
+When the user clicks the primary action button:
+- Validate that the required files have been selected.
+- If no file is selected, show the existing/familiar validation message without navigating away.
+- If files are selected, create the processing session and navigate to a dedicated processing page/workspace.
+
+3. NEW PROCESSING PAGE
+Create a separate processing workspace/page that appears only after the operation has started.
+
+The page should feel like a professional PDF-processing application, inspired by the UX pattern used by iLovePDF, but NOT copy its branding, exact design, assets, icons, or copyrighted UI.
+
+The processing page should contain:
+
+- A clean header with ToolifyPDF branding.
+- The selected files displayed clearly.
+- File name.
+- File type.
+- File size.
+- Upload/processing status.
+- A visual progress bar.
+- Percentage progress.
+- Clear processing state such as:
+  "Uploading..."
+  "Processing..."
+  "Almost done..."
+  "Completed"
+
+4. UPLOAD PROGRESS
+Implement real upload progress where technically possible.
+
+For every selected file:
+- Show an individual progress indicator.
+- Show overall progress when multiple files are being processed.
+- Do not fake progress if actual upload progress can be obtained from the browser/network layer.
+- If the backend/API does not expose byte-level progress, use a truthful processing state instead of displaying a misleading percentage.
+
+5. MULTIPLE FILES
+For tools that support multiple files:
+- Display all selected files in a clean list/grid.
+- Each file should have its own status.
+- Allow removing a file before processing when the tool workflow allows it.
+- Clearly distinguish between:
+  Pending
+  Uploading
+  Processing
+  Completed
+  Failed
+
+6. PROCESSING STATE
+While processing:
+- Disable actions that could cause duplicate submissions.
+- Prevent accidental duplicate processing.
+- Show a clear loading/processing state.
+- Keep the interface responsive on desktop and mobile.
+- Do not freeze the page.
+
+7. COMPLETION STATE
+When processing finishes successfully:
+- Change the interface to a clear success state.
+- Show that the operation is completed.
+- Provide the resulting file(s).
+- Provide a prominent "Download" button.
+- For multiple outputs, provide appropriate download controls.
+- Keep the user on the processing/result page instead of automatically returning them to the original tool page.
+
+8. ERROR STATE
+If processing fails:
+- Show a clear human-readable error.
+- Identify which file/operation failed when possible.
+- Provide a "Try Again" / retry action.
+- Do not lose the user's selected files unnecessarily.
+- Do not show raw server errors, stack traces, or technical debugging information to normal users.
+
+9. BROWSER NAVIGATION
+The new processing page should behave like a real application page:
+- Browser back/forward should behave predictably.
+- Refreshing the page should not create duplicate processing jobs.
+- Do not start the same operation twice because of a page refresh.
+- Use an appropriate job/session identifier if needed.
+
+10. RESPONSIVE DESIGN
+The processing page must be fully responsive:
+- Desktop
+- Tablet
+- Mobile
+
+On mobile:
+- File cards/list items must fit the screen.
+- Progress bars must remain visible.
+- Buttons must be easy to tap.
+- No horizontal overflow.
+- No clipped text or elements.
+
+11. ACCESSIBILITY
+Maintain:
+- Keyboard accessibility.
+- Proper button states.
+- Accessible labels.
+- Visible focus states.
+- Sufficient color contrast.
+- Meaningful status messages for screen readers where appropriate.
+
+12. PERFORMANCE
+Do not introduce unnecessary libraries or heavy assets.
+
+Reuse the existing ToolifyPDF architecture, components, styles, API routes, and processing engines whenever possible.
+
+Do NOT rewrite working PDF-processing functionality just to implement the UI.
+
+13. ALL TOOLS
+Apply this workflow consistently to ToolifyPDF tools that use file uploads/processes.
+
+However:
+- Do not blindly modify tools that do not require this workflow.
+- Do not break existing tool-specific options or processing parameters.
+- Tool-specific settings must remain available and be carried into the processing session.
+
+14. IMPORTANT UI RULE
+The normal ToolifyPDF tool page and its SEO content remain unchanged.
+
+The NEW processing interface is an additional step:
+Existing Tool Page
+→ User selects file(s)
+→ User clicks Start/Process
+→ NEW Processing Workspace
+→ Upload
+→ Processing
+→ Success/Download
+
+Do NOT turn the entire existing tool page into the processing page.
+
+15. VISUAL QUALITY
+Make the processing workspace polished and production-ready:
+- Clean spacing.
+- Professional typography.
+- Consistent ToolifyPDF design language.
+- Subtle animations only where useful.
+- Clear hierarchy.
+- No excessive decoration.
+- No generic dashboard appearance.
+- The user should immediately understand what is happening with their files.
+
+16. DO NOT COPY iLOVEPDF
+Use iLovePDF only as UX inspiration for the concept of moving into a dedicated processing experience.
+Do not copy:
+- Their logo.
+- Their branding.
+- Their exact layout.
+- Their copyrighted images/icons.
+- Their exact text.
+- Their exact visual styling.
+
+17. CODE QUALITY
+Before finishing:
+- Inspect the existing codebase first.
+- Identify all affected upload/start-processing flows.
+- Reuse existing components where practical.
+- Avoid duplicate implementations.
+- Keep the architecture maintainable.
+- Ensure all existing tools continue working.
+- Ensure existing SEO pages/content are preserved.
+
+18. TESTING
+Test at minimum:
+- One file upload.
+- Multiple file upload.
+- Large file upload.
+- Invalid file type.
+- No file selected.
+- Upload failure.
+- Processing failure.
+- Successful processing.
+- Retry.
+- Download result.
+- Mobile layout.
+- Page refresh during processing.
+- Browser back navigation.
+
+IMPORTANT FINAL REQUIREMENT:
+Do not simply create a visual mockup.
+
+Implement the workflow in the actual ToolifyPDF application and connect it to the existing upload and processing logic so the new processing page works with real files and real operations.
+
+After implementation, verify that the original tool pages still look and behave correctly and that the new processing workspace is only shown after the user starts the operation.
