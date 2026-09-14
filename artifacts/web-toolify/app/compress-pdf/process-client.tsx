@@ -75,10 +75,17 @@ export function CompressPdfClient() {
       return
     }
     const payload = JSON.parse(saved) as { name: string; type: string; data: string; level: CompressionLevel }
-    fetch(payload.data).then((response) => response.blob()).then((blob) => {
-      setFile(new File([blob], payload.name, { type: payload.type }))
-      setLevel(payload.level)
-    })
+    const [header, encoded] = payload.data.split(',', 2)
+    if (!encoded || !header.startsWith('data:')) {
+      sessionStorage.removeItem('toolifypdf:compress-file')
+      router.replace('/compress-pdf')
+      return
+    }
+
+    const binary = atob(encoded)
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+    setFile(new File([bytes], payload.name, { type: payload.type }))
+    setLevel(payload.level)
   }, [router])
 
   useEffect(() => {
@@ -154,18 +161,6 @@ export function CompressPdfClient() {
             onRetry={retryProcessing}
             onChangeFile={resetWorkspace}
           >
-            <div className="flex items-center gap-4 rounded-lg border bg-muted/30 p-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <FileText className="size-6 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{file.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {t('common.originalSize')}: {formatSize(file.size)}
-                </p>
-              </div>
-            </div>
-
             {result && progress.status === 'completed' && (() => {
               const { alreadyOptimized, compressionStatus } = result
               const absPct   = Math.abs(Math.round(result.compressionRatio))
