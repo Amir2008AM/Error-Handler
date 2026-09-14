@@ -1,0 +1,312 @@
+Implement a professional, reusable file-upload progress system across ALL file-uploading tools on my ToolifyPDF website.
+
+IMPORTANT:
+Do not redesign or break the existing tools.
+Do not remove any existing functionality.
+Do not change the current PDF processing logic unless necessary to connect the progress UI.
+The new upload-progress system must work consistently across the entire website.
+
+REFERENCE UI:
+I want the upload experience to be similar in functionality and polish to iLovePDF's upload screen.
+
+For every tool that uploads a file, show a professional upload-progress interface containing:
+
+1. FILE INFORMATION
+- Show the uploaded file name.
+- Show the file size.
+- If multiple files are uploaded, show each file individually or show a clear aggregate progress.
+- Handle long filenames gracefully with truncation.
+
+2. REAL-TIME UPLOAD PROGRESS
+Display:
+- Percentage: 0% → 100%
+- A horizontal progress bar
+- Upload speed, e.g. "74 KB/s"
+- Estimated remaining time, e.g. "28 seconds"
+- Current status
+
+Example:
+
+Uploading 1 of 1 file
+Scalenut-signed (1).pdf (3.54 MB)
+
+Upload speed: 74 KB/s
+Estimated time remaining: 28 seconds
+
+[████████████████░░░░░░░░] 43%
+
+Uploading...
+
+When completed:
+
+100%
+Upload complete
+
+3. REAL PROGRESS — NOT FAKE ANIMATION
+Do NOT use a fake timer or artificially increase the percentage.
+
+Use the actual upload progress provided by the browser/network request.
+
+For XMLHttpRequest, use:
+xhr.upload.onprogress
+
+For fetch/API requests where native upload progress is unavailable, implement an appropriate XMLHttpRequest-based upload mechanism or another technically reliable method.
+
+The percentage must reflect the actual bytes uploaded:
+
+percentage = (loaded / total) * 100
+
+Calculate upload speed from actual bytes transferred over time.
+
+Calculate estimated remaining time from:
+remainingBytes / currentUploadSpeed
+
+4. UPLOAD STATES
+
+Implement these states:
+
+IDLE
+- Normal upload/dropzone UI.
+
+SELECTED
+- File selected but upload has not started.
+
+UPLOADING
+- Show progress percentage.
+- Show progress bar.
+- Show upload speed.
+- Show estimated remaining time.
+- Show file name and size.
+
+PROCESSING
+After upload reaches 100%, do NOT immediately tell the user the entire operation is complete.
+
+Change the status to:
+
+"Upload complete"
+"Processing your file..."
+
+Show an indeterminate processing animation while the backend processes the PDF.
+
+COMPLETED
+When processing finishes:
+
+"Completed"
+Show the existing download/result UI.
+
+ERROR
+If upload or processing fails:
+
+"Upload failed"
+or
+"Processing failed"
+
+Show a clear error message and a "Try again" button.
+
+CANCELLED
+If cancellation is supported:
+"Upload cancelled"
+
+5. CANCEL UPLOAD
+Add a small Cancel button while uploading.
+
+When clicked:
+- Abort the active upload request.
+- Stop the progress calculation.
+- Reset the UI safely.
+- Allow the user to upload the file again.
+
+6. MULTIPLE FILES
+The system must support tools that accept multiple files.
+
+Display something like:
+
+Uploading 2 of 5 files
+
+File 1
+100% ✓
+
+File 2
+67%
+
+File 3
+Waiting...
+
+Also display an overall progress indicator.
+
+Do not break tools that only accept one file.
+
+7. DRAG AND DROP
+The progress component must work with both:
+- File picker
+- Drag & drop
+
+8. MOBILE RESPONSIVENESS
+The upload-progress UI must look professional on:
+- Desktop
+- Tablet
+- Mobile
+
+Do not allow the progress text to overflow on small screens.
+
+9. RTL / ARABIC SUPPORT
+ToolifyPDF supports Arabic.
+
+The component must automatically respect the site's direction:
+- RTL for Arabic
+- LTR for English
+
+Do not hard-code the layout in only one direction.
+
+10. DESIGN
+Use ToolifyPDF's existing design system and colors.
+
+Do not copy iLovePDF branding, logos, icons, or proprietary visual assets.
+
+The goal is to reproduce the FUNCTIONALITY and general UX pattern, not their branding.
+
+Make the UI clean, modern, minimal and professional.
+
+11. REUSABLE COMPONENT
+IMPORTANT:
+
+Do NOT implement separate upload-progress logic independently inside every tool.
+
+Create ONE reusable upload component/service, for example:
+
+components/FileUploadProgress.tsx
+
+and/or
+
+lib/uploadProgress.ts
+
+Use the same component across all applicable tools.
+
+The component should accept configurable props such as:
+
+- files
+- multiple
+- onProgress
+- onUploadComplete
+- onProcessing
+- onComplete
+- onError
+- onCancel
+- uploadEndpoint
+- maxFileSize
+- acceptedFileTypes
+
+Adapt the implementation to the existing architecture of the project.
+
+12. ALL TOOLS
+Audit the entire ToolifyPDF codebase and identify every tool that uploads files.
+
+Apply the new reusable upload-progress system to ALL applicable tools, including PDF tools and image/file conversion tools.
+
+Do not only implement it on Split PDF.
+
+Examples may include:
+- Merge PDF
+- Split PDF
+- Compress PDF
+- PDF to JPG
+- JPG to PDF
+- PDF to Word
+- Word to PDF
+- PDF to PNG
+- PNG to PDF
+- Rotate PDF
+- Watermark PDF
+- Unlock PDF
+- Protect PDF
+- Remove Pages
+- Extract Pages
+- Organize PDF
+- Add Page Numbers
+- Sign PDF
+- and every other existing ToolifyPDF tool that uploads files.
+
+First audit the repository so you know the exact list of existing tools.
+
+13. BACKEND COMPATIBILITY
+Do not assume every tool uses the same backend endpoint.
+
+Preserve each tool's existing endpoint and processing implementation.
+
+The new system should wrap/connect to the existing upload mechanism rather than replacing working backend functionality unnecessarily.
+
+If a tool uses a different upload API, adapt the reusable component/service accordingly.
+
+14. ERROR HANDLING
+Handle:
+- Network failure
+- Server error
+- Timeout
+- File too large
+- Unsupported file type
+- User cancellation
+- Backend processing failure
+- Connection interruption
+
+Never leave the progress UI stuck indefinitely.
+
+15. ACCESSIBILITY
+Use:
+- aria-live for status changes
+- accessible progressbar semantics
+- readable contrast
+- keyboard-accessible buttons
+
+Example:
+
+role="progressbar"
+aria-valuemin="0"
+aria-valuemax="100"
+aria-valuenow={progress}
+
+16. PERFORMANCE
+Do not cause unnecessary React re-renders.
+
+Throttle progress-state updates if necessary while maintaining a smooth visual experience.
+
+Do not poll the server unnecessarily when normal upload progress events are sufficient.
+
+17. IMPORTANT USER EXPERIENCE
+The upload progress must clearly distinguish:
+
+UPLOAD
+↓
+UPLOAD COMPLETE
+↓
+PROCESSING
+↓
+COMPLETED
+↓
+DOWNLOAD
+
+Do not show "100%" while the backend is still processing and make the user think the tool has finished.
+
+18. FINAL REQUIREMENT
+After implementation:
+
+- Audit every existing file-uploading tool.
+- Confirm the reusable component is actually used by all applicable tools.
+- Test single-file uploads.
+- Test multiple-file uploads.
+- Test drag & drop.
+- Test large files.
+- Test upload errors.
+- Test cancellation.
+- Test mobile layout.
+- Test Arabic RTL.
+- Test that existing PDF processing and download functionality still works.
+
+Do not stop after creating the component.
+Actually integrate it into every applicable existing tool.
+
+At the end, provide a concise report listing:
+1. Files/components created or modified.
+2. All tools integrated.
+3. Upload progress implementation used.
+4. Any tools that could not use the system and why.
+5. Any remaining issues.
