@@ -141,8 +141,8 @@ export function CompressPdfClient() {
   const retryProcessing = () => { setResult(null); void handleCompress() }
 
   return (
-    <>
-      <div className="mx-auto max-w-2xl">
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto w-full">
         <BackButton />
         {!file ? (
           <ProcessingWorkspace status="idle">
@@ -156,6 +156,9 @@ export function CompressPdfClient() {
         ) : (
           <ProcessingWorkspace
             fileName={file.name}
+            fileSize={formatSize(file.size)}
+            progress={progress.progress}
+            message={progress.message}
             status={progress.status}
             error={progress.error}
             onRetry={retryProcessing}
@@ -259,6 +262,6 @@ export function CompressPdfClient() {
           </ProcessingWorkspace>
         )}
       </div>
-    </>
+    </main>
   )
 }
