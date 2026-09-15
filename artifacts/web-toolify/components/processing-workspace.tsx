@@ -2,6 +2,7 @@
 
 import { FileText, Loader2, RotateCcw, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/logo'
 import type { ProgressStatus } from '@/components/real-progress-bar'
 
 interface ProcessingWorkspaceProps {
@@ -33,8 +34,8 @@ export function ProcessingWorkspace({
   return (
     <section dir="auto" className="relative min-h-screen overflow-hidden bg-background px-4 py-10 text-foreground sm:px-8 sm:py-12" aria-label="Processing workspace">
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-        <div className="mb-10" dir="ltr">
-          <img src="/toolifypdf-logo.png" alt="ToolifyPDF" className="mx-auto h-10 w-auto object-contain" />
+        <div className="mb-10 flex flex-col items-center" dir="ltr">
+          <Logo className="justify-center" labelClassName="text-2xl sm:text-2xl" />
           <p className="mt-3 text-xs font-medium text-muted-foreground">Simple tools. Better documents.</p>
         </div>
 
