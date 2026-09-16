@@ -4,3 +4,4 @@
 
 - [Legal pages consistency](legal-pages-consistency.md) — toolifypdf legal pages (privacy/terms/cookies/disclaimer) must stay English-only, single source of truth for retention time, footer links.
 - [Bot auth & poller fixes](bot-auth-poller-fixes.md) — two_step vs key_only mode, offset-replay double-message bug, allowlist brute-force fix, lockout state lost on restart.
+- [Package firewall release age](package-firewall-release-age.md) — imported pnpm projects may fail before startup when pinned packages are inside the firewall’s release-age window.

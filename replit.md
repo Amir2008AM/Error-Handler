@@ -4,7 +4,7 @@ A comprehensive web-based utility platform providing free online tools for PDF, 
 
 ## Stack
 
-- **Framework**: Next.js 16.2 (App Router, Turbopack), React 19
+- **Framework**: Next.js 16.3.5 (App Router, Turbopack), React 19
 - **Styling**: Tailwind CSS 4, Radix UI, Lucide React
 - **Queue**: BullMQ + Redis (optional; falls back to in-memory JobManager)
 - **Processing engines**: Ghostscript, qpdf, pdf-lib, pdfjs-dist (PDF); Sharp (images); Tesseract.js (OCR); LibreOffice (documents)

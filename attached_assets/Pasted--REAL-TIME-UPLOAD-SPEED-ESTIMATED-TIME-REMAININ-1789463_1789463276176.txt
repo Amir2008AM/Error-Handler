@@ -1,0 +1,66 @@
+==================================================
+REAL-TIME UPLOAD SPEED & ESTIMATED TIME REMAINING
+==================================================
+
+The upload screen MUST display real, dynamically calculated upload metrics.
+
+Include:
+
+- Upload percentage
+- Upload speed
+- Estimated time remaining
+- Uploaded amount / total amount where useful
+
+IMPORTANT:
+These values MUST be based on the actual file upload progress and actual bytes transferred.
+
+DO NOT:
+- Use fake numbers
+- Use a fake animation
+- Use a fixed countdown timer
+- Randomize the upload speed
+- Simulate progress independently from the real upload
+- Show placeholder values such as "74 KB/s" unless that is the actual measured speed
+
+The implementation must listen to the real upload progress events and use:
+- bytes uploaded so far
+- total bytes
+- elapsed upload time
+
+to calculate the current percentage and upload speed.
+
+Estimated time remaining should be calculated from the actual upload progress and current measured throughput, and should update dynamically as the upload continues.
+
+For example:
+
+Uploading file 1 of 1
+
+Scalenut.pdf
+3.54 MB
+
+43%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+74 KB/s · About 28 seconds remaining
+
+The values above are examples ONLY.
+
+The actual UI must display the real-time values for the current upload.
+
+Speed calculation should be smoothed enough to avoid excessive flickering while still reflecting real network conditions.
+
+If there is insufficient data to calculate a reliable speed or ETA:
+- temporarily hide the value, or
+- display a neutral state such as "Calculating…"
+
+Do NOT invent a value.
+
+The progress percentage must come directly from the actual upload progress event.
+
+When the upload reaches 100%:
+- show the upload as completed
+- stop updating upload speed/ETA
+- transition to the Processing state
+
+The implementation should use a browser-supported mechanism capable of exposing real upload progress, such as XMLHttpRequest upload progress events when appropriate. The progress event provides the transferred and total byte counts needed for this calculation. :contentReference[oaicite:1]{index=1}
