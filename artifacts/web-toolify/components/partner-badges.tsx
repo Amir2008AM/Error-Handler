@@ -93,9 +93,10 @@ export const BADGES = [
   },
   {
     href: 'https://instant-indexing.com',
-    src:  'https://instant-indexing.com/api/badge/toolifypdf.online',
-    alt:  'Indexed by Instant Indexing',
+    src:  '/instant-indexing-badge.svg',
+    alt:  'ToolifyPDF on Instant Indexing',
     rel:  'noopener' as const,
+    width: 150,
   },
   {
     href: 'https://dang.ai',

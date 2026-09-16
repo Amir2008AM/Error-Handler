@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="46" viewBox="0 0 150 46" role="img" aria-labelledby="title desc">
+  <title id="title">Instant Indexing</title>
+  <desc id="desc">Featured on Instant Indexing</desc>
+  <rect width="150" height="46" rx="7" fill="#111827"/>
+  <rect x="1" y="1" width="148" height="44" rx="6" fill="none" stroke="#374151"/>
+  <path d="M18 12h9l-5 8h7L17 35l3-10h-7z" fill="#38bdf8"/>
+  <text x="41" y="19" fill="#9ca3af" font-family="Arial, sans-serif" font-size="8" font-weight="400">FEATURED ON</text>
+  <text x="41" y="33" fill="#fff" font-family="Arial, sans-serif" font-size="12" font-weight="700">Instant Indexing</text>
+</svg>
