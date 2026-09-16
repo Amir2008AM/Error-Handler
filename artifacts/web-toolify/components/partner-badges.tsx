@@ -97,6 +97,14 @@ export const BADGES = [
     alt:  'Indexed by Instant Indexing',
     rel:  'noopener' as const,
   },
+  {
+    href: 'https://dang.ai',
+    src:  'https://assets.dang.ai/badges/dang-verified-dark.png',
+    alt:  'Verified on DANG!',
+    rel:  'dofollow noopener' as const,
+    width: 260,
+    height: 94,
+  },
 ]
 
 interface PartnerBadgesProps {
