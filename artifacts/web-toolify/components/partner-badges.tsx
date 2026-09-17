@@ -114,6 +114,13 @@ export const BADGES = [
     width: 150,
     height: 55,
   },
+  {
+    href: 'https://neeed.directory',
+    src:  'https://neeed.directory/badges/neeed-badge-dark.svg',
+    alt:  'Featured on neeed.directory',
+    rel:  'noopener' as const,
+    width: 139,
+  },
 ]
 
 interface PartnerBadgesProps {
