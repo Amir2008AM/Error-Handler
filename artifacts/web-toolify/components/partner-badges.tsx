@@ -106,6 +106,14 @@ export const BADGES = [
     width: 260,
     height: 94,
   },
+  {
+    href: 'https://startupbase.io/products/toolifypdf?utm_source=startupbase&utm_medium=badge&utm_campaign=launch-badge-dark',
+    src:  'https://statics.startupbase.io/site/badges/launched-on-sb-dark.svg',
+    alt:  'Launched on StartupBase',
+    rel:  'noopener noreferrer' as const,
+    width: 150,
+    height: 55,
+  },
 ]
 
 interface PartnerBadgesProps {
@@ -134,7 +142,7 @@ export function PartnerBadges({ width = 130, height = 46, className }: PartnerBa
               src={badge.src}
               alt={badge.alt}
               width={'width' in badge ? badge.width : width}
-              height={height}
+              height={'height' in badge ? badge.height : height}
               loading="eager"
               decoding="async"
             />
