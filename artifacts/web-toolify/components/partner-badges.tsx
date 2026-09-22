@@ -121,6 +121,14 @@ export const BADGES = [
     rel:  'noopener' as const,
     width: 139,
   },
+  {
+    href: 'https://indiechains.com',
+    src:  'https://api.indiechains.com/badge/940f2458af9edaa3deb56e8a83c0a0904a0663e327eb51f5.svg?theme=dark',
+    alt:  'Linked with Indie Chains',
+    rel:  'noopener' as const,
+    width: 180,
+    height: 40,
+  },
 ]
 
 interface PartnerBadgesProps {
