@@ -129,6 +129,14 @@ export const BADGES = [
     width: 180,
     height: 40,
   },
+  {
+    href: 'https://www.scrolllaunch.com/products/toolifypdf?ref=badge',
+    src:  'https://www.scrolllaunch.com/api/badge/toolifypdf',
+    alt:  'Featured on ScrollLaunch',
+    rel:  'noopener' as const,
+    width: 220,
+    height: 48,
+  },
 ]
 
 interface PartnerBadgesProps {
